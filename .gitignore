@@ -1,0 +1,17 @@
+# Go
+/bin/
+/dist/
+/build/
+/tmp/
+*.test
+# Node
+node_modules/
+web/node_modules/
+web/dist/
+# macOS
+.DS_Store
+# App data
+Data/
+Backups/
+Invoices/
+Exports/
