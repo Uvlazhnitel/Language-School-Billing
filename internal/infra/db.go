@@ -7,7 +7,7 @@ import (
 	"langschool/ent"
 
 	"entgo.io/ent/dialect"
-	_ "github.com/ncruces/go-sqlite3" // регистрирует драйвер "sqlite3"
+	_ "github.com/ncruces/go-sqlite3" // registers the "sqlite3" driver
 )
 
 type DB struct {
