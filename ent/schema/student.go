@@ -20,6 +20,6 @@ func (Student) Fields() []ent.Field {
 
 func (Student) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.To("enrollments", Enrollment.Type), 
+		edge.To("enrollments", Enrollment.Type)
 	}
 }
