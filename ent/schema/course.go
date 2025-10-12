@@ -2,6 +2,7 @@ package schema
 
 import (
 	"entgo.io/ent"
+	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
@@ -15,5 +16,11 @@ func (Course) Fields() []ent.Field {
 		field.Float("subscription_price").Default(0),
 		field.String("schedule_json").Default(""),
 		field.Bool("is_active").Default(true),
+	}
+}
+
+func (Course) Edges() []ent.Edge {
+	return []ent.Edge{
+		edge.To("enrollments", Enrollment.Type),
 	}
 }

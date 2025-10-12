@@ -3,25 +3,51 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
+	"os"
+	"path/filepath"
+	"time"
+
+	"langschool/internal/infra"
+	"langschool/internal/paths"
 )
 
-// App struct
 type App struct {
-	ctx context.Context
+	db *infra.DB
 }
 
-// NewApp creates a new App application struct
-func NewApp() *App {
-	return &App{}
-}
+func NewApp() *App { return &App{} }
 
-// startup is called when the app starts. The context is saved
-// so we can call the runtime methods
 func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
+	base := filepath.Join(userHome(), "LangSchool")
+	dirs, err := paths.Ensure(base)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	dbFile := filepath.Join(dirs.Data, "app.sqlite")
+	db, err := infra.Open(ctx, dbFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+	a.db = db
+
+	// TODO: here we will add method bindings for the UI (CRUD, invoice generation, etc.)
+	_ = time.Now()
 }
 
-// Greet returns a greeting for the given name
+func userHome() string {
+	if h, err := os.UserHomeDir(); err == nil {
+		return h
+	}
+	return "."
+}
+
+func (a *App) Ping() string { return "ok" }
+
 func (a *App) Greet(name string) string {
-	return fmt.Sprintf("Hello %s, It's show time!", name)
+	if name == "" {
+		return "Привет!"
+	}
+	return fmt.Sprintf("Привет, %s!", name)
 }

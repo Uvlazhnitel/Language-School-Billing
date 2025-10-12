@@ -12,11 +12,11 @@ func (Settings) Fields() []ent.Field {
 		field.Int("singleton_id"),
 		field.String("org_name").Default(""),
 		field.String("address").Default(""),
-		field.String("invoice_prefix").Default(""),
+		field.String("invoice_prefix").Default("LS"),
 		field.Int("next_seq").Default(1),
 		field.Int("invoice_day_of_month").Default(1),
 		field.Bool("auto_issue").Default(false),
 		field.String("currency").Default("EUR"),
-		field.String("locale").Default("en_EN"),
+		field.String("locale").Default("ru-RU"),
 	}
 }
