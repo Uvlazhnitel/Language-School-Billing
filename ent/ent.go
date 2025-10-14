@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
 	"langschool/ent/settings"
@@ -76,10 +77,11 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			course.Table:     course.ValidColumn,
-			enrollment.Table: enrollment.ValidColumn,
-			settings.Table:   settings.ValidColumn,
-			student.Table:    student.ValidColumn,
+			attendancemonth.Table: attendancemonth.ValidColumn,
+			course.Table:          course.ValidColumn,
+			enrollment.Table:      enrollment.ValidColumn,
+			settings.Table:        settings.ValidColumn,
+			student.Table:         student.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

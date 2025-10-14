@@ -6,6 +6,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
+// AttendanceMonth is the predicate function for attendancemonth builders.
+type AttendanceMonth func(*sql.Selector)
+
 // Course is the predicate function for course builders.
 type Course func(*sql.Selector)
 

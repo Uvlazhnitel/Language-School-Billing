@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
 	"langschool/ent/predicate"
@@ -27,11 +28,830 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeCourse     = "Course"
-	TypeEnrollment = "Enrollment"
-	TypeSettings   = "Settings"
-	TypeStudent    = "Student"
+	TypeAttendanceMonth = "AttendanceMonth"
+	TypeCourse          = "Course"
+	TypeEnrollment      = "Enrollment"
+	TypeSettings        = "Settings"
+	TypeStudent         = "Student"
 )
+
+// AttendanceMonthMutation represents an operation that mutates the AttendanceMonth nodes in the graph.
+type AttendanceMonthMutation struct {
+	config
+	op               Op
+	typ              string
+	id               *int
+	student_id       *int
+	addstudent_id    *int
+	course_id        *int
+	addcourse_id     *int
+	year             *int
+	addyear          *int
+	month            *int
+	addmonth         *int
+	lessons_count    *int
+	addlessons_count *int
+	locked           *bool
+	source           *attendancemonth.Source
+	clearedFields    map[string]struct{}
+	done             bool
+	oldValue         func(context.Context) (*AttendanceMonth, error)
+	predicates       []predicate.AttendanceMonth
+}
+
+var _ ent.Mutation = (*AttendanceMonthMutation)(nil)
+
+// attendancemonthOption allows management of the mutation configuration using functional options.
+type attendancemonthOption func(*AttendanceMonthMutation)
+
+// newAttendanceMonthMutation creates new mutation for the AttendanceMonth entity.
+func newAttendanceMonthMutation(c config, op Op, opts ...attendancemonthOption) *AttendanceMonthMutation {
+	m := &AttendanceMonthMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeAttendanceMonth,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withAttendanceMonthID sets the ID field of the mutation.
+func withAttendanceMonthID(id int) attendancemonthOption {
+	return func(m *AttendanceMonthMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *AttendanceMonth
+		)
+		m.oldValue = func(ctx context.Context) (*AttendanceMonth, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().AttendanceMonth.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withAttendanceMonth sets the old AttendanceMonth of the mutation.
+func withAttendanceMonth(node *AttendanceMonth) attendancemonthOption {
+	return func(m *AttendanceMonthMutation) {
+		m.oldValue = func(context.Context) (*AttendanceMonth, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m AttendanceMonthMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m AttendanceMonthMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *AttendanceMonthMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *AttendanceMonthMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().AttendanceMonth.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetStudentID sets the "student_id" field.
+func (m *AttendanceMonthMutation) SetStudentID(i int) {
+	m.student_id = &i
+	m.addstudent_id = nil
+}
+
+// StudentID returns the value of the "student_id" field in the mutation.
+func (m *AttendanceMonthMutation) StudentID() (r int, exists bool) {
+	v := m.student_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStudentID returns the old "student_id" field's value of the AttendanceMonth entity.
+// If the AttendanceMonth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AttendanceMonthMutation) OldStudentID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStudentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStudentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStudentID: %w", err)
+	}
+	return oldValue.StudentID, nil
+}
+
+// AddStudentID adds i to the "student_id" field.
+func (m *AttendanceMonthMutation) AddStudentID(i int) {
+	if m.addstudent_id != nil {
+		*m.addstudent_id += i
+	} else {
+		m.addstudent_id = &i
+	}
+}
+
+// AddedStudentID returns the value that was added to the "student_id" field in this mutation.
+func (m *AttendanceMonthMutation) AddedStudentID() (r int, exists bool) {
+	v := m.addstudent_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetStudentID resets all changes to the "student_id" field.
+func (m *AttendanceMonthMutation) ResetStudentID() {
+	m.student_id = nil
+	m.addstudent_id = nil
+}
+
+// SetCourseID sets the "course_id" field.
+func (m *AttendanceMonthMutation) SetCourseID(i int) {
+	m.course_id = &i
+	m.addcourse_id = nil
+}
+
+// CourseID returns the value of the "course_id" field in the mutation.
+func (m *AttendanceMonthMutation) CourseID() (r int, exists bool) {
+	v := m.course_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCourseID returns the old "course_id" field's value of the AttendanceMonth entity.
+// If the AttendanceMonth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AttendanceMonthMutation) OldCourseID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCourseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCourseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCourseID: %w", err)
+	}
+	return oldValue.CourseID, nil
+}
+
+// AddCourseID adds i to the "course_id" field.
+func (m *AttendanceMonthMutation) AddCourseID(i int) {
+	if m.addcourse_id != nil {
+		*m.addcourse_id += i
+	} else {
+		m.addcourse_id = &i
+	}
+}
+
+// AddedCourseID returns the value that was added to the "course_id" field in this mutation.
+func (m *AttendanceMonthMutation) AddedCourseID() (r int, exists bool) {
+	v := m.addcourse_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetCourseID resets all changes to the "course_id" field.
+func (m *AttendanceMonthMutation) ResetCourseID() {
+	m.course_id = nil
+	m.addcourse_id = nil
+}
+
+// SetYear sets the "year" field.
+func (m *AttendanceMonthMutation) SetYear(i int) {
+	m.year = &i
+	m.addyear = nil
+}
+
+// Year returns the value of the "year" field in the mutation.
+func (m *AttendanceMonthMutation) Year() (r int, exists bool) {
+	v := m.year
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldYear returns the old "year" field's value of the AttendanceMonth entity.
+// If the AttendanceMonth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AttendanceMonthMutation) OldYear(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldYear is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldYear requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldYear: %w", err)
+	}
+	return oldValue.Year, nil
+}
+
+// AddYear adds i to the "year" field.
+func (m *AttendanceMonthMutation) AddYear(i int) {
+	if m.addyear != nil {
+		*m.addyear += i
+	} else {
+		m.addyear = &i
+	}
+}
+
+// AddedYear returns the value that was added to the "year" field in this mutation.
+func (m *AttendanceMonthMutation) AddedYear() (r int, exists bool) {
+	v := m.addyear
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetYear resets all changes to the "year" field.
+func (m *AttendanceMonthMutation) ResetYear() {
+	m.year = nil
+	m.addyear = nil
+}
+
+// SetMonth sets the "month" field.
+func (m *AttendanceMonthMutation) SetMonth(i int) {
+	m.month = &i
+	m.addmonth = nil
+}
+
+// Month returns the value of the "month" field in the mutation.
+func (m *AttendanceMonthMutation) Month() (r int, exists bool) {
+	v := m.month
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMonth returns the old "month" field's value of the AttendanceMonth entity.
+// If the AttendanceMonth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AttendanceMonthMutation) OldMonth(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMonth is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMonth requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMonth: %w", err)
+	}
+	return oldValue.Month, nil
+}
+
+// AddMonth adds i to the "month" field.
+func (m *AttendanceMonthMutation) AddMonth(i int) {
+	if m.addmonth != nil {
+		*m.addmonth += i
+	} else {
+		m.addmonth = &i
+	}
+}
+
+// AddedMonth returns the value that was added to the "month" field in this mutation.
+func (m *AttendanceMonthMutation) AddedMonth() (r int, exists bool) {
+	v := m.addmonth
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetMonth resets all changes to the "month" field.
+func (m *AttendanceMonthMutation) ResetMonth() {
+	m.month = nil
+	m.addmonth = nil
+}
+
+// SetLessonsCount sets the "lessons_count" field.
+func (m *AttendanceMonthMutation) SetLessonsCount(i int) {
+	m.lessons_count = &i
+	m.addlessons_count = nil
+}
+
+// LessonsCount returns the value of the "lessons_count" field in the mutation.
+func (m *AttendanceMonthMutation) LessonsCount() (r int, exists bool) {
+	v := m.lessons_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLessonsCount returns the old "lessons_count" field's value of the AttendanceMonth entity.
+// If the AttendanceMonth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AttendanceMonthMutation) OldLessonsCount(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLessonsCount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLessonsCount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLessonsCount: %w", err)
+	}
+	return oldValue.LessonsCount, nil
+}
+
+// AddLessonsCount adds i to the "lessons_count" field.
+func (m *AttendanceMonthMutation) AddLessonsCount(i int) {
+	if m.addlessons_count != nil {
+		*m.addlessons_count += i
+	} else {
+		m.addlessons_count = &i
+	}
+}
+
+// AddedLessonsCount returns the value that was added to the "lessons_count" field in this mutation.
+func (m *AttendanceMonthMutation) AddedLessonsCount() (r int, exists bool) {
+	v := m.addlessons_count
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLessonsCount resets all changes to the "lessons_count" field.
+func (m *AttendanceMonthMutation) ResetLessonsCount() {
+	m.lessons_count = nil
+	m.addlessons_count = nil
+}
+
+// SetLocked sets the "locked" field.
+func (m *AttendanceMonthMutation) SetLocked(b bool) {
+	m.locked = &b
+}
+
+// Locked returns the value of the "locked" field in the mutation.
+func (m *AttendanceMonthMutation) Locked() (r bool, exists bool) {
+	v := m.locked
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLocked returns the old "locked" field's value of the AttendanceMonth entity.
+// If the AttendanceMonth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AttendanceMonthMutation) OldLocked(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLocked is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLocked requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLocked: %w", err)
+	}
+	return oldValue.Locked, nil
+}
+
+// ResetLocked resets all changes to the "locked" field.
+func (m *AttendanceMonthMutation) ResetLocked() {
+	m.locked = nil
+}
+
+// SetSource sets the "source" field.
+func (m *AttendanceMonthMutation) SetSource(a attendancemonth.Source) {
+	m.source = &a
+}
+
+// Source returns the value of the "source" field in the mutation.
+func (m *AttendanceMonthMutation) Source() (r attendancemonth.Source, exists bool) {
+	v := m.source
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSource returns the old "source" field's value of the AttendanceMonth entity.
+// If the AttendanceMonth object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *AttendanceMonthMutation) OldSource(ctx context.Context) (v attendancemonth.Source, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSource is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSource requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSource: %w", err)
+	}
+	return oldValue.Source, nil
+}
+
+// ResetSource resets all changes to the "source" field.
+func (m *AttendanceMonthMutation) ResetSource() {
+	m.source = nil
+}
+
+// Where appends a list predicates to the AttendanceMonthMutation builder.
+func (m *AttendanceMonthMutation) Where(ps ...predicate.AttendanceMonth) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the AttendanceMonthMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *AttendanceMonthMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.AttendanceMonth, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *AttendanceMonthMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *AttendanceMonthMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (AttendanceMonth).
+func (m *AttendanceMonthMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *AttendanceMonthMutation) Fields() []string {
+	fields := make([]string, 0, 7)
+	if m.student_id != nil {
+		fields = append(fields, attendancemonth.FieldStudentID)
+	}
+	if m.course_id != nil {
+		fields = append(fields, attendancemonth.FieldCourseID)
+	}
+	if m.year != nil {
+		fields = append(fields, attendancemonth.FieldYear)
+	}
+	if m.month != nil {
+		fields = append(fields, attendancemonth.FieldMonth)
+	}
+	if m.lessons_count != nil {
+		fields = append(fields, attendancemonth.FieldLessonsCount)
+	}
+	if m.locked != nil {
+		fields = append(fields, attendancemonth.FieldLocked)
+	}
+	if m.source != nil {
+		fields = append(fields, attendancemonth.FieldSource)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *AttendanceMonthMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case attendancemonth.FieldStudentID:
+		return m.StudentID()
+	case attendancemonth.FieldCourseID:
+		return m.CourseID()
+	case attendancemonth.FieldYear:
+		return m.Year()
+	case attendancemonth.FieldMonth:
+		return m.Month()
+	case attendancemonth.FieldLessonsCount:
+		return m.LessonsCount()
+	case attendancemonth.FieldLocked:
+		return m.Locked()
+	case attendancemonth.FieldSource:
+		return m.Source()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *AttendanceMonthMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case attendancemonth.FieldStudentID:
+		return m.OldStudentID(ctx)
+	case attendancemonth.FieldCourseID:
+		return m.OldCourseID(ctx)
+	case attendancemonth.FieldYear:
+		return m.OldYear(ctx)
+	case attendancemonth.FieldMonth:
+		return m.OldMonth(ctx)
+	case attendancemonth.FieldLessonsCount:
+		return m.OldLessonsCount(ctx)
+	case attendancemonth.FieldLocked:
+		return m.OldLocked(ctx)
+	case attendancemonth.FieldSource:
+		return m.OldSource(ctx)
+	}
+	return nil, fmt.Errorf("unknown AttendanceMonth field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AttendanceMonthMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case attendancemonth.FieldStudentID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStudentID(v)
+		return nil
+	case attendancemonth.FieldCourseID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCourseID(v)
+		return nil
+	case attendancemonth.FieldYear:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetYear(v)
+		return nil
+	case attendancemonth.FieldMonth:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMonth(v)
+		return nil
+	case attendancemonth.FieldLessonsCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLessonsCount(v)
+		return nil
+	case attendancemonth.FieldLocked:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLocked(v)
+		return nil
+	case attendancemonth.FieldSource:
+		v, ok := value.(attendancemonth.Source)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSource(v)
+		return nil
+	}
+	return fmt.Errorf("unknown AttendanceMonth field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *AttendanceMonthMutation) AddedFields() []string {
+	var fields []string
+	if m.addstudent_id != nil {
+		fields = append(fields, attendancemonth.FieldStudentID)
+	}
+	if m.addcourse_id != nil {
+		fields = append(fields, attendancemonth.FieldCourseID)
+	}
+	if m.addyear != nil {
+		fields = append(fields, attendancemonth.FieldYear)
+	}
+	if m.addmonth != nil {
+		fields = append(fields, attendancemonth.FieldMonth)
+	}
+	if m.addlessons_count != nil {
+		fields = append(fields, attendancemonth.FieldLessonsCount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *AttendanceMonthMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case attendancemonth.FieldStudentID:
+		return m.AddedStudentID()
+	case attendancemonth.FieldCourseID:
+		return m.AddedCourseID()
+	case attendancemonth.FieldYear:
+		return m.AddedYear()
+	case attendancemonth.FieldMonth:
+		return m.AddedMonth()
+	case attendancemonth.FieldLessonsCount:
+		return m.AddedLessonsCount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *AttendanceMonthMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case attendancemonth.FieldStudentID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStudentID(v)
+		return nil
+	case attendancemonth.FieldCourseID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddCourseID(v)
+		return nil
+	case attendancemonth.FieldYear:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddYear(v)
+		return nil
+	case attendancemonth.FieldMonth:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMonth(v)
+		return nil
+	case attendancemonth.FieldLessonsCount:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLessonsCount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown AttendanceMonth numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *AttendanceMonthMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *AttendanceMonthMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *AttendanceMonthMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown AttendanceMonth nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *AttendanceMonthMutation) ResetField(name string) error {
+	switch name {
+	case attendancemonth.FieldStudentID:
+		m.ResetStudentID()
+		return nil
+	case attendancemonth.FieldCourseID:
+		m.ResetCourseID()
+		return nil
+	case attendancemonth.FieldYear:
+		m.ResetYear()
+		return nil
+	case attendancemonth.FieldMonth:
+		m.ResetMonth()
+		return nil
+	case attendancemonth.FieldLessonsCount:
+		m.ResetLessonsCount()
+		return nil
+	case attendancemonth.FieldLocked:
+		m.ResetLocked()
+		return nil
+	case attendancemonth.FieldSource:
+		m.ResetSource()
+		return nil
+	}
+	return fmt.Errorf("unknown AttendanceMonth field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *AttendanceMonthMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *AttendanceMonthMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *AttendanceMonthMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *AttendanceMonthMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *AttendanceMonthMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *AttendanceMonthMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *AttendanceMonthMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown AttendanceMonth unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *AttendanceMonthMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown AttendanceMonth edge %s", name)
+}
 
 // CourseMutation represents an operation that mutates the Course nodes in the graph.
 type CourseMutation struct {
