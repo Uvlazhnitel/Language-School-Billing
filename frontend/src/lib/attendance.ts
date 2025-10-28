@@ -5,7 +5,8 @@ import {
   AttendanceEstimate,
   AttendanceSetLocked,
   DevSeed
-} from "@wailsjs/go/main/App";
+} from "../../wailsjs/go/main/App";
+
 
 export type Row = {
   studentId: number;

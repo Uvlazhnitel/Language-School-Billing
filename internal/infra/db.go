@@ -6,6 +6,8 @@ import (
 	"log"
 
 	"langschool/ent"
+
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type DB struct {

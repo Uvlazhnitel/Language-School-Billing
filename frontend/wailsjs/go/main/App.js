@@ -30,6 +30,10 @@ export function BackupNow() {
   return window['go']['main']['App']['BackupNow']();
 }
 
+export function DevSeed() {
+  return window['go']['main']['App']['DevSeed']();
+}
+
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
 }

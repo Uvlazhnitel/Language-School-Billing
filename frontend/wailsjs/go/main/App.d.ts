@@ -16,6 +16,8 @@ export function AttendanceUpsert(arg1:number,arg2:number,arg3:number,arg4:number
 
 export function BackupNow():Promise<string>;
 
+export function DevSeed():Promise<number>;
+
 export function Greet(arg1:string):Promise<string>;
 
 export function Ping():Promise<string>;
