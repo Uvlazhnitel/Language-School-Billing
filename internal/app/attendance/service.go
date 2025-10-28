@@ -172,7 +172,7 @@ func (s *Service) EstimateBySchedule(ctx context.Context, y, m int, courseID *in
 	return result, nil
 }
 
-// SetLocked sets or unsets the "locked" status for all records matching the filter.q
+// SetLocked sets or unsets the "locked" status for all records matching the filter.
 func (s *Service) SetLocked(ctx context.Context, y, m int, courseID *int, lock bool) (int, error) {
 	rows, err := s.ListPerLesson(ctx, y, m, courseID)
 	if err != nil {
