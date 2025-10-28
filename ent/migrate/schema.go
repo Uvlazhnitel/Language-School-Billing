@@ -82,7 +82,7 @@ var (
 	// SettingsColumns holds the columns for the "settings" table.
 	SettingsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "singleton_id", Type: field.TypeInt},
+		{Name: "singleton_id", Type: field.TypeInt, Unique: true},
 		{Name: "org_name", Type: field.TypeString, Default: ""},
 		{Name: "address", Type: field.TypeString, Default: ""},
 		{Name: "invoice_prefix", Type: field.TypeString, Default: "LS"},

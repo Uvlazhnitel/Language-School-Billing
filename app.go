@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"langschool/ent/settings"
 	"langschool/internal/app/attendance"
 	"langschool/internal/infra"
 	"langschool/internal/paths"
@@ -39,11 +40,39 @@ func (a *App) startup(ctx context.Context) {
 	a.dirs = dirs
 
 	a.appDBPath = filepath.Join(dirs.Data, "app.sqlite")
+	log.Println("Data path:", a.appDBPath)
+
 	db, err := infra.Open(ctx, a.appDBPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 	a.db = db
+	log.Println("DB ready")
+
+	// Ensure single Settings record with singleton_id=1 exists
+	exists, err := a.db.Ent.Settings.
+		Query().
+		Where(settings.SingletonIDEQ(1)).
+		Exist(ctx)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !exists {
+		if _, err := a.db.Ent.Settings.
+			Create().
+			SetSingletonID(1).
+			SetOrgName("").
+			SetAddress("").
+			SetInvoicePrefix("LS").
+			SetNextSeq(1).
+			SetInvoiceDayOfMonth(1).
+			SetAutoIssue(false).
+			SetCurrency("EUR").
+			SetLocale("ru-RU").
+			Save(ctx); err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	// init services
 	a.att = attendance.New(a.db.Ent)
@@ -56,7 +85,6 @@ func (a *App) domReady(ctx context.Context) {}
 func (a *App) shutdown(ctx context.Context) {
 	if a.db != nil {
 		_ = a.db.Ent.Close()
-		// No additional SQL connection to close
 	}
 }
 

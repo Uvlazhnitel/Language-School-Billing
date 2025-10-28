@@ -1,3 +1,4 @@
+// ent/schema/settings.go
 package schema
 
 import (
@@ -9,7 +10,7 @@ type Settings struct{ ent.Schema }
 
 func (Settings) Fields() []ent.Field {
 	return []ent.Field{
-		field.Int("singleton_id"),
+		field.Int("singleton_id").Unique(),
 		field.String("org_name").Default(""),
 		field.String("address").Default(""),
 		field.String("invoice_prefix").Default("LS"),
