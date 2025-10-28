@@ -88,6 +88,59 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 }
 
+func (a *App) DevSeed() (int, error) {
+	ctx := a.ctx
+	db := a.db.Ent
+
+	// students
+	sJohn, _ := db.Student.Create().
+		SetFullName("John Doe").SetPhone("+1234567890").SetEmail("john@doe.com").Save(ctx)
+	sJane, _ := db.Student.Create().
+		SetFullName("Jane Johnson").SetPhone("+9876543210").SetEmail("jane@johnson.com").Save(ctx)
+
+	// courses
+	cA2, _ := db.Course.Create().
+		SetName("English A2").
+		SetType("group").
+		SetLessonPrice(15).
+		SetSubscriptionPrice(120).
+		SetScheduleJSON(`{"daysOfWeek":[1,3]}`).
+		Save(ctx)
+
+	cB1, _ := db.Course.Create().
+		SetName("English B1").
+		SetType("individual").
+		SetLessonPrice(25).
+		SetSubscriptionPrice(0).
+		Save(ctx)
+
+	now := time.Now()
+
+	// enrollments
+	_, _ = db.Enrollment.Create().
+		SetStudentID(sJane.ID).
+		SetCourseID(cA2.ID).
+		SetBillingMode("subscription").
+		SetStartDate(now).
+		Save(ctx)
+
+	_, _ = db.Enrollment.Create().
+		SetStudentID(sJohn.ID).
+		SetCourseID(cA2.ID).
+		SetBillingMode("per_lesson").
+		SetStartDate(now).
+		Save(ctx)
+
+	_, _ = db.Enrollment.Create().
+		SetStudentID(sJohn.ID).
+		SetCourseID(cB1.ID).
+		SetBillingMode("per_lesson").
+		SetStartDate(now).
+		Save(ctx)
+
+	return 2, nil // number of students added as an example
+}
+
 func userHome() string {
 	if h, err := os.UserHomeDir(); err == nil {
 		return h
