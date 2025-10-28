@@ -8,6 +8,18 @@ import (
 	"langschool/ent"
 )
 
+// The AttendanceMonthFunc type is an adapter to allow the use of ordinary
+// function as AttendanceMonth mutator.
+type AttendanceMonthFunc func(context.Context, *ent.AttendanceMonthMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f AttendanceMonthFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.AttendanceMonthMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.AttendanceMonthMutation", m)
+}
+
 // The CourseFunc type is an adapter to allow the use of ordinary
 // function as Course mutator.
 type CourseFunc func(context.Context, *ent.CourseMutation) (ent.Value, error)

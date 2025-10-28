@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	entgo.io/ent v0.14.5
+	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/ncruces/go-sqlite3 v0.29.1
 	github.com/wailsapp/wails/v2 v2.10.2
 )

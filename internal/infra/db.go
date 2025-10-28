@@ -3,11 +3,11 @@ package infra
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"langschool/ent"
 
-	"entgo.io/ent/dialect"
-	_ "github.com/ncruces/go-sqlite3" // registers the "sqlite3" driver
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type DB struct {
@@ -15,14 +15,18 @@ type DB struct {
 }
 
 func Open(ctx context.Context, dbPath string) (*DB, error) {
-	dsn := fmt.Sprintf("file:%s?_fk=1&cache=shared&mode=rwc", dbPath)
-	client, err := ent.Open(dialect.SQLite, dsn)
+	dsn := fmt.Sprintf("file:%s?_fk=1&_busy_timeout=5000&cache=shared&mode=rwc", dbPath)
+
+	client, err := ent.Open("sqlite3", dsn)
 	if err != nil {
 		return nil, err
 	}
 
 	if err := client.Schema.Create(ctx); err != nil {
+		_ = client.Close()
 		return nil, err
 	}
+
+	log.Println("DB ready at", dbPath)
 	return &DB{Ent: client}, nil
 }

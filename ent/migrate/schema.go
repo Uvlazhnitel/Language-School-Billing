@@ -8,6 +8,30 @@ import (
 )
 
 var (
+	// AttendanceMonthsColumns holds the columns for the "attendance_months" table.
+	AttendanceMonthsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "student_id", Type: field.TypeInt},
+		{Name: "course_id", Type: field.TypeInt},
+		{Name: "year", Type: field.TypeInt},
+		{Name: "month", Type: field.TypeInt},
+		{Name: "lessons_count", Type: field.TypeInt, Default: 0},
+		{Name: "locked", Type: field.TypeBool, Default: false},
+		{Name: "source", Type: field.TypeEnum, Enums: []string{"monthly", "daily_agg"}, Default: "monthly"},
+	}
+	// AttendanceMonthsTable holds the schema information for the "attendance_months" table.
+	AttendanceMonthsTable = &schema.Table{
+		Name:       "attendance_months",
+		Columns:    AttendanceMonthsColumns,
+		PrimaryKey: []*schema.Column{AttendanceMonthsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "attendancemonth_student_id_course_id_year_month",
+				Unique:  true,
+				Columns: []*schema.Column{AttendanceMonthsColumns[1], AttendanceMonthsColumns[2], AttendanceMonthsColumns[3], AttendanceMonthsColumns[4]},
+			},
+		},
+	}
 	// CoursesColumns holds the columns for the "courses" table.
 	CoursesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -58,7 +82,7 @@ var (
 	// SettingsColumns holds the columns for the "settings" table.
 	SettingsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "singleton_id", Type: field.TypeInt},
+		{Name: "singleton_id", Type: field.TypeInt, Unique: true},
 		{Name: "org_name", Type: field.TypeString, Default: ""},
 		{Name: "address", Type: field.TypeString, Default: ""},
 		{Name: "invoice_prefix", Type: field.TypeString, Default: "LS"},
@@ -91,6 +115,7 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
+		AttendanceMonthsTable,
 		CoursesTable,
 		EnrollmentsTable,
 		SettingsTable,
