@@ -55,9 +55,12 @@ type InvoiceDTO struct {
 func round2(v float64) float64 { return math.Round(v*100) / 100 }
 
 // --- Helper for period dates ---
+// Returns a half-open interval [start, end) where:
+// - start is the first moment of the month (inclusive)
+// - end is the first moment of the next month (exclusive)
 func periodBounds(y, m int) (start, end time.Time) {
 	start = time.Date(y, time.Month(m), 1, 0, 0, 0, 0, time.Local)
-	end = start.AddDate(0, 1, -1) // last day of the month
+	end = start.AddDate(0, 1, 0) // first moment of next month
 	return
 }
 
@@ -87,15 +90,15 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 		Query().
 		Where(
 			priceoverride.EnrollmentIDEQ(en.ID),
-			priceoverride.ValidFromLTE(pe),
+			priceoverride.ValidFromLT(pe), // ValidFrom < period_end (exclusive)
 		).
 		Order(ent.Desc(priceoverride.FieldValidFrom)).
 		All(ctx)
 
 	for _, o := range ovr {
-		// Check if the override period overlaps with the billing period
-		// Overlap occurs if: ValidFrom <= period_end AND (ValidTo == nil OR ValidTo >= period_start)
-		if !o.ValidFrom.After(pe) && (o.ValidTo == nil || !o.ValidTo.Before(ps)) {
+		// Check if the override period overlaps with the billing period [ps, pe)
+		// Overlap occurs if: ValidFrom < period_end AND (ValidTo == nil OR ValidTo >= period_start)
+		if o.ValidFrom.Before(pe) && (o.ValidTo == nil || !o.ValidTo.Before(ps)) {
 			if o.LessonPrice != nil {
 				lessonPrice = *o.LessonPrice
 			}
@@ -108,13 +111,14 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 	return
 }
 
-// Is the enrollment active in the period
+// Is the enrollment active in the period [ps, pe)
 func activeInPeriod(en *ent.Enrollment, y, m int) bool {
 	ps, pe := periodBounds(y, m)
-	if en.StartDate.After(pe) {
+	// Enrollment is active if it starts before period end and ends after period start
+	if !en.StartDate.Before(pe) { // StartDate >= pe (starts at or after period end)
 		return false
 	}
-	if en.EndDate != nil && en.EndDate.Before(ps) {
+	if en.EndDate != nil && en.EndDate.Before(ps) { // EndDate < ps (ends before period start)
 		return false
 	}
 	return true
