@@ -1,4 +1,4 @@
-/* Цветовые токены */
+/* Color tokens */
 :root{
     --bg:#ffffff;
     --text:#111827;
@@ -10,7 +10,7 @@
     --thead-bg:#f3f4f6;
     --row-alt:#fafafa;
   
-    --msg-bg:#ecfeff;      /* подсказки/хинты */
+    --msg-bg:#ecfeff;      /* hints */
     --msg-border:#38bdf8;
     --msg-text:#0c4a6e;
   
@@ -24,7 +24,7 @@
     --focus:#3b82f6;
   }
   
-  /* Тёмная тема */
+  /* Dark theme */
   @media (prefers-color-scheme: dark){
     :root{
       --bg:#0b1015;
@@ -52,7 +52,7 @@
     }
   }
   
-  /* База */
+  /* Base */
   html,body,#root{height:100%}
   body{
     margin:0;
@@ -64,7 +64,7 @@
   }
   .container{padding:16px}
   
-  /* Вкладки/хедер */
+  /* Tabs/header */
   .tabs{display:flex;align-items:center;gap:8px;margin-bottom:10px}
   .tabs .spacer{flex:1}
   .tabs button{
@@ -74,7 +74,7 @@
   .tabs button.active{background:var(--thead-bg)}
   .monthpickers select{margin-left:8px}
   
-  /* Кнопки */
+  /* Buttons */
   button{
     padding:6px 10px;border:1px solid var(--btn-border);
     background:var(--btn-bg); color:var(--btn-text);
@@ -84,7 +84,7 @@
   button:active{transform:translateY(1px)}
   button:disabled{opacity:.6;cursor:not-allowed}
   
-  /* Поля ввода/селекты */
+  /* Input fields/selects */
   input[type=number], select{
     padding:6px 8px;border:1px solid var(--input-border);
     background:var(--input-bg);color:var(--input-text);
@@ -94,21 +94,21 @@
     box-shadow:0 0 0 3px color-mix(in oklab, var(--focus) 40%, transparent);
   }
   
-  /* Таблицы */
+  /* Tables */
   table{width:100%;border-collapse:collapse;background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:8px;overflow:hidden}
   th,td{padding:10px;border-bottom:1px solid var(--panel-border)}
   th{background:var(--thead-bg);text-align:left;color:var(--text)}
   tbody tr:nth-child(even){background:var(--row-alt)}
   tfoot td{font-weight:600}
   
-  /* Сообщения/подсказки (hint) */
+  /* Messages/hints */
   .msg{
     background:var(--msg-bg); color:var(--msg-text);
     border:1px solid var(--msg-border);
     padding:10px; border-radius:8px; margin-bottom:12px
   }
   
-  /* Панели (инвойс, карточки) */
+  /* Panels (invoices, cards) */
   .panel{
     background:var(--panel-bg); color:var(--text);
     border:1px solid var(--panel-border);
@@ -116,8 +116,7 @@
     box-shadow:0 1px 2px rgba(0,0,0,0.05)
   }
   
-  /* Прочее */
+  /* Miscellaneous */
   header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
   .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
   .empty{color:var(--muted);padding:16px;border:1px dashed var(--panel-border);border-radius:8px;background:var(--panel-bg)}
-  
