@@ -93,8 +93,9 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 		All(ctx)
 
 	for _, o := range ovr {
-		// Does the period fall within valid_from..valid_to?
-		if o.ValidTo == nil || !o.ValidTo.Before(ps) {
+		// Check if the override period overlaps with the billing period
+		// Overlap occurs if: ValidFrom <= period_end AND (ValidTo == nil OR ValidTo >= period_start)
+		if !o.ValidFrom.After(pe) && (o.ValidTo == nil || !o.ValidTo.Before(ps)) {
 			if o.LessonPrice != nil {
 				lessonPrice = *o.LessonPrice
 			}
