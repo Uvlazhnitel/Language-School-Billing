@@ -20,6 +20,11 @@ func (PriceOverride) Fields() []ent.Field {
 
 func (PriceOverride) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("enrollment", Enrollment.Type).Ref("price_overrides").Required().Field("enrollment_id"),
+		// Владелец FK: каждый override относится к одному enrollment (M:1)
+		edge.From("enrollment", Enrollment.Type).
+			Ref("price_overrides").
+			Field("enrollment_id").
+			Required().
+			Unique(),
 	}
 }

@@ -45,9 +45,13 @@ type EnrollmentEdges struct {
 	Student *Student `json:"student,omitempty"`
 	// Course holds the value of the course edge.
 	Course *Course `json:"course,omitempty"`
+	// InvoiceLines holds the value of the invoice_lines edge.
+	InvoiceLines []*InvoiceLine `json:"invoice_lines,omitempty"`
+	// PriceOverrides holds the value of the price_overrides edge.
+	PriceOverrides []*PriceOverride `json:"price_overrides,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [4]bool
 }
 
 // StudentOrErr returns the Student value or an error if the edge
@@ -70,6 +74,24 @@ func (e EnrollmentEdges) CourseOrErr() (*Course, error) {
 		return nil, &NotFoundError{label: course.Label}
 	}
 	return nil, &NotLoadedError{edge: "course"}
+}
+
+// InvoiceLinesOrErr returns the InvoiceLines value or an error if the edge
+// was not loaded in eager-loading.
+func (e EnrollmentEdges) InvoiceLinesOrErr() ([]*InvoiceLine, error) {
+	if e.loadedTypes[2] {
+		return e.InvoiceLines, nil
+	}
+	return nil, &NotLoadedError{edge: "invoice_lines"}
+}
+
+// PriceOverridesOrErr returns the PriceOverrides value or an error if the edge
+// was not loaded in eager-loading.
+func (e EnrollmentEdges) PriceOverridesOrErr() ([]*PriceOverride, error) {
+	if e.loadedTypes[3] {
+		return e.PriceOverrides, nil
+	}
+	return nil, &NotLoadedError{edge: "price_overrides"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -170,6 +192,16 @@ func (_m *Enrollment) QueryStudent() *StudentQuery {
 // QueryCourse queries the "course" edge of the Enrollment entity.
 func (_m *Enrollment) QueryCourse() *CourseQuery {
 	return NewEnrollmentClient(_m.config).QueryCourse(_m)
+}
+
+// QueryInvoiceLines queries the "invoice_lines" edge of the Enrollment entity.
+func (_m *Enrollment) QueryInvoiceLines() *InvoiceLineQuery {
+	return NewEnrollmentClient(_m.config).QueryInvoiceLines(_m)
+}
+
+// QueryPriceOverrides queries the "price_overrides" edge of the Enrollment entity.
+func (_m *Enrollment) QueryPriceOverrides() *PriceOverrideQuery {
+	return NewEnrollmentClient(_m.config).QueryPriceOverrides(_m)
 }
 
 // Update returns a builder for updating this Enrollment.

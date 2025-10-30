@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"langschool/ent/enrollment"
+	"langschool/ent/invoice"
 	"langschool/ent/student"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -95,6 +96,21 @@ func (_c *StudentCreate) AddEnrollments(v ...*Enrollment) *StudentCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddEnrollmentIDs(ids...)
+}
+
+// AddInvoiceIDs adds the "invoices" edge to the Invoice entity by IDs.
+func (_c *StudentCreate) AddInvoiceIDs(ids ...int) *StudentCreate {
+	_c.mutation.AddInvoiceIDs(ids...)
+	return _c
+}
+
+// AddInvoices adds the "invoices" edges to the Invoice entity.
+func (_c *StudentCreate) AddInvoices(v ...*Invoice) *StudentCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddInvoiceIDs(ids...)
 }
 
 // Mutation returns the StudentMutation object of the builder.
@@ -222,6 +238,22 @@ func (_c *StudentCreate) createSpec() (*Student, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.InvoicesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.InvoicesTable,
+			Columns: []string{student.InvoicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invoice.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

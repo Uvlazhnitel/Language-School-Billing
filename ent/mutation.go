@@ -9,7 +9,10 @@ import (
 	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
+	"langschool/ent/invoice"
+	"langschool/ent/invoiceline"
 	"langschool/ent/predicate"
+	"langschool/ent/priceoverride"
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"sync"
@@ -31,6 +34,9 @@ const (
 	TypeAttendanceMonth = "AttendanceMonth"
 	TypeCourse          = "Course"
 	TypeEnrollment      = "Enrollment"
+	TypeInvoice         = "Invoice"
+	TypeInvoiceLine     = "InvoiceLine"
+	TypePriceOverride   = "PriceOverride"
 	TypeSettings        = "Settings"
 	TypeStudent         = "Student"
 )
@@ -1614,23 +1620,29 @@ func (m *CourseMutation) ResetEdge(name string) error {
 // EnrollmentMutation represents an operation that mutates the Enrollment nodes in the graph.
 type EnrollmentMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *int
-	billing_mode    *enrollment.BillingMode
-	start_date      *time.Time
-	end_date        *time.Time
-	discount_pct    *float64
-	adddiscount_pct *float64
-	note            *string
-	clearedFields   map[string]struct{}
-	student         *int
-	clearedstudent  bool
-	course          *int
-	clearedcourse   bool
-	done            bool
-	oldValue        func(context.Context) (*Enrollment, error)
-	predicates      []predicate.Enrollment
+	op                     Op
+	typ                    string
+	id                     *int
+	billing_mode           *enrollment.BillingMode
+	start_date             *time.Time
+	end_date               *time.Time
+	discount_pct           *float64
+	adddiscount_pct        *float64
+	note                   *string
+	clearedFields          map[string]struct{}
+	student                *int
+	clearedstudent         bool
+	course                 *int
+	clearedcourse          bool
+	invoice_lines          map[int]struct{}
+	removedinvoice_lines   map[int]struct{}
+	clearedinvoice_lines   bool
+	price_overrides        map[int]struct{}
+	removedprice_overrides map[int]struct{}
+	clearedprice_overrides bool
+	done                   bool
+	oldValue               func(context.Context) (*Enrollment, error)
+	predicates             []predicate.Enrollment
 }
 
 var _ ent.Mutation = (*EnrollmentMutation)(nil)
@@ -2070,6 +2082,114 @@ func (m *EnrollmentMutation) ResetCourse() {
 	m.clearedcourse = false
 }
 
+// AddInvoiceLineIDs adds the "invoice_lines" edge to the InvoiceLine entity by ids.
+func (m *EnrollmentMutation) AddInvoiceLineIDs(ids ...int) {
+	if m.invoice_lines == nil {
+		m.invoice_lines = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.invoice_lines[ids[i]] = struct{}{}
+	}
+}
+
+// ClearInvoiceLines clears the "invoice_lines" edge to the InvoiceLine entity.
+func (m *EnrollmentMutation) ClearInvoiceLines() {
+	m.clearedinvoice_lines = true
+}
+
+// InvoiceLinesCleared reports if the "invoice_lines" edge to the InvoiceLine entity was cleared.
+func (m *EnrollmentMutation) InvoiceLinesCleared() bool {
+	return m.clearedinvoice_lines
+}
+
+// RemoveInvoiceLineIDs removes the "invoice_lines" edge to the InvoiceLine entity by IDs.
+func (m *EnrollmentMutation) RemoveInvoiceLineIDs(ids ...int) {
+	if m.removedinvoice_lines == nil {
+		m.removedinvoice_lines = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.invoice_lines, ids[i])
+		m.removedinvoice_lines[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedInvoiceLines returns the removed IDs of the "invoice_lines" edge to the InvoiceLine entity.
+func (m *EnrollmentMutation) RemovedInvoiceLinesIDs() (ids []int) {
+	for id := range m.removedinvoice_lines {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// InvoiceLinesIDs returns the "invoice_lines" edge IDs in the mutation.
+func (m *EnrollmentMutation) InvoiceLinesIDs() (ids []int) {
+	for id := range m.invoice_lines {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetInvoiceLines resets all changes to the "invoice_lines" edge.
+func (m *EnrollmentMutation) ResetInvoiceLines() {
+	m.invoice_lines = nil
+	m.clearedinvoice_lines = false
+	m.removedinvoice_lines = nil
+}
+
+// AddPriceOverrideIDs adds the "price_overrides" edge to the PriceOverride entity by ids.
+func (m *EnrollmentMutation) AddPriceOverrideIDs(ids ...int) {
+	if m.price_overrides == nil {
+		m.price_overrides = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.price_overrides[ids[i]] = struct{}{}
+	}
+}
+
+// ClearPriceOverrides clears the "price_overrides" edge to the PriceOverride entity.
+func (m *EnrollmentMutation) ClearPriceOverrides() {
+	m.clearedprice_overrides = true
+}
+
+// PriceOverridesCleared reports if the "price_overrides" edge to the PriceOverride entity was cleared.
+func (m *EnrollmentMutation) PriceOverridesCleared() bool {
+	return m.clearedprice_overrides
+}
+
+// RemovePriceOverrideIDs removes the "price_overrides" edge to the PriceOverride entity by IDs.
+func (m *EnrollmentMutation) RemovePriceOverrideIDs(ids ...int) {
+	if m.removedprice_overrides == nil {
+		m.removedprice_overrides = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.price_overrides, ids[i])
+		m.removedprice_overrides[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedPriceOverrides returns the removed IDs of the "price_overrides" edge to the PriceOverride entity.
+func (m *EnrollmentMutation) RemovedPriceOverridesIDs() (ids []int) {
+	for id := range m.removedprice_overrides {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// PriceOverridesIDs returns the "price_overrides" edge IDs in the mutation.
+func (m *EnrollmentMutation) PriceOverridesIDs() (ids []int) {
+	for id := range m.price_overrides {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetPriceOverrides resets all changes to the "price_overrides" edge.
+func (m *EnrollmentMutation) ResetPriceOverrides() {
+	m.price_overrides = nil
+	m.clearedprice_overrides = false
+	m.removedprice_overrides = nil
+}
+
 // Where appends a list predicates to the EnrollmentMutation builder.
 func (m *EnrollmentMutation) Where(ps ...predicate.Enrollment) {
 	m.predicates = append(m.predicates, ps...)
@@ -2329,12 +2449,18 @@ func (m *EnrollmentMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *EnrollmentMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.student != nil {
 		edges = append(edges, enrollment.EdgeStudent)
 	}
 	if m.course != nil {
 		edges = append(edges, enrollment.EdgeCourse)
+	}
+	if m.invoice_lines != nil {
+		edges = append(edges, enrollment.EdgeInvoiceLines)
+	}
+	if m.price_overrides != nil {
+		edges = append(edges, enrollment.EdgePriceOverrides)
 	}
 	return edges
 }
@@ -2351,30 +2477,68 @@ func (m *EnrollmentMutation) AddedIDs(name string) []ent.Value {
 		if id := m.course; id != nil {
 			return []ent.Value{*id}
 		}
+	case enrollment.EdgeInvoiceLines:
+		ids := make([]ent.Value, 0, len(m.invoice_lines))
+		for id := range m.invoice_lines {
+			ids = append(ids, id)
+		}
+		return ids
+	case enrollment.EdgePriceOverrides:
+		ids := make([]ent.Value, 0, len(m.price_overrides))
+		for id := range m.price_overrides {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *EnrollmentMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
+	if m.removedinvoice_lines != nil {
+		edges = append(edges, enrollment.EdgeInvoiceLines)
+	}
+	if m.removedprice_overrides != nil {
+		edges = append(edges, enrollment.EdgePriceOverrides)
+	}
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *EnrollmentMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case enrollment.EdgeInvoiceLines:
+		ids := make([]ent.Value, 0, len(m.removedinvoice_lines))
+		for id := range m.removedinvoice_lines {
+			ids = append(ids, id)
+		}
+		return ids
+	case enrollment.EdgePriceOverrides:
+		ids := make([]ent.Value, 0, len(m.removedprice_overrides))
+		for id := range m.removedprice_overrides {
+			ids = append(ids, id)
+		}
+		return ids
+	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *EnrollmentMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 4)
 	if m.clearedstudent {
 		edges = append(edges, enrollment.EdgeStudent)
 	}
 	if m.clearedcourse {
 		edges = append(edges, enrollment.EdgeCourse)
+	}
+	if m.clearedinvoice_lines {
+		edges = append(edges, enrollment.EdgeInvoiceLines)
+	}
+	if m.clearedprice_overrides {
+		edges = append(edges, enrollment.EdgePriceOverrides)
 	}
 	return edges
 }
@@ -2387,6 +2551,10 @@ func (m *EnrollmentMutation) EdgeCleared(name string) bool {
 		return m.clearedstudent
 	case enrollment.EdgeCourse:
 		return m.clearedcourse
+	case enrollment.EdgeInvoiceLines:
+		return m.clearedinvoice_lines
+	case enrollment.EdgePriceOverrides:
+		return m.clearedprice_overrides
 	}
 	return false
 }
@@ -2415,8 +2583,2398 @@ func (m *EnrollmentMutation) ResetEdge(name string) error {
 	case enrollment.EdgeCourse:
 		m.ResetCourse()
 		return nil
+	case enrollment.EdgeInvoiceLines:
+		m.ResetInvoiceLines()
+		return nil
+	case enrollment.EdgePriceOverrides:
+		m.ResetPriceOverrides()
+		return nil
 	}
 	return fmt.Errorf("unknown Enrollment edge %s", name)
+}
+
+// InvoiceMutation represents an operation that mutates the Invoice nodes in the graph.
+type InvoiceMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int
+	period_year     *int
+	addperiod_year  *int
+	period_month    *int
+	addperiod_month *int
+	total_amount    *float64
+	addtotal_amount *float64
+	status          *invoice.Status
+	number          *string
+	clearedFields   map[string]struct{}
+	student         *int
+	clearedstudent  bool
+	lines           map[int]struct{}
+	removedlines    map[int]struct{}
+	clearedlines    bool
+	done            bool
+	oldValue        func(context.Context) (*Invoice, error)
+	predicates      []predicate.Invoice
+}
+
+var _ ent.Mutation = (*InvoiceMutation)(nil)
+
+// invoiceOption allows management of the mutation configuration using functional options.
+type invoiceOption func(*InvoiceMutation)
+
+// newInvoiceMutation creates new mutation for the Invoice entity.
+func newInvoiceMutation(c config, op Op, opts ...invoiceOption) *InvoiceMutation {
+	m := &InvoiceMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeInvoice,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withInvoiceID sets the ID field of the mutation.
+func withInvoiceID(id int) invoiceOption {
+	return func(m *InvoiceMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Invoice
+		)
+		m.oldValue = func(ctx context.Context) (*Invoice, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Invoice.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withInvoice sets the old Invoice of the mutation.
+func withInvoice(node *Invoice) invoiceOption {
+	return func(m *InvoiceMutation) {
+		m.oldValue = func(context.Context) (*Invoice, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m InvoiceMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m InvoiceMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *InvoiceMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *InvoiceMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Invoice.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetStudentID sets the "student_id" field.
+func (m *InvoiceMutation) SetStudentID(i int) {
+	m.student = &i
+}
+
+// StudentID returns the value of the "student_id" field in the mutation.
+func (m *InvoiceMutation) StudentID() (r int, exists bool) {
+	v := m.student
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStudentID returns the old "student_id" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldStudentID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStudentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStudentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStudentID: %w", err)
+	}
+	return oldValue.StudentID, nil
+}
+
+// ResetStudentID resets all changes to the "student_id" field.
+func (m *InvoiceMutation) ResetStudentID() {
+	m.student = nil
+}
+
+// SetPeriodYear sets the "period_year" field.
+func (m *InvoiceMutation) SetPeriodYear(i int) {
+	m.period_year = &i
+	m.addperiod_year = nil
+}
+
+// PeriodYear returns the value of the "period_year" field in the mutation.
+func (m *InvoiceMutation) PeriodYear() (r int, exists bool) {
+	v := m.period_year
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPeriodYear returns the old "period_year" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldPeriodYear(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPeriodYear is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPeriodYear requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPeriodYear: %w", err)
+	}
+	return oldValue.PeriodYear, nil
+}
+
+// AddPeriodYear adds i to the "period_year" field.
+func (m *InvoiceMutation) AddPeriodYear(i int) {
+	if m.addperiod_year != nil {
+		*m.addperiod_year += i
+	} else {
+		m.addperiod_year = &i
+	}
+}
+
+// AddedPeriodYear returns the value that was added to the "period_year" field in this mutation.
+func (m *InvoiceMutation) AddedPeriodYear() (r int, exists bool) {
+	v := m.addperiod_year
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPeriodYear resets all changes to the "period_year" field.
+func (m *InvoiceMutation) ResetPeriodYear() {
+	m.period_year = nil
+	m.addperiod_year = nil
+}
+
+// SetPeriodMonth sets the "period_month" field.
+func (m *InvoiceMutation) SetPeriodMonth(i int) {
+	m.period_month = &i
+	m.addperiod_month = nil
+}
+
+// PeriodMonth returns the value of the "period_month" field in the mutation.
+func (m *InvoiceMutation) PeriodMonth() (r int, exists bool) {
+	v := m.period_month
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPeriodMonth returns the old "period_month" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldPeriodMonth(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPeriodMonth is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPeriodMonth requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPeriodMonth: %w", err)
+	}
+	return oldValue.PeriodMonth, nil
+}
+
+// AddPeriodMonth adds i to the "period_month" field.
+func (m *InvoiceMutation) AddPeriodMonth(i int) {
+	if m.addperiod_month != nil {
+		*m.addperiod_month += i
+	} else {
+		m.addperiod_month = &i
+	}
+}
+
+// AddedPeriodMonth returns the value that was added to the "period_month" field in this mutation.
+func (m *InvoiceMutation) AddedPeriodMonth() (r int, exists bool) {
+	v := m.addperiod_month
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetPeriodMonth resets all changes to the "period_month" field.
+func (m *InvoiceMutation) ResetPeriodMonth() {
+	m.period_month = nil
+	m.addperiod_month = nil
+}
+
+// SetTotalAmount sets the "total_amount" field.
+func (m *InvoiceMutation) SetTotalAmount(f float64) {
+	m.total_amount = &f
+	m.addtotal_amount = nil
+}
+
+// TotalAmount returns the value of the "total_amount" field in the mutation.
+func (m *InvoiceMutation) TotalAmount() (r float64, exists bool) {
+	v := m.total_amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalAmount returns the old "total_amount" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldTotalAmount(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalAmount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalAmount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalAmount: %w", err)
+	}
+	return oldValue.TotalAmount, nil
+}
+
+// AddTotalAmount adds f to the "total_amount" field.
+func (m *InvoiceMutation) AddTotalAmount(f float64) {
+	if m.addtotal_amount != nil {
+		*m.addtotal_amount += f
+	} else {
+		m.addtotal_amount = &f
+	}
+}
+
+// AddedTotalAmount returns the value that was added to the "total_amount" field in this mutation.
+func (m *InvoiceMutation) AddedTotalAmount() (r float64, exists bool) {
+	v := m.addtotal_amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalAmount resets all changes to the "total_amount" field.
+func (m *InvoiceMutation) ResetTotalAmount() {
+	m.total_amount = nil
+	m.addtotal_amount = nil
+}
+
+// SetStatus sets the "status" field.
+func (m *InvoiceMutation) SetStatus(i invoice.Status) {
+	m.status = &i
+}
+
+// Status returns the value of the "status" field in the mutation.
+func (m *InvoiceMutation) Status() (r invoice.Status, exists bool) {
+	v := m.status
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStatus returns the old "status" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldStatus(ctx context.Context) (v invoice.Status, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStatus is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStatus requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStatus: %w", err)
+	}
+	return oldValue.Status, nil
+}
+
+// ResetStatus resets all changes to the "status" field.
+func (m *InvoiceMutation) ResetStatus() {
+	m.status = nil
+}
+
+// SetNumber sets the "number" field.
+func (m *InvoiceMutation) SetNumber(s string) {
+	m.number = &s
+}
+
+// Number returns the value of the "number" field in the mutation.
+func (m *InvoiceMutation) Number() (r string, exists bool) {
+	v := m.number
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldNumber returns the old "number" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldNumber(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldNumber is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldNumber requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldNumber: %w", err)
+	}
+	return oldValue.Number, nil
+}
+
+// ClearNumber clears the value of the "number" field.
+func (m *InvoiceMutation) ClearNumber() {
+	m.number = nil
+	m.clearedFields[invoice.FieldNumber] = struct{}{}
+}
+
+// NumberCleared returns if the "number" field was cleared in this mutation.
+func (m *InvoiceMutation) NumberCleared() bool {
+	_, ok := m.clearedFields[invoice.FieldNumber]
+	return ok
+}
+
+// ResetNumber resets all changes to the "number" field.
+func (m *InvoiceMutation) ResetNumber() {
+	m.number = nil
+	delete(m.clearedFields, invoice.FieldNumber)
+}
+
+// ClearStudent clears the "student" edge to the Student entity.
+func (m *InvoiceMutation) ClearStudent() {
+	m.clearedstudent = true
+	m.clearedFields[invoice.FieldStudentID] = struct{}{}
+}
+
+// StudentCleared reports if the "student" edge to the Student entity was cleared.
+func (m *InvoiceMutation) StudentCleared() bool {
+	return m.clearedstudent
+}
+
+// StudentIDs returns the "student" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// StudentID instead. It exists only for internal usage by the builders.
+func (m *InvoiceMutation) StudentIDs() (ids []int) {
+	if id := m.student; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetStudent resets all changes to the "student" edge.
+func (m *InvoiceMutation) ResetStudent() {
+	m.student = nil
+	m.clearedstudent = false
+}
+
+// AddLineIDs adds the "lines" edge to the InvoiceLine entity by ids.
+func (m *InvoiceMutation) AddLineIDs(ids ...int) {
+	if m.lines == nil {
+		m.lines = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.lines[ids[i]] = struct{}{}
+	}
+}
+
+// ClearLines clears the "lines" edge to the InvoiceLine entity.
+func (m *InvoiceMutation) ClearLines() {
+	m.clearedlines = true
+}
+
+// LinesCleared reports if the "lines" edge to the InvoiceLine entity was cleared.
+func (m *InvoiceMutation) LinesCleared() bool {
+	return m.clearedlines
+}
+
+// RemoveLineIDs removes the "lines" edge to the InvoiceLine entity by IDs.
+func (m *InvoiceMutation) RemoveLineIDs(ids ...int) {
+	if m.removedlines == nil {
+		m.removedlines = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.lines, ids[i])
+		m.removedlines[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedLines returns the removed IDs of the "lines" edge to the InvoiceLine entity.
+func (m *InvoiceMutation) RemovedLinesIDs() (ids []int) {
+	for id := range m.removedlines {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// LinesIDs returns the "lines" edge IDs in the mutation.
+func (m *InvoiceMutation) LinesIDs() (ids []int) {
+	for id := range m.lines {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetLines resets all changes to the "lines" edge.
+func (m *InvoiceMutation) ResetLines() {
+	m.lines = nil
+	m.clearedlines = false
+	m.removedlines = nil
+}
+
+// Where appends a list predicates to the InvoiceMutation builder.
+func (m *InvoiceMutation) Where(ps ...predicate.Invoice) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the InvoiceMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *InvoiceMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Invoice, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *InvoiceMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *InvoiceMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Invoice).
+func (m *InvoiceMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *InvoiceMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.student != nil {
+		fields = append(fields, invoice.FieldStudentID)
+	}
+	if m.period_year != nil {
+		fields = append(fields, invoice.FieldPeriodYear)
+	}
+	if m.period_month != nil {
+		fields = append(fields, invoice.FieldPeriodMonth)
+	}
+	if m.total_amount != nil {
+		fields = append(fields, invoice.FieldTotalAmount)
+	}
+	if m.status != nil {
+		fields = append(fields, invoice.FieldStatus)
+	}
+	if m.number != nil {
+		fields = append(fields, invoice.FieldNumber)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *InvoiceMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case invoice.FieldStudentID:
+		return m.StudentID()
+	case invoice.FieldPeriodYear:
+		return m.PeriodYear()
+	case invoice.FieldPeriodMonth:
+		return m.PeriodMonth()
+	case invoice.FieldTotalAmount:
+		return m.TotalAmount()
+	case invoice.FieldStatus:
+		return m.Status()
+	case invoice.FieldNumber:
+		return m.Number()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *InvoiceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case invoice.FieldStudentID:
+		return m.OldStudentID(ctx)
+	case invoice.FieldPeriodYear:
+		return m.OldPeriodYear(ctx)
+	case invoice.FieldPeriodMonth:
+		return m.OldPeriodMonth(ctx)
+	case invoice.FieldTotalAmount:
+		return m.OldTotalAmount(ctx)
+	case invoice.FieldStatus:
+		return m.OldStatus(ctx)
+	case invoice.FieldNumber:
+		return m.OldNumber(ctx)
+	}
+	return nil, fmt.Errorf("unknown Invoice field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *InvoiceMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case invoice.FieldStudentID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStudentID(v)
+		return nil
+	case invoice.FieldPeriodYear:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPeriodYear(v)
+		return nil
+	case invoice.FieldPeriodMonth:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPeriodMonth(v)
+		return nil
+	case invoice.FieldTotalAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalAmount(v)
+		return nil
+	case invoice.FieldStatus:
+		v, ok := value.(invoice.Status)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStatus(v)
+		return nil
+	case invoice.FieldNumber:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetNumber(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Invoice field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *InvoiceMutation) AddedFields() []string {
+	var fields []string
+	if m.addperiod_year != nil {
+		fields = append(fields, invoice.FieldPeriodYear)
+	}
+	if m.addperiod_month != nil {
+		fields = append(fields, invoice.FieldPeriodMonth)
+	}
+	if m.addtotal_amount != nil {
+		fields = append(fields, invoice.FieldTotalAmount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *InvoiceMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case invoice.FieldPeriodYear:
+		return m.AddedPeriodYear()
+	case invoice.FieldPeriodMonth:
+		return m.AddedPeriodMonth()
+	case invoice.FieldTotalAmount:
+		return m.AddedTotalAmount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *InvoiceMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case invoice.FieldPeriodYear:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPeriodYear(v)
+		return nil
+	case invoice.FieldPeriodMonth:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPeriodMonth(v)
+		return nil
+	case invoice.FieldTotalAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalAmount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Invoice numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *InvoiceMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(invoice.FieldNumber) {
+		fields = append(fields, invoice.FieldNumber)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *InvoiceMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *InvoiceMutation) ClearField(name string) error {
+	switch name {
+	case invoice.FieldNumber:
+		m.ClearNumber()
+		return nil
+	}
+	return fmt.Errorf("unknown Invoice nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *InvoiceMutation) ResetField(name string) error {
+	switch name {
+	case invoice.FieldStudentID:
+		m.ResetStudentID()
+		return nil
+	case invoice.FieldPeriodYear:
+		m.ResetPeriodYear()
+		return nil
+	case invoice.FieldPeriodMonth:
+		m.ResetPeriodMonth()
+		return nil
+	case invoice.FieldTotalAmount:
+		m.ResetTotalAmount()
+		return nil
+	case invoice.FieldStatus:
+		m.ResetStatus()
+		return nil
+	case invoice.FieldNumber:
+		m.ResetNumber()
+		return nil
+	}
+	return fmt.Errorf("unknown Invoice field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *InvoiceMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.student != nil {
+		edges = append(edges, invoice.EdgeStudent)
+	}
+	if m.lines != nil {
+		edges = append(edges, invoice.EdgeLines)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *InvoiceMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case invoice.EdgeStudent:
+		if id := m.student; id != nil {
+			return []ent.Value{*id}
+		}
+	case invoice.EdgeLines:
+		ids := make([]ent.Value, 0, len(m.lines))
+		for id := range m.lines {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *InvoiceMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.removedlines != nil {
+		edges = append(edges, invoice.EdgeLines)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *InvoiceMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case invoice.EdgeLines:
+		ids := make([]ent.Value, 0, len(m.removedlines))
+		for id := range m.removedlines {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *InvoiceMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedstudent {
+		edges = append(edges, invoice.EdgeStudent)
+	}
+	if m.clearedlines {
+		edges = append(edges, invoice.EdgeLines)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *InvoiceMutation) EdgeCleared(name string) bool {
+	switch name {
+	case invoice.EdgeStudent:
+		return m.clearedstudent
+	case invoice.EdgeLines:
+		return m.clearedlines
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *InvoiceMutation) ClearEdge(name string) error {
+	switch name {
+	case invoice.EdgeStudent:
+		m.ClearStudent()
+		return nil
+	}
+	return fmt.Errorf("unknown Invoice unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *InvoiceMutation) ResetEdge(name string) error {
+	switch name {
+	case invoice.EdgeStudent:
+		m.ResetStudent()
+		return nil
+	case invoice.EdgeLines:
+		m.ResetLines()
+		return nil
+	}
+	return fmt.Errorf("unknown Invoice edge %s", name)
+}
+
+// InvoiceLineMutation represents an operation that mutates the InvoiceLine nodes in the graph.
+type InvoiceLineMutation struct {
+	config
+	op                Op
+	typ               string
+	id                *int
+	description       *string
+	qty               *int
+	addqty            *int
+	unit_price        *float64
+	addunit_price     *float64
+	amount            *float64
+	addamount         *float64
+	clearedFields     map[string]struct{}
+	invoice           *int
+	clearedinvoice    bool
+	enrollment        *int
+	clearedenrollment bool
+	done              bool
+	oldValue          func(context.Context) (*InvoiceLine, error)
+	predicates        []predicate.InvoiceLine
+}
+
+var _ ent.Mutation = (*InvoiceLineMutation)(nil)
+
+// invoicelineOption allows management of the mutation configuration using functional options.
+type invoicelineOption func(*InvoiceLineMutation)
+
+// newInvoiceLineMutation creates new mutation for the InvoiceLine entity.
+func newInvoiceLineMutation(c config, op Op, opts ...invoicelineOption) *InvoiceLineMutation {
+	m := &InvoiceLineMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeInvoiceLine,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withInvoiceLineID sets the ID field of the mutation.
+func withInvoiceLineID(id int) invoicelineOption {
+	return func(m *InvoiceLineMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *InvoiceLine
+		)
+		m.oldValue = func(ctx context.Context) (*InvoiceLine, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().InvoiceLine.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withInvoiceLine sets the old InvoiceLine of the mutation.
+func withInvoiceLine(node *InvoiceLine) invoicelineOption {
+	return func(m *InvoiceLineMutation) {
+		m.oldValue = func(context.Context) (*InvoiceLine, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m InvoiceLineMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m InvoiceLineMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *InvoiceLineMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *InvoiceLineMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().InvoiceLine.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetInvoiceID sets the "invoice_id" field.
+func (m *InvoiceLineMutation) SetInvoiceID(i int) {
+	m.invoice = &i
+}
+
+// InvoiceID returns the value of the "invoice_id" field in the mutation.
+func (m *InvoiceLineMutation) InvoiceID() (r int, exists bool) {
+	v := m.invoice
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInvoiceID returns the old "invoice_id" field's value of the InvoiceLine entity.
+// If the InvoiceLine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceLineMutation) OldInvoiceID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInvoiceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInvoiceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInvoiceID: %w", err)
+	}
+	return oldValue.InvoiceID, nil
+}
+
+// ResetInvoiceID resets all changes to the "invoice_id" field.
+func (m *InvoiceLineMutation) ResetInvoiceID() {
+	m.invoice = nil
+}
+
+// SetEnrollmentID sets the "enrollment_id" field.
+func (m *InvoiceLineMutation) SetEnrollmentID(i int) {
+	m.enrollment = &i
+}
+
+// EnrollmentID returns the value of the "enrollment_id" field in the mutation.
+func (m *InvoiceLineMutation) EnrollmentID() (r int, exists bool) {
+	v := m.enrollment
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnrollmentID returns the old "enrollment_id" field's value of the InvoiceLine entity.
+// If the InvoiceLine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceLineMutation) OldEnrollmentID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnrollmentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnrollmentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnrollmentID: %w", err)
+	}
+	return oldValue.EnrollmentID, nil
+}
+
+// ResetEnrollmentID resets all changes to the "enrollment_id" field.
+func (m *InvoiceLineMutation) ResetEnrollmentID() {
+	m.enrollment = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *InvoiceLineMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *InvoiceLineMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the InvoiceLine entity.
+// If the InvoiceLine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceLineMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *InvoiceLineMutation) ResetDescription() {
+	m.description = nil
+}
+
+// SetQty sets the "qty" field.
+func (m *InvoiceLineMutation) SetQty(i int) {
+	m.qty = &i
+	m.addqty = nil
+}
+
+// Qty returns the value of the "qty" field in the mutation.
+func (m *InvoiceLineMutation) Qty() (r int, exists bool) {
+	v := m.qty
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldQty returns the old "qty" field's value of the InvoiceLine entity.
+// If the InvoiceLine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceLineMutation) OldQty(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldQty is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldQty requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldQty: %w", err)
+	}
+	return oldValue.Qty, nil
+}
+
+// AddQty adds i to the "qty" field.
+func (m *InvoiceLineMutation) AddQty(i int) {
+	if m.addqty != nil {
+		*m.addqty += i
+	} else {
+		m.addqty = &i
+	}
+}
+
+// AddedQty returns the value that was added to the "qty" field in this mutation.
+func (m *InvoiceLineMutation) AddedQty() (r int, exists bool) {
+	v := m.addqty
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetQty resets all changes to the "qty" field.
+func (m *InvoiceLineMutation) ResetQty() {
+	m.qty = nil
+	m.addqty = nil
+}
+
+// SetUnitPrice sets the "unit_price" field.
+func (m *InvoiceLineMutation) SetUnitPrice(f float64) {
+	m.unit_price = &f
+	m.addunit_price = nil
+}
+
+// UnitPrice returns the value of the "unit_price" field in the mutation.
+func (m *InvoiceLineMutation) UnitPrice() (r float64, exists bool) {
+	v := m.unit_price
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUnitPrice returns the old "unit_price" field's value of the InvoiceLine entity.
+// If the InvoiceLine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceLineMutation) OldUnitPrice(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUnitPrice is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUnitPrice requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUnitPrice: %w", err)
+	}
+	return oldValue.UnitPrice, nil
+}
+
+// AddUnitPrice adds f to the "unit_price" field.
+func (m *InvoiceLineMutation) AddUnitPrice(f float64) {
+	if m.addunit_price != nil {
+		*m.addunit_price += f
+	} else {
+		m.addunit_price = &f
+	}
+}
+
+// AddedUnitPrice returns the value that was added to the "unit_price" field in this mutation.
+func (m *InvoiceLineMutation) AddedUnitPrice() (r float64, exists bool) {
+	v := m.addunit_price
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetUnitPrice resets all changes to the "unit_price" field.
+func (m *InvoiceLineMutation) ResetUnitPrice() {
+	m.unit_price = nil
+	m.addunit_price = nil
+}
+
+// SetAmount sets the "amount" field.
+func (m *InvoiceLineMutation) SetAmount(f float64) {
+	m.amount = &f
+	m.addamount = nil
+}
+
+// Amount returns the value of the "amount" field in the mutation.
+func (m *InvoiceLineMutation) Amount() (r float64, exists bool) {
+	v := m.amount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAmount returns the old "amount" field's value of the InvoiceLine entity.
+// If the InvoiceLine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceLineMutation) OldAmount(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAmount is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAmount requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAmount: %w", err)
+	}
+	return oldValue.Amount, nil
+}
+
+// AddAmount adds f to the "amount" field.
+func (m *InvoiceLineMutation) AddAmount(f float64) {
+	if m.addamount != nil {
+		*m.addamount += f
+	} else {
+		m.addamount = &f
+	}
+}
+
+// AddedAmount returns the value that was added to the "amount" field in this mutation.
+func (m *InvoiceLineMutation) AddedAmount() (r float64, exists bool) {
+	v := m.addamount
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAmount resets all changes to the "amount" field.
+func (m *InvoiceLineMutation) ResetAmount() {
+	m.amount = nil
+	m.addamount = nil
+}
+
+// ClearInvoice clears the "invoice" edge to the Invoice entity.
+func (m *InvoiceLineMutation) ClearInvoice() {
+	m.clearedinvoice = true
+	m.clearedFields[invoiceline.FieldInvoiceID] = struct{}{}
+}
+
+// InvoiceCleared reports if the "invoice" edge to the Invoice entity was cleared.
+func (m *InvoiceLineMutation) InvoiceCleared() bool {
+	return m.clearedinvoice
+}
+
+// InvoiceIDs returns the "invoice" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// InvoiceID instead. It exists only for internal usage by the builders.
+func (m *InvoiceLineMutation) InvoiceIDs() (ids []int) {
+	if id := m.invoice; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetInvoice resets all changes to the "invoice" edge.
+func (m *InvoiceLineMutation) ResetInvoice() {
+	m.invoice = nil
+	m.clearedinvoice = false
+}
+
+// ClearEnrollment clears the "enrollment" edge to the Enrollment entity.
+func (m *InvoiceLineMutation) ClearEnrollment() {
+	m.clearedenrollment = true
+	m.clearedFields[invoiceline.FieldEnrollmentID] = struct{}{}
+}
+
+// EnrollmentCleared reports if the "enrollment" edge to the Enrollment entity was cleared.
+func (m *InvoiceLineMutation) EnrollmentCleared() bool {
+	return m.clearedenrollment
+}
+
+// EnrollmentIDs returns the "enrollment" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// EnrollmentID instead. It exists only for internal usage by the builders.
+func (m *InvoiceLineMutation) EnrollmentIDs() (ids []int) {
+	if id := m.enrollment; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetEnrollment resets all changes to the "enrollment" edge.
+func (m *InvoiceLineMutation) ResetEnrollment() {
+	m.enrollment = nil
+	m.clearedenrollment = false
+}
+
+// Where appends a list predicates to the InvoiceLineMutation builder.
+func (m *InvoiceLineMutation) Where(ps ...predicate.InvoiceLine) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the InvoiceLineMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *InvoiceLineMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.InvoiceLine, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *InvoiceLineMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *InvoiceLineMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (InvoiceLine).
+func (m *InvoiceLineMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *InvoiceLineMutation) Fields() []string {
+	fields := make([]string, 0, 6)
+	if m.invoice != nil {
+		fields = append(fields, invoiceline.FieldInvoiceID)
+	}
+	if m.enrollment != nil {
+		fields = append(fields, invoiceline.FieldEnrollmentID)
+	}
+	if m.description != nil {
+		fields = append(fields, invoiceline.FieldDescription)
+	}
+	if m.qty != nil {
+		fields = append(fields, invoiceline.FieldQty)
+	}
+	if m.unit_price != nil {
+		fields = append(fields, invoiceline.FieldUnitPrice)
+	}
+	if m.amount != nil {
+		fields = append(fields, invoiceline.FieldAmount)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *InvoiceLineMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case invoiceline.FieldInvoiceID:
+		return m.InvoiceID()
+	case invoiceline.FieldEnrollmentID:
+		return m.EnrollmentID()
+	case invoiceline.FieldDescription:
+		return m.Description()
+	case invoiceline.FieldQty:
+		return m.Qty()
+	case invoiceline.FieldUnitPrice:
+		return m.UnitPrice()
+	case invoiceline.FieldAmount:
+		return m.Amount()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *InvoiceLineMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case invoiceline.FieldInvoiceID:
+		return m.OldInvoiceID(ctx)
+	case invoiceline.FieldEnrollmentID:
+		return m.OldEnrollmentID(ctx)
+	case invoiceline.FieldDescription:
+		return m.OldDescription(ctx)
+	case invoiceline.FieldQty:
+		return m.OldQty(ctx)
+	case invoiceline.FieldUnitPrice:
+		return m.OldUnitPrice(ctx)
+	case invoiceline.FieldAmount:
+		return m.OldAmount(ctx)
+	}
+	return nil, fmt.Errorf("unknown InvoiceLine field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *InvoiceLineMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case invoiceline.FieldInvoiceID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInvoiceID(v)
+		return nil
+	case invoiceline.FieldEnrollmentID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnrollmentID(v)
+		return nil
+	case invoiceline.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case invoiceline.FieldQty:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetQty(v)
+		return nil
+	case invoiceline.FieldUnitPrice:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUnitPrice(v)
+		return nil
+	case invoiceline.FieldAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAmount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown InvoiceLine field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *InvoiceLineMutation) AddedFields() []string {
+	var fields []string
+	if m.addqty != nil {
+		fields = append(fields, invoiceline.FieldQty)
+	}
+	if m.addunit_price != nil {
+		fields = append(fields, invoiceline.FieldUnitPrice)
+	}
+	if m.addamount != nil {
+		fields = append(fields, invoiceline.FieldAmount)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *InvoiceLineMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case invoiceline.FieldQty:
+		return m.AddedQty()
+	case invoiceline.FieldUnitPrice:
+		return m.AddedUnitPrice()
+	case invoiceline.FieldAmount:
+		return m.AddedAmount()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *InvoiceLineMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case invoiceline.FieldQty:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddQty(v)
+		return nil
+	case invoiceline.FieldUnitPrice:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUnitPrice(v)
+		return nil
+	case invoiceline.FieldAmount:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAmount(v)
+		return nil
+	}
+	return fmt.Errorf("unknown InvoiceLine numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *InvoiceLineMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *InvoiceLineMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *InvoiceLineMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown InvoiceLine nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *InvoiceLineMutation) ResetField(name string) error {
+	switch name {
+	case invoiceline.FieldInvoiceID:
+		m.ResetInvoiceID()
+		return nil
+	case invoiceline.FieldEnrollmentID:
+		m.ResetEnrollmentID()
+		return nil
+	case invoiceline.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case invoiceline.FieldQty:
+		m.ResetQty()
+		return nil
+	case invoiceline.FieldUnitPrice:
+		m.ResetUnitPrice()
+		return nil
+	case invoiceline.FieldAmount:
+		m.ResetAmount()
+		return nil
+	}
+	return fmt.Errorf("unknown InvoiceLine field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *InvoiceLineMutation) AddedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.invoice != nil {
+		edges = append(edges, invoiceline.EdgeInvoice)
+	}
+	if m.enrollment != nil {
+		edges = append(edges, invoiceline.EdgeEnrollment)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *InvoiceLineMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case invoiceline.EdgeInvoice:
+		if id := m.invoice; id != nil {
+			return []ent.Value{*id}
+		}
+	case invoiceline.EdgeEnrollment:
+		if id := m.enrollment; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *InvoiceLineMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 2)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *InvoiceLineMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *InvoiceLineMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 2)
+	if m.clearedinvoice {
+		edges = append(edges, invoiceline.EdgeInvoice)
+	}
+	if m.clearedenrollment {
+		edges = append(edges, invoiceline.EdgeEnrollment)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *InvoiceLineMutation) EdgeCleared(name string) bool {
+	switch name {
+	case invoiceline.EdgeInvoice:
+		return m.clearedinvoice
+	case invoiceline.EdgeEnrollment:
+		return m.clearedenrollment
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *InvoiceLineMutation) ClearEdge(name string) error {
+	switch name {
+	case invoiceline.EdgeInvoice:
+		m.ClearInvoice()
+		return nil
+	case invoiceline.EdgeEnrollment:
+		m.ClearEnrollment()
+		return nil
+	}
+	return fmt.Errorf("unknown InvoiceLine unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *InvoiceLineMutation) ResetEdge(name string) error {
+	switch name {
+	case invoiceline.EdgeInvoice:
+		m.ResetInvoice()
+		return nil
+	case invoiceline.EdgeEnrollment:
+		m.ResetEnrollment()
+		return nil
+	}
+	return fmt.Errorf("unknown InvoiceLine edge %s", name)
+}
+
+// PriceOverrideMutation represents an operation that mutates the PriceOverride nodes in the graph.
+type PriceOverrideMutation struct {
+	config
+	op                    Op
+	typ                   string
+	id                    *int
+	valid_from            *time.Time
+	valid_to              *time.Time
+	lesson_price          *float64
+	addlesson_price       *float64
+	subscription_price    *float64
+	addsubscription_price *float64
+	clearedFields         map[string]struct{}
+	enrollment            *int
+	clearedenrollment     bool
+	done                  bool
+	oldValue              func(context.Context) (*PriceOverride, error)
+	predicates            []predicate.PriceOverride
+}
+
+var _ ent.Mutation = (*PriceOverrideMutation)(nil)
+
+// priceoverrideOption allows management of the mutation configuration using functional options.
+type priceoverrideOption func(*PriceOverrideMutation)
+
+// newPriceOverrideMutation creates new mutation for the PriceOverride entity.
+func newPriceOverrideMutation(c config, op Op, opts ...priceoverrideOption) *PriceOverrideMutation {
+	m := &PriceOverrideMutation{
+		config:        c,
+		op:            op,
+		typ:           TypePriceOverride,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withPriceOverrideID sets the ID field of the mutation.
+func withPriceOverrideID(id int) priceoverrideOption {
+	return func(m *PriceOverrideMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *PriceOverride
+		)
+		m.oldValue = func(ctx context.Context) (*PriceOverride, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().PriceOverride.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withPriceOverride sets the old PriceOverride of the mutation.
+func withPriceOverride(node *PriceOverride) priceoverrideOption {
+	return func(m *PriceOverrideMutation) {
+		m.oldValue = func(context.Context) (*PriceOverride, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m PriceOverrideMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m PriceOverrideMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *PriceOverrideMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *PriceOverrideMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().PriceOverride.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetEnrollmentID sets the "enrollment_id" field.
+func (m *PriceOverrideMutation) SetEnrollmentID(i int) {
+	m.enrollment = &i
+}
+
+// EnrollmentID returns the value of the "enrollment_id" field in the mutation.
+func (m *PriceOverrideMutation) EnrollmentID() (r int, exists bool) {
+	v := m.enrollment
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldEnrollmentID returns the old "enrollment_id" field's value of the PriceOverride entity.
+// If the PriceOverride object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PriceOverrideMutation) OldEnrollmentID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldEnrollmentID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldEnrollmentID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldEnrollmentID: %w", err)
+	}
+	return oldValue.EnrollmentID, nil
+}
+
+// ResetEnrollmentID resets all changes to the "enrollment_id" field.
+func (m *PriceOverrideMutation) ResetEnrollmentID() {
+	m.enrollment = nil
+}
+
+// SetValidFrom sets the "valid_from" field.
+func (m *PriceOverrideMutation) SetValidFrom(t time.Time) {
+	m.valid_from = &t
+}
+
+// ValidFrom returns the value of the "valid_from" field in the mutation.
+func (m *PriceOverrideMutation) ValidFrom() (r time.Time, exists bool) {
+	v := m.valid_from
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldValidFrom returns the old "valid_from" field's value of the PriceOverride entity.
+// If the PriceOverride object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PriceOverrideMutation) OldValidFrom(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldValidFrom is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldValidFrom requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldValidFrom: %w", err)
+	}
+	return oldValue.ValidFrom, nil
+}
+
+// ResetValidFrom resets all changes to the "valid_from" field.
+func (m *PriceOverrideMutation) ResetValidFrom() {
+	m.valid_from = nil
+}
+
+// SetValidTo sets the "valid_to" field.
+func (m *PriceOverrideMutation) SetValidTo(t time.Time) {
+	m.valid_to = &t
+}
+
+// ValidTo returns the value of the "valid_to" field in the mutation.
+func (m *PriceOverrideMutation) ValidTo() (r time.Time, exists bool) {
+	v := m.valid_to
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldValidTo returns the old "valid_to" field's value of the PriceOverride entity.
+// If the PriceOverride object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PriceOverrideMutation) OldValidTo(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldValidTo is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldValidTo requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldValidTo: %w", err)
+	}
+	return oldValue.ValidTo, nil
+}
+
+// ClearValidTo clears the value of the "valid_to" field.
+func (m *PriceOverrideMutation) ClearValidTo() {
+	m.valid_to = nil
+	m.clearedFields[priceoverride.FieldValidTo] = struct{}{}
+}
+
+// ValidToCleared returns if the "valid_to" field was cleared in this mutation.
+func (m *PriceOverrideMutation) ValidToCleared() bool {
+	_, ok := m.clearedFields[priceoverride.FieldValidTo]
+	return ok
+}
+
+// ResetValidTo resets all changes to the "valid_to" field.
+func (m *PriceOverrideMutation) ResetValidTo() {
+	m.valid_to = nil
+	delete(m.clearedFields, priceoverride.FieldValidTo)
+}
+
+// SetLessonPrice sets the "lesson_price" field.
+func (m *PriceOverrideMutation) SetLessonPrice(f float64) {
+	m.lesson_price = &f
+	m.addlesson_price = nil
+}
+
+// LessonPrice returns the value of the "lesson_price" field in the mutation.
+func (m *PriceOverrideMutation) LessonPrice() (r float64, exists bool) {
+	v := m.lesson_price
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLessonPrice returns the old "lesson_price" field's value of the PriceOverride entity.
+// If the PriceOverride object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PriceOverrideMutation) OldLessonPrice(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLessonPrice is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLessonPrice requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLessonPrice: %w", err)
+	}
+	return oldValue.LessonPrice, nil
+}
+
+// AddLessonPrice adds f to the "lesson_price" field.
+func (m *PriceOverrideMutation) AddLessonPrice(f float64) {
+	if m.addlesson_price != nil {
+		*m.addlesson_price += f
+	} else {
+		m.addlesson_price = &f
+	}
+}
+
+// AddedLessonPrice returns the value that was added to the "lesson_price" field in this mutation.
+func (m *PriceOverrideMutation) AddedLessonPrice() (r float64, exists bool) {
+	v := m.addlesson_price
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearLessonPrice clears the value of the "lesson_price" field.
+func (m *PriceOverrideMutation) ClearLessonPrice() {
+	m.lesson_price = nil
+	m.addlesson_price = nil
+	m.clearedFields[priceoverride.FieldLessonPrice] = struct{}{}
+}
+
+// LessonPriceCleared returns if the "lesson_price" field was cleared in this mutation.
+func (m *PriceOverrideMutation) LessonPriceCleared() bool {
+	_, ok := m.clearedFields[priceoverride.FieldLessonPrice]
+	return ok
+}
+
+// ResetLessonPrice resets all changes to the "lesson_price" field.
+func (m *PriceOverrideMutation) ResetLessonPrice() {
+	m.lesson_price = nil
+	m.addlesson_price = nil
+	delete(m.clearedFields, priceoverride.FieldLessonPrice)
+}
+
+// SetSubscriptionPrice sets the "subscription_price" field.
+func (m *PriceOverrideMutation) SetSubscriptionPrice(f float64) {
+	m.subscription_price = &f
+	m.addsubscription_price = nil
+}
+
+// SubscriptionPrice returns the value of the "subscription_price" field in the mutation.
+func (m *PriceOverrideMutation) SubscriptionPrice() (r float64, exists bool) {
+	v := m.subscription_price
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSubscriptionPrice returns the old "subscription_price" field's value of the PriceOverride entity.
+// If the PriceOverride object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PriceOverrideMutation) OldSubscriptionPrice(ctx context.Context) (v *float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSubscriptionPrice is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSubscriptionPrice requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSubscriptionPrice: %w", err)
+	}
+	return oldValue.SubscriptionPrice, nil
+}
+
+// AddSubscriptionPrice adds f to the "subscription_price" field.
+func (m *PriceOverrideMutation) AddSubscriptionPrice(f float64) {
+	if m.addsubscription_price != nil {
+		*m.addsubscription_price += f
+	} else {
+		m.addsubscription_price = &f
+	}
+}
+
+// AddedSubscriptionPrice returns the value that was added to the "subscription_price" field in this mutation.
+func (m *PriceOverrideMutation) AddedSubscriptionPrice() (r float64, exists bool) {
+	v := m.addsubscription_price
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearSubscriptionPrice clears the value of the "subscription_price" field.
+func (m *PriceOverrideMutation) ClearSubscriptionPrice() {
+	m.subscription_price = nil
+	m.addsubscription_price = nil
+	m.clearedFields[priceoverride.FieldSubscriptionPrice] = struct{}{}
+}
+
+// SubscriptionPriceCleared returns if the "subscription_price" field was cleared in this mutation.
+func (m *PriceOverrideMutation) SubscriptionPriceCleared() bool {
+	_, ok := m.clearedFields[priceoverride.FieldSubscriptionPrice]
+	return ok
+}
+
+// ResetSubscriptionPrice resets all changes to the "subscription_price" field.
+func (m *PriceOverrideMutation) ResetSubscriptionPrice() {
+	m.subscription_price = nil
+	m.addsubscription_price = nil
+	delete(m.clearedFields, priceoverride.FieldSubscriptionPrice)
+}
+
+// ClearEnrollment clears the "enrollment" edge to the Enrollment entity.
+func (m *PriceOverrideMutation) ClearEnrollment() {
+	m.clearedenrollment = true
+	m.clearedFields[priceoverride.FieldEnrollmentID] = struct{}{}
+}
+
+// EnrollmentCleared reports if the "enrollment" edge to the Enrollment entity was cleared.
+func (m *PriceOverrideMutation) EnrollmentCleared() bool {
+	return m.clearedenrollment
+}
+
+// EnrollmentIDs returns the "enrollment" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// EnrollmentID instead. It exists only for internal usage by the builders.
+func (m *PriceOverrideMutation) EnrollmentIDs() (ids []int) {
+	if id := m.enrollment; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetEnrollment resets all changes to the "enrollment" edge.
+func (m *PriceOverrideMutation) ResetEnrollment() {
+	m.enrollment = nil
+	m.clearedenrollment = false
+}
+
+// Where appends a list predicates to the PriceOverrideMutation builder.
+func (m *PriceOverrideMutation) Where(ps ...predicate.PriceOverride) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the PriceOverrideMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *PriceOverrideMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.PriceOverride, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *PriceOverrideMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *PriceOverrideMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (PriceOverride).
+func (m *PriceOverrideMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *PriceOverrideMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.enrollment != nil {
+		fields = append(fields, priceoverride.FieldEnrollmentID)
+	}
+	if m.valid_from != nil {
+		fields = append(fields, priceoverride.FieldValidFrom)
+	}
+	if m.valid_to != nil {
+		fields = append(fields, priceoverride.FieldValidTo)
+	}
+	if m.lesson_price != nil {
+		fields = append(fields, priceoverride.FieldLessonPrice)
+	}
+	if m.subscription_price != nil {
+		fields = append(fields, priceoverride.FieldSubscriptionPrice)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *PriceOverrideMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case priceoverride.FieldEnrollmentID:
+		return m.EnrollmentID()
+	case priceoverride.FieldValidFrom:
+		return m.ValidFrom()
+	case priceoverride.FieldValidTo:
+		return m.ValidTo()
+	case priceoverride.FieldLessonPrice:
+		return m.LessonPrice()
+	case priceoverride.FieldSubscriptionPrice:
+		return m.SubscriptionPrice()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *PriceOverrideMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case priceoverride.FieldEnrollmentID:
+		return m.OldEnrollmentID(ctx)
+	case priceoverride.FieldValidFrom:
+		return m.OldValidFrom(ctx)
+	case priceoverride.FieldValidTo:
+		return m.OldValidTo(ctx)
+	case priceoverride.FieldLessonPrice:
+		return m.OldLessonPrice(ctx)
+	case priceoverride.FieldSubscriptionPrice:
+		return m.OldSubscriptionPrice(ctx)
+	}
+	return nil, fmt.Errorf("unknown PriceOverride field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PriceOverrideMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case priceoverride.FieldEnrollmentID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetEnrollmentID(v)
+		return nil
+	case priceoverride.FieldValidFrom:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetValidFrom(v)
+		return nil
+	case priceoverride.FieldValidTo:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetValidTo(v)
+		return nil
+	case priceoverride.FieldLessonPrice:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLessonPrice(v)
+		return nil
+	case priceoverride.FieldSubscriptionPrice:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSubscriptionPrice(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PriceOverride field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *PriceOverrideMutation) AddedFields() []string {
+	var fields []string
+	if m.addlesson_price != nil {
+		fields = append(fields, priceoverride.FieldLessonPrice)
+	}
+	if m.addsubscription_price != nil {
+		fields = append(fields, priceoverride.FieldSubscriptionPrice)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *PriceOverrideMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case priceoverride.FieldLessonPrice:
+		return m.AddedLessonPrice()
+	case priceoverride.FieldSubscriptionPrice:
+		return m.AddedSubscriptionPrice()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *PriceOverrideMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case priceoverride.FieldLessonPrice:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLessonPrice(v)
+		return nil
+	case priceoverride.FieldSubscriptionPrice:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSubscriptionPrice(v)
+		return nil
+	}
+	return fmt.Errorf("unknown PriceOverride numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *PriceOverrideMutation) ClearedFields() []string {
+	var fields []string
+	if m.FieldCleared(priceoverride.FieldValidTo) {
+		fields = append(fields, priceoverride.FieldValidTo)
+	}
+	if m.FieldCleared(priceoverride.FieldLessonPrice) {
+		fields = append(fields, priceoverride.FieldLessonPrice)
+	}
+	if m.FieldCleared(priceoverride.FieldSubscriptionPrice) {
+		fields = append(fields, priceoverride.FieldSubscriptionPrice)
+	}
+	return fields
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *PriceOverrideMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *PriceOverrideMutation) ClearField(name string) error {
+	switch name {
+	case priceoverride.FieldValidTo:
+		m.ClearValidTo()
+		return nil
+	case priceoverride.FieldLessonPrice:
+		m.ClearLessonPrice()
+		return nil
+	case priceoverride.FieldSubscriptionPrice:
+		m.ClearSubscriptionPrice()
+		return nil
+	}
+	return fmt.Errorf("unknown PriceOverride nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *PriceOverrideMutation) ResetField(name string) error {
+	switch name {
+	case priceoverride.FieldEnrollmentID:
+		m.ResetEnrollmentID()
+		return nil
+	case priceoverride.FieldValidFrom:
+		m.ResetValidFrom()
+		return nil
+	case priceoverride.FieldValidTo:
+		m.ResetValidTo()
+		return nil
+	case priceoverride.FieldLessonPrice:
+		m.ResetLessonPrice()
+		return nil
+	case priceoverride.FieldSubscriptionPrice:
+		m.ResetSubscriptionPrice()
+		return nil
+	}
+	return fmt.Errorf("unknown PriceOverride field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *PriceOverrideMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.enrollment != nil {
+		edges = append(edges, priceoverride.EdgeEnrollment)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *PriceOverrideMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case priceoverride.EdgeEnrollment:
+		if id := m.enrollment; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *PriceOverrideMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *PriceOverrideMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *PriceOverrideMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedenrollment {
+		edges = append(edges, priceoverride.EdgeEnrollment)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *PriceOverrideMutation) EdgeCleared(name string) bool {
+	switch name {
+	case priceoverride.EdgeEnrollment:
+		return m.clearedenrollment
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *PriceOverrideMutation) ClearEdge(name string) error {
+	switch name {
+	case priceoverride.EdgeEnrollment:
+		m.ClearEnrollment()
+		return nil
+	}
+	return fmt.Errorf("unknown PriceOverride unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *PriceOverrideMutation) ResetEdge(name string) error {
+	switch name {
+	case priceoverride.EdgeEnrollment:
+		m.ResetEnrollment()
+		return nil
+	}
+	return fmt.Errorf("unknown PriceOverride edge %s", name)
 }
 
 // SettingsMutation represents an operation that mutates the Settings nodes in the graph.
@@ -3294,6 +5852,9 @@ type StudentMutation struct {
 	enrollments        map[int]struct{}
 	removedenrollments map[int]struct{}
 	clearedenrollments bool
+	invoices           map[int]struct{}
+	removedinvoices    map[int]struct{}
+	clearedinvoices    bool
 	done               bool
 	oldValue           func(context.Context) (*Student, error)
 	predicates         []predicate.Student
@@ -3631,6 +6192,60 @@ func (m *StudentMutation) ResetEnrollments() {
 	m.removedenrollments = nil
 }
 
+// AddInvoiceIDs adds the "invoices" edge to the Invoice entity by ids.
+func (m *StudentMutation) AddInvoiceIDs(ids ...int) {
+	if m.invoices == nil {
+		m.invoices = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.invoices[ids[i]] = struct{}{}
+	}
+}
+
+// ClearInvoices clears the "invoices" edge to the Invoice entity.
+func (m *StudentMutation) ClearInvoices() {
+	m.clearedinvoices = true
+}
+
+// InvoicesCleared reports if the "invoices" edge to the Invoice entity was cleared.
+func (m *StudentMutation) InvoicesCleared() bool {
+	return m.clearedinvoices
+}
+
+// RemoveInvoiceIDs removes the "invoices" edge to the Invoice entity by IDs.
+func (m *StudentMutation) RemoveInvoiceIDs(ids ...int) {
+	if m.removedinvoices == nil {
+		m.removedinvoices = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.invoices, ids[i])
+		m.removedinvoices[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedInvoices returns the removed IDs of the "invoices" edge to the Invoice entity.
+func (m *StudentMutation) RemovedInvoicesIDs() (ids []int) {
+	for id := range m.removedinvoices {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// InvoicesIDs returns the "invoices" edge IDs in the mutation.
+func (m *StudentMutation) InvoicesIDs() (ids []int) {
+	for id := range m.invoices {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetInvoices resets all changes to the "invoices" edge.
+func (m *StudentMutation) ResetInvoices() {
+	m.invoices = nil
+	m.clearedinvoices = false
+	m.removedinvoices = nil
+}
+
 // Where appends a list predicates to the StudentMutation builder.
 func (m *StudentMutation) Where(ps ...predicate.Student) {
 	m.predicates = append(m.predicates, ps...)
@@ -3832,9 +6447,12 @@ func (m *StudentMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *StudentMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.enrollments != nil {
 		edges = append(edges, student.EdgeEnrollments)
+	}
+	if m.invoices != nil {
+		edges = append(edges, student.EdgeInvoices)
 	}
 	return edges
 }
@@ -3849,15 +6467,24 @@ func (m *StudentMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case student.EdgeInvoices:
+		ids := make([]ent.Value, 0, len(m.invoices))
+		for id := range m.invoices {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *StudentMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.removedenrollments != nil {
 		edges = append(edges, student.EdgeEnrollments)
+	}
+	if m.removedinvoices != nil {
+		edges = append(edges, student.EdgeInvoices)
 	}
 	return edges
 }
@@ -3872,15 +6499,24 @@ func (m *StudentMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case student.EdgeInvoices:
+		ids := make([]ent.Value, 0, len(m.removedinvoices))
+		for id := range m.removedinvoices {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *StudentMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 2)
 	if m.clearedenrollments {
 		edges = append(edges, student.EdgeEnrollments)
+	}
+	if m.clearedinvoices {
+		edges = append(edges, student.EdgeInvoices)
 	}
 	return edges
 }
@@ -3891,6 +6527,8 @@ func (m *StudentMutation) EdgeCleared(name string) bool {
 	switch name {
 	case student.EdgeEnrollments:
 		return m.clearedenrollments
+	case student.EdgeInvoices:
+		return m.clearedinvoices
 	}
 	return false
 }
@@ -3909,6 +6547,9 @@ func (m *StudentMutation) ResetEdge(name string) error {
 	switch name {
 	case student.EdgeEnrollments:
 		m.ResetEnrollments()
+		return nil
+	case student.EdgeInvoices:
+		m.ResetInvoices()
 		return nil
 	}
 	return fmt.Errorf("unknown Student edge %s", name)

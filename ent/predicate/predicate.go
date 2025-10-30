@@ -15,6 +15,15 @@ type Course func(*sql.Selector)
 // Enrollment is the predicate function for enrollment builders.
 type Enrollment func(*sql.Selector)
 
+// Invoice is the predicate function for invoice builders.
+type Invoice func(*sql.Selector)
+
+// InvoiceLine is the predicate function for invoiceline builders.
+type InvoiceLine func(*sql.Selector)
+
+// PriceOverride is the predicate function for priceoverride builders.
+type PriceOverride func(*sql.Selector)
+
 // Settings is the predicate function for settings builders.
 type Settings func(*sql.Selector)
 

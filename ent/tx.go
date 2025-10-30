@@ -18,6 +18,12 @@ type Tx struct {
 	Course *CourseClient
 	// Enrollment is the client for interacting with the Enrollment builders.
 	Enrollment *EnrollmentClient
+	// Invoice is the client for interacting with the Invoice builders.
+	Invoice *InvoiceClient
+	// InvoiceLine is the client for interacting with the InvoiceLine builders.
+	InvoiceLine *InvoiceLineClient
+	// PriceOverride is the client for interacting with the PriceOverride builders.
+	PriceOverride *PriceOverrideClient
 	// Settings is the client for interacting with the Settings builders.
 	Settings *SettingsClient
 	// Student is the client for interacting with the Student builders.
@@ -156,6 +162,9 @@ func (tx *Tx) init() {
 	tx.AttendanceMonth = NewAttendanceMonthClient(tx.config)
 	tx.Course = NewCourseClient(tx.config)
 	tx.Enrollment = NewEnrollmentClient(tx.config)
+	tx.Invoice = NewInvoiceClient(tx.config)
+	tx.InvoiceLine = NewInvoiceLineClient(tx.config)
+	tx.PriceOverride = NewPriceOverrideClient(tx.config)
 	tx.Settings = NewSettingsClient(tx.config)
 	tx.Student = NewStudentClient(tx.config)
 }

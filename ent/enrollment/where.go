@@ -386,6 +386,52 @@ func HasCourseWith(preds ...predicate.Course) predicate.Enrollment {
 	})
 }
 
+// HasInvoiceLines applies the HasEdge predicate on the "invoice_lines" edge.
+func HasInvoiceLines() predicate.Enrollment {
+	return predicate.Enrollment(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, InvoiceLinesTable, InvoiceLinesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasInvoiceLinesWith applies the HasEdge predicate on the "invoice_lines" edge with a given conditions (other predicates).
+func HasInvoiceLinesWith(preds ...predicate.InvoiceLine) predicate.Enrollment {
+	return predicate.Enrollment(func(s *sql.Selector) {
+		step := newInvoiceLinesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasPriceOverrides applies the HasEdge predicate on the "price_overrides" edge.
+func HasPriceOverrides() predicate.Enrollment {
+	return predicate.Enrollment(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PriceOverridesTable, PriceOverridesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPriceOverridesWith applies the HasEdge predicate on the "price_overrides" edge with a given conditions (other predicates).
+func HasPriceOverridesWith(preds ...predicate.PriceOverride) predicate.Enrollment {
+	return predicate.Enrollment(func(s *sql.Selector) {
+		step := newPriceOverridesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Enrollment) predicate.Enrollment {
 	return predicate.Enrollment(sql.AndPredicates(predicates...))
