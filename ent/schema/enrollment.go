@@ -22,15 +22,9 @@ func (Enrollment) Fields() []ent.Field {
 
 func (Enrollment) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("student", Student.Type).
-			Ref("enrollments").
-			Unique().
-			Required().
-			Field("student_id"),
-		edge.From("course", Course.Type).
-			Ref("enrollments").
-			Unique().
-			Required().
-			Field("course_id"),
+		edge.From("student", Student.Type).Ref("enrollments").Unique().Field("student_id"),
+		edge.From("course", Course.Type).Ref("enrollments").Unique().Field("course_id"),
+		edge.To("invoice_lines", InvoiceLine.Type),
+		edge.To("price_overrides", PriceOverride.Type),
 	}
 }
