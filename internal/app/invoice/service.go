@@ -57,7 +57,8 @@ func round2(v float64) float64 { return math.Round(v*100) / 100 }
 // --- Helper for period dates ---
 func periodBounds(y, m int) (start, end time.Time) {
 	start = time.Date(y, time.Month(m), 1, 0, 0, 0, 0, time.Local)
-	end = start.AddDate(0, 1, -1) // last day of the month
+	// Get the last moment of the last day of the month
+	end = start.AddDate(0, 1, 0).Add(-time.Nanosecond)
 	return
 }
 
