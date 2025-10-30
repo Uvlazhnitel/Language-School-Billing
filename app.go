@@ -15,6 +15,7 @@ import (
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"langschool/internal/app/attendance"
+	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/infra"
 	"langschool/internal/paths"
 )
@@ -27,6 +28,7 @@ type App struct {
 
 	// services
 	att *attendance.Service
+	inv *invsvc.Service
 }
 
 func NewApp() *App { return &App{} }
@@ -79,6 +81,7 @@ func (a *App) startup(ctx context.Context) {
 
 	// init services
 	a.att = attendance.New(a.db.Ent)
+	a.inv = invsvc.New(a.db.Ent)
 }
 
 // domReady is called by Wails when the frontend is ready.
@@ -264,4 +267,25 @@ func (a *App) AttendanceEstimate(year, month int, courseID *int) (map[string]int
 
 func (a *App) AttendanceSetLocked(year, month int, courseID *int, lock bool) (int, error) {
 	return a.att.SetLocked(a.ctx, year, month, courseID, lock)
+}
+
+// ---------- Invoice bindings ----------
+
+type InvoiceListItem = invsvc.ListItem
+type InvoiceDTO = invsvc.InvoiceDTO
+
+func (a *App) InvoiceGenerateDrafts(year, month int) (int, error) {
+	return a.inv.GenerateDrafts(a.ctx, year, month)
+}
+
+func (a *App) InvoiceListDrafts(year, month int) ([]InvoiceListItem, error) {
+	return a.inv.ListDrafts(a.ctx, year, month)
+}
+
+func (a *App) InvoiceGet(id int) (*InvoiceDTO, error) {
+	return a.inv.Get(a.ctx, id)
+}
+
+func (a *App) InvoiceDeleteDraft(id int) error {
+	return a.inv.DeleteDraft(a.ctx, id)
 }
