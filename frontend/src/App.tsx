@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
-import { fetchRows, saveCount, addOneMass, estimateBySchedule, setLocked, seedDemo, Row } from "./lib/attendance";
+import {
+    fetchRows, saveCount, addOneMass, estimateBySchedule, setLocked,
+    devSeed, devReset, deleteEnrollment, Row
+} from "./lib/attendance";
 
 const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
@@ -30,40 +33,31 @@ function App() {
     const onChangeCount = async (r: Row, v: number) => {
         const n = isNaN(v) || v < 0 ? 0 : Math.trunc(v);
         await saveCount(r.studentId, r.courseId, year, month, n);
-        setRows(rows.map(x => (x.studentId===r.studentId && x.courseId===r.courseId ? { ...x, count: n } : x)));
+        setRows(rows.map(x => (x.enrollmentId===r.enrollmentId ? { ...x, count: n } : x)));
     };
 
-    const onAddAll = async () => {
-        await addOneMass(year, month, courseFilter);
-        await load();
-    };
-
+    const onAddAll = async () => { await addOneMass(year, month, courseFilter); await load(); };
     const onEstimate = async () => {
         const hints = await estimateBySchedule(year, month, courseFilter);
         const patched = rows.map(r => {
             const key = `${r.studentId}-${r.courseId}`;
             const hint = hints[key] ?? 0;
-            // substitute only if 0
             return r.count === 0 && hint > 0 ? { ...r, count: hint } : r;
         });
         setRows(patched);
-        // save new values
         for (const r of patched) {
-            if (r.count !== rows.find(x => x.studentId===r.studentId && x.courseId===r.courseId)?.count) {
-                await saveCount(r.studentId, r.courseId, year, month, r.count);
-            }
+            const prev = rows.find(x => x.enrollmentId === r.enrollmentId)?.count ?? 0;
+            if (r.count !== prev) await saveCount(r.studentId, r.courseId, year, month, r.count);
         }
-        setMsg("Schedule hint applied");
-        setTimeout(()=>setMsg(""), 1500);
+        setMsg("Schedule hint applied"); setTimeout(()=>setMsg(""), 1500);
     };
+    const onLock = async (lock: boolean) => { await setLocked(year, month, courseFilter, lock); await load(); };
 
-    const onLock = async (lock: boolean) => {
-        await setLocked(year, month, courseFilter, lock);
-        await load();
-    };
+    const onSeed = async () => { await devSeed(); await load(); };
+    const onReset = async () => { await devReset(); await load(); };
 
-    const onSeed = async () => {
-        await seedDemo();
+    const onDeleteEnrollment = async (id: number) => {
+        await deleteEnrollment(id);
         await load();
     };
 
@@ -79,6 +73,7 @@ function App() {
                         {[year-1, year, year+1].map(y => (<option key={y} value={y}>{y}</option>))}
                     </select>
                     <button onClick={onSeed} title="Add demo data">Demo Data</button>
+                    <button onClick={onReset} title="Delete all demo data">Reset Demo</button>
                     <button onClick={onEstimate}>Schedule Hint</button>
                     <button onClick={onAddAll}>+1 to All</button>
                     <button onClick={()=>onLock(true)}>Lock Month</button>
@@ -89,7 +84,7 @@ function App() {
             {msg && <div className="msg">{msg}</div>}
 
             {loading ? <div>Loading…</div> : (
-                rows.length === 0 ? <div className="empty">No records (enrollments with "per lesson" payment are needed)</div> :
+                rows.length === 0 ? <div className="empty">No records (enrollments with "per lesson" payment are required)</div> :
                 <table>
                     <thead>
                         <tr>
@@ -99,11 +94,12 @@ function App() {
                             <th>Count</th>
                             <th>Total</th>
                             <th>Status</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
                         {rows.map(r => (
-                            <tr key={`${r.studentId}-${r.courseId}`}>
+                            <tr key={r.enrollmentId}>
                                 <td>{r.studentName}</td>
                                 <td>{r.courseName} {r.courseType === "group" ? "(group)" : "(individual)"}</td>
                                 <td style={{textAlign:"right"}}>{r.lessonPrice.toFixed(2)} €</td>
@@ -115,6 +111,7 @@ function App() {
                                 </td>
                                 <td style={{textAlign:"right"}}>{(r.count * r.lessonPrice).toFixed(2)} €</td>
                                 <td>{r.locked ? "🔒" : "✎"}</td>
+                                <td><button onClick={()=>onDeleteEnrollment(r.enrollmentId)}>Delete</button></td>
                             </tr>
                         ))}
                     </tbody>
@@ -122,7 +119,7 @@ function App() {
                         <tr>
                             <td colSpan={4} style={{textAlign:"right"}}>Total per-lesson:</td>
                             <td style={{textAlign:"right"}}>{perLessonTotal.toFixed(2)} €</td>
-                            <td></td>
+                            <td colSpan={2}></td>
                         </tr>
                     </tfoot>
                 </table>

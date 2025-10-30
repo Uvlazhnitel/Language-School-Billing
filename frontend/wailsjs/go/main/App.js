@@ -30,8 +30,16 @@ export function BackupNow() {
   return window['go']['main']['App']['BackupNow']();
 }
 
+export function DevReset() {
+  return window['go']['main']['App']['DevReset']();
+}
+
 export function DevSeed() {
   return window['go']['main']['App']['DevSeed']();
+}
+
+export function EnrollmentDelete(arg1) {
+  return window['go']['main']['App']['EnrollmentDelete'](arg1);
 }
 
 export function Greet(arg1) {

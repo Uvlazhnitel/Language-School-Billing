@@ -4,11 +4,14 @@ import {
   AttendanceAddOne,
   AttendanceEstimate,
   AttendanceSetLocked,
-  DevSeed
+  DevSeed,
+  DevReset,
+  EnrollmentDelete
 } from "../../wailsjs/go/main/App";
 
 
 export type Row = {
+  enrollmentId: number;
   studentId: number;
   studentName: string;
   courseId: number;
@@ -19,8 +22,12 @@ export type Row = {
   locked: boolean;
 };
 
-export async function seedDemo() {
+export async function devSeed() {
   return await DevSeed();
+}
+
+export async function devReset() {
+  return await DevReset();
 }
 
 export async function fetchRows(year: number, month: number, courseId?: number) {
@@ -45,4 +52,8 @@ export async function estimateBySchedule(year: number, month: number, courseId?:
 export async function setLocked(year: number, month: number, courseId: number | undefined, lock: boolean) {
   const cid: number | undefined = courseId && courseId > 0 ? courseId : undefined;
   return await AttendanceSetLocked(year, month, cid, lock);
+}
+
+export async function deleteEnrollment(enrollmentId: number) {
+  return await EnrollmentDelete(enrollmentId);
 }

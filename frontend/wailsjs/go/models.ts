@@ -1,6 +1,7 @@
 export namespace attendance {
 	
 	export class Row {
+	    enrollmentId: number;
 	    studentId: number;
 	    studentName: string;
 	    courseId: number;
@@ -16,6 +17,7 @@ export namespace attendance {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.enrollmentId = source["enrollmentId"];
 	        this.studentId = source["studentId"];
 	        this.studentName = source["studentName"];
 	        this.courseId = source["courseId"];

@@ -9,7 +9,6 @@ import (
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
-	"langschool/ent/course"
 	"langschool/ent/enrollment"
 )
 
@@ -18,28 +17,26 @@ type Service struct{ db *ent.Client }
 func New(db *ent.Client) *Service { return &Service{db: db} }
 
 type Row struct {
-	StudentID   int     `json:"studentId"`
-	StudentName string  `json:"studentName"`
-	CourseID    int     `json:"courseId"`
-	CourseName  string  `json:"courseName"`
-	CourseType  string  `json:"courseType"`
-	LessonPrice float64 `json:"lessonPrice"`
-	Count       int     `json:"count"`
-	Locked      bool    `json:"locked"`
+	EnrollmentID int     `json:"enrollmentId"`
+	StudentID    int     `json:"studentId"`
+	StudentName  string  `json:"studentName"`
+	CourseID     int     `json:"courseId"`
+	CourseName   string  `json:"courseName"`
+	CourseType   string  `json:"courseType"` // group|individual
+	LessonPrice  float64 `json:"lessonPrice"`
+	Count        int     `json:"count"`
+	Locked       bool    `json:"locked"`
 }
 
-// ListPerLesson lists attendance rows for "per lesson" billing mode enrollments.
 func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([]Row, error) {
 	q := s.db.Enrollment.
 		Query().
 		Where(enrollment.BillingModeEQ("per_lesson")).
 		WithStudent().
-		WithCourse(func(cq *ent.CourseQuery) {
-			if courseID != nil && *courseID > 0 {
-				cq.Where(course.IDEQ(*courseID))
-			}
-		})
-
+		WithCourse()
+	if courseID != nil && *courseID > 0 {
+		q = q.Where(enrollment.CourseIDEQ(*courseID))
+	}
 	ens, err := q.All(ctx)
 	if err != nil {
 		return nil, err
@@ -68,7 +65,8 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 		}
 
 		rows = append(rows, Row{
-			StudentID: e.StudentID, StudentName: sname,
+			EnrollmentID: e.ID,
+			StudentID:    e.StudentID, StudentName: sname,
 			CourseID: e.CourseID, CourseName: c.Name, CourseType: string(c.Type),
 			LessonPrice: c.LessonPrice, Count: cnt, Locked: locked,
 		})
@@ -76,7 +74,6 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 	return rows, nil
 }
 
-// Upsert updates or creates an attendance month record.
 func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count int) error {
 	am, err := s.db.AttendanceMonth.
 		Query().
@@ -103,7 +100,6 @@ func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count i
 	return err
 }
 
-// AddOneForFilter increments attendance count by one for all unlocked records matching the filter.
 func (s *Service) AddOneForFilter(ctx context.Context, y, m int, courseID *int) (int, error) {
 	rows, err := s.ListPerLesson(ctx, y, m, courseID)
 	if err != nil {
@@ -114,8 +110,9 @@ func (s *Service) AddOneForFilter(ctx context.Context, y, m int, courseID *int) 
 		if r.Locked {
 			continue
 		}
-		_ = s.Upsert(ctx, r.StudentID, r.CourseID, y, m, r.Count+1)
-		changed++
+		if err := s.Upsert(ctx, r.StudentID, r.CourseID, y, m, r.Count+1); err == nil {
+			changed++
+		}
 	}
 	return changed, nil
 }
@@ -135,7 +132,7 @@ func countMatches(y int, m time.Month, days []int) int {
 	t := time.Date(y, m, 1, 0, 0, 0, 0, time.Local)
 	cnt := 0
 	for t.Month() == m {
-		wd := int(t.Weekday())
+		wd := int(t.Weekday()) // 0=Sun..6=Sat
 		if wd == 0 {
 			wd = 7
 		}
@@ -147,7 +144,6 @@ func countMatches(y int, m time.Month, days []int) int {
 	return cnt
 }
 
-// EstimateBySchedule estimates attendance counts based on course schedules.
 func (s *Service) EstimateBySchedule(ctx context.Context, y, m int, courseID *int) (map[string]int, error) {
 	rows, err := s.ListPerLesson(ctx, y, m, courseID)
 	if err != nil {
@@ -162,17 +158,15 @@ func (s *Service) EstimateBySchedule(ctx context.Context, y, m int, courseID *in
 		var sch schedule
 		_ = json.Unmarshal([]byte(c.ScheduleJSON), &sch)
 		hint := 0
-		if c.Type == course.TypeGroup && len(sch.DaysOfWeek) > 0 {
+		if c.Type == "group" && len(sch.DaysOfWeek) > 0 {
 			hint = countMatches(y, time.Month(m), sch.DaysOfWeek)
 		}
-		key :=
-			fmt.Sprintf("%d-%d", r.StudentID, r.CourseID)
+		key := fmt.Sprintf("%d-%d", r.StudentID, r.CourseID)
 		result[key] = hint
 	}
 	return result, nil
 }
 
-// SetLocked sets or unsets the "locked" status for all records matching the filter.q
 func (s *Service) SetLocked(ctx context.Context, y, m int, courseID *int, lock bool) (int, error) {
 	rows, err := s.ListPerLesson(ctx, y, m, courseID)
 	if err != nil {
@@ -188,12 +182,27 @@ func (s *Service) SetLocked(ctx context.Context, y, m int, courseID *int, lock b
 				attendancemonth.YearEQ(y),
 				attendancemonth.MonthEQ(m),
 			).Only(ctx)
-		if err == nil {
-			if am.Locked != lock {
-				_, _ = am.Update().SetLocked(lock).Save(ctx)
+		if err == nil && am.Locked != lock {
+			if _, e := am.Update().SetLocked(lock).Save(ctx); e == nil {
 				changed++
 			}
 		}
 	}
 	return changed, nil
+}
+
+func (s *Service) DeleteEnrollment(ctx context.Context, enrollmentID int) error {
+	en, err := s.db.Enrollment.Get(ctx, enrollmentID)
+	if err != nil {
+		return err
+	}
+	if _, err := s.db.AttendanceMonth.
+		Delete().
+		Where(
+			attendancemonth.StudentIDEQ(en.StudentID),
+			attendancemonth.CourseIDEQ(en.CourseID),
+		).Exec(ctx); err != nil {
+		return err
+	}
+	return s.db.Enrollment.DeleteOneID(enrollmentID).Exec(ctx)
 }

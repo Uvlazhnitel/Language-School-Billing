@@ -16,7 +16,11 @@ export function AttendanceUpsert(arg1:number,arg2:number,arg3:number,arg4:number
 
 export function BackupNow():Promise<string>;
 
+export function DevReset():Promise<number>;
+
 export function DevSeed():Promise<number>;
+
+export function EnrollmentDelete(arg1:number):Promise<void>;
 
 export function Greet(arg1:string):Promise<string>;
 

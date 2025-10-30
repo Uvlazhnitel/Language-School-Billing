@@ -10,7 +10,10 @@ import (
 	"path/filepath"
 	"time"
 
+	"langschool/ent/course"
+	"langschool/ent/enrollment"
 	"langschool/ent/settings"
+	"langschool/ent/student"
 	"langschool/internal/app/attendance"
 	"langschool/internal/infra"
 	"langschool/internal/paths"
@@ -88,57 +91,96 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 }
 
+// DevReset deletes all demo data (except Settings)
+func (a *App) DevReset() (int, error) {
+	ctx := a.ctx
+	db := a.db.Ent
+
+	n1, err := db.AttendanceMonth.Delete().Exec(ctx)
+	if err != nil {
+		return 0, err
+	}
+	n2, err := db.Enrollment.Delete().Exec(ctx)
+	if err != nil {
+		return 0, err
+	}
+	n3, err := db.Course.Delete().Exec(ctx)
+	if err != nil {
+		return 0, err
+	}
+	n4, err := db.Student.Delete().Exec(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	return n1 + n2 + n3 + n4, nil
+}
+
+// DevSeed inserts demo data, avoiding duplicates
 func (a *App) DevSeed() (int, error) {
 	ctx := a.ctx
 	db := a.db.Ent
 
 	// students
-	sJohn, _ := db.Student.Create().
-		SetFullName("John Doe").SetPhone("+1234567890").SetEmail("john@doe.com").Save(ctx)
-	sJane, _ := db.Student.Create().
-		SetFullName("Jane Johnson").SetPhone("+9876543210").SetEmail("jane@johnson.com").Save(ctx)
+	sAnna, err := db.Student.Query().Where(student.FullNameEQ("Anna K.")).Only(ctx)
+	if err != nil {
+		sAnna, _ = db.Student.Create().SetFullName("Anna K.").SetPhone("+37120000001").SetEmail("anna@example.com").Save(ctx)
+	}
+	sDima, err := db.Student.Query().Where(student.FullNameEQ("Dmitry L.")).Only(ctx)
+	if err != nil {
+		sDima, _ = db.Student.Create().SetFullName("Dmitry L.").SetPhone("+37120000002").SetEmail("dima@example.com").Save(ctx)
+	}
 
 	// courses
-	cA2, _ := db.Course.Create().
-		SetName("English A2").
-		SetType("group").
-		SetLessonPrice(15).
-		SetSubscriptionPrice(120).
-		SetScheduleJSON(`{"daysOfWeek":[1,3]}`).
-		Save(ctx)
-
-	cB1, _ := db.Course.Create().
-		SetName("English B1").
-		SetType("individual").
-		SetLessonPrice(25).
-		SetSubscriptionPrice(0).
-		Save(ctx)
+	cA2, err := db.Course.Query().Where(course.NameEQ("English A2 (group)")).Only(ctx)
+	if err != nil {
+		cA2, _ = db.Course.Create().
+			SetName("English A2 (group)").
+			SetType("group").SetLessonPrice(15).SetSubscriptionPrice(120).
+			SetScheduleJSON(`{"daysOfWeek":[1,3]}`).
+			Save(ctx)
+	}
+	cB1, err := db.Course.Query().Where(course.NameEQ("English B1 (individual)")).Only(ctx)
+	if err != nil {
+		cB1, _ = db.Course.Create().
+			SetName("English B1 (individual)").
+			SetType("individual").SetLessonPrice(25).SetSubscriptionPrice(0).
+			Save(ctx)
+	}
 
 	now := time.Now()
 
-	// enrollments
-	_, _ = db.Enrollment.Create().
-		SetStudentID(sJane.ID).
-		SetCourseID(cA2.ID).
-		SetBillingMode("subscription").
-		SetStartDate(now).
-		Save(ctx)
+	// enrollments (create only if not exists)
+	if _, err := db.Enrollment.Query().
+		Where(enrollment.StudentIDEQ(sAnna.ID), enrollment.CourseIDEQ(cA2.ID)).
+		Only(ctx); err != nil {
+		_, _ = db.Enrollment.Create().
+			SetStudentID(sAnna.ID).SetCourseID(cA2.ID).
+			SetBillingMode("subscription").SetStartDate(now).Save(ctx)
+	}
 
-	_, _ = db.Enrollment.Create().
-		SetStudentID(sJohn.ID).
-		SetCourseID(cA2.ID).
-		SetBillingMode("per_lesson").
-		SetStartDate(now).
-		Save(ctx)
+	if _, err := db.Enrollment.Query().
+		Where(enrollment.StudentIDEQ(sDima.ID), enrollment.CourseIDEQ(cA2.ID)).
+		Only(ctx); err != nil {
+		_, _ = db.Enrollment.Create().
+			SetStudentID(sDima.ID).SetCourseID(cA2.ID).
+			SetBillingMode("per_lesson").SetStartDate(now).Save(ctx)
+	}
 
-	_, _ = db.Enrollment.Create().
-		SetStudentID(sJohn.ID).
-		SetCourseID(cB1.ID).
-		SetBillingMode("per_lesson").
-		SetStartDate(now).
-		Save(ctx)
+	if _, err := db.Enrollment.Query().
+		Where(enrollment.StudentIDEQ(sDima.ID), enrollment.CourseIDEQ(cB1.ID)).
+		Only(ctx); err != nil {
+		_, _ = db.Enrollment.Create().
+			SetStudentID(sDima.ID).SetCourseID(cB1.ID).
+			SetBillingMode("per_lesson").SetStartDate(now).Save(ctx)
+	}
 
-	return 2, nil // number of students added as an example
+	return 2, nil // return the number of base students
+}
+
+// Delete enrollment (for the "Delete" button in the attendance sheet)
+func (a *App) EnrollmentDelete(enrollmentID int) error {
+	return a.att.DeleteEnrollment(a.ctx, enrollmentID)
 }
 
 func userHome() string {
