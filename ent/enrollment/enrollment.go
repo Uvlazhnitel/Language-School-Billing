@@ -32,6 +32,10 @@ const (
 	EdgeStudent = "student"
 	// EdgeCourse holds the string denoting the course edge name in mutations.
 	EdgeCourse = "course"
+	// EdgeInvoiceLines holds the string denoting the invoice_lines edge name in mutations.
+	EdgeInvoiceLines = "invoice_lines"
+	// EdgePriceOverrides holds the string denoting the price_overrides edge name in mutations.
+	EdgePriceOverrides = "price_overrides"
 	// Table holds the table name of the enrollment in the database.
 	Table = "enrollments"
 	// StudentTable is the table that holds the student relation/edge.
@@ -48,6 +52,20 @@ const (
 	CourseInverseTable = "courses"
 	// CourseColumn is the table column denoting the course relation/edge.
 	CourseColumn = "course_id"
+	// InvoiceLinesTable is the table that holds the invoice_lines relation/edge.
+	InvoiceLinesTable = "invoice_lines"
+	// InvoiceLinesInverseTable is the table name for the InvoiceLine entity.
+	// It exists in this package in order to avoid circular dependency with the "invoiceline" package.
+	InvoiceLinesInverseTable = "invoice_lines"
+	// InvoiceLinesColumn is the table column denoting the invoice_lines relation/edge.
+	InvoiceLinesColumn = "enrollment_id"
+	// PriceOverridesTable is the table that holds the price_overrides relation/edge.
+	PriceOverridesTable = "price_overrides"
+	// PriceOverridesInverseTable is the table name for the PriceOverride entity.
+	// It exists in this package in order to avoid circular dependency with the "priceoverride" package.
+	PriceOverridesInverseTable = "price_overrides"
+	// PriceOverridesColumn is the table column denoting the price_overrides relation/edge.
+	PriceOverridesColumn = "enrollment_id"
 )
 
 // Columns holds all SQL columns for enrollment fields.
@@ -158,6 +176,34 @@ func ByCourseField(field string, opts ...sql.OrderTermOption) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newCourseStep(), sql.OrderByField(field, opts...))
 	}
 }
+
+// ByInvoiceLinesCount orders the results by invoice_lines count.
+func ByInvoiceLinesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newInvoiceLinesStep(), opts...)
+	}
+}
+
+// ByInvoiceLines orders the results by invoice_lines terms.
+func ByInvoiceLines(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newInvoiceLinesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByPriceOverridesCount orders the results by price_overrides count.
+func ByPriceOverridesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newPriceOverridesStep(), opts...)
+	}
+}
+
+// ByPriceOverrides orders the results by price_overrides terms.
+func ByPriceOverrides(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newPriceOverridesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newStudentStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -170,5 +216,19 @@ func newCourseStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(CourseInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, CourseTable, CourseColumn),
+	)
+}
+func newInvoiceLinesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(InvoiceLinesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, InvoiceLinesTable, InvoiceLinesColumn),
+	)
+}
+func newPriceOverridesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(PriceOverridesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, PriceOverridesTable, PriceOverridesColumn),
 	)
 }

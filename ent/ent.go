@@ -9,6 +9,9 @@ import (
 	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
+	"langschool/ent/invoice"
+	"langschool/ent/invoiceline"
+	"langschool/ent/priceoverride"
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"reflect"
@@ -80,6 +83,9 @@ func checkColumn(t, c string) error {
 			attendancemonth.Table: attendancemonth.ValidColumn,
 			course.Table:          course.ValidColumn,
 			enrollment.Table:      enrollment.ValidColumn,
+			invoice.Table:         invoice.ValidColumn,
+			invoiceline.Table:     invoiceline.ValidColumn,
+			priceoverride.Table:   priceoverride.ValidColumn,
 			settings.Table:        settings.ValidColumn,
 			student.Table:         student.ValidColumn,
 		})

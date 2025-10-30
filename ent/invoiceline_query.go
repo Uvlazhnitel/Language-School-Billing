@@ -4,12 +4,11 @@ package ent
 
 import (
 	"context"
-	"database/sql/driver"
 	"fmt"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
+	"langschool/ent/invoiceline"
 	"langschool/ent/predicate"
-	"langschool/ent/student"
 	"math"
 
 	"entgo.io/ent"
@@ -18,75 +17,53 @@ import (
 	"entgo.io/ent/schema/field"
 )
 
-// StudentQuery is the builder for querying Student entities.
-type StudentQuery struct {
+// InvoiceLineQuery is the builder for querying InvoiceLine entities.
+type InvoiceLineQuery struct {
 	config
-	ctx             *QueryContext
-	order           []student.OrderOption
-	inters          []Interceptor
-	predicates      []predicate.Student
-	withEnrollments *EnrollmentQuery
-	withInvoices    *InvoiceQuery
+	ctx            *QueryContext
+	order          []invoiceline.OrderOption
+	inters         []Interceptor
+	predicates     []predicate.InvoiceLine
+	withInvoice    *InvoiceQuery
+	withEnrollment *EnrollmentQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
 }
 
-// Where adds a new predicate for the StudentQuery builder.
-func (_q *StudentQuery) Where(ps ...predicate.Student) *StudentQuery {
+// Where adds a new predicate for the InvoiceLineQuery builder.
+func (_q *InvoiceLineQuery) Where(ps ...predicate.InvoiceLine) *InvoiceLineQuery {
 	_q.predicates = append(_q.predicates, ps...)
 	return _q
 }
 
 // Limit the number of records to be returned by this query.
-func (_q *StudentQuery) Limit(limit int) *StudentQuery {
+func (_q *InvoiceLineQuery) Limit(limit int) *InvoiceLineQuery {
 	_q.ctx.Limit = &limit
 	return _q
 }
 
 // Offset to start from.
-func (_q *StudentQuery) Offset(offset int) *StudentQuery {
+func (_q *InvoiceLineQuery) Offset(offset int) *InvoiceLineQuery {
 	_q.ctx.Offset = &offset
 	return _q
 }
 
 // Unique configures the query builder to filter duplicate records on query.
 // By default, unique is set to true, and can be disabled using this method.
-func (_q *StudentQuery) Unique(unique bool) *StudentQuery {
+func (_q *InvoiceLineQuery) Unique(unique bool) *InvoiceLineQuery {
 	_q.ctx.Unique = &unique
 	return _q
 }
 
 // Order specifies how the records should be ordered.
-func (_q *StudentQuery) Order(o ...student.OrderOption) *StudentQuery {
+func (_q *InvoiceLineQuery) Order(o ...invoiceline.OrderOption) *InvoiceLineQuery {
 	_q.order = append(_q.order, o...)
 	return _q
 }
 
-// QueryEnrollments chains the current query on the "enrollments" edge.
-func (_q *StudentQuery) QueryEnrollments() *EnrollmentQuery {
-	query := (&EnrollmentClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(student.Table, student.FieldID, selector),
-			sqlgraph.To(enrollment.Table, enrollment.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, student.EnrollmentsTable, student.EnrollmentsColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryInvoices chains the current query on the "invoices" edge.
-func (_q *StudentQuery) QueryInvoices() *InvoiceQuery {
+// QueryInvoice chains the current query on the "invoice" edge.
+func (_q *InvoiceLineQuery) QueryInvoice() *InvoiceQuery {
 	query := (&InvoiceClient{config: _q.config}).Query()
 	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
 		if err := _q.prepareQuery(ctx); err != nil {
@@ -97,9 +74,9 @@ func (_q *StudentQuery) QueryInvoices() *InvoiceQuery {
 			return nil, err
 		}
 		step := sqlgraph.NewStep(
-			sqlgraph.From(student.Table, student.FieldID, selector),
+			sqlgraph.From(invoiceline.Table, invoiceline.FieldID, selector),
 			sqlgraph.To(invoice.Table, invoice.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, student.InvoicesTable, student.InvoicesColumn),
+			sqlgraph.Edge(sqlgraph.M2O, true, invoiceline.InvoiceTable, invoiceline.InvoiceColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -107,21 +84,43 @@ func (_q *StudentQuery) QueryInvoices() *InvoiceQuery {
 	return query
 }
 
-// First returns the first Student entity from the query.
-// Returns a *NotFoundError when no Student was found.
-func (_q *StudentQuery) First(ctx context.Context) (*Student, error) {
+// QueryEnrollment chains the current query on the "enrollment" edge.
+func (_q *InvoiceLineQuery) QueryEnrollment() *EnrollmentQuery {
+	query := (&EnrollmentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(invoiceline.Table, invoiceline.FieldID, selector),
+			sqlgraph.To(enrollment.Table, enrollment.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, invoiceline.EnrollmentTable, invoiceline.EnrollmentColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// First returns the first InvoiceLine entity from the query.
+// Returns a *NotFoundError when no InvoiceLine was found.
+func (_q *InvoiceLineQuery) First(ctx context.Context) (*InvoiceLine, error) {
 	nodes, err := _q.Limit(1).All(setContextOp(ctx, _q.ctx, ent.OpQueryFirst))
 	if err != nil {
 		return nil, err
 	}
 	if len(nodes) == 0 {
-		return nil, &NotFoundError{student.Label}
+		return nil, &NotFoundError{invoiceline.Label}
 	}
 	return nodes[0], nil
 }
 
 // FirstX is like First, but panics if an error occurs.
-func (_q *StudentQuery) FirstX(ctx context.Context) *Student {
+func (_q *InvoiceLineQuery) FirstX(ctx context.Context) *InvoiceLine {
 	node, err := _q.First(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -129,22 +128,22 @@ func (_q *StudentQuery) FirstX(ctx context.Context) *Student {
 	return node
 }
 
-// FirstID returns the first Student ID from the query.
-// Returns a *NotFoundError when no Student ID was found.
-func (_q *StudentQuery) FirstID(ctx context.Context) (id int, err error) {
+// FirstID returns the first InvoiceLine ID from the query.
+// Returns a *NotFoundError when no InvoiceLine ID was found.
+func (_q *InvoiceLineQuery) FirstID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = _q.Limit(1).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryFirstID)); err != nil {
 		return
 	}
 	if len(ids) == 0 {
-		err = &NotFoundError{student.Label}
+		err = &NotFoundError{invoiceline.Label}
 		return
 	}
 	return ids[0], nil
 }
 
 // FirstIDX is like FirstID, but panics if an error occurs.
-func (_q *StudentQuery) FirstIDX(ctx context.Context) int {
+func (_q *InvoiceLineQuery) FirstIDX(ctx context.Context) int {
 	id, err := _q.FirstID(ctx)
 	if err != nil && !IsNotFound(err) {
 		panic(err)
@@ -152,10 +151,10 @@ func (_q *StudentQuery) FirstIDX(ctx context.Context) int {
 	return id
 }
 
-// Only returns a single Student entity found by the query, ensuring it only returns one.
-// Returns a *NotSingularError when more than one Student entity is found.
-// Returns a *NotFoundError when no Student entities are found.
-func (_q *StudentQuery) Only(ctx context.Context) (*Student, error) {
+// Only returns a single InvoiceLine entity found by the query, ensuring it only returns one.
+// Returns a *NotSingularError when more than one InvoiceLine entity is found.
+// Returns a *NotFoundError when no InvoiceLine entities are found.
+func (_q *InvoiceLineQuery) Only(ctx context.Context) (*InvoiceLine, error) {
 	nodes, err := _q.Limit(2).All(setContextOp(ctx, _q.ctx, ent.OpQueryOnly))
 	if err != nil {
 		return nil, err
@@ -164,14 +163,14 @@ func (_q *StudentQuery) Only(ctx context.Context) (*Student, error) {
 	case 1:
 		return nodes[0], nil
 	case 0:
-		return nil, &NotFoundError{student.Label}
+		return nil, &NotFoundError{invoiceline.Label}
 	default:
-		return nil, &NotSingularError{student.Label}
+		return nil, &NotSingularError{invoiceline.Label}
 	}
 }
 
 // OnlyX is like Only, but panics if an error occurs.
-func (_q *StudentQuery) OnlyX(ctx context.Context) *Student {
+func (_q *InvoiceLineQuery) OnlyX(ctx context.Context) *InvoiceLine {
 	node, err := _q.Only(ctx)
 	if err != nil {
 		panic(err)
@@ -179,10 +178,10 @@ func (_q *StudentQuery) OnlyX(ctx context.Context) *Student {
 	return node
 }
 
-// OnlyID is like Only, but returns the only Student ID in the query.
-// Returns a *NotSingularError when more than one Student ID is found.
+// OnlyID is like Only, but returns the only InvoiceLine ID in the query.
+// Returns a *NotSingularError when more than one InvoiceLine ID is found.
 // Returns a *NotFoundError when no entities are found.
-func (_q *StudentQuery) OnlyID(ctx context.Context) (id int, err error) {
+func (_q *InvoiceLineQuery) OnlyID(ctx context.Context) (id int, err error) {
 	var ids []int
 	if ids, err = _q.Limit(2).IDs(setContextOp(ctx, _q.ctx, ent.OpQueryOnlyID)); err != nil {
 		return
@@ -191,15 +190,15 @@ func (_q *StudentQuery) OnlyID(ctx context.Context) (id int, err error) {
 	case 1:
 		id = ids[0]
 	case 0:
-		err = &NotFoundError{student.Label}
+		err = &NotFoundError{invoiceline.Label}
 	default:
-		err = &NotSingularError{student.Label}
+		err = &NotSingularError{invoiceline.Label}
 	}
 	return
 }
 
 // OnlyIDX is like OnlyID, but panics if an error occurs.
-func (_q *StudentQuery) OnlyIDX(ctx context.Context) int {
+func (_q *InvoiceLineQuery) OnlyIDX(ctx context.Context) int {
 	id, err := _q.OnlyID(ctx)
 	if err != nil {
 		panic(err)
@@ -207,18 +206,18 @@ func (_q *StudentQuery) OnlyIDX(ctx context.Context) int {
 	return id
 }
 
-// All executes the query and returns a list of Students.
-func (_q *StudentQuery) All(ctx context.Context) ([]*Student, error) {
+// All executes the query and returns a list of InvoiceLines.
+func (_q *InvoiceLineQuery) All(ctx context.Context) ([]*InvoiceLine, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryAll)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return nil, err
 	}
-	qr := querierAll[[]*Student, *StudentQuery]()
-	return withInterceptors[[]*Student](ctx, _q, qr, _q.inters)
+	qr := querierAll[[]*InvoiceLine, *InvoiceLineQuery]()
+	return withInterceptors[[]*InvoiceLine](ctx, _q, qr, _q.inters)
 }
 
 // AllX is like All, but panics if an error occurs.
-func (_q *StudentQuery) AllX(ctx context.Context) []*Student {
+func (_q *InvoiceLineQuery) AllX(ctx context.Context) []*InvoiceLine {
 	nodes, err := _q.All(ctx)
 	if err != nil {
 		panic(err)
@@ -226,20 +225,20 @@ func (_q *StudentQuery) AllX(ctx context.Context) []*Student {
 	return nodes
 }
 
-// IDs executes the query and returns a list of Student IDs.
-func (_q *StudentQuery) IDs(ctx context.Context) (ids []int, err error) {
+// IDs executes the query and returns a list of InvoiceLine IDs.
+func (_q *InvoiceLineQuery) IDs(ctx context.Context) (ids []int, err error) {
 	if _q.ctx.Unique == nil && _q.path != nil {
 		_q.Unique(true)
 	}
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryIDs)
-	if err = _q.Select(student.FieldID).Scan(ctx, &ids); err != nil {
+	if err = _q.Select(invoiceline.FieldID).Scan(ctx, &ids); err != nil {
 		return nil, err
 	}
 	return ids, nil
 }
 
 // IDsX is like IDs, but panics if an error occurs.
-func (_q *StudentQuery) IDsX(ctx context.Context) []int {
+func (_q *InvoiceLineQuery) IDsX(ctx context.Context) []int {
 	ids, err := _q.IDs(ctx)
 	if err != nil {
 		panic(err)
@@ -248,16 +247,16 @@ func (_q *StudentQuery) IDsX(ctx context.Context) []int {
 }
 
 // Count returns the count of the given query.
-func (_q *StudentQuery) Count(ctx context.Context) (int, error) {
+func (_q *InvoiceLineQuery) Count(ctx context.Context) (int, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryCount)
 	if err := _q.prepareQuery(ctx); err != nil {
 		return 0, err
 	}
-	return withInterceptors[int](ctx, _q, querierCount[*StudentQuery](), _q.inters)
+	return withInterceptors[int](ctx, _q, querierCount[*InvoiceLineQuery](), _q.inters)
 }
 
 // CountX is like Count, but panics if an error occurs.
-func (_q *StudentQuery) CountX(ctx context.Context) int {
+func (_q *InvoiceLineQuery) CountX(ctx context.Context) int {
 	count, err := _q.Count(ctx)
 	if err != nil {
 		panic(err)
@@ -266,7 +265,7 @@ func (_q *StudentQuery) CountX(ctx context.Context) int {
 }
 
 // Exist returns true if the query has elements in the graph.
-func (_q *StudentQuery) Exist(ctx context.Context) (bool, error) {
+func (_q *InvoiceLineQuery) Exist(ctx context.Context) (bool, error) {
 	ctx = setContextOp(ctx, _q.ctx, ent.OpQueryExist)
 	switch _, err := _q.FirstID(ctx); {
 	case IsNotFound(err):
@@ -279,7 +278,7 @@ func (_q *StudentQuery) Exist(ctx context.Context) (bool, error) {
 }
 
 // ExistX is like Exist, but panics if an error occurs.
-func (_q *StudentQuery) ExistX(ctx context.Context) bool {
+func (_q *InvoiceLineQuery) ExistX(ctx context.Context) bool {
 	exist, err := _q.Exist(ctx)
 	if err != nil {
 		panic(err)
@@ -287,45 +286,45 @@ func (_q *StudentQuery) ExistX(ctx context.Context) bool {
 	return exist
 }
 
-// Clone returns a duplicate of the StudentQuery builder, including all associated steps. It can be
+// Clone returns a duplicate of the InvoiceLineQuery builder, including all associated steps. It can be
 // used to prepare common query builders and use them differently after the clone is made.
-func (_q *StudentQuery) Clone() *StudentQuery {
+func (_q *InvoiceLineQuery) Clone() *InvoiceLineQuery {
 	if _q == nil {
 		return nil
 	}
-	return &StudentQuery{
-		config:          _q.config,
-		ctx:             _q.ctx.Clone(),
-		order:           append([]student.OrderOption{}, _q.order...),
-		inters:          append([]Interceptor{}, _q.inters...),
-		predicates:      append([]predicate.Student{}, _q.predicates...),
-		withEnrollments: _q.withEnrollments.Clone(),
-		withInvoices:    _q.withInvoices.Clone(),
+	return &InvoiceLineQuery{
+		config:         _q.config,
+		ctx:            _q.ctx.Clone(),
+		order:          append([]invoiceline.OrderOption{}, _q.order...),
+		inters:         append([]Interceptor{}, _q.inters...),
+		predicates:     append([]predicate.InvoiceLine{}, _q.predicates...),
+		withInvoice:    _q.withInvoice.Clone(),
+		withEnrollment: _q.withEnrollment.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
 }
 
-// WithEnrollments tells the query-builder to eager-load the nodes that are connected to
-// the "enrollments" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *StudentQuery) WithEnrollments(opts ...func(*EnrollmentQuery)) *StudentQuery {
-	query := (&EnrollmentClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withEnrollments = query
-	return _q
-}
-
-// WithInvoices tells the query-builder to eager-load the nodes that are connected to
-// the "invoices" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *StudentQuery) WithInvoices(opts ...func(*InvoiceQuery)) *StudentQuery {
+// WithInvoice tells the query-builder to eager-load the nodes that are connected to
+// the "invoice" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *InvoiceLineQuery) WithInvoice(opts ...func(*InvoiceQuery)) *InvoiceLineQuery {
 	query := (&InvoiceClient{config: _q.config}).Query()
 	for _, opt := range opts {
 		opt(query)
 	}
-	_q.withInvoices = query
+	_q.withInvoice = query
+	return _q
+}
+
+// WithEnrollment tells the query-builder to eager-load the nodes that are connected to
+// the "enrollment" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *InvoiceLineQuery) WithEnrollment(opts ...func(*EnrollmentQuery)) *InvoiceLineQuery {
+	query := (&EnrollmentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withEnrollment = query
 	return _q
 }
 
@@ -335,19 +334,19 @@ func (_q *StudentQuery) WithInvoices(opts ...func(*InvoiceQuery)) *StudentQuery 
 // Example:
 //
 //	var v []struct {
-//		FullName string `json:"full_name,omitempty"`
+//		InvoiceID int `json:"invoice_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
-//	client.Student.Query().
-//		GroupBy(student.FieldFullName).
+//	client.InvoiceLine.Query().
+//		GroupBy(invoiceline.FieldInvoiceID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
-func (_q *StudentQuery) GroupBy(field string, fields ...string) *StudentGroupBy {
+func (_q *InvoiceLineQuery) GroupBy(field string, fields ...string) *InvoiceLineGroupBy {
 	_q.ctx.Fields = append([]string{field}, fields...)
-	grbuild := &StudentGroupBy{build: _q}
+	grbuild := &InvoiceLineGroupBy{build: _q}
 	grbuild.flds = &_q.ctx.Fields
-	grbuild.label = student.Label
+	grbuild.label = invoiceline.Label
 	grbuild.scan = grbuild.Scan
 	return grbuild
 }
@@ -358,26 +357,26 @@ func (_q *StudentQuery) GroupBy(field string, fields ...string) *StudentGroupBy 
 // Example:
 //
 //	var v []struct {
-//		FullName string `json:"full_name,omitempty"`
+//		InvoiceID int `json:"invoice_id,omitempty"`
 //	}
 //
-//	client.Student.Query().
-//		Select(student.FieldFullName).
+//	client.InvoiceLine.Query().
+//		Select(invoiceline.FieldInvoiceID).
 //		Scan(ctx, &v)
-func (_q *StudentQuery) Select(fields ...string) *StudentSelect {
+func (_q *InvoiceLineQuery) Select(fields ...string) *InvoiceLineSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)
-	sbuild := &StudentSelect{StudentQuery: _q}
-	sbuild.label = student.Label
+	sbuild := &InvoiceLineSelect{InvoiceLineQuery: _q}
+	sbuild.label = invoiceline.Label
 	sbuild.flds, sbuild.scan = &_q.ctx.Fields, sbuild.Scan
 	return sbuild
 }
 
-// Aggregate returns a StudentSelect configured with the given aggregations.
-func (_q *StudentQuery) Aggregate(fns ...AggregateFunc) *StudentSelect {
+// Aggregate returns a InvoiceLineSelect configured with the given aggregations.
+func (_q *InvoiceLineQuery) Aggregate(fns ...AggregateFunc) *InvoiceLineSelect {
 	return _q.Select().Aggregate(fns...)
 }
 
-func (_q *StudentQuery) prepareQuery(ctx context.Context) error {
+func (_q *InvoiceLineQuery) prepareQuery(ctx context.Context) error {
 	for _, inter := range _q.inters {
 		if inter == nil {
 			return fmt.Errorf("ent: uninitialized interceptor (forgotten import ent/runtime?)")
@@ -389,7 +388,7 @@ func (_q *StudentQuery) prepareQuery(ctx context.Context) error {
 		}
 	}
 	for _, f := range _q.ctx.Fields {
-		if !student.ValidColumn(f) {
+		if !invoiceline.ValidColumn(f) {
 			return &ValidationError{Name: f, err: fmt.Errorf("ent: invalid field %q for query", f)}
 		}
 	}
@@ -403,20 +402,20 @@ func (_q *StudentQuery) prepareQuery(ctx context.Context) error {
 	return nil
 }
 
-func (_q *StudentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Student, error) {
+func (_q *InvoiceLineQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*InvoiceLine, error) {
 	var (
-		nodes       = []*Student{}
+		nodes       = []*InvoiceLine{}
 		_spec       = _q.querySpec()
 		loadedTypes = [2]bool{
-			_q.withEnrollments != nil,
-			_q.withInvoices != nil,
+			_q.withInvoice != nil,
+			_q.withEnrollment != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
-		return (*Student).scanValues(nil, columns)
+		return (*InvoiceLine).scanValues(nil, columns)
 	}
 	_spec.Assign = func(columns []string, values []any) error {
-		node := &Student{config: _q.config}
+		node := &InvoiceLine{config: _q.config}
 		nodes = append(nodes, node)
 		node.Edges.loadedTypes = loadedTypes
 		return node.assignValues(columns, values)
@@ -430,85 +429,81 @@ func (_q *StudentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Stud
 	if len(nodes) == 0 {
 		return nodes, nil
 	}
-	if query := _q.withEnrollments; query != nil {
-		if err := _q.loadEnrollments(ctx, query, nodes,
-			func(n *Student) { n.Edges.Enrollments = []*Enrollment{} },
-			func(n *Student, e *Enrollment) { n.Edges.Enrollments = append(n.Edges.Enrollments, e) }); err != nil {
+	if query := _q.withInvoice; query != nil {
+		if err := _q.loadInvoice(ctx, query, nodes, nil,
+			func(n *InvoiceLine, e *Invoice) { n.Edges.Invoice = e }); err != nil {
 			return nil, err
 		}
 	}
-	if query := _q.withInvoices; query != nil {
-		if err := _q.loadInvoices(ctx, query, nodes,
-			func(n *Student) { n.Edges.Invoices = []*Invoice{} },
-			func(n *Student, e *Invoice) { n.Edges.Invoices = append(n.Edges.Invoices, e) }); err != nil {
+	if query := _q.withEnrollment; query != nil {
+		if err := _q.loadEnrollment(ctx, query, nodes, nil,
+			func(n *InvoiceLine, e *Enrollment) { n.Edges.Enrollment = e }); err != nil {
 			return nil, err
 		}
 	}
 	return nodes, nil
 }
 
-func (_q *StudentQuery) loadEnrollments(ctx context.Context, query *EnrollmentQuery, nodes []*Student, init func(*Student), assign func(*Student, *Enrollment)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Student)
+func (_q *InvoiceLineQuery) loadInvoice(ctx context.Context, query *InvoiceQuery, nodes []*InvoiceLine, init func(*InvoiceLine), assign func(*InvoiceLine, *Invoice)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*InvoiceLine)
 	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
+		fk := nodes[i].InvoiceID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
 		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
 	}
-	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(enrollment.FieldStudentID)
+	if len(ids) == 0 {
+		return nil
 	}
-	query.Where(predicate.Enrollment(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(student.EnrollmentsColumn), fks...))
-	}))
+	query.Where(invoice.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.StudentID
-		node, ok := nodeids[fk]
+		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "student_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "invoice_id" returned %v`, n.ID)
 		}
-		assign(node, n)
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
 	}
 	return nil
 }
-func (_q *StudentQuery) loadInvoices(ctx context.Context, query *InvoiceQuery, nodes []*Student, init func(*Student), assign func(*Student, *Invoice)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int]*Student)
+func (_q *InvoiceLineQuery) loadEnrollment(ctx context.Context, query *EnrollmentQuery, nodes []*InvoiceLine, init func(*InvoiceLine), assign func(*InvoiceLine, *Enrollment)) error {
+	ids := make([]int, 0, len(nodes))
+	nodeids := make(map[int][]*InvoiceLine)
 	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
+		fk := nodes[i].EnrollmentID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
 		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
 	}
-	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(invoice.FieldStudentID)
+	if len(ids) == 0 {
+		return nil
 	}
-	query.Where(predicate.Invoice(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(student.InvoicesColumn), fks...))
-	}))
+	query.Where(enrollment.IDIn(ids...))
 	neighbors, err := query.All(ctx)
 	if err != nil {
 		return err
 	}
 	for _, n := range neighbors {
-		fk := n.StudentID
-		node, ok := nodeids[fk]
+		nodes, ok := nodeids[n.ID]
 		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "student_id" returned %v for node %v`, fk, n.ID)
+			return fmt.Errorf(`unexpected foreign-key "enrollment_id" returned %v`, n.ID)
 		}
-		assign(node, n)
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
 	}
 	return nil
 }
 
-func (_q *StudentQuery) sqlCount(ctx context.Context) (int, error) {
+func (_q *InvoiceLineQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
 	_spec.Node.Columns = _q.ctx.Fields
 	if len(_q.ctx.Fields) > 0 {
@@ -517,8 +512,8 @@ func (_q *StudentQuery) sqlCount(ctx context.Context) (int, error) {
 	return sqlgraph.CountNodes(ctx, _q.driver, _spec)
 }
 
-func (_q *StudentQuery) querySpec() *sqlgraph.QuerySpec {
-	_spec := sqlgraph.NewQuerySpec(student.Table, student.Columns, sqlgraph.NewFieldSpec(student.FieldID, field.TypeInt))
+func (_q *InvoiceLineQuery) querySpec() *sqlgraph.QuerySpec {
+	_spec := sqlgraph.NewQuerySpec(invoiceline.Table, invoiceline.Columns, sqlgraph.NewFieldSpec(invoiceline.FieldID, field.TypeInt))
 	_spec.From = _q.sql
 	if unique := _q.ctx.Unique; unique != nil {
 		_spec.Unique = *unique
@@ -527,11 +522,17 @@ func (_q *StudentQuery) querySpec() *sqlgraph.QuerySpec {
 	}
 	if fields := _q.ctx.Fields; len(fields) > 0 {
 		_spec.Node.Columns = make([]string, 0, len(fields))
-		_spec.Node.Columns = append(_spec.Node.Columns, student.FieldID)
+		_spec.Node.Columns = append(_spec.Node.Columns, invoiceline.FieldID)
 		for i := range fields {
-			if fields[i] != student.FieldID {
+			if fields[i] != invoiceline.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withInvoice != nil {
+			_spec.Node.AddColumnOnce(invoiceline.FieldInvoiceID)
+		}
+		if _q.withEnrollment != nil {
+			_spec.Node.AddColumnOnce(invoiceline.FieldEnrollmentID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {
@@ -557,12 +558,12 @@ func (_q *StudentQuery) querySpec() *sqlgraph.QuerySpec {
 	return _spec
 }
 
-func (_q *StudentQuery) sqlQuery(ctx context.Context) *sql.Selector {
+func (_q *InvoiceLineQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	builder := sql.Dialect(_q.driver.Dialect())
-	t1 := builder.Table(student.Table)
+	t1 := builder.Table(invoiceline.Table)
 	columns := _q.ctx.Fields
 	if len(columns) == 0 {
-		columns = student.Columns
+		columns = invoiceline.Columns
 	}
 	selector := builder.Select(t1.Columns(columns...)...).From(t1)
 	if _q.sql != nil {
@@ -589,28 +590,28 @@ func (_q *StudentQuery) sqlQuery(ctx context.Context) *sql.Selector {
 	return selector
 }
 
-// StudentGroupBy is the group-by builder for Student entities.
-type StudentGroupBy struct {
+// InvoiceLineGroupBy is the group-by builder for InvoiceLine entities.
+type InvoiceLineGroupBy struct {
 	selector
-	build *StudentQuery
+	build *InvoiceLineQuery
 }
 
 // Aggregate adds the given aggregation functions to the group-by query.
-func (_g *StudentGroupBy) Aggregate(fns ...AggregateFunc) *StudentGroupBy {
+func (_g *InvoiceLineGroupBy) Aggregate(fns ...AggregateFunc) *InvoiceLineGroupBy {
 	_g.fns = append(_g.fns, fns...)
 	return _g
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_g *StudentGroupBy) Scan(ctx context.Context, v any) error {
+func (_g *InvoiceLineGroupBy) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _g.build.ctx, ent.OpQueryGroupBy)
 	if err := _g.build.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*StudentQuery, *StudentGroupBy](ctx, _g.build, _g, _g.build.inters, v)
+	return scanWithInterceptors[*InvoiceLineQuery, *InvoiceLineGroupBy](ctx, _g.build, _g, _g.build.inters, v)
 }
 
-func (_g *StudentGroupBy) sqlScan(ctx context.Context, root *StudentQuery, v any) error {
+func (_g *InvoiceLineGroupBy) sqlScan(ctx context.Context, root *InvoiceLineQuery, v any) error {
 	selector := root.sqlQuery(ctx).Select()
 	aggregation := make([]string, 0, len(_g.fns))
 	for _, fn := range _g.fns {
@@ -637,28 +638,28 @@ func (_g *StudentGroupBy) sqlScan(ctx context.Context, root *StudentQuery, v any
 	return sql.ScanSlice(rows, v)
 }
 
-// StudentSelect is the builder for selecting fields of Student entities.
-type StudentSelect struct {
-	*StudentQuery
+// InvoiceLineSelect is the builder for selecting fields of InvoiceLine entities.
+type InvoiceLineSelect struct {
+	*InvoiceLineQuery
 	selector
 }
 
 // Aggregate adds the given aggregation functions to the selector query.
-func (_s *StudentSelect) Aggregate(fns ...AggregateFunc) *StudentSelect {
+func (_s *InvoiceLineSelect) Aggregate(fns ...AggregateFunc) *InvoiceLineSelect {
 	_s.fns = append(_s.fns, fns...)
 	return _s
 }
 
 // Scan applies the selector query and scans the result into the given value.
-func (_s *StudentSelect) Scan(ctx context.Context, v any) error {
+func (_s *InvoiceLineSelect) Scan(ctx context.Context, v any) error {
 	ctx = setContextOp(ctx, _s.ctx, ent.OpQuerySelect)
 	if err := _s.prepareQuery(ctx); err != nil {
 		return err
 	}
-	return scanWithInterceptors[*StudentQuery, *StudentSelect](ctx, _s.StudentQuery, _s, _s.inters, v)
+	return scanWithInterceptors[*InvoiceLineQuery, *InvoiceLineSelect](ctx, _s.InvoiceLineQuery, _s, _s.inters, v)
 }
 
-func (_s *StudentSelect) sqlScan(ctx context.Context, root *StudentQuery, v any) error {
+func (_s *InvoiceLineSelect) sqlScan(ctx context.Context, root *InvoiceLineQuery, v any) error {
 	selector := root.sqlQuery(ctx)
 	aggregation := make([]string, 0, len(_s.fns))
 	for _, fn := range _s.fns {

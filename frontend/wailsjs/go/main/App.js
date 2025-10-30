@@ -30,12 +30,36 @@ export function BackupNow() {
   return window['go']['main']['App']['BackupNow']();
 }
 
+export function DevReset() {
+  return window['go']['main']['App']['DevReset']();
+}
+
 export function DevSeed() {
   return window['go']['main']['App']['DevSeed']();
 }
 
+export function EnrollmentDelete(arg1) {
+  return window['go']['main']['App']['EnrollmentDelete'](arg1);
+}
+
 export function Greet(arg1) {
   return window['go']['main']['App']['Greet'](arg1);
+}
+
+export function InvoiceDeleteDraft(arg1) {
+  return window['go']['main']['App']['InvoiceDeleteDraft'](arg1);
+}
+
+export function InvoiceGenerateDrafts(arg1, arg2) {
+  return window['go']['main']['App']['InvoiceGenerateDrafts'](arg1, arg2);
+}
+
+export function InvoiceGet(arg1) {
+  return window['go']['main']['App']['InvoiceGet'](arg1);
+}
+
+export function InvoiceListDrafts(arg1, arg2) {
+  return window['go']['main']['App']['InvoiceListDrafts'](arg1, arg2);
 }
 
 export function Ping() {

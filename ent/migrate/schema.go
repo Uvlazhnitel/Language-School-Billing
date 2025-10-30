@@ -78,6 +78,97 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "enrollment_student_id_course_id",
+				Unique:  true,
+				Columns: []*schema.Column{EnrollmentsColumns[7], EnrollmentsColumns[6]},
+			},
+		},
+	}
+	// InvoicesColumns holds the columns for the "invoices" table.
+	InvoicesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "period_year", Type: field.TypeInt},
+		{Name: "period_month", Type: field.TypeInt},
+		{Name: "total_amount", Type: field.TypeFloat64, Default: 0},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "issued", "paid", "canceled"}, Default: "draft"},
+		{Name: "number", Type: field.TypeString, Nullable: true},
+		{Name: "student_id", Type: field.TypeInt},
+	}
+	// InvoicesTable holds the schema information for the "invoices" table.
+	InvoicesTable = &schema.Table{
+		Name:       "invoices",
+		Columns:    InvoicesColumns,
+		PrimaryKey: []*schema.Column{InvoicesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "invoices_students_invoices",
+				Columns:    []*schema.Column{InvoicesColumns[6]},
+				RefColumns: []*schema.Column{StudentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "invoice_student_id_period_year_period_month",
+				Unique:  true,
+				Columns: []*schema.Column{InvoicesColumns[6], InvoicesColumns[1], InvoicesColumns[2]},
+			},
+		},
+	}
+	// InvoiceLinesColumns holds the columns for the "invoice_lines" table.
+	InvoiceLinesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "description", Type: field.TypeString},
+		{Name: "qty", Type: field.TypeInt},
+		{Name: "unit_price", Type: field.TypeFloat64},
+		{Name: "amount", Type: field.TypeFloat64},
+		{Name: "enrollment_id", Type: field.TypeInt},
+		{Name: "invoice_id", Type: field.TypeInt},
+	}
+	// InvoiceLinesTable holds the schema information for the "invoice_lines" table.
+	InvoiceLinesTable = &schema.Table{
+		Name:       "invoice_lines",
+		Columns:    InvoiceLinesColumns,
+		PrimaryKey: []*schema.Column{InvoiceLinesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "invoice_lines_enrollments_invoice_lines",
+				Columns:    []*schema.Column{InvoiceLinesColumns[5]},
+				RefColumns: []*schema.Column{EnrollmentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "invoice_lines_invoices_lines",
+				Columns:    []*schema.Column{InvoiceLinesColumns[6]},
+				RefColumns: []*schema.Column{InvoicesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
+	// PriceOverridesColumns holds the columns for the "price_overrides" table.
+	PriceOverridesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "valid_from", Type: field.TypeTime},
+		{Name: "valid_to", Type: field.TypeTime, Nullable: true},
+		{Name: "lesson_price", Type: field.TypeFloat64, Nullable: true},
+		{Name: "subscription_price", Type: field.TypeFloat64, Nullable: true},
+		{Name: "enrollment_id", Type: field.TypeInt},
+	}
+	// PriceOverridesTable holds the schema information for the "price_overrides" table.
+	PriceOverridesTable = &schema.Table{
+		Name:       "price_overrides",
+		Columns:    PriceOverridesColumns,
+		PrimaryKey: []*schema.Column{PriceOverridesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "price_overrides_enrollments_price_overrides",
+				Columns:    []*schema.Column{PriceOverridesColumns[5]},
+				RefColumns: []*schema.Column{EnrollmentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 	}
 	// SettingsColumns holds the columns for the "settings" table.
 	SettingsColumns = []*schema.Column{
@@ -118,6 +209,9 @@ var (
 		AttendanceMonthsTable,
 		CoursesTable,
 		EnrollmentsTable,
+		InvoicesTable,
+		InvoiceLinesTable,
+		PriceOverridesTable,
 		SettingsTable,
 		StudentsTable,
 	}
@@ -126,4 +220,8 @@ var (
 func init() {
 	EnrollmentsTable.ForeignKeys[0].RefTable = CoursesTable
 	EnrollmentsTable.ForeignKeys[1].RefTable = StudentsTable
+	InvoicesTable.ForeignKeys[0].RefTable = StudentsTable
+	InvoiceLinesTable.ForeignKeys[0].RefTable = EnrollmentsTable
+	InvoiceLinesTable.ForeignKeys[1].RefTable = InvoicesTable
+	PriceOverridesTable.ForeignKeys[0].RefTable = EnrollmentsTable
 }

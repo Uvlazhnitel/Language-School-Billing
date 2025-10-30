@@ -1,74 +1,123 @@
-/* General Styles */
-.container {
-    padding: 16px;
+/* Цветовые токены */
+:root{
+    --bg:#ffffff;
+    --text:#111827;
+    --muted:#6b7280;
+  
+    --panel-bg:#ffffff;
+    --panel-border:#e5e7eb;
+  
+    --thead-bg:#f3f4f6;
+    --row-alt:#fafafa;
+  
+    --msg-bg:#ecfeff;      /* подсказки/хинты */
+    --msg-border:#38bdf8;
+    --msg-text:#0c4a6e;
+  
+    --btn-bg:#111827;
+    --btn-text:#ffffff;
+    --btn-border:#111827;
+  
+    --input-bg:#ffffff;
+    --input-text:#111827;
+    --input-border:#d1d5db;
+    --focus:#3b82f6;
+  }
+  
+  /* Тёмная тема */
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0b1015;
+      --text:#e5e7eb;
+      --muted:#9ca3af;
+  
+      --panel-bg:#111827;
+      --panel-border:#374151;
+  
+      --thead-bg:#1f2937;
+      --row-alt:#0f172a;
+  
+      --msg-bg:#0b3b4a;
+      --msg-border:#38bdf8;
+      --msg-text:#e6f9ff;
+  
+      --btn-bg:#2563eb;
+      --btn-text:#ffffff;
+      --btn-border:#1d4ed8;
+  
+      --input-bg:#0f172a;
+      --input-text:#e5e7eb;
+      --input-border:#374151;
+      --focus:#60a5fa;
+    }
+  }
+  
+  /* База */
+  html,body,#root{height:100%}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
     font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-}
-
-/* Header Styles */
-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 12px;
-}
-
-/* Controls Section */
-.controls {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-/* Table Styles */
-table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-th, td {
-    border-bottom: 1px solid #e5e7eb;
-    padding: 8px;
-}
-
-th {
-    text-align: left;
-    background: #f9fafb;
-}
-
-/* Message Box */
-.msg {
-    background: #ecfeff;
-    border: 1px solid #bae6fd;
-    padding: 8px;
-    margin-bottom: 10px;
-}
-
-/* Empty State */
-.empty {
-    color: #6b7280;
-    padding: 16px;
-    border: 1px dashed #e5e7eb;
-}
-
-/* Button Styles */
-button {
-    padding: 6px 10px;
-    border: 1px solid #d1d5db;
-    background: #fff;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #f9fafb;
-}
-
-/* Form Elements */
-select,
-input[type="number"] {
-    padding: 6px;
-    border: 1px solid #d1d5db;
-    border-radius: 6px;
-    background: #fff;
-}
+    -webkit-font-smoothing:antialiased;
+    -moz-osx-font-smoothing:grayscale;
+  }
+  .container{padding:16px}
+  
+  /* Вкладки/хедер */
+  .tabs{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+  .tabs .spacer{flex:1}
+  .tabs button{
+    padding:6px 10px;border:1px solid var(--panel-border);
+    background:var(--panel-bg);color:var(--text);border-radius:6px;cursor:pointer
+  }
+  .tabs button.active{background:var(--thead-bg)}
+  .monthpickers select{margin-left:8px}
+  
+  /* Кнопки */
+  button{
+    padding:6px 10px;border:1px solid var(--btn-border);
+    background:var(--btn-bg); color:var(--btn-text);
+    border-radius:8px; cursor:pointer
+  }
+  button:hover{filter:brightness(1.05)}
+  button:active{transform:translateY(1px)}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  
+  /* Поля ввода/селекты */
+  input[type=number], select{
+    padding:6px 8px;border:1px solid var(--input-border);
+    background:var(--input-bg);color:var(--input-text);
+    border-radius:8px; outline:none
+  }
+  input[type=number]:focus, select:focus, button:focus-visible{
+    box-shadow:0 0 0 3px color-mix(in oklab, var(--focus) 40%, transparent);
+  }
+  
+  /* Таблицы */
+  table{width:100%;border-collapse:collapse;background:var(--panel-bg);border:1px solid var(--panel-border);border-radius:8px;overflow:hidden}
+  th,td{padding:10px;border-bottom:1px solid var(--panel-border)}
+  th{background:var(--thead-bg);text-align:left;color:var(--text)}
+  tbody tr:nth-child(even){background:var(--row-alt)}
+  tfoot td{font-weight:600}
+  
+  /* Сообщения/подсказки (hint) */
+  .msg{
+    background:var(--msg-bg); color:var(--msg-text);
+    border:1px solid var(--msg-border);
+    padding:10px; border-radius:8px; margin-bottom:12px
+  }
+  
+  /* Панели (инвойс, карточки) */
+  .panel{
+    background:var(--panel-bg); color:var(--text);
+    border:1px solid var(--panel-border);
+    border-radius:10px; padding:12px; margin-top:12px;
+    box-shadow:0 1px 2px rgba(0,0,0,0.05)
+  }
+  
+  /* Прочее */
+  header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .empty{color:var(--muted);padding:16px;border:1px dashed var(--panel-border);border-radius:8px;background:var(--panel-bg)}
+  

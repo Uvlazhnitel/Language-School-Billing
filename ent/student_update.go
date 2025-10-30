@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"langschool/ent/enrollment"
+	"langschool/ent/invoice"
 	"langschool/ent/predicate"
 	"langschool/ent/student"
 
@@ -113,6 +114,21 @@ func (_u *StudentUpdate) AddEnrollments(v ...*Enrollment) *StudentUpdate {
 	return _u.AddEnrollmentIDs(ids...)
 }
 
+// AddInvoiceIDs adds the "invoices" edge to the Invoice entity by IDs.
+func (_u *StudentUpdate) AddInvoiceIDs(ids ...int) *StudentUpdate {
+	_u.mutation.AddInvoiceIDs(ids...)
+	return _u
+}
+
+// AddInvoices adds the "invoices" edges to the Invoice entity.
+func (_u *StudentUpdate) AddInvoices(v ...*Invoice) *StudentUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInvoiceIDs(ids...)
+}
+
 // Mutation returns the StudentMutation object of the builder.
 func (_u *StudentUpdate) Mutation() *StudentMutation {
 	return _u.mutation
@@ -137,6 +153,27 @@ func (_u *StudentUpdate) RemoveEnrollments(v ...*Enrollment) *StudentUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveEnrollmentIDs(ids...)
+}
+
+// ClearInvoices clears all "invoices" edges to the Invoice entity.
+func (_u *StudentUpdate) ClearInvoices() *StudentUpdate {
+	_u.mutation.ClearInvoices()
+	return _u
+}
+
+// RemoveInvoiceIDs removes the "invoices" edge to Invoice entities by IDs.
+func (_u *StudentUpdate) RemoveInvoiceIDs(ids ...int) *StudentUpdate {
+	_u.mutation.RemoveInvoiceIDs(ids...)
+	return _u
+}
+
+// RemoveInvoices removes "invoices" edges to Invoice entities.
+func (_u *StudentUpdate) RemoveInvoices(v ...*Invoice) *StudentUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInvoiceIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -228,6 +265,51 @@ func (_u *StudentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.InvoicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.InvoicesTable,
+			Columns: []string{student.InvoicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invoice.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInvoicesIDs(); len(nodes) > 0 && !_u.mutation.InvoicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.InvoicesTable,
+			Columns: []string{student.InvoicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invoice.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InvoicesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.InvoicesTable,
+			Columns: []string{student.InvoicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invoice.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -340,6 +422,21 @@ func (_u *StudentUpdateOne) AddEnrollments(v ...*Enrollment) *StudentUpdateOne {
 	return _u.AddEnrollmentIDs(ids...)
 }
 
+// AddInvoiceIDs adds the "invoices" edge to the Invoice entity by IDs.
+func (_u *StudentUpdateOne) AddInvoiceIDs(ids ...int) *StudentUpdateOne {
+	_u.mutation.AddInvoiceIDs(ids...)
+	return _u
+}
+
+// AddInvoices adds the "invoices" edges to the Invoice entity.
+func (_u *StudentUpdateOne) AddInvoices(v ...*Invoice) *StudentUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddInvoiceIDs(ids...)
+}
+
 // Mutation returns the StudentMutation object of the builder.
 func (_u *StudentUpdateOne) Mutation() *StudentMutation {
 	return _u.mutation
@@ -364,6 +461,27 @@ func (_u *StudentUpdateOne) RemoveEnrollments(v ...*Enrollment) *StudentUpdateOn
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveEnrollmentIDs(ids...)
+}
+
+// ClearInvoices clears all "invoices" edges to the Invoice entity.
+func (_u *StudentUpdateOne) ClearInvoices() *StudentUpdateOne {
+	_u.mutation.ClearInvoices()
+	return _u
+}
+
+// RemoveInvoiceIDs removes the "invoices" edge to Invoice entities by IDs.
+func (_u *StudentUpdateOne) RemoveInvoiceIDs(ids ...int) *StudentUpdateOne {
+	_u.mutation.RemoveInvoiceIDs(ids...)
+	return _u
+}
+
+// RemoveInvoices removes "invoices" edges to Invoice entities.
+func (_u *StudentUpdateOne) RemoveInvoices(v ...*Invoice) *StudentUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveInvoiceIDs(ids...)
 }
 
 // Where appends a list predicates to the StudentUpdate builder.
@@ -485,6 +603,51 @@ func (_u *StudentUpdateOne) sqlSave(ctx context.Context) (_node *Student, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.InvoicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.InvoicesTable,
+			Columns: []string{student.InvoicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invoice.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedInvoicesIDs(); len(nodes) > 0 && !_u.mutation.InvoicesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.InvoicesTable,
+			Columns: []string{student.InvoicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invoice.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.InvoicesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.InvoicesTable,
+			Columns: []string{student.InvoicesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(invoice.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -4,10 +4,13 @@ package ent
 
 import (
 	"context"
+	"database/sql/driver"
 	"fmt"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
+	"langschool/ent/invoiceline"
 	"langschool/ent/predicate"
+	"langschool/ent/priceoverride"
 	"langschool/ent/student"
 	"math"
 
@@ -20,12 +23,14 @@ import (
 // EnrollmentQuery is the builder for querying Enrollment entities.
 type EnrollmentQuery struct {
 	config
-	ctx         *QueryContext
-	order       []enrollment.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.Enrollment
-	withStudent *StudentQuery
-	withCourse  *CourseQuery
+	ctx                *QueryContext
+	order              []enrollment.OrderOption
+	inters             []Interceptor
+	predicates         []predicate.Enrollment
+	withStudent        *StudentQuery
+	withCourse         *CourseQuery
+	withInvoiceLines   *InvoiceLineQuery
+	withPriceOverrides *PriceOverrideQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -99,6 +104,50 @@ func (_q *EnrollmentQuery) QueryCourse() *CourseQuery {
 			sqlgraph.From(enrollment.Table, enrollment.FieldID, selector),
 			sqlgraph.To(course.Table, course.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, enrollment.CourseTable, enrollment.CourseColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryInvoiceLines chains the current query on the "invoice_lines" edge.
+func (_q *EnrollmentQuery) QueryInvoiceLines() *InvoiceLineQuery {
+	query := (&InvoiceLineClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(enrollment.Table, enrollment.FieldID, selector),
+			sqlgraph.To(invoiceline.Table, invoiceline.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, enrollment.InvoiceLinesTable, enrollment.InvoiceLinesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryPriceOverrides chains the current query on the "price_overrides" edge.
+func (_q *EnrollmentQuery) QueryPriceOverrides() *PriceOverrideQuery {
+	query := (&PriceOverrideClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(enrollment.Table, enrollment.FieldID, selector),
+			sqlgraph.To(priceoverride.Table, priceoverride.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, enrollment.PriceOverridesTable, enrollment.PriceOverridesColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -293,13 +342,15 @@ func (_q *EnrollmentQuery) Clone() *EnrollmentQuery {
 		return nil
 	}
 	return &EnrollmentQuery{
-		config:      _q.config,
-		ctx:         _q.ctx.Clone(),
-		order:       append([]enrollment.OrderOption{}, _q.order...),
-		inters:      append([]Interceptor{}, _q.inters...),
-		predicates:  append([]predicate.Enrollment{}, _q.predicates...),
-		withStudent: _q.withStudent.Clone(),
-		withCourse:  _q.withCourse.Clone(),
+		config:             _q.config,
+		ctx:                _q.ctx.Clone(),
+		order:              append([]enrollment.OrderOption{}, _q.order...),
+		inters:             append([]Interceptor{}, _q.inters...),
+		predicates:         append([]predicate.Enrollment{}, _q.predicates...),
+		withStudent:        _q.withStudent.Clone(),
+		withCourse:         _q.withCourse.Clone(),
+		withInvoiceLines:   _q.withInvoiceLines.Clone(),
+		withPriceOverrides: _q.withPriceOverrides.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -325,6 +376,28 @@ func (_q *EnrollmentQuery) WithCourse(opts ...func(*CourseQuery)) *EnrollmentQue
 		opt(query)
 	}
 	_q.withCourse = query
+	return _q
+}
+
+// WithInvoiceLines tells the query-builder to eager-load the nodes that are connected to
+// the "invoice_lines" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *EnrollmentQuery) WithInvoiceLines(opts ...func(*InvoiceLineQuery)) *EnrollmentQuery {
+	query := (&InvoiceLineClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withInvoiceLines = query
+	return _q
+}
+
+// WithPriceOverrides tells the query-builder to eager-load the nodes that are connected to
+// the "price_overrides" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *EnrollmentQuery) WithPriceOverrides(opts ...func(*PriceOverrideQuery)) *EnrollmentQuery {
+	query := (&PriceOverrideClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withPriceOverrides = query
 	return _q
 }
 
@@ -406,9 +479,11 @@ func (_q *EnrollmentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*E
 	var (
 		nodes       = []*Enrollment{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [4]bool{
 			_q.withStudent != nil,
 			_q.withCourse != nil,
+			_q.withInvoiceLines != nil,
+			_q.withPriceOverrides != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -438,6 +513,20 @@ func (_q *EnrollmentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*E
 	if query := _q.withCourse; query != nil {
 		if err := _q.loadCourse(ctx, query, nodes, nil,
 			func(n *Enrollment, e *Course) { n.Edges.Course = e }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withInvoiceLines; query != nil {
+		if err := _q.loadInvoiceLines(ctx, query, nodes,
+			func(n *Enrollment) { n.Edges.InvoiceLines = []*InvoiceLine{} },
+			func(n *Enrollment, e *InvoiceLine) { n.Edges.InvoiceLines = append(n.Edges.InvoiceLines, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withPriceOverrides; query != nil {
+		if err := _q.loadPriceOverrides(ctx, query, nodes,
+			func(n *Enrollment) { n.Edges.PriceOverrides = []*PriceOverride{} },
+			func(n *Enrollment, e *PriceOverride) { n.Edges.PriceOverrides = append(n.Edges.PriceOverrides, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -499,6 +588,66 @@ func (_q *EnrollmentQuery) loadCourse(ctx context.Context, query *CourseQuery, n
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
+	}
+	return nil
+}
+func (_q *EnrollmentQuery) loadInvoiceLines(ctx context.Context, query *InvoiceLineQuery, nodes []*Enrollment, init func(*Enrollment), assign func(*Enrollment, *InvoiceLine)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Enrollment)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(invoiceline.FieldEnrollmentID)
+	}
+	query.Where(predicate.InvoiceLine(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(enrollment.InvoiceLinesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.EnrollmentID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "enrollment_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *EnrollmentQuery) loadPriceOverrides(ctx context.Context, query *PriceOverrideQuery, nodes []*Enrollment, init func(*Enrollment), assign func(*Enrollment, *PriceOverride)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Enrollment)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(priceoverride.FieldEnrollmentID)
+	}
+	query.Where(predicate.PriceOverride(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(enrollment.PriceOverridesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.EnrollmentID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "enrollment_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
 	}
 	return nil
 }
