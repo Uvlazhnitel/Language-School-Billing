@@ -120,3 +120,5 @@
   header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
   .controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
   .empty{color:var(--muted);padding:16px;border:1px dashed var(--panel-border);border-radius:8px;background:var(--panel-bg)}
+
+  
