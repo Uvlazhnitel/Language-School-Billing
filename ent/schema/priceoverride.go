@@ -20,6 +20,6 @@ func (PriceOverride) Fields() []ent.Field {
 
 func (PriceOverride) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("enrollment", Enrollment.Type).Ref("price_overrides").Unique().Field("enrollment_id"),
+		edge.From("enrollment", Enrollment.Type).Ref("price_overrides").Required().Field("enrollment_id"),
 	}
 }

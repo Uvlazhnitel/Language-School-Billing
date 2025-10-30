@@ -16,19 +16,19 @@ func (Invoice) Fields() []ent.Field {
 		field.Int("period_month"),
 		field.Float("total_amount").Default(0),
 		field.Enum("status").Values("draft", "issued", "paid", "canceled").Default("draft"),
-		field.String("number").Nillable().Optional(), // заполнится на этапе "выставления"
+		field.String("number").Nillable().Optional(),
 	}
 }
 
 func (Invoice) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("student", Student.Type).Ref("invoices").Unique().Field("student_id"),
+		edge.From("student", Student.Type).Ref("invoices").Required().Field("student_id"),
 		edge.To("lines", InvoiceLine.Type),
 	}
 }
 
 func (Invoice) Indexes() []ent.Index {
 	return []ent.Index{
-		index.Fields("student_id", "period_year", "period_month").Unique(), // один инвойс на ученика/месяц
+		index.Fields("student_id", "period_year", "period_month").Unique(),
 	}
 }
