@@ -1,19 +1,39 @@
-# README
+# Language School Billing (Go + Wails)
 
-## About
+Single-user desktop app for a language school owner: **students, enrollments, monthly attendance, invoices (PDF)**.  
+Stack: **Go 1.22+, Wails v2, ent, SQLite, gofpdf**.
 
-This is the official Wails React-TS template.
+## Features (current)
+- Students / Courses / Enrollments (ent schemas; demo data in app).
+- **Monthly attendance** for per-lesson billing: quick edit, `+1 to all`, schedule hints, lock month.
+- **Invoices**: generate drafts from attendance/subscriptions → **issue** with numbering `PREFIX-YYYYMM-SEQ` → **PDF** saved under `~/LangSchool/Invoices/YYYY/MM/`.
+- App folders: `~/LangSchool/{Data,Backups,Invoices,Exports,Fonts}`.
 
-You can configure the project by editing `wails.json`. More information about the project settings can be found
-here: https://wails.io/docs/reference/project-config
+## Quick start
 
-## Live Development
+`git clone https://github.com/Uvlazhnitel/Language-School-Billing.git
+cd Language-School-Billing
+go generate ./ent && go mod download
+cd frontend && npm i && npm run build && cd ..
+wails dev`
 
-To run in live development mode, run `wails dev` in the project directory. This will run a Vite development
-server that will provide very fast hot reload of your frontend changes. If you want to develop in a browser
-and have access to your Go methods, there is also a dev server that runs on http://localhost:34115. Connect
-to this in your browser, and you can call your Go code from devtools.
+Fonts (once, for Cyrillic PDF)
 
-## Building
+Place DejaVuSans.ttf and DejaVuSans-Bold.ttf into:
+`~/LangSchool/Fonts/`
 
-To build a redistributable, production mode package, use `wails build`.
+Usage
+
+  1. Attendance tab → fill counts (or use Demo data) → lock month if needed.
+  
+  2. Invoices tab → Generate drafts → Issue (or Issue all).
+  PDFs appear at ~/LangSchool/Invoices/<YYYY>/<MM>/<NUMBER>.pdf.
+
+Troubleshooting
+
+  * Broken/empty PDF text → check the two DejaVu TTF files in ~/LangSchool/Fonts/.
+  
+  * No drafts → fill attendance for the month or add subscriptions.
+  
+  * Wails runtime issues → run wails doctor and install suggested deps.
+
