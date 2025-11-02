@@ -193,7 +193,7 @@ var (
 		{Name: "invoice_day_of_month", Type: field.TypeInt, Default: 1},
 		{Name: "auto_issue", Type: field.TypeBool, Default: false},
 		{Name: "currency", Type: field.TypeString, Default: "EUR"},
-		{Name: "locale", Type: field.TypeString, Default: "ru-RU"},
+		{Name: "locale", Type: field.TypeString, Default: "en-US"},
 	}
 	// SettingsTable holds the schema information for the "settings" table.
 	SettingsTable = &schema.Table{
