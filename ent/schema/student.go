@@ -20,7 +20,7 @@ func (Student) Fields() []ent.Field {
 
 func (Student) Edges() []ent.Edge {
   return []ent.Edge{
-    edge.To("enrollments", Enrollment.Type), // инверс к Enrollment.student
-    edge.To("invoices",    Invoice.Type),    // инверс к Invoice.student
+    edge.To("enrollments", Enrollment.Type), 
+    edge.To("invoices",    Invoice.Type),    
   }
 }

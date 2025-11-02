@@ -23,27 +23,27 @@ func (Enrollment) Fields() []ent.Field {
 
 func (Enrollment) Edges() []ent.Edge {
   return []ent.Edge{
-    // ВЛАДЕЛЕЦ FK: FK хранится в таблице enrollment -> edge.From + Field + Required
+    // OWNER FK: The FK is stored in the enrollment table -> edge.From + Field + Required
     edge.From("student", Student.Type).
       Ref("enrollments").
       Field("student_id").
       Required().
-      Unique(), // у одного enrollment ровно 1 student
+      Unique(), // one enrollment has exactly 1 student
 
     edge.From("course", Course.Type).
       Ref("enrollments").
       Field("course_id").
       Required().
-      Unique(), // у одного enrollment ровно 1 course
+      Unique(), // one enrollment has exactly 1 course
 
-    // Инверсные стороны к владельцам FK из других таблиц:
-    edge.To("invoice_lines",  InvoiceLine.Type),  // инверс к InvoiceLine.enrollment
-    edge.To("price_overrides", PriceOverride.Type), // инверс к PriceOverride.enrollment
+    // Inverse sides to the FK owners from other tables:
+    edge.To("invoice_lines",  InvoiceLine.Type),  // inverse to InvoiceLine.enrollment
+    edge.To("price_overrides", PriceOverride.Type), // inverse to PriceOverride.enrollment
   }
 }
 
 func (Enrollment) Indexes() []ent.Index {
   return []ent.Index{
-    index.Fields("student_id", "course_id").Unique(), // уникальная пара student+course
+    index.Fields("student_id", "course_id").Unique(), // unique pair student+course
   }
 }

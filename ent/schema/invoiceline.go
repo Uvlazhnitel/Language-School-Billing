@@ -21,14 +21,12 @@ func (InvoiceLine) Fields() []ent.Field {
 
 func (InvoiceLine) Edges() []ent.Edge {
   return []ent.Edge{
-    // ВЛАДЕЛЕЦ FK: строка принадлежит одному счету (M:1) — обязываем и уникализируем ссылку в рамках ребра
     edge.From("invoice", Invoice.Type).
       Ref("lines").
       Field("invoice_id").
       Required().
       Unique(),
 
-    // ВЛАДЕЛЕЦ FK: строка относится к одному зачислению (M:1)
     edge.From("enrollment", Enrollment.Type).
       Ref("invoice_lines").
       Field("enrollment_id").
