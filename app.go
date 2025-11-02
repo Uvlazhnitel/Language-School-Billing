@@ -79,7 +79,7 @@ func (a *App) startup(ctx context.Context) {
 		}
 	}
 
-	// init services
+	// initialize services
 	a.att = attendance.New(a.db.Ent)
 	a.inv = invsvc.New(a.db.Ent)
 }
@@ -158,7 +158,7 @@ func (a *App) DevSeed() (int, error) {
 		Where(enrollment.StudentIDEQ(sAnna.ID), enrollment.CourseIDEQ(cA2.ID)).
 		Only(ctx); err != nil {
 		_, _ = db.Enrollment.Create().
-			SetStudentID(sAnna.ID).SetCourseID(cA2.ID).
+			SetStudentID(sAnna.ID).SetCourseID(cA2.ID.
 			SetBillingMode("subscription").SetStartDate(now).Save(ctx)
 	}
 
@@ -269,7 +269,7 @@ func (a *App) AttendanceSetLocked(year, month int, courseID *int, lock bool) (in
 	return a.att.SetLocked(a.ctx, year, month, courseID, lock)
 }
 
-// ---------- Invoice bindings ----------
+// ---------- Invoice issuing & PDF bindings ----------
 
 type InvoiceListItem = invsvc.ListItem
 type InvoiceDTO = invsvc.InvoiceDTO
@@ -288,4 +288,32 @@ func (a *App) InvoiceGet(id int) (*InvoiceDTO, error) {
 
 func (a *App) InvoiceDeleteDraft(id int) error {
 	return a.inv.DeleteDraft(a.ctx, id)
+}
+
+// Result of "issue one invoice"
+type IssueResult struct {
+	Number  string `json:"number"`
+	PdfPath string `json:"pdfPath"`
+}
+
+// Result of "issue all drafts for the period"
+type IssueAllResult struct {
+	Count    int      `json:"count"`
+	PdfPaths []string `json:"pdfPaths"`
+}
+
+func (a *App) InvoiceIssue(id int) (*IssueResult, error) {
+	num, path, err := a.inv.Issue(a.ctx, id, a.dirs.Invoices, filepath.Join(a.dirs.Base, "Fonts"))
+	if err != nil {
+		return nil, err
+	}
+	return &IssueResult{Number: num, PdfPath: path}, nil
+}
+
+func (a *App) InvoiceIssueAll(year, month int) (*IssueAllResult, error) {
+	cnt, paths, err := a.inv.IssueAll(a.ctx, year, month, a.dirs.Invoices, filepath.Join(a.dirs.Base, "Fonts"))
+	if err != nil {
+		return nil, err
+	}
+	return &IssueAllResult{Count: cnt, PdfPaths: paths}, nil
 }

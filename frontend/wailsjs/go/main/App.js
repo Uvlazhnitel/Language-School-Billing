@@ -58,6 +58,14 @@ export function InvoiceGet(arg1) {
   return window['go']['main']['App']['InvoiceGet'](arg1);
 }
 
+export function InvoiceIssue(arg1) {
+  return window['go']['main']['App']['InvoiceIssue'](arg1);
+}
+
+export function InvoiceIssueAll(arg1, arg2) {
+  return window['go']['main']['App']['InvoiceIssueAll'](arg1, arg2);
+}
+
 export function InvoiceListDrafts(arg1, arg2) {
   return window['go']['main']['App']['InvoiceListDrafts'](arg1, arg2);
 }

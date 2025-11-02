@@ -131,3 +131,36 @@ export namespace invoice {
 
 }
 
+export namespace main {
+	
+	export class IssueAllResult {
+	    count: number;
+	    pdfPaths: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new IssueAllResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.count = source["count"];
+	        this.pdfPaths = source["pdfPaths"];
+	    }
+	}
+	export class IssueResult {
+	    number: string;
+	    pdfPath: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new IssueResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.number = source["number"];
+	        this.pdfPath = source["pdfPath"];
+	    }
+	}
+
+}
+
