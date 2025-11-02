@@ -18,6 +18,8 @@ export function AttendanceUpsert(arg1:number,arg2:number,arg3:number,arg4:number
 
 export function BackupNow():Promise<string>;
 
+export function DevClearInvoices(arg1:number,arg2:number):Promise<number>;
+
 export function DevReset():Promise<number>;
 
 export function DevSeed():Promise<number>;
@@ -28,7 +30,9 @@ export function Greet(arg1:string):Promise<string>;
 
 export function InvoiceDeleteDraft(arg1:number):Promise<void>;
 
-export function InvoiceGenerateDrafts(arg1:number,arg2:number):Promise<number>;
+export function InvoiceEnsurePDF(arg1:number):Promise<string>;
+
+export function InvoiceGenerateDrafts(arg1:number,arg2:number):Promise<invoice.GenerateResult>;
 
 export function InvoiceGet(arg1:number):Promise<invoice.InvoiceDTO>;
 

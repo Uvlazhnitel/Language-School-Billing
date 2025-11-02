@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/jung-kurt/gofpdf"
@@ -38,7 +39,7 @@ func GenerateInvoicePDF(ctx context.Context, db *ent.Client, invoiceID int, opt 
 		return "", fmt.Errorf("invoice %d has no number (issue it first)", invoiceID)
 	}
 
-	// Organization settings
+	// --- Organization settings ---
 	st, _ := db.Settings.Query().Where(settings.SingletonIDEQ(1)).Only(ctx)
 	org := struct {
 		Name, Address, Prefix, Currency, Locale string
@@ -63,32 +64,61 @@ func GenerateInvoicePDF(ctx context.Context, db *ent.Client, invoiceID int, opt 
 		org.Locale = opt.Locale
 	}
 
-	// Lines
+	// --- Path normalization ---
+	outBase := strings.TrimSpace(opt.OutBaseDir)
+	if outBase == "" {
+		return "", fmt.Errorf("OutBaseDir is empty")
+	}
+	if strings.HasPrefix(outBase, "Users/") { // common macOS case
+		outBase = "/" + outBase
+	}
+	if !filepath.IsAbs(outBase) {
+		if abs, err := filepath.Abs(outBase); err == nil {
+			outBase = abs
+		}
+	}
+	outBase = filepath.Clean(outBase)
+
+	fontsDir := strings.TrimSpace(opt.FontsDir)
+	if fontsDir == "" {
+		return "", fmt.Errorf("FontsDir is empty")
+	}
+	if strings.HasPrefix(fontsDir, "Users/") {
+		fontsDir = "/" + fontsDir
+	}
+	if !filepath.IsAbs(fontsDir) {
+		if abs, err := filepath.Abs(fontsDir); err == nil {
+			fontsDir = abs
+		}
+	}
+	fontsDir = filepath.Clean(fontsDir)
+
+	// --- Lines ---
 	lines, err := db.InvoiceLine.Query().Where(invoiceline.InvoiceIDEQ(iv.ID)).All(ctx)
 	if err != nil {
 		return "", err
 	}
 
-	// Directory YYYY/MM and file name <NUMBER>.pdf
+	// --- Output path: YYYY/MM/NUMBER.pdf ---
 	year, month := iv.PeriodYear, iv.PeriodMonth
-	dir := filepath.Join(opt.OutBaseDir, fmt.Sprintf("%04d", year), fmt.Sprintf("%02d", month))
+	dir := filepath.Join(outBase, fmt.Sprintf("%04d", year), fmt.Sprintf("%02d", month))
 	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return "", err
+		return "", fmt.Errorf("create dir %s: %w", dir, err)
 	}
-	filename := fmt.Sprintf("%s.pdf", *iv.Number)
-	outPath := filepath.Join(dir, filename)
+	outPath := filepath.Join(dir, fmt.Sprintf("%s.pdf", *iv.Number))
 
-	// PDF
-	pdf := gofpdf.New("P", "mm", "A4", "")
-	// Fonts (required for Cyrillic)
-	reg := filepath.Join(opt.FontsDir, "DejaVuSans.ttf")
-	bld := filepath.Join(opt.FontsDir, "DejaVuSans-Bold.ttf")
+	// --- Fonts (absolute) ---
+	reg := filepath.Join(fontsDir, "DejaVuSans.ttf")
+	bld := filepath.Join(fontsDir, "DejaVuSans-Bold.ttf")
 	if _, err := os.Stat(reg); err != nil {
-		return "", fmt.Errorf("font not found: %s", reg)
+		return "", fmt.Errorf("font not found: %s (%w)", reg, err)
 	}
 	if _, err := os.Stat(bld); err != nil {
-		return "", fmt.Errorf("font not found: %s", bld)
+		return "", fmt.Errorf("font not found: %s (%w)", bld, err)
 	}
+
+	// --- PDF ---
+	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.AddUTF8Font("DejaVu", "", reg)
 	pdf.AddUTF8Font("DejaVu", "B", bld)
 
@@ -116,8 +146,8 @@ func GenerateInvoicePDF(ctx context.Context, db *ent.Client, invoiceID int, opt 
 		pdf.MultiCell(0, 5, org.Address, "", "L", false)
 	}
 
-	pdf.Ln(2)
 	// Client
+	pdf.Ln(2)
 	clientName := ""
 	if iv.Edges.Student != nil {
 		clientName = iv.Edges.Student.FullName
@@ -128,7 +158,7 @@ func GenerateInvoicePDF(ctx context.Context, db *ent.Client, invoiceID int, opt 
 	// Table
 	pdf.Ln(2)
 	pdf.SetFont("DejaVu", "B", 10)
-	w := []float64{90, 20, 30, 30} // Description, Quantity, Price, Amount
+	w := []float64{90, 20, 30, 30}
 	headers := []string{"Description", "Quantity", "Price", "Amount"}
 	for i, h := range headers {
 		align := "L"
@@ -148,6 +178,7 @@ func GenerateInvoicePDF(ctx context.Context, db *ent.Client, invoiceID int, opt 
 		pdf.Ln(-1)
 	}
 
+	// Total
 	pdf.Ln(2)
 	pdf.SetFont("DejaVu", "B", 11)
 	pdf.CellFormat(w[0]+w[1]+w[2], 7, "TOTAL:", "", 0, "R", false, 0, "")
@@ -159,7 +190,7 @@ func GenerateInvoicePDF(ctx context.Context, db *ent.Client, invoiceID int, opt 
 	pdf.CellFormat(0, 5, "Thank you for your timely payment!", "", 1, "C", false, 0, "")
 
 	if err := pdf.OutputFileAndClose(outPath); err != nil {
-		return "", err
+		return "", fmt.Errorf("write pdf %s: %w", outPath, err)
 	}
 	return outPath, nil
 }

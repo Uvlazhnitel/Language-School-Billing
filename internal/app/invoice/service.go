@@ -56,6 +56,13 @@ type InvoiceDTO struct {
 	Lines       []LineDTO `json:"lines"`
 }
 
+type GenerateResult struct {
+	Created           int `json:"created"`           // new drafts
+	Updated           int `json:"updated"`           // rebuilt existing drafts
+	SkippedHasInvoice int `json:"skippedHasInvoice"` // skipped: already issued/paid/canceled
+	SkippedNoLines    int `json:"skippedNoLines"`    // skipped: no lines (0 attendance and/or 0 prices)
+}
+
 // ----- Domain utilities -----
 
 func round2(v float64) float64 { return math.Round(v*100) / 100 }
@@ -122,12 +129,21 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 // ----- Draft generation -----
 
 // GenerateDrafts creates drafts for students for a given period (rebuilds draft on repeated calls)
-func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (int, error) {
+func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult, error) {
+	res := GenerateResult{}
+
+	// all active students
 	studs, err := s.db.Student.Query().Where(student.IsActiveEQ(true)).All(ctx)
 	if err != nil {
-		return 0, err
+		return res, err
 	}
-	created := 0
+	if len(studs) == 0 {
+		// fallback: if the active flag is not set — take all
+		studs, err = s.db.Student.Query().All(ctx)
+		if err != nil {
+			return res, err
+		}
+	}
 
 	for _, st := range studs {
 		ens, err := s.db.Enrollment.Query().
@@ -137,75 +153,90 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (int, error) {
 			continue
 		}
 
-		var lines []*ent.InvoiceLineCreate
+		// collect invoice lines
+		lines := make([]*ent.InvoiceLineCreate, 0, 4)
 		total := 0.0
 
 		for _, en := range ens {
 			if !activeInPeriod(en, y, m) {
 				continue
 			}
+
 			lp, sp := s.resolvePrices(ctx, en, y, m)
 
 			switch en.BillingMode {
 			case "per_lesson":
-				am, _ := s.db.AttendanceMonth.Query().Where(
+				// Query attendance for the month
+				am, err := s.db.AttendanceMonth.Query().Where(
 					attendancemonth.StudentIDEQ(en.StudentID),
 					attendancemonth.CourseIDEQ(en.CourseID),
 					attendancemonth.YearEQ(y),
 					attendancemonth.MonthEQ(m),
 				).Only(ctx)
+
 				qty := 0
-				if am != nil {
+				if err != nil {
+					if !ent.IsNotFound(err) {
+						fmt.Printf("AttendanceMonth query error (student %d, course %d, %04d-%02d): %v\n",
+							en.StudentID, en.CourseID, y, m, err)
+					}
+					// NotFound => qty remains 0
+				} else {
 					qty = am.LessonsCount
 				}
-				if qty <= 0 || lp <= 0 {
-					continue
-				}
-				amt := round2(float64(qty) * lp)
+
+				amount := round2(float64(qty) * lp)
 				desc := fmt.Sprintf("Payment for lessons (%02d.%d), course #%d", m, y, en.CourseID)
+
 				lines = append(lines, s.db.InvoiceLine.Create().
 					SetEnrollmentID(en.ID).
 					SetDescription(desc).
 					SetQty(qty).
 					SetUnitPrice(lp).
-					SetAmount(amt))
-				total += amt
+					SetAmount(amount))
+
+				total += amount
 
 			case "subscription":
+				// Skip if subscription price is invalid
 				if sp <= 0 {
 					continue
 				}
-				amt := round2(sp)
+
+				amount := round2(sp)
 				desc := fmt.Sprintf("Subscription (%02d.%d), course #%d", m, y, en.CourseID)
+
 				lines = append(lines, s.db.InvoiceLine.Create().
 					SetEnrollmentID(en.ID).
 					SetDescription(desc).
-					SetQty(1).
+					SetQty(1). // Subscription is typically a single unit
 					SetUnitPrice(sp).
-					SetAmount(amt))
-				total += amt
+					SetAmount(amount))
+
+				total += amount
+
+			default:
+				// Log unexpected billing mode
+				fmt.Printf("Unexpected billing mode: %s\n", en.BillingMode)
 			}
 		}
 
 		if len(lines) == 0 {
+			res.SkippedNoLines++
 			continue
 		}
 		total = round2(total)
 
+		// Find ANY invoice for the period
 		existing, _ := s.db.Invoice.Query().Where(
 			invoice.StudentIDEQ(st.ID),
 			invoice.PeriodYearEQ(y),
 			invoice.PeriodMonthEQ(m),
-			invoice.StatusEQ("draft"),
 		).Only(ctx)
 
-		if existing != nil {
-			_, _ = s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx)
-			for _, lc := range lines {
-				_, _ = lc.SetInvoiceID(existing.ID).Save(ctx)
-			}
-			_, _ = existing.Update().SetTotalAmount(total).Save(ctx)
-		} else {
+		switch {
+		case existing == nil:
+			// create a new draft
 			inv, err := s.db.Invoice.Create().
 				SetStudentID(st.ID).
 				SetPeriodYear(y).
@@ -217,12 +248,30 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (int, error) {
 				continue
 			}
 			for _, lc := range lines {
-				_, _ = lc.SetInvoiceID(inv.ID).Save(ctx)
+				if _, err := lc.SetInvoiceID(inv.ID).Save(ctx); err != nil {
+					fmt.Printf("InvoiceLine save failed (student %d, period %04d-%02d): %v\n", st.ID, y, m, err)
+				}
 			}
-			created++
+			res.Created++
+
+		case existing.Status == "draft":
+			// rebuild existing draft
+			_, _ = s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx)
+			for _, lc := range lines {
+				if _, err := lc.SetInvoiceID(existing.ID).Save(ctx); err != nil {
+					fmt.Printf("InvoiceLine save failed (rebuild, invoice %d): %v\n", existing.ID, err)
+				}
+			}
+			_, _ = existing.Update().SetTotalAmount(total).Save(ctx)
+			res.Updated++
+
+		default:
+			// already issued/paid/canceled — skip
+			res.SkippedHasInvoice++
 		}
 	}
-	return created, nil
+
+	return res, nil
 }
 
 // ListDrafts — list drafts for a given period
@@ -369,6 +418,9 @@ func (s *Service) Issue(ctx context.Context, id int, outBaseDir, fontsDir string
 	if err != nil {
 		return "", "", err
 	}
+	// LOG
+	fmt.Printf("PDF: generating for invoice %d number=%s out=%s fonts=%s\n", id, number, outBaseDir, fontsDir)
+
 	p, err := pdfgen.GenerateInvoicePDF(ctx, s.db, id, pdfgen.Options{
 		OutBaseDir: outBaseDir,
 		FontsDir:   fontsDir,
@@ -376,8 +428,10 @@ func (s *Service) Issue(ctx context.Context, id int, outBaseDir, fontsDir string
 		Locale:     "",
 	})
 	if err != nil {
+		fmt.Printf("PDF: failed for invoice %d: %v\n", id, err)
 		return "", "", err
 	}
+	fmt.Printf("PDF: done %s\n", p)
 	return number, p, nil
 }
 
@@ -427,9 +481,9 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 	case "draft", "issued", "paid", "canceled":
 		q = q.Where(invoice.StatusEQ(invoice.Status(status)))
 	case "all":
-		// без доп. фильтра
+		// no additional filter
 	default:
-		// по умолчанию draft
+		// default to draft
 		q = q.Where(invoice.StatusEQ("draft"))
 	}
 

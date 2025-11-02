@@ -33,6 +33,24 @@ export namespace attendance {
 
 export namespace invoice {
 	
+	export class GenerateResult {
+	    created: number;
+	    updated: number;
+	    skippedHasInvoice: number;
+	    skippedNoLines: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new GenerateResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.created = source["created"];
+	        this.updated = source["updated"];
+	        this.skippedHasInvoice = source["skippedHasInvoice"];
+	        this.skippedNoLines = source["skippedNoLines"];
+	    }
+	}
 	export class LineDTO {
 	    enrollmentId: number;
 	    description: string;

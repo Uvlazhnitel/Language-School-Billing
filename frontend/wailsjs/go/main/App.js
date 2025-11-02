@@ -30,6 +30,10 @@ export function BackupNow() {
   return window['go']['main']['App']['BackupNow']();
 }
 
+export function DevClearInvoices(arg1, arg2) {
+  return window['go']['main']['App']['DevClearInvoices'](arg1, arg2);
+}
+
 export function DevReset() {
   return window['go']['main']['App']['DevReset']();
 }
@@ -48,6 +52,10 @@ export function Greet(arg1) {
 
 export function InvoiceDeleteDraft(arg1) {
   return window['go']['main']['App']['InvoiceDeleteDraft'](arg1);
+}
+
+export function InvoiceEnsurePDF(arg1) {
+  return window['go']['main']['App']['InvoiceEnsurePDF'](arg1);
 }
 
 export function InvoiceGenerateDrafts(arg1, arg2) {

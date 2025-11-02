@@ -22,19 +22,19 @@ func (InvoiceLine) Fields() []ent.Field {
 
 func (InvoiceLine) Edges() []ent.Edge {
 	return []ent.Edge{
-		// МНОГО строк -> ОДИН счёт (FK хранится в invoice_id у строки)
+		// MANY lines -> ONE invoice (FK in invoice_id of the line)
 		edge.From("invoice", Invoice.Type).
 			Ref("lines").
 			Field("invoice_id").
 			Required().
-			Unique(),
+			Unique(), // IMPORTANT: a line belongs to one invoice
 
-		// МНОГО строк (в разные месяцы) -> ОДНО зачисление (FK enrollment_id)
+		// MANY lines -> ONE enrollment (FK in enrollment_id of the line)
 		edge.From("enrollment", Enrollment.Type).
 			Ref("invoice_lines").
 			Field("enrollment_id").
 			Required().
-			Unique(),
+			Unique(), // IMPORTANT: a line belongs to one enrollment
 	}
 }
 

@@ -7,19 +7,22 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"path/filepath"
+	rt "runtime"
 	"time"
 
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
+	"langschool/ent/invoice"
+	"langschool/ent/invoiceline"
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"langschool/internal/app/attendance"
+
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/infra"
 	"langschool/internal/paths"
-
-	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type App struct {
@@ -55,6 +58,10 @@ func (a *App) startup(ctx context.Context) {
 	}
 	a.db = db
 	log.Println("DB ready")
+
+	if err := a.db.Ent.Schema.Create(a.ctx); err != nil {
+		log.Fatalf("schema migrate failed: %v", err)
+	}
 
 	// Ensure single Settings record with singleton_id=1 exists
 	exists, err := a.db.Ent.Settings.
@@ -129,11 +136,26 @@ func (a *App) DevSeed() (int, error) {
 	// students
 	sAnna, err := db.Student.Query().Where(student.FullNameEQ("Anna K.")).Only(ctx)
 	if err != nil {
-		sAnna, _ = db.Student.Create().SetFullName("Anna K.").SetPhone("+37120000001").SetEmail("anna@example.com").Save(ctx)
+		sAnna, _ = db.Student.Create().
+			SetFullName("Anna K.").
+			SetPhone("+37120000001").
+			SetEmail("anna@example.com").
+			SetIsActive(true). // IMPORTANT
+			Save(ctx)
+	} else {
+		_, _ = sAnna.Update().SetIsActive(true).Save(ctx) // IMPORTANT
 	}
+
 	sDima, err := db.Student.Query().Where(student.FullNameEQ("Dmitry L.")).Only(ctx)
 	if err != nil {
-		sDima, _ = db.Student.Create().SetFullName("Dmitry L.").SetPhone("+37120000002").SetEmail("dima@example.com").Save(ctx)
+		sDima, _ = db.Student.Create().
+			SetFullName("Dmitry L.").
+			SetPhone("+37120000002").
+			SetEmail("dima@example.com").
+			SetIsActive(true). // IMPORTANT
+			Save(ctx)
+	} else {
+		_, _ = sDima.Update().SetIsActive(true).Save(ctx) // IMPORTANT
 	}
 
 	// courses
@@ -193,6 +215,58 @@ func userHome() string {
 		return h
 	}
 	return "."
+}
+
+// fileExists checks if a file exists at the given path.
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+	return err == nil
+}
+
+// dirHasFonts checks that both TTF files are present in dir.
+func dirHasFonts(dir string) bool {
+	return fileExists(filepath.Join(dir, "DejaVuSans.ttf")) &&
+		fileExists(filepath.Join(dir, "DejaVuSans-Bold.ttf"))
+}
+
+// resolveFontsDir tries multiple locations and logs the decision.
+func (a *App) resolveFontsDir() (string, error) {
+	var candidates []string
+
+	// 1) Explicit env override
+	if env := os.Getenv("LS_FONTS_DIR"); env != "" {
+		candidates = append(candidates, env)
+	}
+
+	// 2) Our app data base: ~/LangSchool/Fonts
+	candidates = append(candidates, filepath.Join(a.dirs.Base, "Fonts"))
+
+	// 3) Next to executable
+	if exe, err := os.Executable(); err == nil {
+		exeDir := filepath.Dir(exe)
+		candidates = append(candidates,
+			filepath.Join(exeDir, "Fonts"),
+			filepath.Join(exeDir, "fonts"),
+		)
+	}
+
+	// 4) Current working directory (dev)
+	if wd, err := os.Getwd(); err == nil {
+		candidates = append(candidates,
+			filepath.Join(wd, "Fonts"),
+			filepath.Join(wd, "fonts"),
+		)
+	}
+
+	for _, c := range candidates {
+		if dirHasFonts(c) {
+			log.Printf("resolveFontsDir: using %s", c)
+			return c, nil
+		}
+		log.Printf("resolveFontsDir: not found in %s", c)
+	}
+
+	return "", fmt.Errorf("DejaVuSans.ttf & DejaVuSans-Bold.ttf not found in any known location; set LS_FONTS_DIR or place fonts into ~/LangSchool/Fonts or ./Fonts")
 }
 
 // ---------- Simple diagnostics ----------
@@ -273,8 +347,16 @@ func (a *App) AttendanceSetLocked(year, month int, courseID *int, lock bool) (in
 type InvoiceListItem = invsvc.ListItem
 type InvoiceDTO = invsvc.InvoiceDTO
 
-func (a *App) InvoiceGenerateDrafts(year, month int) (int, error) {
-	return a.inv.GenerateDrafts(a.ctx, year, month)
+func (a *App) InvoiceGenerateDrafts(year, month int) (invsvc.GenerateResult, error) {
+	log.Printf("InvoiceGenerateDrafts called for %04d-%02d", year, month)
+	res, err := a.inv.GenerateDrafts(a.ctx, year, month)
+	if err != nil {
+		log.Printf("InvoiceGenerateDrafts error: %v", err)
+		return res, err
+	}
+	log.Printf("InvoiceGenerateDrafts result: created=%d updated=%d skippedHasInvoice=%d skippedNoLines=%d",
+		res.Created, res.Updated, res.SkippedHasInvoice, res.SkippedNoLines)
+	return res, nil
 }
 
 func (a *App) InvoiceListDrafts(year, month int) ([]InvoiceListItem, error) {
@@ -300,36 +382,103 @@ type IssueAllResult struct {
 	PdfPaths []string `json:"pdfPaths"`
 }
 
-// Список по статусу
+// List by status
 func (a *App) InvoiceList(year, month int, status string) ([]invsvc.ListItem, error) {
 	return a.inv.List(a.ctx, year, month, status)
 }
 
-// Выставить один: возвращаем объект
+// Issue one: return object
 func (a *App) InvoiceIssue(id int) (IssueResult, error) {
-	num, path, err := a.inv.Issue(a.ctx, id, a.dirs.Invoices, filepath.Join(a.dirs.Base, "Fonts"))
+	fonts, err := a.resolveFontsDir()
+	if err != nil {
+		return IssueResult{}, err
+	}
+	num, path, err := a.inv.Issue(a.ctx, id, a.dirs.Invoices, fonts)
 	if err != nil {
 		return IssueResult{}, err
 	}
 	return IssueResult{Number: num, PdfPath: path}, nil
 }
 
-// Выставить все за период
+// Issue all for the period
 func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
-	cnt, paths, err := a.inv.IssueAll(a.ctx, year, month, a.dirs.Invoices, filepath.Join(a.dirs.Base, "Fonts"))
+	fonts, err := a.resolveFontsDir()
+	if err != nil {
+		return IssueAllResult{}, err
+	}
+	cnt, paths, err := a.inv.IssueAll(a.ctx, year, month, a.dirs.Invoices, fonts)
 	if err != nil {
 		return IssueAllResult{}, err
 	}
 	return IssueAllResult{Count: cnt, PdfPaths: paths}, nil
 }
 
-// Открыть файл (PDF) в ОС
+// Open file (PDF) in OS
 func (a *App) OpenFile(path string) error {
-	// на всякий случай приводим к абсолютному пути
 	if abs, err := filepath.Abs(path); err == nil {
 		path = abs
 	}
-	// в Wails v2 открываем URL через браузер
-	runtime.BrowserOpenURL(a.ctx, "file://"+path)
-	return nil
+	if _, err := os.Stat(path); err != nil {
+		return err
+	}
+	var cmd *exec.Cmd
+	switch rt.GOOS {
+	case "darwin":
+		cmd = exec.Command("open", path)
+	case "windows":
+		cmd = exec.Command("cmd", "/C", "start", "", path)
+	default:
+		cmd = exec.Command("xdg-open", path)
+	}
+	return cmd.Start()
+}
+
+func (a *App) InvoiceEnsurePDF(id int) (string, error) {
+	dto, err := a.inv.Get(a.ctx, id)
+	if err != nil {
+		return "", err
+	}
+	if dto.Number == nil || *dto.Number == "" {
+		return "", fmt.Errorf("invoice not issued yet")
+	}
+	path := invsvc.PDFPathByNumber(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number)
+	log.Printf("EnsurePDF: invoice=%d number=%s want=%s", id, *dto.Number, path)
+	if _, err := os.Stat(path); err == nil {
+		return path, nil
+	}
+	fonts, err := a.resolveFontsDir()
+	if err != nil {
+		return "", err
+	}
+	log.Printf("EnsurePDF: regenerating with fonts=%s", fonts)
+	_, p, err := a.inv.Issue(a.ctx, id, a.dirs.Invoices, fonts)
+	if err != nil {
+		return "", err
+	}
+	return p, nil
+}
+
+func (a *App) DevClearInvoices(year, month int) (int, error) {
+	ctx := a.ctx
+	db := a.db.Ent
+
+	// Collect invoice IDs for the period
+	invs, err := db.Invoice.
+		Query().
+		Where(
+			invoice.PeriodYearEQ(year),
+			invoice.PeriodMonthEQ(month),
+		).All(ctx)
+	if err != nil {
+		return 0, err
+	}
+	for _, iv := range invs {
+		if _, err := db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(iv.ID)).Exec(ctx); err != nil {
+			return 0, err
+		}
+		if err := db.Invoice.DeleteOneID(iv.ID).Exec(ctx); err != nil {
+			return 0, err
+		}
+	}
+	return len(invs), nil
 }
