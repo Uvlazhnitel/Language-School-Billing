@@ -103,6 +103,60 @@ func getStudentName(iv *ent.Invoice) string {
 	return ""
 }
 
+// buildPerLessonLine creates an invoice line for per-lesson billing
+func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPrice float64) (*ent.InvoiceLineCreate, float64) {
+	// Query attendance for the month
+	am, err := s.db.AttendanceMonth.Query().Where(
+		attendancemonth.StudentIDEQ(en.StudentID),
+		attendancemonth.CourseIDEQ(en.CourseID),
+		attendancemonth.YearEQ(y),
+		attendancemonth.MonthEQ(m),
+	).Only(ctx)
+
+	qty := 0
+	if err != nil {
+		if !ent.IsNotFound(err) {
+			fmt.Printf("AttendanceMonth query error (student %d, course %d, %04d-%02d): %v\n",
+				en.StudentID, en.CourseID, y, m, err)
+		}
+		// NotFound => qty remains 0
+	} else {
+		qty = am.LessonsCount
+	}
+
+	amount := round2(float64(qty) * lessonPrice)
+	desc := fmt.Sprintf("Payment for lessons (%02d.%d), course #%d", m, y, en.CourseID)
+
+	line := s.db.InvoiceLine.Create().
+		SetEnrollmentID(en.ID).
+		SetDescription(desc).
+		SetQty(qty).
+		SetUnitPrice(lessonPrice).
+		SetAmount(amount)
+
+	return line, amount
+}
+
+// buildSubscriptionLine creates an invoice line for subscription billing
+func (s *Service) buildSubscriptionLine(en *ent.Enrollment, y, m int, subscriptionPrice float64) (*ent.InvoiceLineCreate, float64) {
+	amount := round2(subscriptionPrice)
+	desc := fmt.Sprintf("Subscription (%02d.%d), course #%d", m, y, en.CourseID)
+
+	line := s.db.InvoiceLine.Create().
+		SetEnrollmentID(en.ID).
+		SetDescription(desc).
+		SetQty(1).
+		SetUnitPrice(subscriptionPrice).
+		SetAmount(amount)
+
+	return line, amount
+}
+
+// getSettings retrieves the singleton settings record
+func (s *Service) getSettings(ctx context.Context) (*ent.Settings, error) {
+	return s.db.Settings.Query().Where(settings.SingletonIDEQ(1)).Only(ctx)
+}
+
 // Select prices: override → (course ± discount)
 func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m int) (lessonPrice, subscriptionPrice float64) {
 	lessonPrice, subscriptionPrice = 0, 0
@@ -185,35 +239,8 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 
 			switch en.BillingMode {
 			case BillingPerLesson:
-				// Query attendance for the month
-				am, err := s.db.AttendanceMonth.Query().Where(
-					attendancemonth.StudentIDEQ(en.StudentID),
-					attendancemonth.CourseIDEQ(en.CourseID),
-					attendancemonth.YearEQ(y),
-					attendancemonth.MonthEQ(m),
-				).Only(ctx)
-
-				qty := 0
-				if err != nil {
-					if !ent.IsNotFound(err) {
-						fmt.Printf("AttendanceMonth query error (student %d, course %d, %04d-%02d): %v\n",
-							en.StudentID, en.CourseID, y, m, err)
-					}
-					// NotFound => qty remains 0
-				} else {
-					qty = am.LessonsCount
-				}
-
-				amount := round2(float64(qty) * lp)
-				desc := fmt.Sprintf("Payment for lessons (%02d.%d), course #%d", m, y, en.CourseID)
-
-				lines = append(lines, s.db.InvoiceLine.Create().
-					SetEnrollmentID(en.ID).
-					SetDescription(desc).
-					SetQty(qty).
-					SetUnitPrice(lp).
-					SetAmount(amount))
-
+				line, amount := s.buildPerLessonLine(ctx, en, y, m, lp)
+				lines = append(lines, line)
 				total += amount
 
 			case BillingSubscription:
@@ -221,17 +248,8 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 				if sp <= 0 {
 					continue
 				}
-
-				amount := round2(sp)
-				desc := fmt.Sprintf("Subscription (%02d.%d), course #%d", m, y, en.CourseID)
-
-				lines = append(lines, s.db.InvoiceLine.Create().
-					SetEnrollmentID(en.ID).
-					SetDescription(desc).
-					SetQty(1). // Subscription is typically a single unit
-					SetUnitPrice(sp).
-					SetAmount(amount))
-
+				line, amount := s.buildSubscriptionLine(en, y, m, sp)
+				lines = append(lines, line)
 				total += amount
 
 			default:
@@ -387,7 +405,7 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 		return "", fmt.Errorf("invoice %d is not draft", id)
 	}
 
-	st, err := tx.Settings.Query().Where(settings.SingletonIDEQ(1)).Only(ctx)
+	st, err := s.getSettings(ctx)
 	if err != nil {
 		return "", err
 	}
