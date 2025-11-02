@@ -36,7 +36,7 @@ export type IssueAllResult = { count: number; pdfPaths: string[] };
 export async function genDrafts(year: number, month: number): Promise<GenerateResult> {
   try {
     const result = await InvoiceGenerateDrafts(year, month);
-    return result as GenerateResult; // Explicitly cast to the expected type
+    return result;
   } catch (error) {
     console.error("Error generating drafts:", error);
     throw error; // Re-throw the error after logging
