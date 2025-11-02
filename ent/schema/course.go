@@ -21,6 +21,6 @@ func (Course) Fields() []ent.Field {
 
 func (Course) Edges() []ent.Edge {
   return []ent.Edge{
-    edge.To("enrollments", Enrollment.Type), // инверс к Enrollment.course
+    edge.To("enrollments", Enrollment.Type),
   }
 }

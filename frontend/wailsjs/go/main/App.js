@@ -30,6 +30,10 @@ export function BackupNow() {
   return window['go']['main']['App']['BackupNow']();
 }
 
+export function DevClearInvoices(arg1, arg2) {
+  return window['go']['main']['App']['DevClearInvoices'](arg1, arg2);
+}
+
 export function DevReset() {
   return window['go']['main']['App']['DevReset']();
 }
@@ -50,6 +54,10 @@ export function InvoiceDeleteDraft(arg1) {
   return window['go']['main']['App']['InvoiceDeleteDraft'](arg1);
 }
 
+export function InvoiceEnsurePDF(arg1) {
+  return window['go']['main']['App']['InvoiceEnsurePDF'](arg1);
+}
+
 export function InvoiceGenerateDrafts(arg1, arg2) {
   return window['go']['main']['App']['InvoiceGenerateDrafts'](arg1, arg2);
 }
@@ -58,8 +66,24 @@ export function InvoiceGet(arg1) {
   return window['go']['main']['App']['InvoiceGet'](arg1);
 }
 
+export function InvoiceIssue(arg1) {
+  return window['go']['main']['App']['InvoiceIssue'](arg1);
+}
+
+export function InvoiceIssueAll(arg1, arg2) {
+  return window['go']['main']['App']['InvoiceIssueAll'](arg1, arg2);
+}
+
+export function InvoiceList(arg1, arg2, arg3) {
+  return window['go']['main']['App']['InvoiceList'](arg1, arg2, arg3);
+}
+
 export function InvoiceListDrafts(arg1, arg2) {
   return window['go']['main']['App']['InvoiceListDrafts'](arg1, arg2);
+}
+
+export function OpenFile(arg1) {
+  return window['go']['main']['App']['OpenFile'](arg1);
 }
 
 export function Ping() {

@@ -1,12 +1,20 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+
 import {
     fetchRows, saveCount, addOneMass, estimateBySchedule, setLocked,
     devSeed, devReset, deleteEnrollment, Row
 } from "./lib/attendance";
-import { genDrafts, listDrafts, getInvoice, deleteDraft, InvoiceListItem, InvoiceDTO, InvoiceLine } from "./lib/invoice";
 
-const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+import {
+    genDrafts, listInvoices, getInvoice, deleteDraft,
+    issueAll, issueOne, InvoiceListItem, InvoiceDTO,
+    ensurePdf
+} from "./lib/invoice";
+
+import { appDirs, openFile } from "./lib/utils";
+
+const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
 type Tab = "attendance" | "invoices";
 
@@ -16,18 +24,19 @@ function App() {
     const [year, setYear] = useState(now.getFullYear());
     const [month, setMonth] = useState(now.getMonth() + 1); // 1..12
 
-    // Attendance state
+    // --- Attendance state ---
     const [rows, setRows] = useState<Row[]>([]);
     const [loading, setLoading] = useState(false);
     const [courseFilter, setCourseFilter] = useState<number | undefined>(undefined);
     const [msg, setMsg] = useState("");
 
-    // Invoices state
+    // --- Invoices state ---
     const [items, setItems] = useState<InvoiceListItem[]>([]);
-    const [selected, setSelected] = useState<InvoiceDTO | null>(null);
     const [loadingInv, setLoadingInv] = useState(false);
+    const [invStatus, setInvStatus] = useState<"draft" | "issued" | "all">("draft");
+    const [selected, setSelected] = useState<InvoiceDTO | null>(null);
 
-    // --- Attendance loaders ---
+    // -------- Attendance --------
     async function loadAttendance() {
         setLoading(true);
         try {
@@ -39,14 +48,19 @@ function App() {
     }
     useEffect(() => { if (tab === "attendance") loadAttendance(); }, [tab, year, month, courseFilter]);
 
-    const perLessonTotal = useMemo(() => rows.reduce((s, r) => s + r.count * r.lessonPrice, 0), [rows]);
+    const perLessonTotal = useMemo(
+        () => rows.reduce((s, r) => s + r.count * r.lessonPrice, 0),
+        [rows]
+    );
 
     const onChangeCount = async (r: Row, v: number) => {
         const n = isNaN(v) || v < 0 ? 0 : Math.trunc(v);
         await saveCount(r.studentId, r.courseId, year, month, n);
         setRows(rows.map(x => (x.enrollmentId === r.enrollmentId ? { ...x, count: n } : x)));
     };
+
     const onAddAll = async () => { await addOneMass(year, month, courseFilter); await loadAttendance(); };
+
     const onEstimate = async () => {
         const hints = await estimateBySchedule(year, month, courseFilter);
         const patched = rows.map(r => {
@@ -59,38 +73,65 @@ function App() {
             const prev = rows.find(x => x.enrollmentId === r.enrollmentId)?.count ?? 0;
             if (r.count !== prev) await saveCount(r.studentId, r.courseId, year, month, r.count);
         }
-        setMsg("Schedule hint applied"); setTimeout(() => setMsg(""), 1500);
+        setMsg("Schedule hint applied");
+        setTimeout(() => setMsg(""), 1500);
     };
-    const onLock = async (lock: boolean) => { await setLocked(year, month, courseFilter, lock); await loadAttendance(); };
-    const onSeed = async () => { await devSeed(); await loadAttendance(); };
+
+    const onLock  = async (lock: boolean) => { await setLocked(year, month, courseFilter, lock); await loadAttendance(); };
+    const onSeed  = async () => { await devSeed();  await loadAttendance(); };
     const onReset = async () => { await devReset(); await loadAttendance(); };
     const onDeleteEnrollment = async (id: number) => { await deleteEnrollment(id); await loadAttendance(); };
 
-    // --- Invoices loaders ---
+    // -------- Invoices --------
     async function loadInvoices() {
         setLoadingInv(true);
         try {
-            const li = await listDrafts(year, month);
+            const li = await listInvoices(year, month, invStatus);
             setItems(li);
             setSelected(null);
+            // auto-generation: if filter = draft and list is empty — try to create
+            if (invStatus === "draft" && li.length === 0) {
+                try {
+                    const r = await genDrafts(year, month);
+                    console.log("autogen drafts:", r);
+                    const li2 = await listInvoices(year, month, invStatus);
+                    setItems(li2);
+                } catch (e) {
+                    console.error("autogen failed:", e);
+                }
+            }
         } finally {
             setLoadingInv(false);
         }
     }
-    useEffect(() => { if (tab === "invoices") loadInvoices(); }, [tab, year, month]);
+    
+    useEffect(() => { if (tab === "invoices") loadInvoices(); }, [tab, year, month, invStatus]);
 
     const onGenDrafts = async () => {
-        await genDrafts(year, month);
-        await loadInvoices();
+        try {
+            const r = await genDrafts(year, month);
+            alert(
+                `Drafts generated:\n` +
+                `  created: ${r.created}\n` +
+                `  updated: ${r.updated}\n` +
+                `  skipped (has issued): ${r.skippedHasInvoice}\n` +
+                `  skipped (no lines): ${r.skippedNoLines}`
+            );
+            await loadInvoices();
+        } catch (e:any) {
+            alert("Generate drafts failed: " + (e?.message || String(e)));
+        }
     };
-    const onOpenInvoice = async (id: number) => {
-        const iv = await getInvoice(id);
-        setSelected(iv);
-    };
-    const onDeleteDraft = async (id: number) => {
-        await deleteDraft(id);
-        await loadInvoices();
-    };
+    
+    
+        const onOpenInvoice = async (id: number) => {
+            try {
+                setSelected(await getInvoice(id));
+            } catch (e: any) {
+                alert("Failed to open invoice: " + (e?.message || String(e)));
+            }
+        };
+    const onDeleteDraft = async (id: number) => { await deleteDraft(id); await loadInvoices(); };
 
     return (
         <div className="container">
@@ -120,7 +161,7 @@ function App() {
                         <button onClick={() => onLock(false)}>Unlock</button>
                     </div>
                     {loading ? <div>Loading…</div> : (
-                        rows.length === 0 ? <div className="empty">No records (enrollments with "per lesson" payment are needed)</div> :
+                        rows.length === 0 ? <div className="empty">No records (need enrollments with “per lesson” payment)</div> :
                         <table>
                             <thead>
                                 <tr>
@@ -132,23 +173,22 @@ function App() {
                                     <tr key={r.enrollmentId}>
                                         <td>{r.studentName}</td>
                                         <td>{r.courseName} {r.courseType === "group" ? "(group)" : "(individual)"}</td>
-                                        <td style={{ textAlign: "right" }}>{r.lessonPrice.toFixed(2)} €</td>
-                                        <td style={{ textAlign: "right" }}>
-                                            <input type="number" min={0} value={r.count}
-                                                disabled={r.locked}
-                                                onChange={(e) => onChangeCount(r, parseInt(e.target.value))}
-                                                style={{ width: "5rem", textAlign: "right" }} />
+                                        <td style={{ textAlign:"right" }}>{r.lessonPrice.toFixed(2)} €</td>
+                                        <td style={{ textAlign:"right" }}>
+                                            <input type="number" min={0} value={r.count} disabled={r.locked}
+                                                         onChange={(e)=>onChangeCount(r, parseInt(e.target.value))}
+                                                         style={{ width:"5rem", textAlign:"right" }} />
                                         </td>
-                                        <td style={{ textAlign: "right" }}>{(r.count * r.lessonPrice).toFixed(2)} €</td>
+                                        <td style={{ textAlign:"right" }}>{(r.count * r.lessonPrice).toFixed(2)} €</td>
                                         <td>{r.locked ? "🔒" : "✎"}</td>
-                                        <td><button onClick={() => onDeleteEnrollment(r.enrollmentId)}>Delete</button></td>
+                                        <td><button onClick={()=>onDeleteEnrollment(r.enrollmentId)}>Delete</button></td>
                                     </tr>
                                 ))}
                             </tbody>
                             <tfoot>
                                 <tr>
-                                    <td colSpan={4} style={{ textAlign: "right" }}>Total per-lesson:</td>
-                                    <td style={{ textAlign: "right" }}>{perLessonTotal.toFixed(2)} €</td>
+                                    <td colSpan={4} style={{ textAlign:"right" }}>Total per-lesson:</td>
+                                    <td style={{ textAlign:"right" }}>{perLessonTotal.toFixed(2)} €</td>
                                     <td colSpan={2}></td>
                                 </tr>
                             </tfoot>
@@ -160,29 +200,80 @@ function App() {
             {tab === "invoices" && (
                 <>
                     <div className="controls">
-                        <button onClick={onGenDrafts}>Generate drafts</button>
+                        <select value={invStatus} onChange={(e)=>setInvStatus(e.target.value as any)}>
+                            <option value="draft">Draft</option>
+                            <option value="issued">Issued</option>
+                            <option value="all">All</option>
+                        </select>
+                        <button onClick={onGenDrafts} disabled={invStatus !== "draft"}>Generate drafts</button>
+                        <button
+                            onClick={async ()=>{
+                                try {
+                                    const res = await issueAll(year, month);
+                                    alert(`Issued: ${res.count}\nPDF:\n${res.pdfPaths.join("\n")}`);
+                                    await loadInvoices();
+                                } catch (e:any) {
+                                    alert("Issue error: " + (e?.message || String(e)));
+                                }
+                            }}
+                            disabled={invStatus !== "draft"}
+                        >
+                            Issue all
+                        </button>
                         <button onClick={loadInvoices}>Refresh</button>
                     </div>
 
                     {loadingInv ? <div>Loading…</div> : (
-                        items.length === 0 ? <div className="empty">No drafts. Click "Generate drafts".</div> :
+                        items.length === 0 ? <div className="empty">No invoices for selected status/month.</div> :
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Student</th><th>Month</th><th>Lines</th><th>Total</th><th>Status</th><th></th>
+                                    <th>Student</th><th>Month</th><th>Lines</th><th>Total</th><th>Status</th><th>No.</th><th></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {items.map(it => (
                                     <tr key={it.id}>
                                         <td>{it.studentName}</td>
-                                        <td>{months[it.month - 1]} {it.year}</td>
-                                        <td style={{ textAlign: "right" }}>{it.linesCount}</td>
-                                        <td style={{ textAlign: "right" }}>{it.total.toFixed(2)} €</td>
+                                        <td>{months[it.month-1]} {it.year}</td>
+                                        <td style={{ textAlign:"right" }}>{it.linesCount}</td>
+                                        <td style={{ textAlign:"right" }}>{it.total.toFixed(2)} €</td>
                                         <td>{it.status}</td>
+                                        <td>{it.number || ""}</td>
                                         <td>
-                                            <button onClick={() => onOpenInvoice(it.id)}>Open</button>
-                                            <button onClick={() => onDeleteDraft(it.id)}>Delete</button>
+                                            <button onClick={()=>onOpenInvoice(it.id)}>Open</button>
+                                            {it.status === "draft" && (
+                                                <>
+                                                    <button
+                                                        onClick={async ()=>{
+                                                            try {
+                                                                const res = await issueOne(it.id);
+                                                                alert(`Invoice #${res.number} issued.\nPDF: ${res.pdfPath}`);
+                                                                await loadInvoices();
+                                                            } catch (e:any) {
+                                                                alert("Error: " + (e?.message || String(e)));
+                                                            }
+                                                        }}
+                                                    >
+                                                        Issue
+                                                    </button>
+                                                    <button onClick={()=>onDeleteDraft(it.id)}>Delete</button>
+                                                </>
+                                            )}
+                                            {it.status === "issued" && it.number && (
+    <button
+        onClick={async ()=>{
+            try {
+                const p = await ensurePdf(it.id); // regenerates if missing
+                await openFile(p);
+            } catch (e:any) {
+                alert("Can't open PDF: " + (e?.message || String(e)));
+            }
+        }}
+    >
+        Open PDF
+    </button>
+)}
                                         </td>
                                     </tr>
                                 ))}
@@ -192,25 +283,25 @@ function App() {
 
                     {selected && (
                         <div className="panel">
-                            <h3>Invoice (draft): {selected.studentName} — {months[selected.month - 1]} {selected.year}</h3>
+                            <h3>{selected.number ? `Invoice #${selected.number}` : "Invoice (draft)"} — {selected.studentName} — {months[selected.month-1]} {selected.year}</h3>
                             <table>
                                 <thead>
-                                    <tr><th>Description</th><th>Quantity</th><th>Price</th><th>Total</th></tr>
+                                    <tr><th>Description</th><th>Qty</th><th>Price</th><th>Amount</th></tr>
                                 </thead>
                                 <tbody>
-                                    {selected.lines.map((l: InvoiceLine, idx: number) => (
+                                    {selected.lines.map((l,idx)=>(
                                         <tr key={idx}>
                                             <td>{l.description}</td>
-                                            <td style={{ textAlign: "right" }}>{l.qty}</td>
-                                            <td style={{ textAlign: "right" }}>{l.unitPrice.toFixed(2)} €</td>
-                                            <td style={{ textAlign: "right" }}>{l.amount.toFixed(2)} €</td>
+                                            <td style={{textAlign:"right"}}>{l.qty}</td>
+                                            <td style={{textAlign:"right"}}>{l.unitPrice.toFixed(2)} €</td>
+                                            <td style={{textAlign:"right"}}>{l.amount.toFixed(2)} €</td>
                                         </tr>
                                     ))}
                                 </tbody>
                                 <tfoot>
                                     <tr>
-                                        <td colSpan={3} style={{ textAlign: "right" }}>Total:</td>
-                                        <td style={{ textAlign: "right" }}>{selected.total.toFixed(2)} €</td>
+                                        <td colSpan={3} style={{textAlign:"right"}}>Total:</td>
+                                        <td style={{textAlign:"right"}}>{selected.total.toFixed(2)} €</td>
                                     </tr>
                                 </tfoot>
                             </table>

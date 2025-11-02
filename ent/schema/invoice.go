@@ -22,14 +22,14 @@ func (Invoice) Fields() []ent.Field {
 
 func (Invoice) Edges() []ent.Edge {
   return []ent.Edge{
-    // ВЛАДЕЛЕЦ FK: invoice.student_id -> edge.From + Field + Required
+    // OWNER FK: invoice.student_id -> edge.From + Field + Required
     edge.From("student", Student.Type).
       Ref("invoices").
       Field("student_id").
       Required().
-      Unique(), // у одного invoice ровно 1 student
+      Unique(), // one invoice has exactly one student
 
-    // Инверсная сторона к InvoiceLine.invoice (FK в строках)
+    // Inverse side to InvoiceLine.invoice (FK in the lines)
     edge.To("lines", InvoiceLine.Type),
   }
 }
