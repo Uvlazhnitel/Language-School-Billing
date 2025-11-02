@@ -47,3 +47,5 @@ export function InvoiceListDrafts(arg1:number,arg2:number):Promise<Array<invoice
 export function OpenFile(arg1:string):Promise<void>;
 
 export function Ping():Promise<string>;
+
+export function SettingsSetLocale(arg1:string):Promise<void>;

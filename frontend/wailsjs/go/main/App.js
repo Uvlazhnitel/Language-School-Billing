@@ -89,3 +89,7 @@ export function OpenFile(arg1) {
 export function Ping() {
   return window['go']['main']['App']['Ping']();
 }
+
+export function SettingsSetLocale(arg1) {
+  return window['go']['main']['App']['SettingsSetLocale'](arg1);
+}

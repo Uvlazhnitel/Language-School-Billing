@@ -482,3 +482,11 @@ func (a *App) DevClearInvoices(year, month int) (int, error) {
 	}
 	return len(invs), nil
 }
+
+func (a *App) SettingsSetLocale(loc string) error {
+	_, err := a.db.Ent.Settings.
+		Update().Where(settings.SingletonIDEQ(1)).
+		SetLocale(loc).
+		Save(a.ctx)
+	return err
+}

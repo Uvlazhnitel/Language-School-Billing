@@ -22,7 +22,7 @@ type Options struct {
 	OutBaseDir string // root folder Invoices/
 	FontsDir   string // folder with TTF: DejaVuSans.ttf, DejaVuSans-Bold.ttf
 	Currency   string // "EUR"
-	Locale     string // "ru-RU"
+	Locale     string
 }
 
 // normalizePath ensures the path is absolute and clean
