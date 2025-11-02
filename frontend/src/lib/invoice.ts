@@ -1,11 +1,11 @@
 import {
   InvoiceGenerateDrafts,
-  InvoiceListDrafts,
+  InvoiceList,          // универсальный список по статусу
   InvoiceGet,
   InvoiceDeleteDraft,
   InvoiceIssue,
   InvoiceIssueAll
-} from "../../wailsjs/go/main/App"; // или "@wailsjs/go/main/App"
+} from "../../wailsjs/go/main/App";
 
 export type InvoiceListItem = {
   id: number;
@@ -39,25 +39,33 @@ export type InvoiceDTO = {
   lines: InvoiceLine[];
 };
 
-// NEW: типы результатов
 export type IssueResult = { number: string; pdfPath: string };
 export type IssueAllResult = { count: number; pdfPaths: string[] };
 
-export async function genDrafts(year: number, month: number) {
+export async function genDrafts(year: number, month: number): Promise<number> {
   return await InvoiceGenerateDrafts(year, month);
 }
-export async function listDrafts(year: number, month: number) {
-  return (await InvoiceListDrafts(year, month)) as InvoiceListItem[];
+
+export async function listInvoices(
+  year: number,
+  month: number,
+  status: "draft" | "issued" | "paid" | "canceled" | "all"
+): Promise<InvoiceListItem[]> {
+  return (await InvoiceList(year, month, status)) as any;
 }
-export async function getInvoice(id: number) {
-  return (await InvoiceGet(id)) as InvoiceDTO;
+
+export async function getInvoice(id: number): Promise<InvoiceDTO> {
+  return (await InvoiceGet(id)) as any;
 }
-export async function deleteDraft(id: number) {
+
+export async function deleteDraft(id: number): Promise<void> {
   return await InvoiceDeleteDraft(id);
 }
+
 export async function issueOne(id: number): Promise<IssueResult> {
-  return (await InvoiceIssue(id)) as IssueResult;
+  return (await InvoiceIssue(id)) as any;
 }
+
 export async function issueAll(year: number, month: number): Promise<IssueAllResult> {
-  return (await InvoiceIssueAll(year, month)) as IssueAllResult;
+  return (await InvoiceIssueAll(year, month)) as any;
 }

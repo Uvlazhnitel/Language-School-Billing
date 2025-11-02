@@ -18,6 +18,8 @@ import (
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/infra"
 	"langschool/internal/paths"
+
+	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
 
 type App struct {
@@ -158,7 +160,7 @@ func (a *App) DevSeed() (int, error) {
 		Where(enrollment.StudentIDEQ(sAnna.ID), enrollment.CourseIDEQ(cA2.ID)).
 		Only(ctx); err != nil {
 		_, _ = db.Enrollment.Create().
-			SetStudentID(sAnna.ID).SetCourseID(cA2.ID.
+			SetStudentID(sAnna.ID).SetCourseID(cA2.ID).
 			SetBillingMode("subscription").SetStartDate(now).Save(ctx)
 	}
 
@@ -209,11 +211,8 @@ func (a *App) Greet(name string) string {
 // AppDirs returns application directories for UI (useful for exports/backups).
 func (a *App) AppDirs() map[string]string {
 	return map[string]string{
-		"base":     a.dirs.Base,
-		"data":     a.dirs.Data,
-		"backups":  a.dirs.Backups,
-		"invoices": a.dirs.Invoices,
-		"exports":  a.dirs.Exports,
+		"base": a.dirs.Base, "data": a.dirs.Data, "backups": a.dirs.Backups,
+		"invoices": a.dirs.Invoices, "exports": a.dirs.Exports,
 	}
 }
 
@@ -296,24 +295,41 @@ type IssueResult struct {
 	PdfPath string `json:"pdfPath"`
 }
 
-// Result of "issue all drafts for the period"
 type IssueAllResult struct {
 	Count    int      `json:"count"`
 	PdfPaths []string `json:"pdfPaths"`
 }
 
-func (a *App) InvoiceIssue(id int) (*IssueResult, error) {
-	num, path, err := a.inv.Issue(a.ctx, id, a.dirs.Invoices, filepath.Join(a.dirs.Base, "Fonts"))
-	if err != nil {
-		return nil, err
-	}
-	return &IssueResult{Number: num, PdfPath: path}, nil
+// Список по статусу
+func (a *App) InvoiceList(year, month int, status string) ([]invsvc.ListItem, error) {
+	return a.inv.List(a.ctx, year, month, status)
 }
 
-func (a *App) InvoiceIssueAll(year, month int) (*IssueAllResult, error) {
+// Выставить один: возвращаем объект
+func (a *App) InvoiceIssue(id int) (IssueResult, error) {
+	num, path, err := a.inv.Issue(a.ctx, id, a.dirs.Invoices, filepath.Join(a.dirs.Base, "Fonts"))
+	if err != nil {
+		return IssueResult{}, err
+	}
+	return IssueResult{Number: num, PdfPath: path}, nil
+}
+
+// Выставить все за период
+func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 	cnt, paths, err := a.inv.IssueAll(a.ctx, year, month, a.dirs.Invoices, filepath.Join(a.dirs.Base, "Fonts"))
 	if err != nil {
-		return nil, err
+		return IssueAllResult{}, err
 	}
-	return &IssueAllResult{Count: cnt, PdfPaths: paths}, nil
+	return IssueAllResult{Count: cnt, PdfPaths: paths}, nil
+}
+
+// Открыть файл (PDF) в ОС
+func (a *App) OpenFile(path string) error {
+	// на всякий случай приводим к абсолютному пути
+	if abs, err := filepath.Abs(path); err == nil {
+		path = abs
+	}
+	// в Wails v2 открываем URL через браузер
+	runtime.BrowserOpenURL(a.ctx, "file://"+path)
+	return nil
 }

@@ -146,6 +146,18 @@ var (
 				OnDelete:   schema.NoAction,
 			},
 		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "invoiceline_invoice_id",
+				Unique:  false,
+				Columns: []*schema.Column{InvoiceLinesColumns[6]},
+			},
+			{
+				Name:    "invoiceline_enrollment_id",
+				Unique:  false,
+				Columns: []*schema.Column{InvoiceLinesColumns[5]},
+			},
+		},
 	}
 	// PriceOverridesColumns holds the columns for the "price_overrides" table.
 	PriceOverridesColumns = []*schema.Column{

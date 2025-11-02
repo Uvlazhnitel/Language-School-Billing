@@ -66,8 +66,16 @@ export function InvoiceIssueAll(arg1, arg2) {
   return window['go']['main']['App']['InvoiceIssueAll'](arg1, arg2);
 }
 
+export function InvoiceList(arg1, arg2, arg3) {
+  return window['go']['main']['App']['InvoiceList'](arg1, arg2, arg3);
+}
+
 export function InvoiceListDrafts(arg1, arg2) {
   return window['go']['main']['App']['InvoiceListDrafts'](arg1, arg2);
+}
+
+export function OpenFile(arg1) {
+  return window['go']['main']['App']['OpenFile'](arg1);
 }
 
 export function Ping() {

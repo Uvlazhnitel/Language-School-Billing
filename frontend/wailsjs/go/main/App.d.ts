@@ -36,6 +36,10 @@ export function InvoiceIssue(arg1:number):Promise<main.IssueResult>;
 
 export function InvoiceIssueAll(arg1:number,arg2:number):Promise<main.IssueAllResult>;
 
+export function InvoiceList(arg1:number,arg2:number,arg3:string):Promise<Array<invoice.ListItem>>;
+
 export function InvoiceListDrafts(arg1:number,arg2:number):Promise<Array<invoice.ListItem>>;
+
+export function OpenFile(arg1:string):Promise<void>;
 
 export function Ping():Promise<string>;

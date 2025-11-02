@@ -415,3 +415,47 @@ func (s *Service) IssueAll(ctx context.Context, y, m int, outBaseDir, fontsDir s
 func PDFPathByNumber(outBaseDir string, y, m int, number string) string {
 	return filepath.Join(outBaseDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), number+".pdf")
 }
+
+func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem, error) {
+	q := s.db.Invoice.Query().
+		Where(
+			invoice.PeriodYearEQ(y),
+			invoice.PeriodMonthEQ(m),
+		).
+		WithStudent()
+	switch status {
+	case "draft", "issued", "paid", "canceled":
+		q = q.Where(invoice.StatusEQ(invoice.Status(status)))
+	case "all":
+		// без доп. фильтра
+	default:
+		// по умолчанию draft
+		q = q.Where(invoice.StatusEQ("draft"))
+	}
+
+	invs, err := q.All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]ListItem, 0, len(invs))
+	for _, iv := range invs {
+		cnt, _ := s.db.InvoiceLine.Query().Where(invoiceline.InvoiceIDEQ(iv.ID)).Count(ctx)
+		name := ""
+		if iv.Edges.Student != nil {
+			name = iv.Edges.Student.FullName
+		}
+		out = append(out, ListItem{
+			ID:          iv.ID,
+			StudentID:   iv.StudentID,
+			StudentName: name,
+			Year:        iv.PeriodYear,
+			Month:       iv.PeriodMonth,
+			Total:       round2(iv.TotalAmount),
+			Status:      string(iv.Status),
+			LinesCount:  cnt,
+			Number:      iv.Number,
+		})
+	}
+	return out, nil
+}
