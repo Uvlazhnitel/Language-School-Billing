@@ -47,10 +47,25 @@ export async function listInvoices(
   year: number, month: number,
   status: "draft" | "issued" | "paid" | "canceled" | "all"
 ): Promise<InvoiceListItem[]> {
-  return (await InvoiceList(year, month, status)) as any;
+  return InvoiceList(year, month, status);
 }
-export async function getInvoice(id: number) { return (await InvoiceGet(id)) as any; }
-export async function deleteDraft(id: number) { return await InvoiceDeleteDraft(id); }
-export async function issueOne(id: number) { return (await InvoiceIssue(id)) as any; }
-export async function issueAll(year: number, month: number) { return (await InvoiceIssueAll(year, month)) as any; }
-export async function ensurePdf(id: number) { return (await InvoiceEnsurePDF(id)) as any; }
+
+export async function getInvoice(id: number): Promise<InvoiceDTO> {
+  return InvoiceGet(id);
+}
+
+export async function deleteDraft(id: number): Promise<void> {
+  return InvoiceDeleteDraft(id);
+}
+
+export async function issueOne(id: number): Promise<IssueResult> {
+  return InvoiceIssue(id);
+}
+
+export async function issueAll(year: number, month: number): Promise<IssueAllResult> {
+  return InvoiceIssueAll(year, month);
+}
+
+export async function ensurePdf(id: number): Promise<string> {
+  return InvoiceEnsurePDF(id);
+}

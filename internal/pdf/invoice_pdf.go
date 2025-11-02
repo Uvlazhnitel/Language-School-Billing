@@ -25,6 +25,24 @@ type Options struct {
 	Locale     string // "ru-RU"
 }
 
+// normalizePath ensures the path is absolute and clean
+func normalizePath(path string) (string, error) {
+	path = strings.TrimSpace(path)
+	if path == "" {
+		return "", fmt.Errorf("path is empty")
+	}
+	// Handle macOS-specific case where paths might be missing leading slash
+	if strings.HasPrefix(path, "Users/") {
+		path = "/" + path
+	}
+	if !filepath.IsAbs(path) {
+		if abs, err := filepath.Abs(path); err == nil {
+			path = abs
+		}
+	}
+	return filepath.Clean(path), nil
+}
+
 // GenerateInvoicePDF creates a PDF for an already NUMBERED invoice (status=issued).
 // Returns the full path to the PDF.
 func GenerateInvoicePDF(ctx context.Context, db *ent.Client, invoiceID int, opt Options) (string, error) {
@@ -65,33 +83,15 @@ func GenerateInvoicePDF(ctx context.Context, db *ent.Client, invoiceID int, opt 
 	}
 
 	// --- Path normalization ---
-	outBase := strings.TrimSpace(opt.OutBaseDir)
-	if outBase == "" {
-		return "", fmt.Errorf("OutBaseDir is empty")
+	outBase, err := normalizePath(opt.OutBaseDir)
+	if err != nil {
+		return "", fmt.Errorf("OutBaseDir: %w", err)
 	}
-	if strings.HasPrefix(outBase, "Users/") { // common macOS case
-		outBase = "/" + outBase
-	}
-	if !filepath.IsAbs(outBase) {
-		if abs, err := filepath.Abs(outBase); err == nil {
-			outBase = abs
-		}
-	}
-	outBase = filepath.Clean(outBase)
 
-	fontsDir := strings.TrimSpace(opt.FontsDir)
-	if fontsDir == "" {
-		return "", fmt.Errorf("FontsDir is empty")
+	fontsDir, err := normalizePath(opt.FontsDir)
+	if err != nil {
+		return "", fmt.Errorf("FontsDir: %w", err)
 	}
-	if strings.HasPrefix(fontsDir, "Users/") {
-		fontsDir = "/" + fontsDir
-	}
-	if !filepath.IsAbs(fontsDir) {
-		if abs, err := filepath.Abs(fontsDir); err == nil {
-			fontsDir = abs
-		}
-	}
-	fontsDir = filepath.Clean(fontsDir)
 
 	// --- Lines ---
 	lines, err := db.InvoiceLine.Query().Where(invoiceline.InvoiceIDEQ(iv.ID)).All(ctx)

@@ -18,6 +18,17 @@ import (
 	pdfgen "langschool/internal/pdf"
 )
 
+// Constants for invoice statuses and billing modes
+const (
+	StatusDraft    = "draft"
+	StatusIssued   = "issued"
+	StatusPaid     = "paid"
+	StatusCanceled = "canceled"
+
+	BillingPerLesson    = "per_lesson"
+	BillingSubscription = "subscription"
+)
+
 type Service struct{ db *ent.Client }
 
 func New(db *ent.Client) *Service { return &Service{db: db} }
@@ -82,6 +93,68 @@ func activeInPeriod(en *ent.Enrollment, y, m int) bool {
 		return false
 	}
 	return true
+}
+
+// getStudentName safely retrieves student name from invoice edges
+func getStudentName(iv *ent.Invoice) string {
+	if iv.Edges.Student != nil {
+		return iv.Edges.Student.FullName
+	}
+	return ""
+}
+
+// buildPerLessonLine creates an invoice line for per-lesson billing
+func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPrice float64) (*ent.InvoiceLineCreate, float64) {
+	// Query attendance for the month
+	am, err := s.db.AttendanceMonth.Query().Where(
+		attendancemonth.StudentIDEQ(en.StudentID),
+		attendancemonth.CourseIDEQ(en.CourseID),
+		attendancemonth.YearEQ(y),
+		attendancemonth.MonthEQ(m),
+	).Only(ctx)
+
+	qty := 0
+	if err != nil {
+		if !ent.IsNotFound(err) {
+			fmt.Printf("AttendanceMonth query error (student %d, course %d, %04d-%02d): %v\n",
+				en.StudentID, en.CourseID, y, m, err)
+		}
+		// NotFound => qty remains 0
+	} else {
+		qty = am.LessonsCount
+	}
+
+	amount := round2(float64(qty) * lessonPrice)
+	desc := fmt.Sprintf("Payment for lessons (%02d.%d), course #%d", m, y, en.CourseID)
+
+	line := s.db.InvoiceLine.Create().
+		SetEnrollmentID(en.ID).
+		SetDescription(desc).
+		SetQty(qty).
+		SetUnitPrice(lessonPrice).
+		SetAmount(amount)
+
+	return line, amount
+}
+
+// buildSubscriptionLine creates an invoice line for subscription billing
+func (s *Service) buildSubscriptionLine(en *ent.Enrollment, y, m int, subscriptionPrice float64) (*ent.InvoiceLineCreate, float64) {
+	amount := round2(subscriptionPrice)
+	desc := fmt.Sprintf("Subscription (%02d.%d), course #%d", m, y, en.CourseID)
+
+	line := s.db.InvoiceLine.Create().
+		SetEnrollmentID(en.ID).
+		SetDescription(desc).
+		SetQty(1).
+		SetUnitPrice(subscriptionPrice).
+		SetAmount(amount)
+
+	return line, amount
+}
+
+// getSettings retrieves the singleton settings record
+func (s *Service) getSettings(ctx context.Context) (*ent.Settings, error) {
+	return s.db.Settings.Query().Where(settings.SingletonIDEQ(1)).Only(ctx)
 }
 
 // Select prices: override → (course ± discount)
@@ -165,54 +238,18 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 			lp, sp := s.resolvePrices(ctx, en, y, m)
 
 			switch en.BillingMode {
-			case "per_lesson":
-				// Query attendance for the month
-				am, err := s.db.AttendanceMonth.Query().Where(
-					attendancemonth.StudentIDEQ(en.StudentID),
-					attendancemonth.CourseIDEQ(en.CourseID),
-					attendancemonth.YearEQ(y),
-					attendancemonth.MonthEQ(m),
-				).Only(ctx)
-
-				qty := 0
-				if err != nil {
-					if !ent.IsNotFound(err) {
-						fmt.Printf("AttendanceMonth query error (student %d, course %d, %04d-%02d): %v\n",
-							en.StudentID, en.CourseID, y, m, err)
-					}
-					// NotFound => qty remains 0
-				} else {
-					qty = am.LessonsCount
-				}
-
-				amount := round2(float64(qty) * lp)
-				desc := fmt.Sprintf("Payment for lessons (%02d.%d), course #%d", m, y, en.CourseID)
-
-				lines = append(lines, s.db.InvoiceLine.Create().
-					SetEnrollmentID(en.ID).
-					SetDescription(desc).
-					SetQty(qty).
-					SetUnitPrice(lp).
-					SetAmount(amount))
-
+			case BillingPerLesson:
+				line, amount := s.buildPerLessonLine(ctx, en, y, m, lp)
+				lines = append(lines, line)
 				total += amount
 
-			case "subscription":
+			case BillingSubscription:
 				// Skip if subscription price is invalid
 				if sp <= 0 {
 					continue
 				}
-
-				amount := round2(sp)
-				desc := fmt.Sprintf("Subscription (%02d.%d), course #%d", m, y, en.CourseID)
-
-				lines = append(lines, s.db.InvoiceLine.Create().
-					SetEnrollmentID(en.ID).
-					SetDescription(desc).
-					SetQty(1). // Subscription is typically a single unit
-					SetUnitPrice(sp).
-					SetAmount(amount))
-
+				line, amount := s.buildSubscriptionLine(en, y, m, sp)
+				lines = append(lines, line)
 				total += amount
 
 			default:
@@ -241,7 +278,7 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 				SetStudentID(st.ID).
 				SetPeriodYear(y).
 				SetPeriodMonth(m).
-				SetStatus("draft").
+				SetStatus(StatusDraft).
 				SetTotalAmount(total).
 				Save(ctx)
 			if err != nil {
@@ -254,7 +291,7 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 			}
 			res.Created++
 
-		case existing.Status == "draft":
+		case existing.Status == StatusDraft:
 			// rebuild existing draft
 			_, _ = s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx)
 			for _, lc := range lines {
@@ -280,7 +317,7 @@ func (s *Service) ListDrafts(ctx context.Context, y, m int) ([]ListItem, error) 
 		Where(
 			invoice.PeriodYearEQ(y),
 			invoice.PeriodMonthEQ(m),
-			invoice.StatusEQ("draft"),
+			invoice.StatusEQ(StatusDraft),
 		).
 		WithStudent().
 		All(ctx)
@@ -290,12 +327,8 @@ func (s *Service) ListDrafts(ctx context.Context, y, m int) ([]ListItem, error) 
 	items := make([]ListItem, 0, len(invs))
 	for _, iv := range invs {
 		count, _ := s.db.InvoiceLine.Query().Where(invoiceline.InvoiceIDEQ(iv.ID)).Count(ctx)
-		name := ""
-		if iv.Edges.Student != nil {
-			name = iv.Edges.Student.FullName
-		}
 		items = append(items, ListItem{
-			ID: iv.ID, StudentID: iv.StudentID, StudentName: name,
+			ID: iv.ID, StudentID: iv.StudentID, StudentName: getStudentName(iv),
 			Year: iv.PeriodYear, Month: iv.PeriodMonth,
 			Total: round2(iv.TotalAmount), Status: string(iv.Status), LinesCount: count, Number: iv.Number,
 		})
@@ -315,13 +348,8 @@ func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 	}
 	dto := &InvoiceDTO{
 		ID: iv.ID, StudentID: iv.StudentID,
-		StudentName: func() string {
-			if iv.Edges.Student != nil {
-				return iv.Edges.Student.FullName
-			}
-			return ""
-		}(),
-		Year: iv.PeriodYear, Month: iv.PeriodMonth,
+		StudentName: getStudentName(iv),
+		Year:        iv.PeriodYear, Month: iv.PeriodMonth,
 		Total: round2(iv.TotalAmount), Status: string(iv.Status), Number: iv.Number,
 	}
 	for _, l := range ls {
@@ -342,7 +370,7 @@ func (s *Service) DeleteDraft(ctx context.Context, id int) error {
 	if err != nil {
 		return err
 	}
-	if iv.Status != "draft" {
+	if iv.Status != StatusDraft {
 		return fmt.Errorf("can delete only draft invoices")
 	}
 	if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(iv.ID)).Exec(ctx); err != nil {
@@ -370,14 +398,14 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if iv.Status != "draft" {
+	if iv.Status != StatusDraft {
 		if iv.Number != nil && *iv.Number != "" {
 			return *iv.Number, nil
 		}
 		return "", fmt.Errorf("invoice %d is not draft", id)
 	}
 
-	st, err := tx.Settings.Query().Where(settings.SingletonIDEQ(1)).Only(ctx)
+	st, err := s.getSettings(ctx)
 	if err != nil {
 		return "", err
 	}
@@ -401,7 +429,7 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 	// Save the number and status
 	if _, err := tx.Invoice.UpdateOneID(iv.ID).
 		SetNumber(number).
-		SetStatus("issued").
+		SetStatus(StatusIssued).
 		Save(ctx); err != nil {
 		return "", err
 	}
@@ -441,7 +469,7 @@ func (s *Service) IssueAll(ctx context.Context, y, m int, outBaseDir, fontsDir s
 		Where(
 			invoice.PeriodYearEQ(y),
 			invoice.PeriodMonthEQ(m),
-			invoice.StatusEQ("draft"),
+			invoice.StatusEQ(StatusDraft),
 		).All(ctx)
 	if err != nil {
 		return 0, nil, err
@@ -478,13 +506,13 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 		).
 		WithStudent()
 	switch status {
-	case "draft", "issued", "paid", "canceled":
+	case StatusDraft, StatusIssued, StatusPaid, StatusCanceled:
 		q = q.Where(invoice.StatusEQ(invoice.Status(status)))
 	case "all":
 		// no additional filter
 	default:
 		// default to draft
-		q = q.Where(invoice.StatusEQ("draft"))
+		q = q.Where(invoice.StatusEQ(StatusDraft))
 	}
 
 	invs, err := q.All(ctx)
@@ -495,14 +523,10 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 	out := make([]ListItem, 0, len(invs))
 	for _, iv := range invs {
 		cnt, _ := s.db.InvoiceLine.Query().Where(invoiceline.InvoiceIDEQ(iv.ID)).Count(ctx)
-		name := ""
-		if iv.Edges.Student != nil {
-			name = iv.Edges.Student.FullName
-		}
 		out = append(out, ListItem{
 			ID:          iv.ID,
 			StudentID:   iv.StudentID,
-			StudentName: name,
+			StudentName: getStudentName(iv),
 			Year:        iv.PeriodYear,
 			Month:       iv.PeriodMonth,
 			Total:       round2(iv.TotalAmount),
