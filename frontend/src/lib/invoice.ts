@@ -47,11 +47,19 @@ export async function listInvoices(
   year: number, month: number,
   status: "draft" | "issued" | "paid" | "canceled" | "all"
 ): Promise<InvoiceListItem[]> {
-  return InvoiceList(year, month, status);
+  const result = await InvoiceList(year, month, status);
+  return result.map(item => ({
+    ...item,
+    status: item.status as "draft" | "issued" | "paid" | "canceled"
+  }));
 }
 
 export async function getInvoice(id: number): Promise<InvoiceDTO> {
-  return InvoiceGet(id);
+  const result = await InvoiceGet(id);
+  return {
+    ...result,
+    status: result.status as "draft" | "issued" | "paid" | "canceled"
+  };
 }
 
 export async function deleteDraft(id: number): Promise<void> {
