@@ -124,7 +124,13 @@ function App() {
     };
     
     
-        const onOpenInvoice = async (id: number) => { setSelected(await getInvoice(id)); };
+        const onOpenInvoice = async (id: number) => {
+            try {
+                setSelected(await getInvoice(id));
+            } catch (e: any) {
+                alert("Failed to open invoice: " + (e?.message || String(e)));
+            }
+        };
     const onDeleteDraft = async (id: number) => { await deleteDraft(id); await loadInvoices(); };
 
     return (
