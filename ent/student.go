@@ -38,9 +38,11 @@ type StudentEdges struct {
 	Enrollments []*Enrollment `json:"enrollments,omitempty"`
 	// Invoices holds the value of the invoices edge.
 	Invoices []*Invoice `json:"invoices,omitempty"`
+	// Payments holds the value of the payments edge.
+	Payments []*Payment `json:"payments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // EnrollmentsOrErr returns the Enrollments value or an error if the edge
@@ -59,6 +61,15 @@ func (e StudentEdges) InvoicesOrErr() ([]*Invoice, error) {
 		return e.Invoices, nil
 	}
 	return nil, &NotLoadedError{edge: "invoices"}
+}
+
+// PaymentsOrErr returns the Payments value or an error if the edge
+// was not loaded in eager-loading.
+func (e StudentEdges) PaymentsOrErr() ([]*Payment, error) {
+	if e.loadedTypes[2] {
+		return e.Payments, nil
+	}
+	return nil, &NotLoadedError{edge: "payments"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -144,6 +155,11 @@ func (_m *Student) QueryEnrollments() *EnrollmentQuery {
 // QueryInvoices queries the "invoices" edge of the Student entity.
 func (_m *Student) QueryInvoices() *InvoiceQuery {
 	return NewStudentClient(_m.config).QueryInvoices(_m)
+}
+
+// QueryPayments queries the "payments" edge of the Student entity.
+func (_m *Student) QueryPayments() *PaymentQuery {
+	return NewStudentClient(_m.config).QueryPayments(_m)
 }
 
 // Update returns a builder for updating this Student.

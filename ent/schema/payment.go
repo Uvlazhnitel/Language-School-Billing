@@ -25,8 +25,18 @@ func (Payment) Fields() []ent.Field {
 
 func (Payment) Edges() []ent.Edge {
 	return []ent.Edge{
-		edge.From("student", Student.Type).Ref("payments").Unique().Field("student_id"),
-		edge.From("invoice", Invoice.Type).Ref("payments").Unique().Field("invoice_id"),
+		// student_id is required -> edge must be required
+		edge.From("student", Student.Type).
+			Ref("payments").
+			Unique().
+			Field("student_id").
+			Required(),
+
+		// invoice_id is optional -> edge stays optional by default (no Optional() method here)
+		edge.From("invoice", Invoice.Type).
+			Ref("payments").
+			Unique().
+			Field("invoice_id"),
 	}
 }
 

@@ -360,6 +360,29 @@ func HasLinesWith(preds ...predicate.InvoiceLine) predicate.Invoice {
 	})
 }
 
+// HasPayments applies the HasEdge predicate on the "payments" edge.
+func HasPayments() predicate.Invoice {
+	return predicate.Invoice(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, PaymentsTable, PaymentsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasPaymentsWith applies the HasEdge predicate on the "payments" edge with a given conditions (other predicates).
+func HasPaymentsWith(preds ...predicate.Payment) predicate.Invoice {
+	return predicate.Invoice(func(s *sql.Selector) {
+		step := newPaymentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Invoice) predicate.Invoice {
 	return predicate.Invoice(sql.AndPredicates(predicates...))

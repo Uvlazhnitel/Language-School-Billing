@@ -21,6 +21,9 @@ type Invoice func(*sql.Selector)
 // InvoiceLine is the predicate function for invoiceline builders.
 type InvoiceLine func(*sql.Selector)
 
+// Payment is the predicate function for payment builders.
+type Payment func(*sql.Selector)
+
 // PriceOverride is the predicate function for priceoverride builders.
 type PriceOverride func(*sql.Selector)
 

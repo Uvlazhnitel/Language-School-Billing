@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
+	"langschool/ent/payment"
 	"langschool/ent/predicate"
 	"langschool/ent/student"
 	"math"
@@ -27,6 +28,7 @@ type StudentQuery struct {
 	predicates      []predicate.Student
 	withEnrollments *EnrollmentQuery
 	withInvoices    *InvoiceQuery
+	withPayments    *PaymentQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -100,6 +102,28 @@ func (_q *StudentQuery) QueryInvoices() *InvoiceQuery {
 			sqlgraph.From(student.Table, student.FieldID, selector),
 			sqlgraph.To(invoice.Table, invoice.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, student.InvoicesTable, student.InvoicesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryPayments chains the current query on the "payments" edge.
+func (_q *StudentQuery) QueryPayments() *PaymentQuery {
+	query := (&PaymentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(student.Table, student.FieldID, selector),
+			sqlgraph.To(payment.Table, payment.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, student.PaymentsTable, student.PaymentsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -301,6 +325,7 @@ func (_q *StudentQuery) Clone() *StudentQuery {
 		predicates:      append([]predicate.Student{}, _q.predicates...),
 		withEnrollments: _q.withEnrollments.Clone(),
 		withInvoices:    _q.withInvoices.Clone(),
+		withPayments:    _q.withPayments.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -326,6 +351,17 @@ func (_q *StudentQuery) WithInvoices(opts ...func(*InvoiceQuery)) *StudentQuery 
 		opt(query)
 	}
 	_q.withInvoices = query
+	return _q
+}
+
+// WithPayments tells the query-builder to eager-load the nodes that are connected to
+// the "payments" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *StudentQuery) WithPayments(opts ...func(*PaymentQuery)) *StudentQuery {
+	query := (&PaymentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withPayments = query
 	return _q
 }
 
@@ -407,9 +443,10 @@ func (_q *StudentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Stud
 	var (
 		nodes       = []*Student{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withEnrollments != nil,
 			_q.withInvoices != nil,
+			_q.withPayments != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -441,6 +478,13 @@ func (_q *StudentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Stud
 		if err := _q.loadInvoices(ctx, query, nodes,
 			func(n *Student) { n.Edges.Invoices = []*Invoice{} },
 			func(n *Student, e *Invoice) { n.Edges.Invoices = append(n.Edges.Invoices, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withPayments; query != nil {
+		if err := _q.loadPayments(ctx, query, nodes,
+			func(n *Student) { n.Edges.Payments = []*Payment{} },
+			func(n *Student, e *Payment) { n.Edges.Payments = append(n.Edges.Payments, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -492,6 +536,36 @@ func (_q *StudentQuery) loadInvoices(ctx context.Context, query *InvoiceQuery, n
 	}
 	query.Where(predicate.Invoice(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(student.InvoicesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.StudentID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "student_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *StudentQuery) loadPayments(ctx context.Context, query *PaymentQuery, nodes []*Student, init func(*Student), assign func(*Student, *Payment)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Student)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(payment.FieldStudentID)
+	}
+	query.Where(predicate.Payment(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(student.PaymentsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {
