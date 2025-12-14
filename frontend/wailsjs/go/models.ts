@@ -182,3 +182,98 @@ export namespace main {
 
 }
 
+export namespace payment {
+	
+	export class BalanceDTO {
+	    studentId: number;
+	    studentName: string;
+	    totalInvoiced: number;
+	    totalPaid: number;
+	    balance: number;
+	    debt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new BalanceDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.studentId = source["studentId"];
+	        this.studentName = source["studentName"];
+	        this.totalInvoiced = source["totalInvoiced"];
+	        this.totalPaid = source["totalPaid"];
+	        this.balance = source["balance"];
+	        this.debt = source["debt"];
+	    }
+	}
+	export class DebtorDTO {
+	    studentId: number;
+	    studentName: string;
+	    debt: number;
+	    totalInvoiced: number;
+	    totalPaid: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new DebtorDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.studentId = source["studentId"];
+	        this.studentName = source["studentName"];
+	        this.debt = source["debt"];
+	        this.totalInvoiced = source["totalInvoiced"];
+	        this.totalPaid = source["totalPaid"];
+	    }
+	}
+	export class InvoiceSummaryDTO {
+	    invoiceId: number;
+	    total: number;
+	    paid: number;
+	    remaining: number;
+	    status: string;
+	    number?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new InvoiceSummaryDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.invoiceId = source["invoiceId"];
+	        this.total = source["total"];
+	        this.paid = source["paid"];
+	        this.remaining = source["remaining"];
+	        this.status = source["status"];
+	        this.number = source["number"];
+	    }
+	}
+	export class PaymentDTO {
+	    id: number;
+	    studentId: number;
+	    invoiceId?: number;
+	    paidAt: string;
+	    amount: number;
+	    method: string;
+	    note: string;
+	    createdAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PaymentDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.studentId = source["studentId"];
+	        this.invoiceId = source["invoiceId"];
+	        this.paidAt = source["paidAt"];
+	        this.amount = source["amount"];
+	        this.method = source["method"];
+	        this.note = source["note"];
+	        this.createdAt = source["createdAt"];
+	    }
+	}
+
+}
+
