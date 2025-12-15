@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
+	"langschool/ent/payment"
 	"langschool/ent/predicate"
 	"langschool/ent/student"
 	"math"
@@ -21,12 +22,13 @@ import (
 // InvoiceQuery is the builder for querying Invoice entities.
 type InvoiceQuery struct {
 	config
-	ctx         *QueryContext
-	order       []invoice.OrderOption
-	inters      []Interceptor
-	predicates  []predicate.Invoice
-	withStudent *StudentQuery
-	withLines   *InvoiceLineQuery
+	ctx          *QueryContext
+	order        []invoice.OrderOption
+	inters       []Interceptor
+	predicates   []predicate.Invoice
+	withStudent  *StudentQuery
+	withLines    *InvoiceLineQuery
+	withPayments *PaymentQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -100,6 +102,28 @@ func (_q *InvoiceQuery) QueryLines() *InvoiceLineQuery {
 			sqlgraph.From(invoice.Table, invoice.FieldID, selector),
 			sqlgraph.To(invoiceline.Table, invoiceline.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, invoice.LinesTable, invoice.LinesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryPayments chains the current query on the "payments" edge.
+func (_q *InvoiceQuery) QueryPayments() *PaymentQuery {
+	query := (&PaymentClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(invoice.Table, invoice.FieldID, selector),
+			sqlgraph.To(payment.Table, payment.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, invoice.PaymentsTable, invoice.PaymentsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -294,13 +318,14 @@ func (_q *InvoiceQuery) Clone() *InvoiceQuery {
 		return nil
 	}
 	return &InvoiceQuery{
-		config:      _q.config,
-		ctx:         _q.ctx.Clone(),
-		order:       append([]invoice.OrderOption{}, _q.order...),
-		inters:      append([]Interceptor{}, _q.inters...),
-		predicates:  append([]predicate.Invoice{}, _q.predicates...),
-		withStudent: _q.withStudent.Clone(),
-		withLines:   _q.withLines.Clone(),
+		config:       _q.config,
+		ctx:          _q.ctx.Clone(),
+		order:        append([]invoice.OrderOption{}, _q.order...),
+		inters:       append([]Interceptor{}, _q.inters...),
+		predicates:   append([]predicate.Invoice{}, _q.predicates...),
+		withStudent:  _q.withStudent.Clone(),
+		withLines:    _q.withLines.Clone(),
+		withPayments: _q.withPayments.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -326,6 +351,17 @@ func (_q *InvoiceQuery) WithLines(opts ...func(*InvoiceLineQuery)) *InvoiceQuery
 		opt(query)
 	}
 	_q.withLines = query
+	return _q
+}
+
+// WithPayments tells the query-builder to eager-load the nodes that are connected to
+// the "payments" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *InvoiceQuery) WithPayments(opts ...func(*PaymentQuery)) *InvoiceQuery {
+	query := (&PaymentClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withPayments = query
 	return _q
 }
 
@@ -407,9 +443,10 @@ func (_q *InvoiceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Invo
 	var (
 		nodes       = []*Invoice{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withStudent != nil,
 			_q.withLines != nil,
+			_q.withPayments != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -440,6 +477,13 @@ func (_q *InvoiceQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Invo
 		if err := _q.loadLines(ctx, query, nodes,
 			func(n *Invoice) { n.Edges.Lines = []*InvoiceLine{} },
 			func(n *Invoice, e *InvoiceLine) { n.Edges.Lines = append(n.Edges.Lines, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withPayments; query != nil {
+		if err := _q.loadPayments(ctx, query, nodes,
+			func(n *Invoice) { n.Edges.Payments = []*Payment{} },
+			func(n *Invoice, e *Payment) { n.Edges.Payments = append(n.Edges.Payments, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -500,6 +544,39 @@ func (_q *InvoiceQuery) loadLines(ctx context.Context, query *InvoiceLineQuery, 
 		node, ok := nodeids[fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "invoice_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *InvoiceQuery) loadPayments(ctx context.Context, query *PaymentQuery, nodes []*Invoice, init func(*Invoice), assign func(*Invoice, *Payment)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Invoice)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(payment.FieldInvoiceID)
+	}
+	query.Where(predicate.Payment(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(invoice.PaymentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.InvoiceID
+		if fk == nil {
+			return fmt.Errorf(`foreign-key "invoice_id" is nil for node %v`, n.ID)
+		}
+		node, ok := nodeids[*fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "invoice_id" returned %v for node %v`, *fk, n.ID)
 		}
 		assign(node, n)
 	}

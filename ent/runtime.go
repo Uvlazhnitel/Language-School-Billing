@@ -7,9 +7,11 @@ import (
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
+	"langschool/ent/payment"
 	"langschool/ent/schema"
 	"langschool/ent/settings"
 	"langschool/ent/student"
+	"time"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -60,6 +62,20 @@ func init() {
 	invoiceDescTotalAmount := invoiceFields[3].Descriptor()
 	// invoice.DefaultTotalAmount holds the default value on creation for the total_amount field.
 	invoice.DefaultTotalAmount = invoiceDescTotalAmount.Default.(float64)
+	paymentFields := schema.Payment{}.Fields()
+	_ = paymentFields
+	// paymentDescPaidAt is the schema descriptor for paid_at field.
+	paymentDescPaidAt := paymentFields[2].Descriptor()
+	// payment.DefaultPaidAt holds the default value on creation for the paid_at field.
+	payment.DefaultPaidAt = paymentDescPaidAt.Default.(func() time.Time)
+	// paymentDescNote is the schema descriptor for note field.
+	paymentDescNote := paymentFields[5].Descriptor()
+	// payment.DefaultNote holds the default value on creation for the note field.
+	payment.DefaultNote = paymentDescNote.Default.(string)
+	// paymentDescCreatedAt is the schema descriptor for created_at field.
+	paymentDescCreatedAt := paymentFields[6].Descriptor()
+	// payment.DefaultCreatedAt holds the default value on creation for the created_at field.
+	payment.DefaultCreatedAt = paymentDescCreatedAt.Default.(func() time.Time)
 	settingsFields := schema.Settings{}.Fields()
 	_ = settingsFields
 	// settingsDescOrgName is the schema descriptor for org_name field.

@@ -22,6 +22,8 @@ type Tx struct {
 	Invoice *InvoiceClient
 	// InvoiceLine is the client for interacting with the InvoiceLine builders.
 	InvoiceLine *InvoiceLineClient
+	// Payment is the client for interacting with the Payment builders.
+	Payment *PaymentClient
 	// PriceOverride is the client for interacting with the PriceOverride builders.
 	PriceOverride *PriceOverrideClient
 	// Settings is the client for interacting with the Settings builders.
@@ -164,6 +166,7 @@ func (tx *Tx) init() {
 	tx.Enrollment = NewEnrollmentClient(tx.config)
 	tx.Invoice = NewInvoiceClient(tx.config)
 	tx.InvoiceLine = NewInvoiceLineClient(tx.config)
+	tx.Payment = NewPaymentClient(tx.config)
 	tx.PriceOverride = NewPriceOverrideClient(tx.config)
 	tx.Settings = NewSettingsClient(tx.config)
 	tx.Student = NewStudentClient(tx.config)

@@ -23,6 +23,8 @@ import (
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/infra"
 	"langschool/internal/paths"
+
+	paysvc "langschool/internal/app/payment"
 )
 
 type App struct {
@@ -34,6 +36,8 @@ type App struct {
 	// services
 	att *attendance.Service
 	inv *invsvc.Service
+	pay *paysvc.Service
+
 }
 
 func NewApp() *App { return &App{} }
@@ -91,6 +95,7 @@ func (a *App) startup(ctx context.Context) {
 	// initialize services
 	a.att = attendance.New(a.db.Ent)
 	a.inv = invsvc.New(a.db.Ent)
+	a.pay = paysvc.New(a.db.Ent)
 }
 
 // domReady is called by Wails when the frontend is ready.
@@ -490,3 +495,41 @@ func (a *App) SettingsSetLocale(loc string) error {
 		Save(a.ctx)
 	return err
 }
+
+// ---------- Payment bindings ----------
+
+type PaymentDTO = paysvc.PaymentDTO
+type BalanceDTO = paysvc.BalanceDTO
+type DebtorDTO = paysvc.DebtorDTO
+type InvoiceSummaryDTO = paysvc.InvoiceSummaryDTO
+
+// PaymentCreate creates a payment. paidAt accepts "YYYY-MM-DD" or RFC3339.
+func (a *App) PaymentCreate(studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
+	return a.pay.Create(a.ctx, studentID, invoiceID, amount, method, paidAt, note)
+}
+
+func (a *App) PaymentDelete(paymentID int) error {
+	return a.pay.Delete(a.ctx, paymentID)
+}
+
+func (a *App) PaymentListForStudent(studentID int) ([]PaymentDTO, error) {
+	return a.pay.ListForStudent(a.ctx, studentID)
+}
+
+func (a *App) StudentBalance(studentID int) (*BalanceDTO, error) {
+	return a.pay.StudentBalance(a.ctx, studentID)
+}
+
+func (a *App) DebtorsList() ([]DebtorDTO, error) {
+	return a.pay.ListDebtors(a.ctx)
+}
+
+func (a *App) InvoicePaymentSummary(invoiceID int) (*InvoiceSummaryDTO, error) {
+	return a.pay.InvoiceSummary(a.ctx, invoiceID)
+}
+
+// QuickCash creates an unlinked cash payment (e.g. "cash for lesson now").
+func (a *App) PaymentQuickCash(studentID int, amount float64, note string) (*PaymentDTO, error) {
+	return a.pay.QuickCash(a.ctx, studentID, amount, note)
+}
+
