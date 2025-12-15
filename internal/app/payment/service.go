@@ -4,7 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math"
+	"sort"
 	"time"
 
 	"langschool/ent"
@@ -55,7 +57,13 @@ type InvoiceSummaryDTO struct {
 }
 
 func round2(v float64) float64 { return math.Round(v*100) / 100 }
-func eps() float64             { return 0.009 }
+
+// eps returns the epsilon value used for floating-point comparisons.
+// The value 0.009 is chosen to account for rounding errors in currency calculations
+// where amounts are rounded to 2 decimal places (0.01). This epsilon is slightly
+// smaller than 0.01 to allow for safe boundary checks without false positives,
+// while being large enough to handle typical floating-point precision issues.
+func eps() float64 { return 0.009 }
 
 func parseDate(s string) (time.Time, error) {
 	// Accept YYYY-MM-DD or RFC3339.
@@ -227,6 +235,7 @@ func (s *Service) ListDebtors(ctx context.Context) ([]DebtorDTO, error) {
 	for _, st := range studs {
 		b, err := s.StudentBalance(ctx, st.ID)
 		if err != nil {
+			log.Printf("failed to calculate balance for student %d (%s): %v", st.ID, st.FullName, err)
 			continue
 		}
 		if b.Debt > eps() {
@@ -236,14 +245,10 @@ func (s *Service) ListDebtors(ctx context.Context) ([]DebtorDTO, error) {
 			})
 		}
 	}
-	// Sort by debt descending (simple bubble sort to avoid extra imports).
-	for i := 0; i < len(out); i++ {
-		for j := i + 1; j < len(out); j++ {
-			if out[j].Debt > out[i].Debt {
-				out[i], out[j] = out[j], out[i]
-			}
-		}
-	}
+	// Sort by debt descending.
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Debt > out[j].Debt
+	})
 	return out, nil
 }
 
