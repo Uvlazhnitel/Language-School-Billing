@@ -75,16 +75,16 @@ type CourseDTO struct {
 }
 
 type EnrollmentDTO struct {
-	ID          int      `json:"id"`
-	StudentID   int      `json:"studentId"`
-	StudentName string   `json:"studentName"`
-	CourseID    int      `json:"courseId"`
-	CourseName  string   `json:"courseName"`
-	BillingMode string   `json:"billingMode"` // subscription|per_lesson
-	StartDate   string   `json:"startDate"`   // YYYY-MM-DD
-	EndDate     *string  `json:"endDate,omitempty"`
-	DiscountPct float64  `json:"discountPct"`
-	Note        string   `json:"note"`
+	ID          int     `json:"id"`
+	StudentID   int     `json:"studentId"`
+	StudentName string  `json:"studentName"`
+	CourseID    int     `json:"courseId"`
+	CourseName  string  `json:"courseName"`
+	BillingMode string  `json:"billingMode"` // subscription|per_lesson
+	StartDate   string  `json:"startDate"`   // YYYY-MM-DD
+	EndDate     *string `json:"endDate,omitempty"`
+	DiscountPct float64 `json:"discountPct"`
+	Note        string  `json:"note"`
 }
 
 // -------------------- Students CRUD --------------------

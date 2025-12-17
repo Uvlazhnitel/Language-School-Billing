@@ -37,7 +37,6 @@ type App struct {
 	att *attendance.Service
 	inv *invsvc.Service
 	pay *paysvc.Service
-
 }
 
 func NewApp() *App { return &App{} }
@@ -532,4 +531,3 @@ func (a *App) InvoicePaymentSummary(invoiceID int) (*InvoiceSummaryDTO, error) {
 func (a *App) PaymentQuickCash(studentID int, amount float64, note string) (*PaymentDTO, error) {
 	return a.pay.QuickCash(a.ctx, studentID, amount, note)
 }
-
