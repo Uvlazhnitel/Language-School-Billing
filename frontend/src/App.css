@@ -214,8 +214,6 @@ tbody button:focus-visible {
 /* Removed empty ruleset for modern browsers */
 /* Removed empty ruleset */
   /* reset demo often is 2nd, delete is last in row */
-}
-
 tbody button:last-child {
   border-color: rgba(255, 77, 109, 0.25);
   background: linear-gradient(180deg, rgba(255,77,109,0.14), rgba(255,255,255,0.06));
@@ -431,7 +429,7 @@ tbody td button:last-child {
 .modalBody {
   width: min(520px, 100%);
   width: 100%;
-  border: 1px solid rgba(255,255,255,0.16);
+  width: clamp(0px, 100%, 520px);
   background:
     radial-gradient(900px 280px at 30% 0%, rgba(124,92,255,0.20), transparent 55%),
     linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.05));
