@@ -448,7 +448,7 @@ export default function App() {
                       <td>{s.fullName}</td>
                       <td>{s.phone}</td>
                       <td>{s.email}</td>
-                      <td>{s.isActive ? "yes" : "no"}</td>
+                      <td>{s.isActive ? "yexs" : "no"}</td>
                       <td>
                         <button onClick={() => openEditStudent(s)}>Edit</button>
                         <button onClick={() => toggleStudentActive(s)}>
