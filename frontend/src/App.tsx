@@ -13,16 +13,14 @@ import {
 } from "./lib/attendance";
 
 import {
-  genDrafts,
   listInvoices,
   getInvoice,
-  deleteDraft,
-  issueOne,
   issueAll,
   ensurePdfAndOpen,
   InvoiceListItem,
   InvoiceDTO,
 } from "./lib/invoices";
+
 
 import {
   listStudents,
@@ -343,106 +341,75 @@ export default function App() {
   const onReset = async () => { await devReset(); await loadAttendance(); };
   const onDeleteEnrollmentFromSheet = async (id: number) => { await deleteEnrollment(id); await loadAttendance(); };
 
-  // ---------------- Invoices ----------------
-  const [invStatus, setInvStatus] = useState<string>("draft");
-  const [invItems, setInvItems] = useState<InvoiceListItem[]>([]);
-  const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
-  const [loadingInv, setLoadingInv] = useState(false);
-  const [invQ, setInvQ] = useState("");
+// ---------------- Invoices ----------------
+const [invStatus, setInvStatus] = useState<string>("all");
+const [invItems, setInvItems] = useState<InvoiceListItem[]>([]);
+const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
+const [loadingInv, setLoadingInv] = useState(false);
+const [invQ, setInvQ] = useState("");
 
-  // We auto-generate drafts once per (year, month) to keep UI simple.
-  const [preparedPeriodKey, setPreparedPeriodKey] = useState<string>("");
+// For search by phone/email we need students list
+const studentIndex = useMemo(() => {
+  const m = new Map<number, StudentDTO>();
+  for (const s of students) m.set(s.id, s);
+  return m;
+}, [students]);
 
-  const studentIndex = useMemo(() => {
-    const m = new Map<number, StudentDTO>();
-    for (const s of students) m.set(s.id, s);
-    return m;
-  }, [students]);
+const ensureStudentsForInvoiceSearch = useCallback(async () => {
+  if (students.length > 0) return;
+  const data = await listStudents("", true);
+  setStudents(data);
+}, [students.length]);
 
-  const ensureStudentsForInvoiceSearch = useCallback(async () => {
-    if (students.length > 0) return;
-    const data = await listStudents("", true);
-    setStudents(data);
-  }, [students.length]);
+const loadInvoices = useCallback(async () => {
+  setLoadingInv(true);
+  try {
+    await ensureStudentsForInvoiceSearch();
+    const li = await listInvoices(year, month, invStatus);
+    setInvItems(li);
+    setSelectedInv(null);
+  } catch (e: any) {
+    alert(String(e?.message ?? e));
+  } finally {
+    setLoadingInv(false);
+  }
+}, [year, month, invStatus, ensureStudentsForInvoiceSearch]);
 
-  const prepareInvoicesIfNeeded = useCallback(async () => {
-    const key = `${year}-${month}`;
-    if (preparedPeriodKey === key) return;
+useEffect(() => {
+  if (tab === "invoice") loadInvoices();
+}, [tab, loadInvoices]);
 
-    // Generate/update drafts silently so user does not deal with "Build drafts".
-    await genDrafts(year, month);
-    setPreparedPeriodKey(key);
-  }, [year, month, preparedPeriodKey]);
+const filteredInvItems = useMemo(() => {
+  const q = invQ.trim().toLowerCase();
+  if (!q) return invItems;
 
-  const loadInvoices = useCallback(async () => {
-    setLoadingInv(true);
-    try {
-      await ensureStudentsForInvoiceSearch();
-      await prepareInvoicesIfNeeded();
+  return invItems.filter((it) => {
+    const s = studentIndex.get(it.studentId);
+    const name = (it.studentName ?? "").toLowerCase();
+    const number = (it.number ?? "").toLowerCase();
+    const email = (s?.email ?? "").toLowerCase();
+    const phone = (s?.phone ?? "").toLowerCase();
+    return name.includes(q) || number.includes(q) || email.includes(q) || phone.includes(q);
+  });
+}, [invItems, invQ, studentIndex]);
 
-      const li = await listInvoices(year, month, invStatus);
-      setInvItems(li);
-      setSelectedInv(null);
-    } catch (e: any) {
-      alert(String(e?.message ?? e));
-    } finally {
-      setLoadingInv(false);
-    }
-  }, [year, month, invStatus, ensureStudentsForInvoiceSearch, prepareInvoicesIfNeeded]);
+const onOpenInvoice = async (id: number) => {
+  const iv = await getInvoice(id);
+  setSelectedInv(iv);
+};
 
-  useEffect(() => {
-    if (tab === "invoice") loadInvoices();
-  }, [tab, loadInvoices]);
+const onIssueAll = async () => {
+  // Depending on backend: it may create+issue invoices internally.
+  const res = await issueAll(year, month);
+  alert(`Issued: ${res.count}\nPDF:\n${res.pdfPaths.join("\n")}`);
+  await loadInvoices();
+};
 
-  const filteredInvItems = useMemo(() => {
-    const q = invQ.trim().toLowerCase();
-    if (!q) return invItems;
+const onOpenPdf = async (id: number) => {
+  const path = await ensurePdfAndOpen(id);
+  console.log("Opened PDF:", path);
+};
 
-    return invItems.filter((it) => {
-      const s = studentIndex.get(it.studentId);
-      const name = (it.studentName ?? "").toLowerCase();
-      const number = (it.number ?? "").toLowerCase();
-      const email = (s?.email ?? "").toLowerCase();
-      const phone = (s?.phone ?? "").toLowerCase();
-      return (
-        name.includes(q) ||
-        number.includes(q) ||
-        email.includes(q) ||
-        phone.includes(q)
-      );
-    });
-  }, [invItems, invQ, studentIndex]);
-
-  const onOpenInvoice = async (id: number) => {
-    const iv = await getInvoice(id);
-    setSelectedInv(iv);
-  };
-
-  const onDeleteDraft = async (id: number) => {
-    await deleteDraft(id);
-    await loadInvoices();
-  };
-
-  const onIssueOne = async (id: number) => {
-    // Ensure drafts exist (usually already prepared, but keep safe).
-    await prepareInvoicesIfNeeded();
-    const res = await issueOne(id);
-    alert(`Issued: ${res.number}\nPDF: ${res.pdfPath}`);
-    await loadInvoices();
-  };
-
-  const onIssueAll = async () => {
-    // "Issue all" should work even if user never visited drafts list.
-    await prepareInvoicesIfNeeded();
-    const res = await issueAll(year, month);
-    alert(`Issued: ${res.count}\nPDF:\n${res.pdfPaths.join("\n")}`);
-    await loadInvoices();
-  };
-
-  const onOpenPdf = async (id: number) => {
-    const path = await ensurePdfAndOpen(id);
-    console.log("Opened PDF:", path);
-  };
 
   // ---------------- Render ----------------
   const showMonthPicker = tab === "attendance" || tab === "invoice";
@@ -861,109 +828,100 @@ export default function App() {
 
       {/* ---------------- Invoices ---------------- */}
       {tab === "invoice" && (
-        <>
-          <div className="controls">
-            <button onClick={onIssueAll}>Issue all</button>
+  <>
+    <div className="controls">
+      <button onClick={onIssueAll}>Issue all</button>
 
-            <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
-              <option value="draft">draft</option>
-              <option value="issued">issued</option>
-              <option value="paid">paid</option>
-              <option value="canceled">canceled</option>
-              <option value="all">all</option>
-            </select>
+      <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
+        <option value="issued">issued</option>
+        <option value="paid">paid</option>
+        <option value="canceled">canceled</option>
+        <option value="all">all</option>
+      </select>
 
-            <input
-              placeholder="Search student / phone / email / invoice #"
-              value={invQ}
-              onChange={(e) => setInvQ(e.target.value)}
-              style={{ width: 320 }}
-            />
+      <input
+        placeholder="Search student / phone / email / invoice #"
+        value={invQ}
+        onChange={(e) => setInvQ(e.target.value)}
+        style={{ width: 320 }}
+      />
 
-            <button onClick={loadInvoices}>Refresh</button>
-          </div>
+      <button onClick={loadInvoices}>Refresh</button>
+    </div>
 
-          {loadingInv ? (
-            <div>Loading…</div>
-          ) : filteredInvItems.length === 0 ? (
-            <div className="empty">No invoices found for this period/status/search.</div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Period</th>
-                  <th style={{ textAlign: "right" }}>Lines</th>
-                  <th style={{ textAlign: "right" }}>Total</th>
-                  <th>Status</th>
-                  <th>Number</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInvItems.map((it) => (
-                  <tr key={it.id}>
-                    <td>{it.studentName}</td>
-                    <td>{months[it.month - 1]} {it.year}</td>
-                    <td style={{ textAlign: "right" }}>{it.linesCount}</td>
-                    <td style={{ textAlign: "right" }}>{it.total.toFixed(2)}</td>
-                    <td>{it.status}</td>
-                    <td>{it.number ?? ""}</td>
-                    <td>
-                      <button onClick={() => onOpenInvoice(it.id)}>Open</button>
+    {loadingInv ? (
+      <div>Loading…</div>
+    ) : filteredInvItems.length === 0 ? (
+      <div className="empty">No invoices found for this period/status/search.</div>
+    ) : (
+      <table>
+        <thead>
+          <tr>
+            <th>Student</th>
+            <th>Period</th>
+            <th style={{ textAlign: "right" }}>Lines</th>
+            <th style={{ textAlign: "right" }}>Total</th>
+            <th>Status</th>
+            <th>Number</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {filteredInvItems.map((it) => (
+            <tr key={it.id}>
+              <td>{it.studentName}</td>
+              <td>{months[it.month - 1]} {it.year}</td>
+              <td style={{ textAlign: "right" }}>{it.linesCount}</td>
+              <td style={{ textAlign: "right" }}>{it.total.toFixed(2)}</td>
+              <td>{it.status}</td>
+              <td>{it.number ?? ""}</td>
+              <td>
+                <button onClick={() => onOpenInvoice(it.id)}>Open</button>
+                <button onClick={() => onOpenPdf(it.id)}>PDF</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )}
 
-                      {it.status === "draft" ? (
-                        <>
-                          <button onClick={() => onIssueOne(it.id)}>Issue</button>
-                          <button onClick={() => onDeleteDraft(it.id)}>Delete</button>
-                        </>
-                      ) : (
-                        <button onClick={() => onOpenPdf(it.id)}>PDF</button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+    {selectedInv && (
+      <div className="panel">
+        <h3>
+          Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} — {selectedInv.studentName} —{" "}
+          {months[selectedInv.month - 1]} {selectedInv.year}
+        </h3>
 
-          {selectedInv && (
-            <div className="panel">
-              <h3>
-                Invoice {selectedInv.number ? `#${selectedInv.number}` : "(draft)"} — {selectedInv.studentName} —{" "}
-                {months[selectedInv.month - 1]} {selectedInv.year}
-              </h3>
-
-              <table>
-                <thead>
-                  <tr>
-                    <th>Description</th>
-                    <th style={{ textAlign: "right" }}>Qty</th>
-                    <th style={{ textAlign: "right" }}>Unit</th>
-                    <th style={{ textAlign: "right" }}>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedInv.lines.map((l, idx) => (
-                    <tr key={idx}>
-                      <td>{l.description}</td>
-                      <td style={{ textAlign: "right" }}>{l.qty}</td>
-                      <td style={{ textAlign: "right" }}>{l.unitPrice.toFixed(2)}</td>
-                      <td style={{ textAlign: "right" }}>{l.amount.toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={3} style={{ textAlign: "right" }}>Total:</td>
-                    <td style={{ textAlign: "right" }}>{selectedInv.total.toFixed(2)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
-        </>
-      )}
+        <table>
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th style={{ textAlign: "right" }}>Qty</th>
+              <th style={{ textAlign: "right" }}>Unit</th>
+              <th style={{ textAlign: "right" }}>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {selectedInv.lines.map((l, idx) => (
+              <tr key={idx}>
+                <td>{l.description}</td>
+                <td style={{ textAlign: "right" }}>{l.qty}</td>
+                <td style={{ textAlign: "right" }}>{l.unitPrice.toFixed(2)}</td>
+                <td style={{ textAlign: "right" }}>{l.amount.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={3} style={{ textAlign: "right" }}>Total:</td>
+              <td style={{ textAlign: "right" }}>{selectedInv.total.toFixed(2)}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    )}
+  </>
+)}
     </div>
   );
 }
