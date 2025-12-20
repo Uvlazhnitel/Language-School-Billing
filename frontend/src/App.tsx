@@ -236,13 +236,17 @@ export default function App() {
   const loadEnrollments = useCallback(async () => {
     setEnrLoading(true);
     try {
-      await ensureStudentsCoursesLoaded();
+      // Load students & courses if needed for dropdowns
+      await Promise.all([
+        students.length === 0 ? listStudents("", true).then(setStudents) : Promise.resolve(),
+        courses.length === 0 ? listCourses("").then(setCourses) : Promise.resolve()
+      ]);
       const data = await listEnrollments(enrStudentFilter, enrCourseFilter, enrActiveOnly);
       setEnrollments(data);
     } finally {
       setEnrLoading(false);
     }
-  }, [enrStudentFilter, enrCourseFilter, enrActiveOnly]);
+  }, [enrStudentFilter, enrCourseFilter, enrActiveOnly, students.length, courses.length]);
 
   useEffect(() => {
     if (tab === "enrollments") loadEnrollments();
