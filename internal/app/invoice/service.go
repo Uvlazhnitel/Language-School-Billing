@@ -78,6 +78,8 @@ type GenerateResult struct {
 
 func round2(v float64) float64 { return math.Round(v*100) / 100 }
 
+// periodBounds returns the start and end date for a given year/month period.
+// Still used for price override calculations in resolvePrices.
 func periodBounds(y, m int) (start, end time.Time) {
 	start = time.Date(y, time.Month(m), 1, 0, 0, 0, 0, time.Local)
 	end = start.AddDate(0, 1, -1)

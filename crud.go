@@ -300,7 +300,7 @@ func (a *App) EnrollmentList(studentID *int, courseID *int, activeOnly bool) ([]
 		q = q.Where(enrollment.CourseIDEQ(*courseID))
 	}
 
-	ens, err := q.Order(ent.Asc(enrollment.FieldID)).All(ctx)
+	ens, err := q.Order(ent.Desc(enrollment.FieldID)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
