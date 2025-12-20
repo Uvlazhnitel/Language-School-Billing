@@ -22,8 +22,6 @@ const (
 	FieldLessonPrice = "lesson_price"
 	// FieldSubscriptionPrice holds the string denoting the subscription_price field in the database.
 	FieldSubscriptionPrice = "subscription_price"
-	// FieldScheduleJSON holds the string denoting the schedule_json field in the database.
-	FieldScheduleJSON = "schedule_json"
 	// FieldIsActive holds the string denoting the is_active field in the database.
 	FieldIsActive = "is_active"
 	// EdgeEnrollments holds the string denoting the enrollments edge name in mutations.
@@ -46,7 +44,6 @@ var Columns = []string{
 	FieldType,
 	FieldLessonPrice,
 	FieldSubscriptionPrice,
-	FieldScheduleJSON,
 	FieldIsActive,
 }
 
@@ -65,8 +62,6 @@ var (
 	DefaultLessonPrice float64
 	// DefaultSubscriptionPrice holds the default value on creation for the "subscription_price" field.
 	DefaultSubscriptionPrice float64
-	// DefaultScheduleJSON holds the default value on creation for the "schedule_json" field.
-	DefaultScheduleJSON string
 	// DefaultIsActive holds the default value on creation for the "is_active" field.
 	DefaultIsActive bool
 )
@@ -120,11 +115,6 @@ func ByLessonPrice(opts ...sql.OrderTermOption) OrderOption {
 // BySubscriptionPrice orders the results by the subscription_price field.
 func BySubscriptionPrice(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSubscriptionPrice, opts...).ToFunc()
-}
-
-// ByScheduleJSON orders the results by the schedule_json field.
-func ByScheduleJSON(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldScheduleJSON, opts...).ToFunc()
 }
 
 // ByIsActive orders the results by the is_active field.

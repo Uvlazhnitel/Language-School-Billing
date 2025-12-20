@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -27,33 +26,6 @@ func parseYMD(s string) (time.Time, error) {
 	return t, nil
 }
 
-type scheduleJSON struct {
-	DaysOfWeek []int `json:"daysOfWeek"`
-}
-
-func encodeSchedule(days []int) (string, error) {
-	if len(days) == 0 {
-		return "", nil
-	}
-	payload := scheduleJSON{DaysOfWeek: days}
-	b, err := json.Marshal(payload)
-	if err != nil {
-		return "", err
-	}
-	return string(b), nil
-}
-
-func decodeSchedule(s string) []int {
-	if strings.TrimSpace(s) == "" {
-		return []int{}
-	}
-	var payload scheduleJSON
-	if err := json.Unmarshal([]byte(s), &payload); err != nil {
-		return []int{}
-	}
-	return payload.DaysOfWeek
-}
-
 // -------------------- DTOs for Wails --------------------
 
 type StudentDTO struct {
@@ -71,7 +43,6 @@ type CourseDTO struct {
 	Type              string  `json:"type"` // group|individual
 	LessonPrice       float64 `json:"lessonPrice"`
 	SubscriptionPrice float64 `json:"subscriptionPrice"`
-	ScheduleDays      []int   `json:"scheduleDays"` // derived from schedule_json
 }
 
 type EnrollmentDTO struct {
@@ -213,7 +184,6 @@ func (a *App) CourseList(q string) ([]CourseDTO, error) {
 			Type:              string(c.Type),
 			LessonPrice:       c.LessonPrice,
 			SubscriptionPrice: c.SubscriptionPrice,
-			ScheduleDays:      decodeSchedule(c.ScheduleJSON),
 		})
 	}
 	return out, nil
@@ -230,11 +200,10 @@ func (a *App) CourseGet(id int) (*CourseDTO, error) {
 		Type:              string(c.Type),
 		LessonPrice:       c.LessonPrice,
 		SubscriptionPrice: c.SubscriptionPrice,
-		ScheduleDays:      decodeSchedule(c.ScheduleJSON),
 	}, nil
 }
 
-func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPrice float64, scheduleDays []int) (*CourseDTO, error) {
+func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = strings.TrimSpace(name)
 	courseType = strings.TrimSpace(courseType)
 
@@ -248,24 +217,12 @@ func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPri
 		return nil, errors.New("prices must be >= 0")
 	}
 
-	sched, err := encodeSchedule(scheduleDays)
-	if err != nil {
-		return nil, err
-	}
-
-	builder := a.db.Ent.Course.Create().
+	c, err := a.db.Ent.Course.Create().
 		SetName(name).
 		SetType(course.Type(courseType)).
 		SetLessonPrice(lessonPrice).
-		SetSubscriptionPrice(subscriptionPrice)
-
-	// schedule_json is optional in your current schema (DevSeed sets it only for group).
-	// We set it only if non-empty.
-	if sched != "" {
-		builder = builder.SetScheduleJSON(sched)
-	}
-
-	c, err := builder.Save(a.ctx)
+		SetSubscriptionPrice(subscriptionPrice).
+		Save(a.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -276,11 +233,10 @@ func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPri
 		Type:              string(c.Type),
 		LessonPrice:       c.LessonPrice,
 		SubscriptionPrice: c.SubscriptionPrice,
-		ScheduleDays:      decodeSchedule(c.ScheduleJSON),
 	}, nil
 }
 
-func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscriptionPrice float64, scheduleDays []int) (*CourseDTO, error) {
+func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = strings.TrimSpace(name)
 	courseType = strings.TrimSpace(courseType)
 
@@ -294,26 +250,12 @@ func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscri
 		return nil, errors.New("prices must be >= 0")
 	}
 
-	sched, err := encodeSchedule(scheduleDays)
-	if err != nil {
-		return nil, err
-	}
-
-	upd := a.db.Ent.Course.UpdateOneID(id).
+	c, err := a.db.Ent.Course.UpdateOneID(id).
 		SetName(name).
 		SetType(course.Type(courseType)).
 		SetLessonPrice(lessonPrice).
-		SetSubscriptionPrice(subscriptionPrice)
-
-	// If scheduleDays is empty, we clear schedule_json by setting it to empty string.
-	// This keeps behavior predictable for UI.
-	if sched == "" {
-		upd = upd.SetScheduleJSON("")
-	} else {
-		upd = upd.SetScheduleJSON(sched)
-	}
-
-	c, err := upd.Save(a.ctx)
+		SetSubscriptionPrice(subscriptionPrice).
+		Save(a.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -324,7 +266,6 @@ func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscri
 		Type:              string(c.Type),
 		LessonPrice:       c.LessonPrice,
 		SubscriptionPrice: c.SubscriptionPrice,
-		ScheduleDays:      decodeSchedule(c.ScheduleJSON),
 	}, nil
 }
 

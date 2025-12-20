@@ -60,20 +60,6 @@ func (_c *CourseCreate) SetNillableSubscriptionPrice(v *float64) *CourseCreate {
 	return _c
 }
 
-// SetScheduleJSON sets the "schedule_json" field.
-func (_c *CourseCreate) SetScheduleJSON(v string) *CourseCreate {
-	_c.mutation.SetScheduleJSON(v)
-	return _c
-}
-
-// SetNillableScheduleJSON sets the "schedule_json" field if the given value is not nil.
-func (_c *CourseCreate) SetNillableScheduleJSON(v *string) *CourseCreate {
-	if v != nil {
-		_c.SetScheduleJSON(*v)
-	}
-	return _c
-}
-
 // SetIsActive sets the "is_active" field.
 func (_c *CourseCreate) SetIsActive(v bool) *CourseCreate {
 	_c.mutation.SetIsActive(v)
@@ -146,10 +132,6 @@ func (_c *CourseCreate) defaults() {
 		v := course.DefaultSubscriptionPrice
 		_c.mutation.SetSubscriptionPrice(v)
 	}
-	if _, ok := _c.mutation.ScheduleJSON(); !ok {
-		v := course.DefaultScheduleJSON
-		_c.mutation.SetScheduleJSON(v)
-	}
 	if _, ok := _c.mutation.IsActive(); !ok {
 		v := course.DefaultIsActive
 		_c.mutation.SetIsActive(v)
@@ -174,9 +156,6 @@ func (_c *CourseCreate) check() error {
 	}
 	if _, ok := _c.mutation.SubscriptionPrice(); !ok {
 		return &ValidationError{Name: "subscription_price", err: errors.New(`ent: missing required field "Course.subscription_price"`)}
-	}
-	if _, ok := _c.mutation.ScheduleJSON(); !ok {
-		return &ValidationError{Name: "schedule_json", err: errors.New(`ent: missing required field "Course.schedule_json"`)}
 	}
 	if _, ok := _c.mutation.IsActive(); !ok {
 		return &ValidationError{Name: "is_active", err: errors.New(`ent: missing required field "Course.is_active"`)}
@@ -222,10 +201,6 @@ func (_c *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.SubscriptionPrice(); ok {
 		_spec.SetField(course.FieldSubscriptionPrice, field.TypeFloat64, value)
 		_node.SubscriptionPrice = value
-	}
-	if value, ok := _c.mutation.ScheduleJSON(); ok {
-		_spec.SetField(course.FieldScheduleJSON, field.TypeString, value)
-		_node.ScheduleJSON = value
 	}
 	if value, ok := _c.mutation.IsActive(); ok {
 		_spec.SetField(course.FieldIsActive, field.TypeBool, value)

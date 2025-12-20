@@ -98,20 +98,6 @@ func (_u *CourseUpdate) AddSubscriptionPrice(v float64) *CourseUpdate {
 	return _u
 }
 
-// SetScheduleJSON sets the "schedule_json" field.
-func (_u *CourseUpdate) SetScheduleJSON(v string) *CourseUpdate {
-	_u.mutation.SetScheduleJSON(v)
-	return _u
-}
-
-// SetNillableScheduleJSON sets the "schedule_json" field if the given value is not nil.
-func (_u *CourseUpdate) SetNillableScheduleJSON(v *string) *CourseUpdate {
-	if v != nil {
-		_u.SetScheduleJSON(*v)
-	}
-	return _u
-}
-
 // SetIsActive sets the "is_active" field.
 func (_u *CourseUpdate) SetIsActive(v bool) *CourseUpdate {
 	_u.mutation.SetIsActive(v)
@@ -233,9 +219,6 @@ func (_u *CourseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedSubscriptionPrice(); ok {
 		_spec.AddField(course.FieldSubscriptionPrice, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.ScheduleJSON(); ok {
-		_spec.SetField(course.FieldScheduleJSON, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.IsActive(); ok {
 		_spec.SetField(course.FieldIsActive, field.TypeBool, value)
@@ -372,20 +355,6 @@ func (_u *CourseUpdateOne) SetNillableSubscriptionPrice(v *float64) *CourseUpdat
 // AddSubscriptionPrice adds value to the "subscription_price" field.
 func (_u *CourseUpdateOne) AddSubscriptionPrice(v float64) *CourseUpdateOne {
 	_u.mutation.AddSubscriptionPrice(v)
-	return _u
-}
-
-// SetScheduleJSON sets the "schedule_json" field.
-func (_u *CourseUpdateOne) SetScheduleJSON(v string) *CourseUpdateOne {
-	_u.mutation.SetScheduleJSON(v)
-	return _u
-}
-
-// SetNillableScheduleJSON sets the "schedule_json" field if the given value is not nil.
-func (_u *CourseUpdateOne) SetNillableScheduleJSON(v *string) *CourseUpdateOne {
-	if v != nil {
-		_u.SetScheduleJSON(*v)
-	}
 	return _u
 }
 
@@ -540,9 +509,6 @@ func (_u *CourseUpdateOne) sqlSave(ctx context.Context) (_node *Course, err erro
 	}
 	if value, ok := _u.mutation.AddedSubscriptionPrice(); ok {
 		_spec.AddField(course.FieldSubscriptionPrice, field.TypeFloat64, value)
-	}
-	if value, ok := _u.mutation.ScheduleJSON(); ok {
-		_spec.SetField(course.FieldScheduleJSON, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.IsActive(); ok {
 		_spec.SetField(course.FieldIsActive, field.TypeBool, value)

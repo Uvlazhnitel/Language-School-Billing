@@ -24,8 +24,6 @@ type Course struct {
 	LessonPrice float64 `json:"lesson_price,omitempty"`
 	// SubscriptionPrice holds the value of the "subscription_price" field.
 	SubscriptionPrice float64 `json:"subscription_price,omitempty"`
-	// ScheduleJSON holds the value of the "schedule_json" field.
-	ScheduleJSON string `json:"schedule_json,omitempty"`
 	// IsActive holds the value of the "is_active" field.
 	IsActive bool `json:"is_active,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -63,7 +61,7 @@ func (*Course) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case course.FieldID:
 			values[i] = new(sql.NullInt64)
-		case course.FieldName, course.FieldType, course.FieldScheduleJSON:
+		case course.FieldName, course.FieldType:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -109,12 +107,6 @@ func (_m *Course) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field subscription_price", values[i])
 			} else if value.Valid {
 				_m.SubscriptionPrice = value.Float64
-			}
-		case course.FieldScheduleJSON:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field schedule_json", values[i])
-			} else if value.Valid {
-				_m.ScheduleJSON = value.String
 			}
 		case course.FieldIsActive:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -174,9 +166,6 @@ func (_m *Course) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("subscription_price=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SubscriptionPrice))
-	builder.WriteString(", ")
-	builder.WriteString("schedule_json=")
-	builder.WriteString(_m.ScheduleJSON)
 	builder.WriteString(", ")
 	builder.WriteString("is_active=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsActive))
