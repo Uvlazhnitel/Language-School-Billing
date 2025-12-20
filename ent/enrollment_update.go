@@ -12,7 +12,6 @@ import (
 	"langschool/ent/predicate"
 	"langschool/ent/priceoverride"
 	"langschool/ent/student"
-	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -71,40 +70,6 @@ func (_u *EnrollmentUpdate) SetNillableBillingMode(v *enrollment.BillingMode) *E
 	if v != nil {
 		_u.SetBillingMode(*v)
 	}
-	return _u
-}
-
-// SetStartDate sets the "start_date" field.
-func (_u *EnrollmentUpdate) SetStartDate(v time.Time) *EnrollmentUpdate {
-	_u.mutation.SetStartDate(v)
-	return _u
-}
-
-// SetNillableStartDate sets the "start_date" field if the given value is not nil.
-func (_u *EnrollmentUpdate) SetNillableStartDate(v *time.Time) *EnrollmentUpdate {
-	if v != nil {
-		_u.SetStartDate(*v)
-	}
-	return _u
-}
-
-// SetEndDate sets the "end_date" field.
-func (_u *EnrollmentUpdate) SetEndDate(v time.Time) *EnrollmentUpdate {
-	_u.mutation.SetEndDate(v)
-	return _u
-}
-
-// SetNillableEndDate sets the "end_date" field if the given value is not nil.
-func (_u *EnrollmentUpdate) SetNillableEndDate(v *time.Time) *EnrollmentUpdate {
-	if v != nil {
-		_u.SetEndDate(*v)
-	}
-	return _u
-}
-
-// ClearEndDate clears the value of the "end_date" field.
-func (_u *EnrollmentUpdate) ClearEndDate() *EnrollmentUpdate {
-	_u.mutation.ClearEndDate()
 	return _u
 }
 
@@ -299,15 +264,6 @@ func (_u *EnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if value, ok := _u.mutation.BillingMode(); ok {
 		_spec.SetField(enrollment.FieldBillingMode, field.TypeEnum, value)
-	}
-	if value, ok := _u.mutation.StartDate(); ok {
-		_spec.SetField(enrollment.FieldStartDate, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.EndDate(); ok {
-		_spec.SetField(enrollment.FieldEndDate, field.TypeTime, value)
-	}
-	if _u.mutation.EndDateCleared() {
-		_spec.ClearField(enrollment.FieldEndDate, field.TypeTime)
 	}
 	if value, ok := _u.mutation.DiscountPct(); ok {
 		_spec.SetField(enrollment.FieldDiscountPct, field.TypeFloat64, value)
@@ -525,40 +481,6 @@ func (_u *EnrollmentUpdateOne) SetNillableBillingMode(v *enrollment.BillingMode)
 	if v != nil {
 		_u.SetBillingMode(*v)
 	}
-	return _u
-}
-
-// SetStartDate sets the "start_date" field.
-func (_u *EnrollmentUpdateOne) SetStartDate(v time.Time) *EnrollmentUpdateOne {
-	_u.mutation.SetStartDate(v)
-	return _u
-}
-
-// SetNillableStartDate sets the "start_date" field if the given value is not nil.
-func (_u *EnrollmentUpdateOne) SetNillableStartDate(v *time.Time) *EnrollmentUpdateOne {
-	if v != nil {
-		_u.SetStartDate(*v)
-	}
-	return _u
-}
-
-// SetEndDate sets the "end_date" field.
-func (_u *EnrollmentUpdateOne) SetEndDate(v time.Time) *EnrollmentUpdateOne {
-	_u.mutation.SetEndDate(v)
-	return _u
-}
-
-// SetNillableEndDate sets the "end_date" field if the given value is not nil.
-func (_u *EnrollmentUpdateOne) SetNillableEndDate(v *time.Time) *EnrollmentUpdateOne {
-	if v != nil {
-		_u.SetEndDate(*v)
-	}
-	return _u
-}
-
-// ClearEndDate clears the value of the "end_date" field.
-func (_u *EnrollmentUpdateOne) ClearEndDate() *EnrollmentUpdateOne {
-	_u.mutation.ClearEndDate()
 	return _u
 }
 
@@ -783,15 +705,6 @@ func (_u *EnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Enrollment, 
 	}
 	if value, ok := _u.mutation.BillingMode(); ok {
 		_spec.SetField(enrollment.FieldBillingMode, field.TypeEnum, value)
-	}
-	if value, ok := _u.mutation.StartDate(); ok {
-		_spec.SetField(enrollment.FieldStartDate, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.EndDate(); ok {
-		_spec.SetField(enrollment.FieldEndDate, field.TypeTime, value)
-	}
-	if _u.mutation.EndDateCleared() {
-		_spec.ClearField(enrollment.FieldEndDate, field.TypeTime)
 	}
 	if value, ok := _u.mutation.DiscountPct(); ok {
 		_spec.SetField(enrollment.FieldDiscountPct, field.TypeFloat64, value)

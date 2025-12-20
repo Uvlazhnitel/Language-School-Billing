@@ -85,13 +85,7 @@ func periodBounds(y, m int) (start, end time.Time) {
 }
 
 func activeInPeriod(en *ent.Enrollment, y, m int) bool {
-	ps, pe := periodBounds(y, m)
-	if en.StartDate.After(pe) {
-		return false
-	}
-	if en.EndDate != nil && en.EndDate.Before(ps) {
-		return false
-	}
+	// Without start/end dates, all enrollments are considered active
 	return true
 }
 

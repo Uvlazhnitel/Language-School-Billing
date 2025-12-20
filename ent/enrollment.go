@@ -8,7 +8,6 @@ import (
 	"langschool/ent/enrollment"
 	"langschool/ent/student"
 	"strings"
-	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -25,10 +24,6 @@ type Enrollment struct {
 	CourseID int `json:"course_id,omitempty"`
 	// BillingMode holds the value of the "billing_mode" field.
 	BillingMode enrollment.BillingMode `json:"billing_mode,omitempty"`
-	// StartDate holds the value of the "start_date" field.
-	StartDate time.Time `json:"start_date,omitempty"`
-	// EndDate holds the value of the "end_date" field.
-	EndDate *time.Time `json:"end_date,omitempty"`
 	// DiscountPct holds the value of the "discount_pct" field.
 	DiscountPct float64 `json:"discount_pct,omitempty"`
 	// Note holds the value of the "note" field.
@@ -105,8 +100,6 @@ func (*Enrollment) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case enrollment.FieldBillingMode, enrollment.FieldNote:
 			values[i] = new(sql.NullString)
-		case enrollment.FieldStartDate, enrollment.FieldEndDate:
-			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -145,19 +138,6 @@ func (_m *Enrollment) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field billing_mode", values[i])
 			} else if value.Valid {
 				_m.BillingMode = enrollment.BillingMode(value.String)
-			}
-		case enrollment.FieldStartDate:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field start_date", values[i])
-			} else if value.Valid {
-				_m.StartDate = value.Time
-			}
-		case enrollment.FieldEndDate:
-			if value, ok := values[i].(*sql.NullTime); !ok {
-				return fmt.Errorf("unexpected type %T for field end_date", values[i])
-			} else if value.Valid {
-				_m.EndDate = new(time.Time)
-				*_m.EndDate = value.Time
 			}
 		case enrollment.FieldDiscountPct:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -235,14 +215,6 @@ func (_m *Enrollment) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("billing_mode=")
 	builder.WriteString(fmt.Sprintf("%v", _m.BillingMode))
-	builder.WriteString(", ")
-	builder.WriteString("start_date=")
-	builder.WriteString(_m.StartDate.Format(time.ANSIC))
-	builder.WriteString(", ")
-	if v := _m.EndDate; v != nil {
-		builder.WriteString("end_date=")
-		builder.WriteString(v.Format(time.ANSIC))
-	}
 	builder.WriteString(", ")
 	builder.WriteString("discount_pct=")
 	builder.WriteString(fmt.Sprintf("%v", _m.DiscountPct))
