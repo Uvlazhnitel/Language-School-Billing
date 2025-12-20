@@ -314,21 +314,68 @@ export default function App() {
   const [invItems, setInvItems] = useState<InvoiceListItem[]>([]);
   const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
   const [loadingInv, setLoadingInv] = useState(false);
+  const [invStudentFilter, setInvStudentFilter] = useState("");
+  const [invGroupFilter, setInvGroupFilter] = useState<"all" | "group" | "individual">("all");
 
   const loadInvoices = useCallback(async () => {
     setLoadingInv(true);
     try {
+      // Load invoices
       const li = await listInvoices(year, month, invStatus);
       setInvItems(li);
       setSelectedInv(null);
+      
+      // Load students and courses for filtering if not already loaded
+      if (students.length === 0) {
+        const studs = await listStudents("", true);
+        setStudents(studs);
+      }
+      if (courses.length === 0) {
+        const crses = await listCourses("");
+        setCourses(crses);
+      }
+      if (enrollments.length === 0) {
+        const enrs = await listEnrollments(undefined, undefined, false);
+        setEnrollments(enrs);
+      }
     } finally {
       setLoadingInv(false);
     }
-  }, [year, month, invStatus]);
+  }, [year, month, invStatus, students.length, courses.length, enrollments.length]);
 
   useEffect(() => {
     if (tab === "invoice") loadInvoices();
   }, [tab, loadInvoices]);
+
+  // Filter invoices based on student name and course type
+  const filteredInvItems = useMemo(() => {
+    let filtered = invItems;
+    
+    // Filter by student name
+    if (invStudentFilter.trim()) {
+      const searchLower = invStudentFilter.toLowerCase();
+      filtered = filtered.filter(inv => 
+        inv.studentName.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Filter by course type (group/individual)
+    if (invGroupFilter !== "all") {
+      filtered = filtered.filter(inv => {
+        // Get enrollments for this student
+        const studentEnrollments = enrollments.filter(e => e.studentId === inv.studentId);
+        // Get course types for these enrollments
+        const courseTypes = studentEnrollments.map(e => {
+          const course = courses.find(c => c.id === e.courseId);
+          return course?.type;
+        });
+        // Check if any course matches the filter
+        return courseTypes.includes(invGroupFilter);
+      });
+    }
+    
+    return filtered;
+  }, [invItems, invStudentFilter, invGroupFilter, enrollments, courses]);
 
   const onGenDrafts = async () => {
     const res = await genDrafts(year, month);
@@ -719,8 +766,22 @@ export default function App() {
             <button onClick={loadInvoices}>Refresh</button>
           </div>
 
+          <div className="controls">
+            <input
+              placeholder="Search student…"
+              value={invStudentFilter}
+              onChange={(e) => setInvStudentFilter(e.target.value)}
+              style={{ width: 200 }}
+            />
+            <select value={invGroupFilter} onChange={(e) => setInvGroupFilter(e.target.value as any)}>
+              <option value="all">All course types</option>
+              <option value="group">Group courses</option>
+              <option value="individual">Individual courses</option>
+            </select>
+          </div>
+
           {loadingInv ? <div>Loading…</div> : (
-            invItems.length === 0 ? <div className="empty">No invoices for this period/status.</div> :
+            filteredInvItems.length === 0 ? <div className="empty">No invoices match the filters.</div> :
               <table>
                 <thead>
                   <tr>
@@ -728,7 +789,7 @@ export default function App() {
                   </tr>
                 </thead>
                 <tbody>
-                  {invItems.map(it => (
+                  {filteredInvItems.map(it => (
                     <tr key={it.id}>
                       <td>{it.studentName}</td>
                       <td>{months[it.month - 1]} {it.year}</td>
