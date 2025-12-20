@@ -359,7 +359,7 @@ const ensureStudentsForInvoiceSearch = useCallback(async () => {
   if (students.length > 0) return;
   const data = await listStudents("", true);
   setStudents(data);
-}, [students.length]);
+}, []);
 
 const loadInvoices = useCallback(async () => {
   setLoadingInv(true);
@@ -840,10 +840,10 @@ const onOpenPdf = async (id: number) => {
       </select>
 
       <input
-        placeholder="Search student / phone / email / invoice #"
+        placeholder="Search student / phone / email / invoice number"
         value={invQ}
         onChange={(e) => setInvQ(e.target.value)}
-        style={{ width: 320 }}
+        style={{ width: "320px" }}
       />
 
       <button onClick={loadInvoices}>Refresh</button>
@@ -877,7 +877,9 @@ const onOpenPdf = async (id: number) => {
               <td>{it.number ?? ""}</td>
               <td>
                 <button onClick={() => onOpenInvoice(it.id)}>Open</button>
-                <button onClick={() => onOpenPdf(it.id)}>PDF</button>
+                {it.status !== "draft" && it.status !== "canceled" && (
+                  <button onClick={() => onOpenPdf(it.id)}>PDF</button>
+                )}
               </td>
             </tr>
           ))}
