@@ -4,7 +4,6 @@ package enrollment
 
 import (
 	"langschool/ent/predicate"
-	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -63,16 +62,6 @@ func StudentID(v int) predicate.Enrollment {
 // CourseID applies equality check predicate on the "course_id" field. It's identical to CourseIDEQ.
 func CourseID(v int) predicate.Enrollment {
 	return predicate.Enrollment(sql.FieldEQ(FieldCourseID, v))
-}
-
-// StartDate applies equality check predicate on the "start_date" field. It's identical to StartDateEQ.
-func StartDate(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldEQ(FieldStartDate, v))
-}
-
-// EndDate applies equality check predicate on the "end_date" field. It's identical to EndDateEQ.
-func EndDate(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldEQ(FieldEndDate, v))
 }
 
 // DiscountPct applies equality check predicate on the "discount_pct" field. It's identical to DiscountPctEQ.
@@ -143,96 +132,6 @@ func BillingModeIn(vs ...BillingMode) predicate.Enrollment {
 // BillingModeNotIn applies the NotIn predicate on the "billing_mode" field.
 func BillingModeNotIn(vs ...BillingMode) predicate.Enrollment {
 	return predicate.Enrollment(sql.FieldNotIn(FieldBillingMode, vs...))
-}
-
-// StartDateEQ applies the EQ predicate on the "start_date" field.
-func StartDateEQ(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldEQ(FieldStartDate, v))
-}
-
-// StartDateNEQ applies the NEQ predicate on the "start_date" field.
-func StartDateNEQ(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldNEQ(FieldStartDate, v))
-}
-
-// StartDateIn applies the In predicate on the "start_date" field.
-func StartDateIn(vs ...time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldIn(FieldStartDate, vs...))
-}
-
-// StartDateNotIn applies the NotIn predicate on the "start_date" field.
-func StartDateNotIn(vs ...time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldNotIn(FieldStartDate, vs...))
-}
-
-// StartDateGT applies the GT predicate on the "start_date" field.
-func StartDateGT(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldGT(FieldStartDate, v))
-}
-
-// StartDateGTE applies the GTE predicate on the "start_date" field.
-func StartDateGTE(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldGTE(FieldStartDate, v))
-}
-
-// StartDateLT applies the LT predicate on the "start_date" field.
-func StartDateLT(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldLT(FieldStartDate, v))
-}
-
-// StartDateLTE applies the LTE predicate on the "start_date" field.
-func StartDateLTE(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldLTE(FieldStartDate, v))
-}
-
-// EndDateEQ applies the EQ predicate on the "end_date" field.
-func EndDateEQ(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldEQ(FieldEndDate, v))
-}
-
-// EndDateNEQ applies the NEQ predicate on the "end_date" field.
-func EndDateNEQ(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldNEQ(FieldEndDate, v))
-}
-
-// EndDateIn applies the In predicate on the "end_date" field.
-func EndDateIn(vs ...time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldIn(FieldEndDate, vs...))
-}
-
-// EndDateNotIn applies the NotIn predicate on the "end_date" field.
-func EndDateNotIn(vs ...time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldNotIn(FieldEndDate, vs...))
-}
-
-// EndDateGT applies the GT predicate on the "end_date" field.
-func EndDateGT(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldGT(FieldEndDate, v))
-}
-
-// EndDateGTE applies the GTE predicate on the "end_date" field.
-func EndDateGTE(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldGTE(FieldEndDate, v))
-}
-
-// EndDateLT applies the LT predicate on the "end_date" field.
-func EndDateLT(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldLT(FieldEndDate, v))
-}
-
-// EndDateLTE applies the LTE predicate on the "end_date" field.
-func EndDateLTE(v time.Time) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldLTE(FieldEndDate, v))
-}
-
-// EndDateIsNil applies the IsNil predicate on the "end_date" field.
-func EndDateIsNil() predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldIsNull(FieldEndDate))
-}
-
-// EndDateNotNil applies the NotNil predicate on the "end_date" field.
-func EndDateNotNil() predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldNotNull(FieldEndDate))
 }
 
 // DiscountPctEQ applies the EQ predicate on the "discount_pct" field.

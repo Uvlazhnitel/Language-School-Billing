@@ -11,7 +11,6 @@ import (
 	"langschool/ent/invoiceline"
 	"langschool/ent/priceoverride"
 	"langschool/ent/student"
-	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -39,26 +38,6 @@ func (_c *EnrollmentCreate) SetCourseID(v int) *EnrollmentCreate {
 // SetBillingMode sets the "billing_mode" field.
 func (_c *EnrollmentCreate) SetBillingMode(v enrollment.BillingMode) *EnrollmentCreate {
 	_c.mutation.SetBillingMode(v)
-	return _c
-}
-
-// SetStartDate sets the "start_date" field.
-func (_c *EnrollmentCreate) SetStartDate(v time.Time) *EnrollmentCreate {
-	_c.mutation.SetStartDate(v)
-	return _c
-}
-
-// SetEndDate sets the "end_date" field.
-func (_c *EnrollmentCreate) SetEndDate(v time.Time) *EnrollmentCreate {
-	_c.mutation.SetEndDate(v)
-	return _c
-}
-
-// SetNillableEndDate sets the "end_date" field if the given value is not nil.
-func (_c *EnrollmentCreate) SetNillableEndDate(v *time.Time) *EnrollmentCreate {
-	if v != nil {
-		_c.SetEndDate(*v)
-	}
 	return _c
 }
 
@@ -191,9 +170,6 @@ func (_c *EnrollmentCreate) check() error {
 			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "Enrollment.billing_mode": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.StartDate(); !ok {
-		return &ValidationError{Name: "start_date", err: errors.New(`ent: missing required field "Enrollment.start_date"`)}
-	}
 	if _, ok := _c.mutation.DiscountPct(); !ok {
 		return &ValidationError{Name: "discount_pct", err: errors.New(`ent: missing required field "Enrollment.discount_pct"`)}
 	}
@@ -235,14 +211,6 @@ func (_c *EnrollmentCreate) createSpec() (*Enrollment, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.BillingMode(); ok {
 		_spec.SetField(enrollment.FieldBillingMode, field.TypeEnum, value)
 		_node.BillingMode = value
-	}
-	if value, ok := _c.mutation.StartDate(); ok {
-		_spec.SetField(enrollment.FieldStartDate, field.TypeTime, value)
-		_node.StartDate = value
-	}
-	if value, ok := _c.mutation.EndDate(); ok {
-		_spec.SetField(enrollment.FieldEndDate, field.TypeTime, value)
-		_node.EndDate = &value
 	}
 	if value, ok := _c.mutation.DiscountPct(); ok {
 		_spec.SetField(enrollment.FieldDiscountPct, field.TypeFloat64, value)

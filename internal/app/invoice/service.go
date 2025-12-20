@@ -85,13 +85,9 @@ func periodBounds(y, m int) (start, end time.Time) {
 }
 
 func activeInPeriod(en *ent.Enrollment, y, m int) bool {
-	ps, pe := periodBounds(y, m)
-	if en.StartDate.After(pe) {
-		return false
-	}
-	if en.EndDate != nil && en.EndDate.Before(ps) {
-		return false
-	}
+	// Since start_date and end_date have been removed, all enrollments are now considered active.
+	// This means invoice generation will include all enrollments for the specified period,
+	// regardless of when the enrollment was created or ended.
 	return true
 }
 

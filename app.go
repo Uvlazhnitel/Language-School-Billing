@@ -178,15 +178,13 @@ func (a *App) DevSeed() (int, error) {
 			Save(ctx)
 	}
 
-	now := time.Now()
-
 	// enrollments (create only if not exists)
 	if _, err := db.Enrollment.Query().
 		Where(enrollment.StudentIDEQ(sAnna.ID), enrollment.CourseIDEQ(cA2.ID)).
 		Only(ctx); err != nil {
 		_, _ = db.Enrollment.Create().
 			SetStudentID(sAnna.ID).SetCourseID(cA2.ID).
-			SetBillingMode("subscription").SetStartDate(now).Save(ctx)
+			SetBillingMode("subscription").Save(ctx)
 	}
 
 	if _, err := db.Enrollment.Query().
@@ -194,7 +192,7 @@ func (a *App) DevSeed() (int, error) {
 		Only(ctx); err != nil {
 		_, _ = db.Enrollment.Create().
 			SetStudentID(sDima.ID).SetCourseID(cA2.ID).
-			SetBillingMode("per_lesson").SetStartDate(now).Save(ctx)
+			SetBillingMode("per_lesson").Save(ctx)
 	}
 
 	if _, err := db.Enrollment.Query().
@@ -202,7 +200,7 @@ func (a *App) DevSeed() (int, error) {
 		Only(ctx); err != nil {
 		_, _ = db.Enrollment.Create().
 			SetStudentID(sDima.ID).SetCourseID(cB1.ID).
-			SetBillingMode("per_lesson").SetStartDate(now).Save(ctx)
+			SetBillingMode("per_lesson").Save(ctx)
 	}
 
 	return 2, nil // return the number of base students

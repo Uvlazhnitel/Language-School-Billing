@@ -14,8 +14,6 @@ func (Enrollment) Fields() []ent.Field {
 		field.Int("student_id"),
 		field.Int("course_id"),
 		field.Enum("billing_mode").Values("subscription", "per_lesson"),
-		field.Time("start_date"),
-		field.Time("end_date").Nillable().Optional(),
 		field.Float("discount_pct").Default(0),
 		field.String("note").Default(""),
 	}
