@@ -12,7 +12,6 @@ import {
     type: "group" | "individual";
     lessonPrice: number;
     subscriptionPrice: number;
-    scheduleDays: number[]; // time.Weekday: Sunday=0, Monday=1, ...
   };
   
   export async function listCourses(q: string) {
@@ -27,10 +26,9 @@ import {
     name: string,
     courseType: "group" | "individual",
     lessonPrice: number,
-    subscriptionPrice: number,
-    scheduleDays: number[]
+    subscriptionPrice: number
   ) {
-    return (await CourseCreate(name, courseType, lessonPrice, subscriptionPrice, scheduleDays)) as CourseDTO;
+    return (await CourseCreate(name, courseType, lessonPrice, subscriptionPrice)) as CourseDTO;
   }
   
   export async function updateCourse(
@@ -38,10 +36,9 @@ import {
     name: string,
     courseType: "group" | "individual",
     lessonPrice: number,
-    subscriptionPrice: number,
-    scheduleDays: number[]
+    subscriptionPrice: number
   ) {
-    return (await CourseUpdate(id, name, courseType, lessonPrice, subscriptionPrice, scheduleDays)) as CourseDTO;
+    return (await CourseUpdate(id, name, courseType, lessonPrice, subscriptionPrice)) as CourseDTO;
   }
   
   export async function deleteCourse(id: number) {

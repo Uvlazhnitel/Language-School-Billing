@@ -5,7 +5,7 @@ Stack: **Go 1.22+, Wails v2, ent, SQLite, gofpdf**.
 
 ## Features (current)
 - Students / Courses / Enrollments (ent schemas; demo data in app).
-- **Monthly attendance** for per-lesson billing: quick edit, `+1 to all`, schedule hints, lock month.
+- **Monthly attendance** for per-lesson billing: quick edit, `+1 to all`, lock month.
 - **Invoices**: generate drafts from attendance/subscriptions → **issue** with numbering `PREFIX-YYYYMM-SEQ` → **PDF** saved under `~/LangSchool/Invoices/YYYY/MM/`.
 - App folders: `~/LangSchool/{Data,Backups,Invoices,Exports,Fonts}`.
 

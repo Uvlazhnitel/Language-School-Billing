@@ -2,7 +2,6 @@ import {
   AttendanceListPerLesson,
   AttendanceUpsert,
   AttendanceAddOne,
-  AttendanceEstimate,
   AttendanceSetLocked,
   DevSeed,
   DevReset,
@@ -42,11 +41,6 @@ export async function saveCount(studentId: number, courseId: number, year: numbe
 export async function addOneMass(year: number, month: number, courseId?: number) {
   const cid: number | undefined = courseId && courseId > 0 ? courseId : undefined;
   return await AttendanceAddOne(year, month, cid);
-}
-
-export async function estimateBySchedule(year: number, month: number, courseId?: number) {
-  const cid: number | undefined = courseId && courseId > 0 ? courseId : undefined;
-  return (await AttendanceEstimate(year, month, cid)) as Record<string, number>;
 }
 
 export async function setLocked(year: number, month: number, courseId: number | undefined, lock: boolean) {
