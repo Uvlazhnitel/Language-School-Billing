@@ -178,8 +178,6 @@ export namespace main {
 	    courseId: number;
 	    courseName: string;
 	    billingMode: string;
-	    startDate: string;
-	    endDate?: string;
 	    discountPct: number;
 	    note: string;
 	
@@ -195,8 +193,6 @@ export namespace main {
 	        this.courseId = source["courseId"];
 	        this.courseName = source["courseName"];
 	        this.billingMode = source["billingMode"];
-	        this.startDate = source["startDate"];
-	        this.endDate = source["endDate"];
 	        this.discountPct = source["discountPct"];
 	        this.note = source["note"];
 	    }
