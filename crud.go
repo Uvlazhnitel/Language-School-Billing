@@ -465,7 +465,7 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, star
 		// Two ranges overlap if: (existing.end is nil OR existing.end >= new.start) AND (new.end is nil OR existing.start <= new.end)
 		existingEndIsNilOrAfterNewStart := existing.EndDate == nil || !existing.EndDate.Before(sd)
 		newEndIsNilOrAfterExistingStart := edPtr == nil || !existing.StartDate.After(*edPtr)
-		
+
 		if existingEndIsNilOrAfterNewStart && newEndIsNilOrAfterExistingStart {
 			return nil, errors.New("an overlapping enrollment for this student and course already exists")
 		}

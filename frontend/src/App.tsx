@@ -326,7 +326,7 @@ export default function App() {
   );
 
   const onChangeCount = async (r: Row, v: number) => {
-    if (!Number.isFinite(v)) return; // keep previous when empty/invalid
+    if (!Number.isFinite(v)) return; // skip update when input is invalid
     const n = v < 0 ? 0 : Math.trunc(v);
     await saveCount(r.studentId, r.courseId, year, month, n);
     setRows(rows.map(x => (x.enrollmentId === r.enrollmentId ? { ...x, count: n } : x)));
