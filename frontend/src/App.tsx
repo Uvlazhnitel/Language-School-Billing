@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 import "./App.css";
 
 import {
-  fetchRows, saveCount, addOneMass, estimateBySchedule, setLocked,
+  fetchRows, saveCount, addOneMass, setLocked,
   devSeed, devReset, deleteEnrollment, Row
 } from "./lib/attendance";
 
@@ -27,16 +27,6 @@ function todayYMD() {
   const dd = String(d.getDate()).padStart(2, "0");
   return `${d.getFullYear()}-${mm}-${dd}`;
 }
-
-const weekdayLabels: { value: number; label: string }[] = [
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-  { value: 0, label: "Sun" },
-];
 
 // Helper: parse string to number, return 0 for empty/invalid
 function numOrZero(s: string): number {
@@ -135,7 +125,6 @@ export default function App() {
   const [cfType, setCfType] = useState<"group" | "individual">("group");
   const [cfLessonPrice, setCfLessonPrice] = useState(0);
   const [cfSubscriptionPrice, setCfSubscriptionPrice] = useState(0);
-  const [cfDays, setCfDays] = useState<number[]>([]);
 
   const loadCourses = useCallback(async () => {
     setCourseLoading(true);
@@ -157,7 +146,6 @@ export default function App() {
     setCfType("group");
     setCfLessonPrice(0);
     setCfSubscriptionPrice(0);
-    setCfDays([]);
     setCourseModalOpen(true);
   }
 
@@ -167,12 +155,7 @@ export default function App() {
     setCfType(c.type);
     setCfLessonPrice(c.lessonPrice);
     setCfSubscriptionPrice(c.subscriptionPrice);
-    setCfDays(c.scheduleDays || []);
     setCourseModalOpen(true);
-  }
-
-  function toggleDay(d: number) {
-    setCfDays(prev => prev.includes(d) ? prev.filter(x => x !== d) : [...prev, d]);
   }
 
   async function saveCourse() {
@@ -184,11 +167,10 @@ export default function App() {
       alert("Prices must be >= 0");
       return;
     }
-    const days = cfType === "group" ? cfDays : [];
     if (editingCourse) {
-      await updateCourse(editingCourse.id, cfName, cfType, cfLessonPrice, cfSubscriptionPrice, days);
+      await updateCourse(editingCourse.id, cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
     } else {
-      await createCourse(cfName, cfType, cfLessonPrice, cfSubscriptionPrice, days);
+      await createCourse(cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
     }
     setCourseModalOpen(false);
     await loadCourses();
@@ -333,20 +315,6 @@ export default function App() {
   };
 
   const onAddAll = async () => { await addOneMass(year, month, courseFilter); await loadAttendance(); };
-  const onEstimate = async () => {
-    const hints = await estimateBySchedule(year, month, courseFilter);
-    const patched = rows.map(r => {
-      const key = `${r.studentId}-${r.courseId}`;
-      const hint = hints[key] ?? 0;
-      return r.count === 0 && hint > 0 ? { ...r, count: hint } : r;
-    });
-    setRows(patched);
-    for (const r of patched) {
-      const prev = rows.find(x => x.enrollmentId === r.enrollmentId)?.count ?? 0;
-      if (r.count !== prev) await saveCount(r.studentId, r.courseId, year, month, r.count);
-    }
-    setMsg("Schedule hint applied"); setTimeout(() => setMsg(""), 1500);
-  };
   const onLock = async (lock: boolean) => { await setLocked(year, month, courseFilter, lock); await loadAttendance(); };
 
   // You can keep dev tools during development, and hide them for defense later.
@@ -531,7 +499,7 @@ export default function App() {
               <table>
                 <thead>
                   <tr>
-                    <th>Name</th><th>Type</th><th style={{textAlign:"right"}}>Lesson</th><th style={{textAlign:"right"}}>Subscription</th><th>Schedule</th><th></th>
+                    <th>Name</th><th>Type</th><th style={{textAlign:"right"}}>Lesson</th><th style={{textAlign:"right"}}>Subscription</th><th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -541,7 +509,6 @@ export default function App() {
                       <td>{c.type}</td>
                       <td style={{textAlign:"right"}}>{c.lessonPrice.toFixed(2)}</td>
                       <td style={{textAlign:"right"}}>{c.subscriptionPrice.toFixed(2)}</td>
-                      <td>{(c.scheduleDays || []).join(", ")}</td>
                       <td>
                         <button onClick={() => openEditCourse(c)}>Edit</button>
                         <button onClick={() => removeCourse(c.id)}>Delete</button>
@@ -582,24 +549,6 @@ export default function App() {
                   <input type="number" min={0} step="0.01" value={cfSubscriptionPrice}
                          onChange={(e) => setCfSubscriptionPrice(numOrZero(e.target.value))} />
                 </div>
-
-                {cfType === "group" && (
-                  <div className="formRow">
-                    <label>Schedule</label>
-                    <div className="days">
-                      {weekdayLabels.map(d => (
-                        <label key={d.value} className="inline">
-                          <input
-                            type="checkbox"
-                            checked={cfDays.includes(d.value)}
-                            onChange={() => toggleDay(d.value)}
-                          />
-                          {d.label}
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
                 <div className="modalActions">
                   <button onClick={saveCourse}>Save</button>
@@ -728,7 +677,6 @@ export default function App() {
         <>
           {msg && <div className="msg">{msg}</div>}
           <div className="controls">
-            <button onClick={onEstimate}>Schedule hint</button>
             <button onClick={onAddAll}>+1 all</button>
             <button onClick={() => onLock(true)}>Lock month</button>
             <button onClick={() => onLock(false)}>Unlock</button>

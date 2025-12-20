@@ -39,7 +39,6 @@ var (
 		{Name: "type", Type: field.TypeEnum, Enums: []string{"group", "individual"}},
 		{Name: "lesson_price", Type: field.TypeFloat64, Default: 0},
 		{Name: "subscription_price", Type: field.TypeFloat64, Default: 0},
-		{Name: "schedule_json", Type: field.TypeString, Default: ""},
 		{Name: "is_active", Type: field.TypeBool, Default: true},
 	}
 	// CoursesTable holds the schema information for the "courses" table.

@@ -2,10 +2,7 @@ package attendance
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"time"
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
@@ -115,56 +112,6 @@ func (s *Service) AddOneForFilter(ctx context.Context, y, m int, courseID *int) 
 		}
 	}
 	return changed, nil
-}
-
-type schedule struct {
-	DaysOfWeek []int `json:"daysOfWeek"` // 1=Mon..7=Sun
-}
-
-func countMatches(y int, m time.Month, days []int) int {
-	if len(days) == 0 {
-		return 0
-	}
-	set := map[int]bool{}
-	for _, d := range days {
-		set[d] = true
-	}
-	t := time.Date(y, m, 1, 0, 0, 0, 0, time.Local)
-	cnt := 0
-	for t.Month() == m {
-		wd := int(t.Weekday()) // 0=Sun..6=Sat
-		if wd == 0 {
-			wd = 7
-		}
-		if set[wd] {
-			cnt++
-		}
-		t = t.AddDate(0, 0, 1)
-	}
-	return cnt
-}
-
-func (s *Service) EstimateBySchedule(ctx context.Context, y, m int, courseID *int) (map[string]int, error) {
-	rows, err := s.ListPerLesson(ctx, y, m, courseID)
-	if err != nil {
-		return nil, err
-	}
-	result := map[string]int{}
-	for _, r := range rows {
-		c, err := s.db.Course.Get(ctx, r.CourseID)
-		if err != nil {
-			continue
-		}
-		var sch schedule
-		_ = json.Unmarshal([]byte(c.ScheduleJSON), &sch)
-		hint := 0
-		if c.Type == "group" && len(sch.DaysOfWeek) > 0 {
-			hint = countMatches(y, time.Month(m), sch.DaysOfWeek)
-		}
-		key := fmt.Sprintf("%d-%d", r.StudentID, r.CourseID)
-		result[key] = hint
-	}
-	return result, nil
 }
 
 func (s *Service) SetLocked(ctx context.Context, y, m int, courseID *int, lock bool) (int, error) {

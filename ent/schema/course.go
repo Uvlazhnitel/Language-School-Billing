@@ -14,7 +14,6 @@ func (Course) Fields() []ent.Field {
 		field.Enum("type").Values("group", "individual"),
 		field.Float("lesson_price").Default(0),
 		field.Float("subscription_price").Default(0),
-		field.String("schedule_json").Default(""),
 		field.Bool("is_active").Default(true),
 	}
 }

@@ -168,7 +168,6 @@ func (a *App) DevSeed() (int, error) {
 		cA2, _ = db.Course.Create().
 			SetName("English A2 (group)").
 			SetType("group").SetLessonPrice(15).SetSubscriptionPrice(120).
-			SetScheduleJSON(`{"daysOfWeek":[1,3]}`).
 			Save(ctx)
 	}
 	cB1, err := db.Course.Query().Where(course.NameEQ("English B1 (individual)")).Only(ctx)
@@ -336,10 +335,6 @@ func (a *App) AttendanceUpsert(studentID, courseID, year, month, count int) erro
 
 func (a *App) AttendanceAddOne(year, month int, courseID *int) (int, error) {
 	return a.att.AddOneForFilter(a.ctx, year, month, courseID)
-}
-
-func (a *App) AttendanceEstimate(year, month int, courseID *int) (map[string]int, error) {
-	return a.att.EstimateBySchedule(a.ctx, year, month, courseID)
 }
 
 func (a *App) AttendanceSetLocked(year, month int, courseID *int, lock bool) (int, error) {

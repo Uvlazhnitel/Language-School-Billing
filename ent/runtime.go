@@ -38,12 +38,8 @@ func init() {
 	courseDescSubscriptionPrice := courseFields[3].Descriptor()
 	// course.DefaultSubscriptionPrice holds the default value on creation for the subscription_price field.
 	course.DefaultSubscriptionPrice = courseDescSubscriptionPrice.Default.(float64)
-	// courseDescScheduleJSON is the schema descriptor for schedule_json field.
-	courseDescScheduleJSON := courseFields[4].Descriptor()
-	// course.DefaultScheduleJSON holds the default value on creation for the schedule_json field.
-	course.DefaultScheduleJSON = courseDescScheduleJSON.Default.(string)
 	// courseDescIsActive is the schema descriptor for is_active field.
-	courseDescIsActive := courseFields[5].Descriptor()
+	courseDescIsActive := courseFields[4].Descriptor()
 	// course.DefaultIsActive holds the default value on creation for the is_active field.
 	course.DefaultIsActive = courseDescIsActive.Default.(bool)
 	enrollmentFields := schema.Enrollment{}.Fields()

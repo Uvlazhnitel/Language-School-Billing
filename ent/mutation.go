@@ -873,7 +873,6 @@ type CourseMutation struct {
 	addlesson_price       *float64
 	subscription_price    *float64
 	addsubscription_price *float64
-	schedule_json         *string
 	is_active             *bool
 	clearedFields         map[string]struct{}
 	enrollments           map[int]struct{}
@@ -1166,42 +1165,6 @@ func (m *CourseMutation) ResetSubscriptionPrice() {
 	m.addsubscription_price = nil
 }
 
-// SetScheduleJSON sets the "schedule_json" field.
-func (m *CourseMutation) SetScheduleJSON(s string) {
-	m.schedule_json = &s
-}
-
-// ScheduleJSON returns the value of the "schedule_json" field in the mutation.
-func (m *CourseMutation) ScheduleJSON() (r string, exists bool) {
-	v := m.schedule_json
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldScheduleJSON returns the old "schedule_json" field's value of the Course entity.
-// If the Course object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *CourseMutation) OldScheduleJSON(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldScheduleJSON is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldScheduleJSON requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldScheduleJSON: %w", err)
-	}
-	return oldValue.ScheduleJSON, nil
-}
-
-// ResetScheduleJSON resets all changes to the "schedule_json" field.
-func (m *CourseMutation) ResetScheduleJSON() {
-	m.schedule_json = nil
-}
-
 // SetIsActive sets the "is_active" field.
 func (m *CourseMutation) SetIsActive(b bool) {
 	m.is_active = &b
@@ -1326,7 +1289,7 @@ func (m *CourseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 5)
 	if m.name != nil {
 		fields = append(fields, course.FieldName)
 	}
@@ -1338,9 +1301,6 @@ func (m *CourseMutation) Fields() []string {
 	}
 	if m.subscription_price != nil {
 		fields = append(fields, course.FieldSubscriptionPrice)
-	}
-	if m.schedule_json != nil {
-		fields = append(fields, course.FieldScheduleJSON)
 	}
 	if m.is_active != nil {
 		fields = append(fields, course.FieldIsActive)
@@ -1361,8 +1321,6 @@ func (m *CourseMutation) Field(name string) (ent.Value, bool) {
 		return m.LessonPrice()
 	case course.FieldSubscriptionPrice:
 		return m.SubscriptionPrice()
-	case course.FieldScheduleJSON:
-		return m.ScheduleJSON()
 	case course.FieldIsActive:
 		return m.IsActive()
 	}
@@ -1382,8 +1340,6 @@ func (m *CourseMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldLessonPrice(ctx)
 	case course.FieldSubscriptionPrice:
 		return m.OldSubscriptionPrice(ctx)
-	case course.FieldScheduleJSON:
-		return m.OldScheduleJSON(ctx)
 	case course.FieldIsActive:
 		return m.OldIsActive(ctx)
 	}
@@ -1422,13 +1378,6 @@ func (m *CourseMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSubscriptionPrice(v)
-		return nil
-	case course.FieldScheduleJSON:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetScheduleJSON(v)
 		return nil
 	case course.FieldIsActive:
 		v, ok := value.(bool)
@@ -1524,9 +1473,6 @@ func (m *CourseMutation) ResetField(name string) error {
 		return nil
 	case course.FieldSubscriptionPrice:
 		m.ResetSubscriptionPrice()
-		return nil
-	case course.FieldScheduleJSON:
-		m.ResetScheduleJSON()
 		return nil
 	case course.FieldIsActive:
 		m.ResetIsActive()

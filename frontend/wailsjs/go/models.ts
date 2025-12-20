@@ -157,7 +157,6 @@ export namespace main {
 	    type: string;
 	    lessonPrice: number;
 	    subscriptionPrice: number;
-	    scheduleDays: number[];
 	
 	    static createFrom(source: any = {}) {
 	        return new CourseDTO(source);
@@ -170,7 +169,6 @@ export namespace main {
 	        this.type = source["type"];
 	        this.lessonPrice = source["lessonPrice"];
 	        this.subscriptionPrice = source["subscriptionPrice"];
-	        this.scheduleDays = source["scheduleDays"];
 	    }
 	}
 	export class EnrollmentDTO {

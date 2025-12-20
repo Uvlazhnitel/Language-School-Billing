@@ -69,11 +69,6 @@ func SubscriptionPrice(v float64) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldSubscriptionPrice, v))
 }
 
-// ScheduleJSON applies equality check predicate on the "schedule_json" field. It's identical to ScheduleJSONEQ.
-func ScheduleJSON(v string) predicate.Course {
-	return predicate.Course(sql.FieldEQ(FieldScheduleJSON, v))
-}
-
 // IsActive applies equality check predicate on the "is_active" field. It's identical to IsActiveEQ.
 func IsActive(v bool) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldIsActive, v))
@@ -242,71 +237,6 @@ func SubscriptionPriceLT(v float64) predicate.Course {
 // SubscriptionPriceLTE applies the LTE predicate on the "subscription_price" field.
 func SubscriptionPriceLTE(v float64) predicate.Course {
 	return predicate.Course(sql.FieldLTE(FieldSubscriptionPrice, v))
-}
-
-// ScheduleJSONEQ applies the EQ predicate on the "schedule_json" field.
-func ScheduleJSONEQ(v string) predicate.Course {
-	return predicate.Course(sql.FieldEQ(FieldScheduleJSON, v))
-}
-
-// ScheduleJSONNEQ applies the NEQ predicate on the "schedule_json" field.
-func ScheduleJSONNEQ(v string) predicate.Course {
-	return predicate.Course(sql.FieldNEQ(FieldScheduleJSON, v))
-}
-
-// ScheduleJSONIn applies the In predicate on the "schedule_json" field.
-func ScheduleJSONIn(vs ...string) predicate.Course {
-	return predicate.Course(sql.FieldIn(FieldScheduleJSON, vs...))
-}
-
-// ScheduleJSONNotIn applies the NotIn predicate on the "schedule_json" field.
-func ScheduleJSONNotIn(vs ...string) predicate.Course {
-	return predicate.Course(sql.FieldNotIn(FieldScheduleJSON, vs...))
-}
-
-// ScheduleJSONGT applies the GT predicate on the "schedule_json" field.
-func ScheduleJSONGT(v string) predicate.Course {
-	return predicate.Course(sql.FieldGT(FieldScheduleJSON, v))
-}
-
-// ScheduleJSONGTE applies the GTE predicate on the "schedule_json" field.
-func ScheduleJSONGTE(v string) predicate.Course {
-	return predicate.Course(sql.FieldGTE(FieldScheduleJSON, v))
-}
-
-// ScheduleJSONLT applies the LT predicate on the "schedule_json" field.
-func ScheduleJSONLT(v string) predicate.Course {
-	return predicate.Course(sql.FieldLT(FieldScheduleJSON, v))
-}
-
-// ScheduleJSONLTE applies the LTE predicate on the "schedule_json" field.
-func ScheduleJSONLTE(v string) predicate.Course {
-	return predicate.Course(sql.FieldLTE(FieldScheduleJSON, v))
-}
-
-// ScheduleJSONContains applies the Contains predicate on the "schedule_json" field.
-func ScheduleJSONContains(v string) predicate.Course {
-	return predicate.Course(sql.FieldContains(FieldScheduleJSON, v))
-}
-
-// ScheduleJSONHasPrefix applies the HasPrefix predicate on the "schedule_json" field.
-func ScheduleJSONHasPrefix(v string) predicate.Course {
-	return predicate.Course(sql.FieldHasPrefix(FieldScheduleJSON, v))
-}
-
-// ScheduleJSONHasSuffix applies the HasSuffix predicate on the "schedule_json" field.
-func ScheduleJSONHasSuffix(v string) predicate.Course {
-	return predicate.Course(sql.FieldHasSuffix(FieldScheduleJSON, v))
-}
-
-// ScheduleJSONEqualFold applies the EqualFold predicate on the "schedule_json" field.
-func ScheduleJSONEqualFold(v string) predicate.Course {
-	return predicate.Course(sql.FieldEqualFold(FieldScheduleJSON, v))
-}
-
-// ScheduleJSONContainsFold applies the ContainsFold predicate on the "schedule_json" field.
-func ScheduleJSONContainsFold(v string) predicate.Course {
-	return predicate.Course(sql.FieldContainsFold(FieldScheduleJSON, v))
 }
 
 // IsActiveEQ applies the EQ predicate on the "is_active" field.
