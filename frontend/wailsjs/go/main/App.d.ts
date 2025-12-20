@@ -35,15 +35,13 @@ export function DevReset():Promise<number>;
 
 export function DevSeed():Promise<number>;
 
-export function EnrollmentCreate(arg1:number,arg2:number,arg3:string,arg4:string,arg5:any,arg6:number,arg7:string):Promise<main.EnrollmentDTO>;
+export function EnrollmentCreate(arg1:number,arg2:number,arg3:string,arg4:number,arg5:string):Promise<main.EnrollmentDTO>;
 
 export function EnrollmentDelete(arg1:number):Promise<void>;
 
-export function EnrollmentEnd(arg1:number,arg2:string):Promise<void>;
-
 export function EnrollmentList(arg1:any,arg2:any,arg3:boolean):Promise<Array<main.EnrollmentDTO>>;
 
-export function EnrollmentUpdate(arg1:number,arg2:string,arg3:string,arg4:any,arg5:number,arg6:string):Promise<main.EnrollmentDTO>;
+export function EnrollmentUpdate(arg1:number,arg2:string,arg3:number,arg4:string):Promise<main.EnrollmentDTO>;
 
 export function Greet(arg1:string):Promise<string>;
 

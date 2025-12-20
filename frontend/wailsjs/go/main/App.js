@@ -62,24 +62,20 @@ export function DevSeed() {
   return window['go']['main']['App']['DevSeed']();
 }
 
-export function EnrollmentCreate(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
-  return window['go']['main']['App']['EnrollmentCreate'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+export function EnrollmentCreate(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['EnrollmentCreate'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function EnrollmentDelete(arg1) {
   return window['go']['main']['App']['EnrollmentDelete'](arg1);
 }
 
-export function EnrollmentEnd(arg1, arg2) {
-  return window['go']['main']['App']['EnrollmentEnd'](arg1, arg2);
-}
-
 export function EnrollmentList(arg1, arg2, arg3) {
   return window['go']['main']['App']['EnrollmentList'](arg1, arg2, arg3);
 }
 
-export function EnrollmentUpdate(arg1, arg2, arg3, arg4, arg5, arg6) {
-  return window['go']['main']['App']['EnrollmentUpdate'](arg1, arg2, arg3, arg4, arg5, arg6);
+export function EnrollmentUpdate(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['EnrollmentUpdate'](arg1, arg2, arg3, arg4);
 }
 
 export function Greet(arg1) {

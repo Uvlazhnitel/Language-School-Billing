@@ -178,7 +178,6 @@ func (a *App) DevSeed() (int, error) {
 			Save(ctx)
 	}
 
-	now := time.Now()
 
 	// enrollments (create only if not exists)
 	if _, err := db.Enrollment.Query().
