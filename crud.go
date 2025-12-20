@@ -263,7 +263,7 @@ func (a *App) CourseDelete(id int) error {
 		return err
 	}
 	if used {
-		return errors.New("cannot delete course: it has enrollments; delete enrollments first or keep course")
+		return errors.New("cannot delete course: it has enrollments; remove enrollments first or keep course")
 	}
 
 	return a.db.Ent.Course.DeleteOneID(id).Exec(ctx)
