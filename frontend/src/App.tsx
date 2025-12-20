@@ -316,32 +316,39 @@ export default function App() {
   const [loadingInv, setLoadingInv] = useState(false);
   const [invStudentFilter, setInvStudentFilter] = useState("");
   const [invGroupFilter, setInvGroupFilter] = useState<"all" | "group" | "individual">("all");
+  const [invDataLoaded, setInvDataLoaded] = useState(false);
+
+  // Load supporting data (students, courses, enrollments) once for invoice filtering
+  useEffect(() => {
+    if (tab === "invoice" && !invDataLoaded) {
+      (async () => {
+        if (students.length === 0) {
+          const studs = await listStudents("", true);
+          setStudents(studs);
+        }
+        if (courses.length === 0) {
+          const crses = await listCourses("");
+          setCourses(crses);
+        }
+        if (enrollments.length === 0) {
+          const enrs = await listEnrollments(undefined, undefined, false);
+          setEnrollments(enrs);
+        }
+        setInvDataLoaded(true);
+      })();
+    }
+  }, [tab, invDataLoaded, students.length, courses.length, enrollments.length]);
 
   const loadInvoices = useCallback(async () => {
     setLoadingInv(true);
     try {
-      // Load invoices
       const li = await listInvoices(year, month, invStatus);
       setInvItems(li);
       setSelectedInv(null);
-      
-      // Load students and courses for filtering if not already loaded
-      if (students.length === 0) {
-        const studs = await listStudents("", true);
-        setStudents(studs);
-      }
-      if (courses.length === 0) {
-        const crses = await listCourses("");
-        setCourses(crses);
-      }
-      if (enrollments.length === 0) {
-        const enrs = await listEnrollments(undefined, undefined, false);
-        setEnrollments(enrs);
-      }
     } finally {
       setLoadingInv(false);
     }
-  }, [year, month, invStatus, students.length, courses.length, enrollments.length]);
+  }, [year, month, invStatus]);
 
   useEffect(() => {
     if (tab === "invoice") loadInvoices();
@@ -773,7 +780,7 @@ export default function App() {
               onChange={(e) => setInvStudentFilter(e.target.value)}
               style={{ width: 200 }}
             />
-            <select value={invGroupFilter} onChange={(e) => setInvGroupFilter(e.target.value as any)}>
+            <select value={invGroupFilter} onChange={(e) => setInvGroupFilter(e.target.value as "all" | "group" | "individual")}>
               <option value="all">All course types</option>
               <option value="group">Group courses</option>
               <option value="individual">Individual courses</option>
