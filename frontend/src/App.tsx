@@ -321,21 +321,25 @@ export default function App() {
   // Load supporting data (students, courses, enrollments) once for invoice filtering
   useEffect(() => {
     if (tab === "invoice" && !invDataLoaded) {
+      let cancelled = false;
+      
       (async () => {
         if (students.length === 0) {
           const studs = await listStudents("", true);
-          setStudents(studs);
+          if (!cancelled) setStudents(studs);
         }
         if (courses.length === 0) {
           const crses = await listCourses("");
-          setCourses(crses);
+          if (!cancelled) setCourses(crses);
         }
         if (enrollments.length === 0) {
           const enrs = await listEnrollments(undefined, undefined, false);
-          setEnrollments(enrs);
+          if (!cancelled) setEnrollments(enrs);
         }
-        setInvDataLoaded(true);
+        if (!cancelled) setInvDataLoaded(true);
       })();
+      
+      return () => { cancelled = true; };
     }
   }, [tab, invDataLoaded, students.length, courses.length, enrollments.length]);
 
@@ -368,16 +372,17 @@ export default function App() {
     
     // Filter by course type (group/individual)
     if (invGroupFilter !== "all") {
+      // Pre-compute course type map for O(1) lookups
+      const courseTypeMap = new Map(courses.map(c => [c.id, c.type]));
+      
       filtered = filtered.filter(inv => {
         // Get enrollments for this student
         const studentEnrollments = enrollments.filter(e => e.studentId === inv.studentId);
-        // Get course types for these enrollments
-        const courseTypes = studentEnrollments.map(e => {
-          const course = courses.find(c => c.id === e.courseId);
-          return course?.type;
+        // Check if any enrollment has a course matching the filter
+        return studentEnrollments.some(e => {
+          const courseType = courseTypeMap.get(e.courseId);
+          return courseType === invGroupFilter;
         });
-        // Check if any course matches the filter
-        return courseTypes.includes(invGroupFilter);
       });
     }
     
