@@ -448,23 +448,26 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, star
 		return nil, err
 	}
 
-	// Prevent duplicate ACTIVE enrollment for the same pair.
-	today := time.Now().Truncate(24 * time.Hour)
-	exists, err := a.db.Ent.Enrollment.Query().
+	// Prevent overlapping enrollment for the same student-course pair.
+	// Overlap condition: (existing.EndDate is nil OR existing.EndDate >= newStart) AND (newEnd is nil OR existing.StartDate <= newEnd)
+	existingEnrollments, err := a.db.Ent.Enrollment.Query().
 		Where(
 			enrollment.StudentIDEQ(studentID),
 			enrollment.CourseIDEQ(courseID),
-			enrollment.Or(
-				enrollment.EndDateIsNil(),
-				enrollment.EndDateGTE(today),
-			),
 		).
-		Exist(ctx)
+		All(ctx)
 	if err != nil {
 		return nil, err
 	}
-	if exists {
-		return nil, errors.New("an active enrollment for this student and course already exists")
+
+	for _, existing := range existingEnrollments {
+		// Check for overlap
+		existingEndIsNilOrAfterNewStart := existing.EndDate == nil || !existing.EndDate.Before(sd)
+		newEndIsNilOrAfterExistingStart := edPtr == nil || !sd.After(*edPtr) && !existing.StartDate.After(*edPtr)
+		
+		if existingEndIsNilOrAfterNewStart && newEndIsNilOrAfterExistingStart {
+			return nil, errors.New("an overlapping enrollment for this student and course already exists")
+		}
 	}
 
 	builder := a.db.Ent.Enrollment.Create().

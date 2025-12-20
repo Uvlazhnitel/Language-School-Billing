@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import "./App.css";
 
 import {
@@ -38,6 +38,20 @@ const weekdayLabels: { value: number; label: string }[] = [
   { value: 0, label: "Sun" },
 ];
 
+// Helper: parse string to number, return 0 for empty/invalid
+function numOrZero(s: string): number {
+  if (s.trim() === "") return 0;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
+// Helper: parse string to int or undefined for filter selects
+function intOrUndef(s: string): number | undefined {
+  if (s.trim() === "") return undefined;
+  const n = Number(s);
+  return Number.isFinite(n) ? Math.trunc(n) : undefined;
+}
+
 export default function App() {
   const now = new Date();
   const [tab, setTab] = useState<Tab>("students");
@@ -59,7 +73,7 @@ export default function App() {
   const [sfEmail, setSfEmail] = useState("");
   const [sfNote, setSfNote] = useState("");
 
-  async function loadStudents() {
+  const loadStudents = useCallback(async () => {
     setStudentLoading(true);
     try {
       const data = await listStudents(studentQ, includeInactive);
@@ -67,11 +81,11 @@ export default function App() {
     } finally {
       setStudentLoading(false);
     }
-  }
+  }, [studentQ, includeInactive]);
 
   useEffect(() => {
     if (tab === "students") loadStudents();
-  }, [tab, studentQ, includeInactive]);
+  }, [tab, loadStudents]);
 
   function openAddStudent() {
     setEditingStudent(null);
@@ -123,7 +137,7 @@ export default function App() {
   const [cfSubscriptionPrice, setCfSubscriptionPrice] = useState(0);
   const [cfDays, setCfDays] = useState<number[]>([]);
 
-  async function loadCourses() {
+  const loadCourses = useCallback(async () => {
     setCourseLoading(true);
     try {
       const data = await listCourses(courseQ);
@@ -131,11 +145,11 @@ export default function App() {
     } finally {
       setCourseLoading(false);
     }
-  }
+  }, [courseQ]);
 
   useEffect(() => {
     if (tab === "courses") loadCourses();
-  }, [tab, courseQ]);
+  }, [tab, loadCourses]);
 
   function openAddCourse() {
     setEditingCourse(null);
@@ -219,7 +233,7 @@ export default function App() {
     }
   }
 
-  async function loadEnrollments() {
+  const loadEnrollments = useCallback(async () => {
     setEnrLoading(true);
     try {
       await ensureStudentsCoursesLoaded();
@@ -228,13 +242,24 @@ export default function App() {
     } finally {
       setEnrLoading(false);
     }
-  }
+  }, [enrStudentFilter, enrCourseFilter, enrActiveOnly]);
 
   useEffect(() => {
     if (tab === "enrollments") loadEnrollments();
-  }, [tab, enrStudentFilter, enrCourseFilter, enrActiveOnly]);
+  }, [tab, loadEnrollments]);
 
   function openAddEnrollment() {
+    // Guard: check if students and courses exist
+    if (students.length === 0) {
+      alert("No students available. Please add students first.");
+      setTab("students");
+      return;
+    }
+    if (courses.length === 0) {
+      alert("No courses available. Please add courses first.");
+      setTab("courses");
+      return;
+    }
     setEditingEnr(null);
     setEfStudentId(students[0]?.id ?? 0);
     setEfCourseId(courses[0]?.id ?? 0);
@@ -289,7 +314,7 @@ export default function App() {
   const [courseFilter, setCourseFilter] = useState<number | undefined>(undefined);
   const [msg, setMsg] = useState("");
 
-  async function loadAttendance() {
+  const loadAttendance = useCallback(async () => {
     setLoadingAtt(true);
     try {
       const data = await fetchRows(year, month, courseFilter);
@@ -297,11 +322,11 @@ export default function App() {
     } finally {
       setLoadingAtt(false);
     }
-  }
+  }, [year, month, courseFilter]);
 
   useEffect(() => {
     if (tab === "attendance") loadAttendance();
-  }, [tab, year, month, courseFilter]);
+  }, [tab, loadAttendance]);
 
   const perLessonTotal = useMemo(
     () => rows.reduce((s, r) => s + r.count * r.lessonPrice, 0),
@@ -309,7 +334,8 @@ export default function App() {
   );
 
   const onChangeCount = async (r: Row, v: number) => {
-    const n = isNaN(v) || v < 0 ? 0 : Math.trunc(v);
+    if (!Number.isFinite(v)) return; // keep previous when empty/invalid
+    const n = v < 0 ? 0 : Math.trunc(v);
     await saveCount(r.studentId, r.courseId, year, month, n);
     setRows(rows.map(x => (x.enrollmentId === r.enrollmentId ? { ...x, count: n } : x)));
   };
@@ -342,7 +368,7 @@ export default function App() {
   const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
   const [loadingInv, setLoadingInv] = useState(false);
 
-  async function loadInvoices() {
+  const loadInvoices = useCallback(async () => {
     setLoadingInv(true);
     try {
       const li = await listInvoices(year, month, invStatus);
@@ -351,11 +377,11 @@ export default function App() {
     } finally {
       setLoadingInv(false);
     }
-  }
+  }, [year, month, invStatus]);
 
   useEffect(() => {
     if (tab === "invoice") loadInvoices();
-  }, [tab, year, month, invStatus]);
+  }, [tab, loadInvoices]);
 
   const onGenDrafts = async () => {
     const res = await genDrafts(year, month);
@@ -448,7 +474,7 @@ export default function App() {
                       <td>{s.fullName}</td>
                       <td>{s.phone}</td>
                       <td>{s.email}</td>
-                      <td>{s.isActive ? "yexs" : "no"}</td>
+                      <td>{s.isActive ? "yes" : "no"}</td>
                       <td>
                         <button onClick={() => openEditStudent(s)}>Edit</button>
                         <button onClick={() => toggleStudentActive(s)}>
@@ -556,13 +582,13 @@ export default function App() {
                 <div className="formRow">
                   <label>Lesson price</label>
                   <input type="number" min={0} step="0.01" value={cfLessonPrice}
-                         onChange={(e) => setCfLessonPrice(parseFloat(e.target.value))} />
+                         onChange={(e) => setCfLessonPrice(numOrZero(e.target.value))} />
                 </div>
 
                 <div className="formRow">
                   <label>Subscription price</label>
                   <input type="number" min={0} step="0.01" value={cfSubscriptionPrice}
-                         onChange={(e) => setCfSubscriptionPrice(parseFloat(e.target.value))} />
+                         onChange={(e) => setCfSubscriptionPrice(numOrZero(e.target.value))} />
                 </div>
 
                 {cfType === "group" && (
@@ -604,12 +630,12 @@ export default function App() {
               <input type="checkbox" checked={enrActiveOnly} onChange={(e) => setEnrActiveOnly(e.target.checked)} />
             </label>
 
-            <select value={enrStudentFilter ?? ""} onChange={(e) => setEnrStudentFilter(e.target.value ? parseInt(e.target.value) : undefined)}>
+            <select value={enrStudentFilter ?? ""} onChange={(e) => setEnrStudentFilter(intOrUndef(e.target.value))}>
               <option value="">All students</option>
               {students.map(s => <option key={s.id} value={s.id}>{s.fullName}</option>)}
             </select>
 
-            <select value={enrCourseFilter ?? ""} onChange={(e) => setEnrCourseFilter(e.target.value ? parseInt(e.target.value) : undefined)}>
+            <select value={enrCourseFilter ?? ""} onChange={(e) => setEnrCourseFilter(intOrUndef(e.target.value))}>
               <option value="">All courses</option>
               {courses.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
@@ -687,7 +713,7 @@ export default function App() {
                 <div className="formRow">
                   <label>Discount %</label>
                   <input type="number" min={0} max={100} step="0.1" value={efDiscount}
-                         onChange={(e) => setEfDiscount(parseFloat(e.target.value))} />
+                         onChange={(e) => setEfDiscount(numOrZero(e.target.value))} />
                 </div>
 
                 <div className="formRow">
@@ -742,13 +768,13 @@ export default function App() {
                           min={0}
                           value={r.count}
                           disabled={r.locked}
-                          onChange={(e) => onChangeCount(r, parseInt(e.target.value))}
+                          onChange={(e) => onChangeCount(r, Number(e.target.value))}
                           style={{ width: "5rem", textAlign: "right" }}
                         />
                       </td>
                       <td style={{ textAlign: "right" }}>{(r.count * r.lessonPrice).toFixed(2)}</td>
                       <td>{r.locked ? "locked" : "open"}</td>
-                      <td><button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>Delete enrollment</button></td>
+                      <td><button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>Delete enrollment (danger)</button></td>
                     </tr>
                   ))}
                 </tbody>
