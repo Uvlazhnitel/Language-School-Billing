@@ -1,561 +1,393 @@
 /* =========================
-   App.css — polished UI
+   App.css — clean UI for CRUD + existing screens
    ========================= */
 
-/* ----- Design tokens ----- */
-:root {
-  --bg: #0b1220;
-  --card: rgba(255, 255, 255, 0.06);
-  --card2: rgba(255, 255, 255, 0.08);
-  --border: rgba(255, 255, 255, 0.12);
-  --border2: rgba(255, 255, 255, 0.18);
-  --text: rgba(255, 255, 255, 0.92);
-  --muted: rgba(255, 255, 255, 0.68);
-  --muted2: rgba(255, 255, 255, 0.52);
-
-  --primary: #7c5cff;
-  --primary2: #34d399;
-  --danger: #ff4d6d;
-  --warn: #ffb020;
-
-  --shadow: 0 14px 40px rgba(0,0,0,.35);
-  --shadow2: 0 10px 26px rgba(0,0,0,.28);
-
-  --r-lg: 18px;
-  --r-md: 14px;
-  --r-sm: 10px;
-
-  --pad: 18px;
-  --gap: 12px;
-
-  --focus: 0 0 0 3px rgba(124, 92, 255, 0.28);
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    --bg: #f5f7fb;
-    --card: rgba(0, 0, 0, 0.03);
-    --card2: rgba(0, 0, 0, 0.045);
-    --border: rgba(0, 0, 0, 0.09);
-    --border2: rgba(0, 0, 0, 0.12);
-    --text: rgba(0, 0, 0, 0.88);
-    --muted: rgba(0, 0, 0, 0.62);
-    --muted2: rgba(0, 0, 0, 0.48);
-
-    --shadow: 0 14px 40px rgba(22, 30, 53, .14);
-    --shadow2: 0 10px 26px rgba(22, 30, 53, .12);
-    --focus: 0 0 0 3px rgba(124, 92, 255, 0.22);
+   :root {
+    --bg: #0b1220;
+    --panel: rgba(255, 255, 255, 0.06);
+    --panel2: rgba(255, 255, 255, 0.08);
+    --border: rgba(255, 255, 255, 0.12);
+    --text: rgba(255, 255, 255, 0.92);
+    --muted: rgba(255, 255, 255, 0.68);
+    --muted2: rgba(255, 255, 255, 0.50);
+  
+    --accent: #7c5cff;
+    --good: #34d399;
+    --bad: #ff4d6d;
+  
+    --shadow: 0 14px 40px rgba(0,0,0,.35);
+    --shadow2: 0 10px 26px rgba(0,0,0,.28);
+  
+    --r-lg: 16px;
+    --r-md: 12px;
+    --r-sm: 10px;
+  
+    --focus: 0 0 0 3px rgba(124, 92, 255, 0.28);
   }
-}
-
-/* ----- Base ----- */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html, body {
-  height: 100%;
-}
-
-body {
-  margin: 0;
-  color: var(--text);
-  background:
-    radial-gradient(1200px 800px at 10% 5%, rgba(124, 92, 255, 0.22), transparent 55%),
-    radial-gradient(900px 700px at 90% 10%, rgba(52, 211, 153, 0.18), transparent 60%),
-    radial-gradient(900px 700px at 50% 110%, rgba(255, 77, 109, 0.12), transparent 55%),
-    var(--bg);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
-    "Segoe UI Emoji";
-  line-height: 1.45;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-a { color: inherit; }
-
-::selection {
-  background: rgba(124, 92, 255, 0.35);
-}
-
-.container {
-  width: calc(100% - 32px);
-  margin: 26px auto 40px;
-}
-
-/* ----- Top tabs / header ----- */
-.tabs {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  position: sticky;
-  top: 10px;
-  z-index: 10;
-
-  padding: 10px;
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-
-  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: var(--shadow2);
-}
-
-.tabs button {
-  appearance: none;
-  border: 1px solid transparent;
-  background: transparent;
-  color: var(--muted);
-  padding: 10px 14px;
-  border-radius: 999px;
-  cursor: pointer;
-  font-weight: 700;
-  letter-spacing: 0.2px;
-
-  transition: transform .12s ease, background .18s ease, border-color .18s ease, color .18s ease;
-}
-
-.tabs button:hover {
-  color: var(--text);
-  background: rgba(255,255,255,0.06);
-  border-color: rgba(255,255,255,0.10);
-}
-
-.tabs button:active {
-  transform: translateY(1px);
-}
-
-.tabs button.active {
-  color: var(--text);
-  background:
-    linear-gradient(180deg, rgba(124, 92, 255, 0.32), rgba(124, 92, 255, 0.16));
-  border-color: rgba(124, 92, 255, 0.35);
-  box-shadow: 0 10px 25px rgba(124, 92, 255, 0.14);
-}
-
-.spacer {
-  flex: 1;
-}
-
-.monthpickers {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-}
-
-.monthpickers select {
-  width: auto;
-}
-
-/* ----- Controls row ----- */
-.controls {
-  margin: 16px 0 12px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-/* ----- Buttons ----- */
-button {
-  font: inherit;
-}
-
-.controls button,
-.panel button,
-.modalActions button,
-tbody button {
-  appearance: none;
-  border: 1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.06);
-  color: var(--text);
-  padding: 9px 12px;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 700;
-
-  transition: transform .12s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease, opacity .18s ease;
-}
-
-.controls button:hover,
-.panel button:hover,
-.modalActions button:hover,
-tbody button:hover {
-  background: rgba(255,255,255,0.09);
-  border-color: rgba(255,255,255,0.16);
-  box-shadow: 0 10px 24px rgba(0,0,0,.18);
-}
-
-.controls button:active,
-.panel button:active,
-.modalActions button:active,
-tbody button:active {
-  transform: translateY(1px);
-}
-
-.controls button:focus-visible,
-.panel button:focus-visible,
-.modalActions button:focus-visible,
-tbody button:focus-visible {
-  outline: none;
-  box-shadow: var(--focus), 0 10px 24px rgba(0,0,0,.18);
-}
-
-/* Nice “primary” styling for the most important action in a row:
-   first button in certain contexts looks slightly more “main”. */
-.controls button:first-child {
-  border-color: rgba(124, 92, 255, 0.26);
-  background: linear-gradient(180deg, rgba(124, 92, 255, 0.18), rgba(255,255,255,0.06));
-}
-
-/* Danger-ish buttons (Delete / Reset) — heuristic by label */
-/* Removed empty ruleset for modern browsers */
-/* Removed empty ruleset */
-  /* reset demo often is 2nd, delete is last in row */
-}
-
-tbody button:last-child {
-  border-color: rgba(255, 77, 109, 0.25);
-  background: linear-gradient(180deg, rgba(255,77,109,0.14), rgba(255,255,255,0.06));
-}
-
-tbody button:last-child:hover {
-  border-color: rgba(255, 77, 109, 0.34);
-}
-
-.controls button:nth-child(2) {
-  border-color: rgba(255, 77, 109, 0.22);
-  background: linear-gradient(180deg, rgba(255,77,109,0.12), rgba(255,255,255,0.06));
-}
-
-/* ----- Inputs / selects ----- */
-input, select {
-  font: inherit;
-  color: var(--text);
-  background: rgba(255,255,255,0.06);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 9px 10px;
-  outline: none;
-  transition: box-shadow .18s ease, border-color .18s ease, background .18s ease;
-}
-
-select {
-  padding-right: 34px;
-  background-image:
-    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
-    linear-gradient(135deg, var(--muted) 50%, transparent 50%),
-    linear-gradient(to right, transparent, transparent);
-  background-position:
-    calc(100% - 18px) 50%,
-    calc(100% - 12px) 50%,
-    0 0;
-  background-size:
-    6px 6px,
-    6px 6px,
-    100% 100%;
-  background-repeat: no-repeat;
-  appearance: none;
-}
-
-input:focus,
-select:focus {
-  border-color: rgba(124, 92, 255, 0.45);
-  box-shadow: var(--focus);
-  background: rgba(255,255,255,0.08);
-}
-
-input:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-input[type="number"]::-webkit-outer-spin-button,
-input[type="number"]::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-/* ----- Tables ----- */
-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  overflow: hidden;
-
-  border: 1px solid var(--border);
-  border-radius: var(--r-lg);
-  background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.04));
-  box-shadow: var(--shadow);
-}
-
-thead th {
-  text-align: left;
-  padding: 12px 14px;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.9px;
-  color: var(--muted);
-  border-bottom: 1px solid var(--border);
-  background: rgba(255,255,255,0.04);
-}
-
-tbody td {
-  padding: 12px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  vertical-align: middle;
-}
-
-tbody tr:hover td {
-  background: rgba(255,255,255,0.04);
-}
-
-tbody tr:last-child td {
-  border-bottom: none;
-}
-
-tfoot td {
-  padding: 12px 14px;
-  border-top: 1px solid var(--border);
-  background: rgba(255,255,255,0.04);
-  font-weight: 800;
-}
-
-/* Cells with inputs inside tables */
-td input[type="number"] {
-  width: 6.2rem;
-  text-align: right;
-  padding-right: 12px;
-}
-
-/* Button group in table row */
-tbody td button {
-  margin-right: 8px;
-}
-
-tbody td button:last-child {
-  margin-right: 0;
-}
-
-/* ----- Message / empty states ----- */
-.msg {
-  margin: 12px 0;
-  padding: 10px 12px;
-  border-radius: 14px;
-  border: 1px solid rgba(52, 211, 153, 0.25);
-  background: linear-gradient(180deg, rgba(52, 211, 153, 0.16), rgba(255,255,255,0.06));
-  color: var(--text);
-  font-weight: 700;
-  box-shadow: 0 10px 22px rgba(52, 211, 153, 0.12);
-}
-
-.empty {
-  margin: 14px 0;
-  padding: 18px;
-  border-radius: var(--r-lg);
-  border: 1px dashed rgba(255,255,255,0.18);
-  background: rgba(255,255,255,0.04);
-  color: var(--muted);
-}
-
-/* ----- Panel (details area) ----- */
-.panel {
-  margin-top: 14px;
-  padding: var(--pad);
-  border-radius: var(--r-lg);
-  border: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
-  box-shadow: var(--shadow2);
-}
-
-.panel h3 {
-  margin: 0 0 10px;
-  font-size: 18px;
-  letter-spacing: 0.2px;
-}
-
-.panel h4 {
-  margin: 14px 0 10px;
-  font-size: 14px;
-  color: var(--muted);
-  letter-spacing: 0.4px;
-  text-transform: uppercase;
-}
-
-.panel > div {
-  color: var(--muted);
-  margin: 2px 0;
-}
-
-.panel b {
-  color: var(--text);
-}
-
-/* Make the "Add payment" button look primary inside invoice panel */
-.panel > button {
-  border-color: rgba(124, 92, 255, 0.28);
-  background: linear-gradient(180deg, rgba(124, 92, 255, 0.22), rgba(255,255,255,0.06));
-}
-
-/* ----- Forms ----- */
-.formRow {
-  display: grid;
-  grid-template-columns: 140px 1fr;
-  align-items: center;
-  gap: 12px;
-  margin: 10px 0;
-}
-
-.formRow label {
-  color: var(--muted);
-  font-weight: 700;
-  letter-spacing: 0.2px;
-}
-
-/* ----- Modal ----- */
-.modal {
-  position: fixed;
-  inset: 0;
-  z-index: 50;
-  display: grid;
-  place-items: center;
-  padding: 18px;
-
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.modalBody {
-  width: min(520px, 100%);
-  width: 100%;
-  border: 1px solid rgba(255,255,255,0.16);
-  background:
-    radial-gradient(900px 280px at 30% 0%, rgba(124,92,255,0.20), transparent 55%),
-    linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.05));
-  box-shadow: var(--shadow);
-  padding: 18px 18px 14px;
-  transform: translateY(0);
-  animation: pop .16s ease-out;
-}
-
-@keyframes pop {
-  from { transform: translateY(10px) scale(0.98); opacity: 0; }
-  to   { transform: translateY(0) scale(1); opacity: 1; }
-}
-
-.modalBody h3 {
-  margin: 0 0 12px;
-  font-size: 18px;
-}
-
-.modalActions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255,255,255,0.10);
-}
-
-/* Primary action in modal */
-.modalActions button:first-child {
-  border-color: rgba(52, 211, 153, 0.26);
-  background: linear-gradient(180deg, rgba(52, 211, 153, 0.20), rgba(255,255,255,0.06));
-}
-
-/* Secondary close button */
-.modalActions button:last-child {
-  border-color: rgba(255,255,255,0.14);
-  background: rgba(255,255,255,0.05);
-  color: var(--muted);
-}
-
-/* ----- Small responsive tweaks ----- */
-@media (max-width: 720px) {
+  
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f7fb;
+      --panel: rgba(0, 0, 0, 0.03);
+      --panel2: rgba(0, 0, 0, 0.045);
+      --border: rgba(0, 0, 0, 0.09);
+      --text: rgba(0, 0, 0, 0.88);
+      --muted: rgba(0, 0, 0, 0.62);
+      --muted2: rgba(0, 0, 0, 0.48);
+      --shadow: 0 14px 40px rgba(22, 30, 53, .14);
+      --shadow2: 0 10px 26px rgba(22, 30, 53, .12);
+      --focus: 0 0 0 3px rgba(124, 92, 255, 0.22);
+    }
+  }
+  
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+  
+  html, body {
+    height: 100%;
+  }
+  
+  body {
+    margin: 0;
+    color: var(--text);
+    background:
+      radial-gradient(1200px 800px at 10% 5%, rgba(124, 92, 255, 0.22), transparent 55%),
+      radial-gradient(900px 700px at 90% 10%, rgba(52, 211, 153, 0.18), transparent 60%),
+      radial-gradient(900px 700px at 50% 110%, rgba(255, 77, 109, 0.12), transparent 55%),
+      var(--bg);
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  .container {
+    width: calc(100% - 32px);
+    margin: 24px auto 40px;
+  }
+  
+  a { color: inherit; }
+  
+  /* ---------- Tabs ---------- */
   .tabs {
-    flex-wrap: wrap;
-    gap: 8px;
-    top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    position: sticky;
+    top: 10px;
+    z-index: 10;
+  
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+  
+    background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: var(--shadow2);
   }
-
-  .monthpickers {
-    width: 100%;
-    justify-content: flex-end;
-  }
-
-  .controls {
-    gap: 8px;
-  }
-
-  .formRow {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-
-  thead {
-    display: none;
-  }
-
-  /* Mobile table as cards */
-  table {
-    border-spacing: 0 10px;
+  
+  .tabs button {
+    appearance: none;
+    border: 1px solid transparent;
     background: transparent;
-    border: none;
-    box-shadow: none;
+    color: var(--muted);
+    padding: 10px 14px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-weight: 700;
+    letter-spacing: 0.2px;
+    transition: transform .12s ease, background .18s ease, border-color .18s ease, color .18s ease;
   }
-
-  tbody tr {
-    display: grid;
-    grid-template-columns: 1fr;
+  
+  .tabs button:hover {
+    color: var(--text);
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.10);
+  }
+  
+  .tabs button:active {
+    transform: translateY(1px);
+  }
+  
+  .tabs button.active {
+    color: var(--text);
+    background: linear-gradient(180deg, rgba(124, 92, 255, 0.32), rgba(124, 92, 255, 0.16));
+    border-color: rgba(124, 92, 255, 0.35);
+    box-shadow: 0 10px 25px rgba(124, 92, 255, 0.14);
+  }
+  
+  .spacer { flex: 1; }
+  
+  .monthpickers {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  
+  /* ---------- Controls row ---------- */
+  .controls {
+    margin: 16px 0 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+  }
+  
+  .inline {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+    color: var(--muted);
+    font-weight: 650;
+  }
+  
+  /* ---------- Inputs / selects ---------- */
+  input, select {
+    font: inherit;
+    color: var(--text);
+    background: rgba(255,255,255,0.06);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 9px 10px;
+    outline: none;
+    transition: box-shadow .18s ease, border-color .18s ease, background .18s ease;
+  }
+  
+  select {
+    padding-right: 34px;
+    background-image:
+      linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+      linear-gradient(135deg, var(--muted) 50%, transparent 50%),
+      linear-gradient(to right, transparent, transparent);
+    background-position:
+      calc(100% - 18px) 50%,
+      calc(100% - 12px) 50%,
+      0 0;
+    background-size:
+      6px 6px,
+      6px 6px,
+      100% 100%;
+    background-repeat: no-repeat;
+    appearance: none;
+  }
+  
+  input:focus, select:focus {
+    border-color: rgba(124, 92, 255, 0.45);
+    box-shadow: var(--focus);
+    background: rgba(255,255,255,0.08);
+  }
+  
+  input:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  
+  /* ---------- Buttons ---------- */
+  button {
+    font: inherit;
+  }
+  
+  .controls button,
+  .panel button,
+  .modalActions button,
+  tbody button {
+    appearance: none;
+    border: 1px solid rgba(255,255,255,0.10);
+    background: rgba(255,255,255,0.06);
+    color: var(--text);
+    padding: 9px 12px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 700;
+    transition: transform .12s ease, background .18s ease, border-color .18s ease, box-shadow .18s ease, opacity .18s ease;
+  }
+  
+  .controls button:hover,
+  .panel button:hover,
+  .modalActions button:hover,
+  tbody button:hover {
+    background: rgba(255,255,255,0.09);
+    border-color: rgba(255,255,255,0.16);
+    box-shadow: 0 10px 24px rgba(0,0,0,.18);
+  }
+  
+  .controls button:active,
+  .panel button:active,
+  .modalActions button:active,
+  tbody button:active {
+    transform: translateY(1px);
+  }
+  
+  .controls button:focus-visible,
+  .panel button:focus-visible,
+  .modalActions button:focus-visible,
+  tbody button:focus-visible {
+    outline: none;
+    box-shadow: var(--focus), 0 10px 24px rgba(0,0,0,.18);
+  }
+  
+  /* Make first action in a row look like the primary action */
+  .controls button:first-child {
+    border-color: rgba(124, 92, 255, 0.26);
+    background: linear-gradient(180deg, rgba(124, 92, 255, 0.18), rgba(255,255,255,0.06));
+  }
+  
+  /* ---------- Tables ---------- */
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: var(--r-lg);
+    background: linear-gradient(180deg, rgba(255,255,255,0.07), rgba(255,255,255,0.04));
+    box-shadow: var(--shadow);
+  }
+  
+  thead th {
+    text-align: left;
+    padding: 12px 14px;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.9px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+  }
+  
+  tbody td {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    vertical-align: middle;
+  }
+  
+  tbody tr:hover td {
+    background: rgba(255,255,255,0.04);
+  }
+  
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+  
+  tfoot td {
+    padding: 12px 14px;
+    border-top: 1px solid var(--border);
+    background: rgba(255,255,255,0.04);
+    font-weight: 800;
+  }
+  
+  /* ---------- Small helpers ---------- */
+  .msg {
+    margin: 12px 0;
+    padding: 10px 12px;
+    border-radius: 14px;
+    border: 1px solid rgba(52, 211, 153, 0.25);
+    background: linear-gradient(180deg, rgba(52, 211, 153, 0.16), rgba(255,255,255,0.06));
+    font-weight: 700;
+    box-shadow: 0 10px 22px rgba(52, 211, 153, 0.12);
+  }
+  
+  .empty {
+    margin: 14px 0;
+    padding: 18px;
+    border-radius: var(--r-lg);
+    border: 1px dashed rgba(255,255,255,0.18);
+    background: rgba(255,255,255,0.04);
+    color: var(--muted);
+  }
+  
+  /* ---------- Panel (invoice details) ---------- */
+  .panel {
+    margin-top: 14px;
+    padding: 18px;
     border-radius: var(--r-lg);
     border: 1px solid var(--border);
     background: linear-gradient(180deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
     box-shadow: var(--shadow2);
-    overflow: hidden;
   }
-
-  tbody td {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+  
+  .panel h3 {
+    margin: 0 0 10px;
+    font-size: 18px;
+    letter-spacing: 0.2px;
   }
-
-  tbody td:last-child {
-    border-bottom: none;
-  }
-
-  tfoot {
-    display: block;
-  }
-
-  tfoot tr {
+  
+  /* ---------- Modal ---------- */
+  .modal {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
     display: grid;
-    grid-template-columns: 1fr;
+    place-items: center;
+    padding: 18px;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  
+  .modalBody {
+    width: min(560px, 100%);
     border-radius: var(--r-lg);
-    border: 1px solid var(--border);
-    background: rgba(255,255,255,0.06);
-    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.14);
+    background:
+      radial-gradient(900px 280px at 30% 0%, rgba(124,92,255,0.20), transparent 55%),
+      linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.05));
+    box-shadow: var(--shadow);
+    padding: 18px 18px 14px;
+    animation: pop .16s ease-out;
   }
-
-  tfoot td {
+  
+  @keyframes pop {
+    from { transform: translateY(10px) scale(0.98); opacity: 0; }
+    to   { transform: translateY(0) scale(1); opacity: 1; }
+  }
+  
+  .modalBody h3 {
+    margin: 0 0 12px;
+    font-size: 18px;
+  }
+  
+  .formRow {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    align-items: center;
+    gap: 12px;
+    margin: 10px 0;
+  }
+  
+  .formRow label {
+    color: var(--muted);
+    font-weight: 700;
+  }
+  
+  .modalActions {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid rgba(255,255,255,0.10);
   }
-
-  td input[type="number"] {
-    width: 7rem;
+  
+  .days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
   }
-}
-
-/* ----- Reduced motion ----- */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation: none !important;
-    transition: none !important;
-    scroll-behavior: auto !important;
+  
+  /* ---------- Responsive ---------- */
+  @media (max-width: 720px) {
+    .tabs { flex-wrap: wrap; top: 8px; }
+    .monthpickers { width: 100%; justify-content: flex-end; }
+    .formRow { grid-template-columns: 1fr; gap: 8px; }
   }
-}
+  
+  /* ---------- Reduced motion ---------- */
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+  

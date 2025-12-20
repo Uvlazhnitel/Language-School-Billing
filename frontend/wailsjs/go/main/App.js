@@ -30,6 +30,26 @@ export function BackupNow() {
   return window['go']['main']['App']['BackupNow']();
 }
 
+export function CourseCreate(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['CourseCreate'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function CourseDelete(arg1) {
+  return window['go']['main']['App']['CourseDelete'](arg1);
+}
+
+export function CourseGet(arg1) {
+  return window['go']['main']['App']['CourseGet'](arg1);
+}
+
+export function CourseList(arg1) {
+  return window['go']['main']['App']['CourseList'](arg1);
+}
+
+export function CourseUpdate(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['CourseUpdate'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
 export function DebtorsList() {
   return window['go']['main']['App']['DebtorsList']();
 }
@@ -46,8 +66,24 @@ export function DevSeed() {
   return window['go']['main']['App']['DevSeed']();
 }
 
+export function EnrollmentCreate(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['EnrollmentCreate'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
 export function EnrollmentDelete(arg1) {
   return window['go']['main']['App']['EnrollmentDelete'](arg1);
+}
+
+export function EnrollmentEnd(arg1, arg2) {
+  return window['go']['main']['App']['EnrollmentEnd'](arg1, arg2);
+}
+
+export function EnrollmentList(arg1, arg2, arg3) {
+  return window['go']['main']['App']['EnrollmentList'](arg1, arg2, arg3);
+}
+
+export function EnrollmentUpdate(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['EnrollmentUpdate'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function Greet(arg1) {
@@ -120,4 +156,24 @@ export function SettingsSetLocale(arg1) {
 
 export function StudentBalance(arg1) {
   return window['go']['main']['App']['StudentBalance'](arg1);
+}
+
+export function StudentCreate(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['StudentCreate'](arg1, arg2, arg3, arg4);
+}
+
+export function StudentGet(arg1) {
+  return window['go']['main']['App']['StudentGet'](arg1);
+}
+
+export function StudentList(arg1, arg2) {
+  return window['go']['main']['App']['StudentList'](arg1, arg2);
+}
+
+export function StudentSetActive(arg1, arg2) {
+  return window['go']['main']['App']['StudentSetActive'](arg1, arg2);
+}
+
+export function StudentUpdate(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['StudentUpdate'](arg1, arg2, arg3, arg4, arg5);
 }

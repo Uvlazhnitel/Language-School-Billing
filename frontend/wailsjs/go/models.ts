@@ -151,6 +151,58 @@ export namespace invoice {
 
 export namespace main {
 	
+	export class CourseDTO {
+	    id: number;
+	    name: string;
+	    type: string;
+	    lessonPrice: number;
+	    subscriptionPrice: number;
+	    scheduleDays: number[];
+	
+	    static createFrom(source: any = {}) {
+	        return new CourseDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.type = source["type"];
+	        this.lessonPrice = source["lessonPrice"];
+	        this.subscriptionPrice = source["subscriptionPrice"];
+	        this.scheduleDays = source["scheduleDays"];
+	    }
+	}
+	export class EnrollmentDTO {
+	    id: number;
+	    studentId: number;
+	    studentName: string;
+	    courseId: number;
+	    courseName: string;
+	    billingMode: string;
+	    startDate: string;
+	    endDate?: string;
+	    discountPct: number;
+	    note: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new EnrollmentDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.studentId = source["studentId"];
+	        this.studentName = source["studentName"];
+	        this.courseId = source["courseId"];
+	        this.courseName = source["courseName"];
+	        this.billingMode = source["billingMode"];
+	        this.startDate = source["startDate"];
+	        this.endDate = source["endDate"];
+	        this.discountPct = source["discountPct"];
+	        this.note = source["note"];
+	    }
+	}
 	export class IssueAllResult {
 	    count: number;
 	    pdfPaths: string[];
@@ -177,6 +229,28 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.number = source["number"];
 	        this.pdfPath = source["pdfPath"];
+	    }
+	}
+	export class StudentDTO {
+	    id: number;
+	    fullName: string;
+	    phone: string;
+	    email: string;
+	    note: string;
+	    isActive: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new StudentDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.fullName = source["fullName"];
+	        this.phone = source["phone"];
+	        this.email = source["email"];
+	        this.note = source["note"];
+	        this.isActive = source["isActive"];
 	    }
 	}
 
