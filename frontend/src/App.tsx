@@ -320,9 +320,9 @@ export default function App() {
 
   // Load supporting data (students, courses, enrollments) once for invoice filtering
   useEffect(() => {
+    let cancelled = false;
+    
     if (tab === "invoice" && !invDataLoaded) {
-      let cancelled = false;
-      
       (async () => {
         if (students.length === 0) {
           const studs = await listStudents("", true);
@@ -338,9 +338,9 @@ export default function App() {
         }
         if (!cancelled) setInvDataLoaded(true);
       })();
-      
-      return () => { cancelled = true; };
     }
+    
+    return () => { cancelled = true; };
   }, [tab, invDataLoaded, students.length, courses.length, enrollments.length]);
 
   const loadInvoices = useCallback(async () => {
@@ -793,7 +793,13 @@ export default function App() {
           </div>
 
           {loadingInv ? <div>Loading…</div> : (
-            filteredInvItems.length === 0 ? <div className="empty">No invoices match the filters.</div> :
+            filteredInvItems.length === 0 ? (
+              <div className="empty">
+                {invStudentFilter || invGroupFilter !== "all" 
+                  ? "No invoices match the filters." 
+                  : "No invoices for this period/status."}
+              </div>
+            ) :
               <table>
                 <thead>
                   <tr>
