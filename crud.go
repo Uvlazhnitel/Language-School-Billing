@@ -263,7 +263,7 @@ func (a *App) CourseDelete(id int) error {
 		return err
 	}
 	if used {
-		return errors.New("cannot delete course: it has enrollments; end enrollments first or keep course")
+		return errors.New("cannot delete course: it has enrollments; delete enrollments first or keep course")
 	}
 
 	return a.db.Ent.Course.DeleteOneID(id).Exec(ctx)
@@ -272,6 +272,8 @@ func (a *App) CourseDelete(id int) error {
 // -------------------- Enrollments CRUD --------------------
 
 // EnrollmentList lists enrollments, optionally filtered by studentID or courseID.
+// The activeOnly parameter is retained for API compatibility but is no longer used
+// since start_date and end_date fields have been removed.
 func (a *App) EnrollmentList(studentID *int, courseID *int, activeOnly bool) ([]EnrollmentDTO, error) {
 	ctx := a.ctx
 
