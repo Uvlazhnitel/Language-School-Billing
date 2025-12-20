@@ -221,18 +221,6 @@ export default function App() {
   const [efDiscount, setEfDiscount] = useState(0);
   const [efNote, setEfNote] = useState("");
 
-  async function ensureStudentsCoursesLoaded() {
-    // We need students & courses for dropdowns
-    if (students.length === 0) {
-      const ss = await listStudents("", true);
-      setStudents(ss);
-    }
-    if (courses.length === 0) {
-      const cs = await listCourses("");
-      setCourses(cs);
-    }
-  }
-
   const loadEnrollments = useCallback(async () => {
     setEnrLoading(true);
     try {
