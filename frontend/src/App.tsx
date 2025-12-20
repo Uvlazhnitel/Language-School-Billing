@@ -15,7 +15,7 @@ import {
 
 import { listStudents, createStudent, updateStudent, setStudentActive, StudentDTO } from "./lib/students";
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
-import { listEnrollments, createEnrollment, updateEnrollment, endEnrollment, EnrollmentDTO } from "./lib/enrollments";
+import { listEnrollments, createEnrollment, updateEnrollment, EnrollmentDTO } from "./lib/enrollments";
 
 const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
 
@@ -198,8 +198,6 @@ export default function App() {
   const [efStudentId, setEfStudentId] = useState<number>(0);
   const [efCourseId, setEfCourseId] = useState<number>(0);
   const [efMode, setEfMode] = useState<"subscription" | "per_lesson">("per_lesson");
-  const [efStart, setEfStart] = useState(todayYMD());
-  const [efEnd, setEfEnd] = useState<string>("");
   const [efDiscount, setEfDiscount] = useState(0);
   const [efNote, setEfNote] = useState("");
 
@@ -238,8 +236,6 @@ export default function App() {
     setEfStudentId(students[0]?.id ?? 0);
     setEfCourseId(courses[0]?.id ?? 0);
     setEfMode("per_lesson");
-    setEfStart(todayYMD());
-    setEfEnd("");
     setEfDiscount(0);
     setEfNote("");
     setEnrModalOpen(true);
@@ -250,8 +246,6 @@ export default function App() {
     setEfStudentId(e.studentId);
     setEfCourseId(e.courseId);
     setEfMode(e.billingMode);
-    setEfStart(e.startDate);
-    setEfEnd(e.endDate ?? "");
     setEfDiscount(e.discountPct);
     setEfNote(e.note);
     setEnrModalOpen(true);
@@ -267,18 +261,11 @@ export default function App() {
       return;
     }
     if (editingEnr) {
-      await updateEnrollment(editingEnr.id, efMode, efStart, efEnd ? efEnd : undefined, efDiscount, efNote);
+      await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
     } else {
-      await createEnrollment(efStudentId, efCourseId, efMode, efStart, efEnd ? efEnd : undefined, efDiscount, efNote);
+      await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
     }
     setEnrModalOpen(false);
-    await loadEnrollments();
-  }
-
-  async function endThisEnrollment(id: number) {
-    const d = prompt("End date (YYYY-MM-DD)", todayYMD());
-    if (!d) return;
-    await endEnrollment(id, d);
     await loadEnrollments();
   }
 
@@ -589,7 +576,7 @@ export default function App() {
               <table>
                 <thead>
                   <tr>
-                    <th>Student</th><th>Course</th><th>Billing</th><th>Start</th><th>End</th><th style={{textAlign:"right"}}>Discount</th><th></th>
+                    <th>Student</th><th>Course</th><th>Billing</th><th style={{textAlign:"right"}}>Discount</th><th></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -598,12 +585,9 @@ export default function App() {
                       <td>{e.studentName}</td>
                       <td>{e.courseName}</td>
                       <td>{e.billingMode}</td>
-                      <td>{e.startDate}</td>
-                      <td>{e.endDate ?? ""}</td>
                       <td style={{textAlign:"right"}}>{e.discountPct.toFixed(1)}%</td>
                       <td>
                         <button onClick={() => openEditEnrollment(e)}>Edit</button>
-                        <button onClick={() => endThisEnrollment(e.id)}>End</button>
                       </td>
                     </tr>
                   ))}
@@ -639,16 +623,6 @@ export default function App() {
                     <option value="per_lesson">per_lesson</option>
                     <option value="subscription">subscription</option>
                   </select>
-                </div>
-
-                <div className="formRow">
-                  <label>Start date</label>
-                  <input type="date" value={efStart} onChange={(e) => setEfStart(e.target.value)} />
-                </div>
-
-                <div className="formRow">
-                  <label>End date</label>
-                  <input type="date" value={efEnd} onChange={(e) => setEfEnd(e.target.value)} />
                 </div>
 
                 <div className="formRow">

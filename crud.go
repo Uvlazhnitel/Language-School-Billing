@@ -3,28 +3,12 @@ package main
 import (
 	"errors"
 	"strings"
-	"time"
 
 	"langschool/ent"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
 	"langschool/ent/student"
 )
-
-// -------------------- Shared helpers --------------------
-
-func parseYMD(s string) (time.Time, error) {
-	s = strings.TrimSpace(s)
-	if s == "" {
-		return time.Time{}, errors.New("date is required (YYYY-MM-DD)")
-	}
-	// Accept YYYY-MM-DD only to keep UI simple.
-	t, err := time.Parse("2006-01-02", s)
-	if err != nil {
-		return time.Time{}, errors.New("invalid date format; expected YYYY-MM-DD")
-	}
-	return t, nil
-}
 
 // -------------------- DTOs for Wails --------------------
 
@@ -52,8 +36,6 @@ type EnrollmentDTO struct {
 	CourseID    int     `json:"courseId"`
 	CourseName  string  `json:"courseName"`
 	BillingMode string  `json:"billingMode"` // subscription|per_lesson
-	StartDate   string  `json:"startDate"`   // YYYY-MM-DD
-	EndDate     *string `json:"endDate,omitempty"`
 	DiscountPct float64 `json:"discountPct"`
 	Note        string  `json:"note"`
 }
@@ -290,7 +272,6 @@ func (a *App) CourseDelete(id int) error {
 // -------------------- Enrollments CRUD --------------------
 
 // EnrollmentList lists enrollments, optionally filtered by studentID or courseID.
-// If activeOnly=true, returns enrollments with end_date = NULL or end_date >= today.
 func (a *App) EnrollmentList(studentID *int, courseID *int, activeOnly bool) ([]EnrollmentDTO, error) {
 	ctx := a.ctx
 
@@ -302,28 +283,14 @@ func (a *App) EnrollmentList(studentID *int, courseID *int, activeOnly bool) ([]
 	if courseID != nil {
 		q = q.Where(enrollment.CourseIDEQ(*courseID))
 	}
-	if activeOnly {
-		today := time.Now().Truncate(24 * time.Hour)
-		q = q.Where(
-			enrollment.Or(
-				enrollment.EndDateIsNil(),
-				enrollment.EndDateGTE(today),
-			),
-		)
-	}
 
-	ens, err := q.Order(ent.Desc(enrollment.FieldStartDate)).All(ctx)
+	ens, err := q.Order(ent.Asc(enrollment.FieldID)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	out := make([]EnrollmentDTO, 0, len(ens))
 	for _, e := range ens {
-		var end *string
-		if e.EndDate != nil {
-			s := e.EndDate.Format("2006-01-02")
-			end = &s
-		}
 		stName := ""
 		if e.Edges.Student != nil {
 			stName = e.Edges.Student.FullName
@@ -339,8 +306,6 @@ func (a *App) EnrollmentList(studentID *int, courseID *int, activeOnly bool) ([]
 			CourseID:    e.CourseID,
 			CourseName:  cName,
 			BillingMode: string(e.BillingMode),
-			StartDate:   e.StartDate.Format("2006-01-02"),
-			EndDate:     end,
 			DiscountPct: e.DiscountPct,
 			Note:        e.Note,
 		})
@@ -349,8 +314,8 @@ func (a *App) EnrollmentList(studentID *int, courseID *int, activeOnly bool) ([]
 }
 
 // EnrollmentCreate creates an enrollment (student -> course).
-// To prevent duplicates, it rejects if an active enrollment for the same pair already exists.
-func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, startDate string, endDate *string, discountPct float64, note string) (*EnrollmentDTO, error) {
+// To prevent duplicates, it rejects if an enrollment for the same pair already exists.
+func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, discountPct float64, note string) (*EnrollmentDTO, error) {
 	ctx := a.ctx
 
 	if studentID <= 0 || courseID <= 0 {
@@ -364,23 +329,6 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, star
 		return nil, errors.New("discountPct must be between 0 and 100")
 	}
 
-	sd, err := parseYMD(startDate)
-	if err != nil {
-		return nil, err
-	}
-
-	var edPtr *time.Time
-	if endDate != nil && strings.TrimSpace(*endDate) != "" {
-		ed, err := parseYMD(*endDate)
-		if err != nil {
-			return nil, err
-		}
-		edPtr = &ed
-		if ed.Before(sd) {
-			return nil, errors.New("endDate cannot be before startDate")
-		}
-	}
-
 	// Ensure referenced entities exist.
 	if _, err := a.db.Ent.Student.Get(ctx, studentID); err != nil {
 		return nil, err
@@ -389,42 +337,27 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, star
 		return nil, err
 	}
 
-	// Prevent overlapping enrollment for the same student-course pair.
-	// Overlap condition: (existing.EndDate is nil OR existing.EndDate >= newStart) AND (newEnd is nil OR existing.StartDate <= newEnd)
-	existingEnrollments, err := a.db.Ent.Enrollment.Query().
+	// Prevent duplicate enrollment for the same student-course pair.
+	exists, err := a.db.Ent.Enrollment.Query().
 		Where(
 			enrollment.StudentIDEQ(studentID),
 			enrollment.CourseIDEQ(courseID),
 		).
-		All(ctx)
+		Exist(ctx)
 	if err != nil {
 		return nil, err
 	}
-
-	for _, existing := range existingEnrollments {
-		// Check for overlap
-		// Two ranges overlap if: (existing.end is nil OR existing.end >= new.start) AND (new.end is nil OR existing.start <= new.end)
-		existingEndIsNilOrAfterNewStart := existing.EndDate == nil || !existing.EndDate.Before(sd)
-		newEndIsNilOrAfterExistingStart := edPtr == nil || !existing.StartDate.After(*edPtr)
-
-		if existingEndIsNilOrAfterNewStart && newEndIsNilOrAfterExistingStart {
-			return nil, errors.New("an overlapping enrollment for this student and course already exists")
-		}
+	if exists {
+		return nil, errors.New("an enrollment for this student and course already exists")
 	}
 
-	builder := a.db.Ent.Enrollment.Create().
+	e, err := a.db.Ent.Enrollment.Create().
 		SetStudentID(studentID).
 		SetCourseID(courseID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
-		SetStartDate(sd).
 		SetDiscountPct(discountPct).
-		SetNote(strings.TrimSpace(note))
-
-	if edPtr != nil {
-		builder = builder.SetEndDate(*edPtr)
-	}
-
-	e, err := builder.Save(ctx)
+		SetNote(strings.TrimSpace(note)).
+		Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -439,12 +372,6 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, star
 		return nil, err
 	}
 
-	var end *string
-	if e2.EndDate != nil {
-		s := e2.EndDate.Format("2006-01-02")
-		end = &s
-	}
-
 	return &EnrollmentDTO{
 		ID:          e2.ID,
 		StudentID:   e2.StudentID,
@@ -452,14 +379,12 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, star
 		CourseID:    e2.CourseID,
 		CourseName:  e2.Edges.Course.Name,
 		BillingMode: string(e2.BillingMode),
-		StartDate:   e2.StartDate.Format("2006-01-02"),
-		EndDate:     end,
 		DiscountPct: e2.DiscountPct,
 		Note:        e2.Note,
 	}, nil
 }
 
-func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, startDate string, endDate *string, discountPct float64, note string) (*EnrollmentDTO, error) {
+func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct float64, note string) (*EnrollmentDTO, error) {
 	ctx := a.ctx
 
 	billingMode = strings.TrimSpace(billingMode)
@@ -470,36 +395,11 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, startDate s
 		return nil, errors.New("discountPct must be between 0 and 100")
 	}
 
-	sd, err := parseYMD(startDate)
-	if err != nil {
-		return nil, err
-	}
-
-	var edPtr *time.Time
-	if endDate != nil && strings.TrimSpace(*endDate) != "" {
-		ed, err := parseYMD(*endDate)
-		if err != nil {
-			return nil, err
-		}
-		edPtr = &ed
-		if ed.Before(sd) {
-			return nil, errors.New("endDate cannot be before startDate")
-		}
-	}
-
-	upd := a.db.Ent.Enrollment.UpdateOneID(enrollmentID).
+	_, err := a.db.Ent.Enrollment.UpdateOneID(enrollmentID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
-		SetStartDate(sd).
 		SetDiscountPct(discountPct).
-		SetNote(strings.TrimSpace(note))
-
-	if edPtr == nil {
-		upd = upd.ClearEndDate()
-	} else {
-		upd = upd.SetEndDate(*edPtr)
-	}
-
-	_, err = upd.Save(ctx)
+		SetNote(strings.TrimSpace(note)).
+		Save(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -514,12 +414,6 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, startDate s
 		return nil, err
 	}
 
-	var end *string
-	if e2.EndDate != nil {
-		s := e2.EndDate.Format("2006-01-02")
-		end = &s
-	}
-
 	return &EnrollmentDTO{
 		ID:          e2.ID,
 		StudentID:   e2.StudentID,
@@ -527,22 +421,8 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, startDate s
 		CourseID:    e2.CourseID,
 		CourseName:  e2.Edges.Course.Name,
 		BillingMode: string(e2.BillingMode),
-		StartDate:   e2.StartDate.Format("2006-01-02"),
-		EndDate:     end,
 		DiscountPct: e2.DiscountPct,
 		Note:        e2.Note,
 	}, nil
 }
 
-// EnrollmentEnd sets end_date for an enrollment (soft stop, keeps history).
-func (a *App) EnrollmentEnd(enrollmentID int, endDate string) error {
-	ctx := a.ctx
-	ed, err := parseYMD(endDate)
-	if err != nil {
-		return err
-	}
-	_, err = a.db.Ent.Enrollment.UpdateOneID(enrollmentID).
-		SetEndDate(ed).
-		Save(ctx)
-	return err
-}

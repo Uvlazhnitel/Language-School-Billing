@@ -51,8 +51,6 @@ var (
 	EnrollmentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "billing_mode", Type: field.TypeEnum, Enums: []string{"subscription", "per_lesson"}},
-		{Name: "start_date", Type: field.TypeTime},
-		{Name: "end_date", Type: field.TypeTime, Nullable: true},
 		{Name: "discount_pct", Type: field.TypeFloat64, Default: 0},
 		{Name: "note", Type: field.TypeString, Default: ""},
 		{Name: "course_id", Type: field.TypeInt},
@@ -66,13 +64,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "enrollments_courses_enrollments",
-				Columns:    []*schema.Column{EnrollmentsColumns[6]},
+				Columns:    []*schema.Column{EnrollmentsColumns[4]},
 				RefColumns: []*schema.Column{CoursesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "enrollments_students_enrollments",
-				Columns:    []*schema.Column{EnrollmentsColumns[7]},
+				Columns:    []*schema.Column{EnrollmentsColumns[5]},
 				RefColumns: []*schema.Column{StudentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -81,7 +79,7 @@ var (
 			{
 				Name:    "enrollment_student_id_course_id",
 				Unique:  true,
-				Columns: []*schema.Column{EnrollmentsColumns[7], EnrollmentsColumns[6]},
+				Columns: []*schema.Column{EnrollmentsColumns[5], EnrollmentsColumns[4]},
 			},
 		},
 	}

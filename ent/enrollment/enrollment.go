@@ -20,10 +20,6 @@ const (
 	FieldCourseID = "course_id"
 	// FieldBillingMode holds the string denoting the billing_mode field in the database.
 	FieldBillingMode = "billing_mode"
-	// FieldStartDate holds the string denoting the start_date field in the database.
-	FieldStartDate = "start_date"
-	// FieldEndDate holds the string denoting the end_date field in the database.
-	FieldEndDate = "end_date"
 	// FieldDiscountPct holds the string denoting the discount_pct field in the database.
 	FieldDiscountPct = "discount_pct"
 	// FieldNote holds the string denoting the note field in the database.
@@ -74,8 +70,6 @@ var Columns = []string{
 	FieldStudentID,
 	FieldCourseID,
 	FieldBillingMode,
-	FieldStartDate,
-	FieldEndDate,
 	FieldDiscountPct,
 	FieldNote,
 }
@@ -141,16 +135,6 @@ func ByCourseID(opts ...sql.OrderTermOption) OrderOption {
 // ByBillingMode orders the results by the billing_mode field.
 func ByBillingMode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldBillingMode, opts...).ToFunc()
-}
-
-// ByStartDate orders the results by the start_date field.
-func ByStartDate(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldStartDate, opts...).ToFunc()
-}
-
-// ByEndDate orders the results by the end_date field.
-func ByEndDate(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldEndDate, opts...).ToFunc()
 }
 
 // ByDiscountPct orders the results by the discount_pct field.

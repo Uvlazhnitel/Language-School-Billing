@@ -1572,8 +1572,6 @@ type EnrollmentMutation struct {
 	typ                    string
 	id                     *int
 	billing_mode           *enrollment.BillingMode
-	start_date             *time.Time
-	end_date               *time.Time
 	discount_pct           *float64
 	adddiscount_pct        *float64
 	note                   *string
@@ -1797,91 +1795,6 @@ func (m *EnrollmentMutation) OldBillingMode(ctx context.Context) (v enrollment.B
 // ResetBillingMode resets all changes to the "billing_mode" field.
 func (m *EnrollmentMutation) ResetBillingMode() {
 	m.billing_mode = nil
-}
-
-// SetStartDate sets the "start_date" field.
-func (m *EnrollmentMutation) SetStartDate(t time.Time) {
-	m.start_date = &t
-}
-
-// StartDate returns the value of the "start_date" field in the mutation.
-func (m *EnrollmentMutation) StartDate() (r time.Time, exists bool) {
-	v := m.start_date
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldStartDate returns the old "start_date" field's value of the Enrollment entity.
-// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *EnrollmentMutation) OldStartDate(ctx context.Context) (v time.Time, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldStartDate is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldStartDate requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldStartDate: %w", err)
-	}
-	return oldValue.StartDate, nil
-}
-
-// ResetStartDate resets all changes to the "start_date" field.
-func (m *EnrollmentMutation) ResetStartDate() {
-	m.start_date = nil
-}
-
-// SetEndDate sets the "end_date" field.
-func (m *EnrollmentMutation) SetEndDate(t time.Time) {
-	m.end_date = &t
-}
-
-// EndDate returns the value of the "end_date" field in the mutation.
-func (m *EnrollmentMutation) EndDate() (r time.Time, exists bool) {
-	v := m.end_date
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldEndDate returns the old "end_date" field's value of the Enrollment entity.
-// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *EnrollmentMutation) OldEndDate(ctx context.Context) (v *time.Time, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldEndDate is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldEndDate requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldEndDate: %w", err)
-	}
-	return oldValue.EndDate, nil
-}
-
-// ClearEndDate clears the value of the "end_date" field.
-func (m *EnrollmentMutation) ClearEndDate() {
-	m.end_date = nil
-	m.clearedFields[enrollment.FieldEndDate] = struct{}{}
-}
-
-// EndDateCleared returns if the "end_date" field was cleared in this mutation.
-func (m *EnrollmentMutation) EndDateCleared() bool {
-	_, ok := m.clearedFields[enrollment.FieldEndDate]
-	return ok
-}
-
-// ResetEndDate resets all changes to the "end_date" field.
-func (m *EnrollmentMutation) ResetEndDate() {
-	m.end_date = nil
-	delete(m.clearedFields, enrollment.FieldEndDate)
 }
 
 // SetDiscountPct sets the "discount_pct" field.
@@ -2172,7 +2085,7 @@ func (m *EnrollmentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *EnrollmentMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 5)
 	if m.student != nil {
 		fields = append(fields, enrollment.FieldStudentID)
 	}
@@ -2181,12 +2094,6 @@ func (m *EnrollmentMutation) Fields() []string {
 	}
 	if m.billing_mode != nil {
 		fields = append(fields, enrollment.FieldBillingMode)
-	}
-	if m.start_date != nil {
-		fields = append(fields, enrollment.FieldStartDate)
-	}
-	if m.end_date != nil {
-		fields = append(fields, enrollment.FieldEndDate)
 	}
 	if m.discount_pct != nil {
 		fields = append(fields, enrollment.FieldDiscountPct)
@@ -2208,10 +2115,6 @@ func (m *EnrollmentMutation) Field(name string) (ent.Value, bool) {
 		return m.CourseID()
 	case enrollment.FieldBillingMode:
 		return m.BillingMode()
-	case enrollment.FieldStartDate:
-		return m.StartDate()
-	case enrollment.FieldEndDate:
-		return m.EndDate()
 	case enrollment.FieldDiscountPct:
 		return m.DiscountPct()
 	case enrollment.FieldNote:
@@ -2231,10 +2134,6 @@ func (m *EnrollmentMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldCourseID(ctx)
 	case enrollment.FieldBillingMode:
 		return m.OldBillingMode(ctx)
-	case enrollment.FieldStartDate:
-		return m.OldStartDate(ctx)
-	case enrollment.FieldEndDate:
-		return m.OldEndDate(ctx)
 	case enrollment.FieldDiscountPct:
 		return m.OldDiscountPct(ctx)
 	case enrollment.FieldNote:
@@ -2268,20 +2167,6 @@ func (m *EnrollmentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetBillingMode(v)
-		return nil
-	case enrollment.FieldStartDate:
-		v, ok := value.(time.Time)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetStartDate(v)
-		return nil
-	case enrollment.FieldEndDate:
-		v, ok := value.(time.Time)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetEndDate(v)
 		return nil
 	case enrollment.FieldDiscountPct:
 		v, ok := value.(float64)
@@ -2341,11 +2226,7 @@ func (m *EnrollmentMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *EnrollmentMutation) ClearedFields() []string {
-	var fields []string
-	if m.FieldCleared(enrollment.FieldEndDate) {
-		fields = append(fields, enrollment.FieldEndDate)
-	}
-	return fields
+	return nil
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -2358,11 +2239,6 @@ func (m *EnrollmentMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *EnrollmentMutation) ClearField(name string) error {
-	switch name {
-	case enrollment.FieldEndDate:
-		m.ClearEndDate()
-		return nil
-	}
 	return fmt.Errorf("unknown Enrollment nullable field %s", name)
 }
 
@@ -2378,12 +2254,6 @@ func (m *EnrollmentMutation) ResetField(name string) error {
 		return nil
 	case enrollment.FieldBillingMode:
 		m.ResetBillingMode()
-		return nil
-	case enrollment.FieldStartDate:
-		m.ResetStartDate()
-		return nil
-	case enrollment.FieldEndDate:
-		m.ResetEndDate()
 		return nil
 	case enrollment.FieldDiscountPct:
 		m.ResetDiscountPct()
