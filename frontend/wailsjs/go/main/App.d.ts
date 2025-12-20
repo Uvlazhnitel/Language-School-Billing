@@ -9,8 +9,6 @@ export function AppDirs():Promise<Record<string, string>>;
 
 export function AttendanceAddOne(arg1:number,arg2:number,arg3:any):Promise<number>;
 
-export function AttendanceEstimate(arg1:number,arg2:number,arg3:any):Promise<Record<string, number>>;
-
 export function AttendanceListPerLesson(arg1:number,arg2:number,arg3:any):Promise<Array<attendance.Row>>;
 
 export function AttendanceSetLocked(arg1:number,arg2:number,arg3:any,arg4:boolean):Promise<number>;
@@ -19,7 +17,7 @@ export function AttendanceUpsert(arg1:number,arg2:number,arg3:number,arg4:number
 
 export function BackupNow():Promise<string>;
 
-export function CourseCreate(arg1:string,arg2:string,arg3:number,arg4:number,arg5:Array<number>):Promise<main.CourseDTO>;
+export function CourseCreate(arg1:string,arg2:string,arg3:number,arg4:number):Promise<main.CourseDTO>;
 
 export function CourseDelete(arg1:number):Promise<void>;
 
@@ -27,7 +25,7 @@ export function CourseGet(arg1:number):Promise<main.CourseDTO>;
 
 export function CourseList(arg1:string):Promise<Array<main.CourseDTO>>;
 
-export function CourseUpdate(arg1:number,arg2:string,arg3:string,arg4:number,arg5:number,arg6:Array<number>):Promise<main.CourseDTO>;
+export function CourseUpdate(arg1:number,arg2:string,arg3:string,arg4:number,arg5:number):Promise<main.CourseDTO>;
 
 export function DebtorsList():Promise<Array<payment.DebtorDTO>>;
 
