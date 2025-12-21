@@ -253,6 +253,8 @@ export default function App() {
   }, [tab, loadEnrollments]);
 
   function openAddEnrollment() {
+    console.log("openAddEnrollment called", { studentsCount: students.length, coursesCount: courses.length });
+    
     if (students.length === 0) {
       alert("No students available. Please add students first.");
       setTab("students");
@@ -264,9 +266,19 @@ export default function App() {
       return;
     }
 
+    const initialStudentId = students[0]?.id ?? 0;
+    const initialCourseId = courses[0]?.id ?? 0;
+    
+    console.log("Setting initial values", { 
+      initialStudentId, 
+      initialCourseId,
+      firstStudent: students[0],
+      firstCourse: courses[0]
+    });
+
     setEditingEnr(null);
-    setEfStudentId(students[0]?.id ?? 0);
-    setEfCourseId(courses[0]?.id ?? 0);
+    setEfStudentId(initialStudentId);
+    setEfCourseId(initialCourseId);
     setEfMode("per_lesson");
     setEfDiscount(0);
     setEfNote("");
@@ -284,8 +296,11 @@ export default function App() {
   }
 
   async function saveEnrollment() {
+    console.log("saveEnrollment called", { efStudentId, efCourseId, efMode, efDiscount, efNote });
+    
     if (efStudentId <= 0 || efCourseId <= 0) {
       alert("Select student and course");
+      console.error("Validation failed: studentId or courseId is <= 0", { efStudentId, efCourseId });
       return;
     }
     if (efDiscount < 0 || efDiscount > 100) {
@@ -294,16 +309,21 @@ export default function App() {
     }
 
     try {
+      let result;
       if (editingEnr) {
-        await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
+        result = await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
+        console.log("Enrollment updated:", result);
       } else {
-        await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
+        result = await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
+        console.log("Enrollment created:", result);
       }
 
       setEnrModalOpen(false);
       await loadEnrollments();
+      console.log("Enrollments reloaded successfully");
     } catch (e: any) {
-      alert(String(e?.message ?? e));
+      console.error("Error saving enrollment:", e);
+      alert(`Error: ${String(e?.message ?? e)}\n\nPlease check the browser console for more details.`);
     }
   }
 
