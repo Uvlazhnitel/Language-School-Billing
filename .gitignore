@@ -27,6 +27,7 @@ $RECYCLE.BIN/
 *.out
 *.obj
 *.a
+langschool              # Main application binary
 
 # Profiles/cache/coverage
 *.pprof
