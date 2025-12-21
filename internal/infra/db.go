@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"langschool/ent"
+	"langschool/ent/migrate"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -22,7 +23,8 @@ func Open(ctx context.Context, dbPath string) (*DB, error) {
 		return nil, err
 	}
 
-	if err := client.Schema.Create(ctx); err != nil {
+	// Use migration options to enable dropping columns and indexes that were removed from schema
+	if err := client.Schema.Create(ctx, migrate.WithDropColumn(true), migrate.WithDropIndex(true)); err != nil {
 		_ = client.Close()
 		return nil, err
 	}

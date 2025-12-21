@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
 
 import {
@@ -68,6 +68,10 @@ export default function App() {
   const now = new Date();
   const [tab, setTab] = useState<Tab>("students");
 
+  // Global message display
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const messageTimeoutRef = useRef<number | null>(null);
+
   // Shared month/year for Attendance + Invoices
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -84,6 +88,35 @@ export default function App() {
   const [sfPhone, setSfPhone] = useState("");
   const [sfEmail, setSfEmail] = useState("");
   const [sfNote, setSfNote] = useState("");
+
+  const showMessage = useCallback((text: string, type: "success" | "error" = "success") => {
+    console.log(`[${type.toUpperCase()}] ${text}`);
+    
+    // Clear any existing timeout
+    if (messageTimeoutRef.current) {
+      clearTimeout(messageTimeoutRef.current);
+      messageTimeoutRef.current = null;
+    }
+    
+    setMessage({ text, type });
+    
+    // Auto-dismiss success messages after 5 seconds
+    if (type === "success") {
+      messageTimeoutRef.current = setTimeout(() => {
+        setMessage(null);
+        messageTimeoutRef.current = null;
+      }, 5000);
+    }
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (messageTimeoutRef.current) {
+        clearTimeout(messageTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const loadStudents = useCallback(async () => {
     setStudentLoading(true);
@@ -119,16 +152,21 @@ export default function App() {
 
   async function saveStudent() {
     if (!sfName.trim()) {
-      alert("Full name is required");
+      showMessage("Full name is required", "error");
       return;
     }
-    if (editingStudent) {
-      await updateStudent(editingStudent.id, sfName, sfPhone, sfEmail, sfNote);
-    } else {
-      await createStudent(sfName, sfPhone, sfEmail, sfNote);
+    try {
+      if (editingStudent) {
+        await updateStudent(editingStudent.id, sfName, sfPhone, sfEmail, sfNote);
+      } else {
+        await createStudent(sfName, sfPhone, sfEmail, sfNote);
+      }
+      setStudentModalOpen(false);
+      await loadStudents();
+      showMessage(editingStudent ? "Student updated successfully!" : "Student created successfully!");
+    } catch (e: any) {
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
-    setStudentModalOpen(false);
-    await loadStudents();
   }
 
   async function toggleStudentActive(s: StudentDTO) {
@@ -182,22 +220,27 @@ export default function App() {
 
   async function saveCourse() {
     if (!cfName.trim()) {
-      alert("Course name is required");
+      showMessage("Course name is required", "error");
       return;
     }
     if (cfLessonPrice < 0 || cfSubscriptionPrice < 0) {
-      alert("Prices must be >= 0");
+      showMessage("Prices must be >= 0", "error");
       return;
     }
 
-    if (editingCourse) {
-      await updateCourse(editingCourse.id, cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
-    } else {
-      await createCourse(cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
-    }
+    try {
+      if (editingCourse) {
+        await updateCourse(editingCourse.id, cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
+      } else {
+        await createCourse(cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
+      }
 
-    setCourseModalOpen(false);
-    await loadCourses();
+      setCourseModalOpen(false);
+      await loadCourses();
+      showMessage(editingCourse ? "Course updated successfully!" : "Course created successfully!");
+    } catch (e: any) {
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+    }
   }
 
   async function removeCourse(id: number) {
@@ -205,8 +248,9 @@ export default function App() {
     try {
       await deleteCourse(id);
       await loadCourses();
+      showMessage("Course deleted successfully!");
     } catch (e: any) {
-      alert(String(e?.message ?? e));
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
   }
 
@@ -246,19 +290,22 @@ export default function App() {
 
   function openAddEnrollment() {
     if (students.length === 0) {
-      alert("No students available. Please add students first.");
+      showMessage("No students available. Please add students first.", "error");
       setTab("students");
       return;
     }
     if (courses.length === 0) {
-      alert("No courses available. Please add courses first.");
+      showMessage("No courses available. Please add courses first.", "error");
       setTab("courses");
       return;
     }
 
+    const initialStudentId = students[0]?.id ?? 0;
+    const initialCourseId = courses[0]?.id ?? 0;
+
     setEditingEnr(null);
-    setEfStudentId(students[0]?.id ?? 0);
-    setEfCourseId(courses[0]?.id ?? 0);
+    setEfStudentId(initialStudentId);
+    setEfCourseId(initialCourseId);
     setEfMode("per_lesson");
     setEfDiscount(0);
     setEfNote("");
@@ -277,22 +324,40 @@ export default function App() {
 
   async function saveEnrollment() {
     if (efStudentId <= 0 || efCourseId <= 0) {
-      alert("Select student and course");
+      showMessage("Please select both student and course", "error");
       return;
     }
     if (efDiscount < 0 || efDiscount > 100) {
-      alert("Discount must be 0..100");
+      showMessage("Discount must be between 0 and 100", "error");
       return;
     }
 
-    if (editingEnr) {
-      await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
-    } else {
-      await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
-    }
+    try {
+      let result;
+      if (editingEnr) {
+        result = await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
+        showMessage("Enrollment updated successfully!");
+      } else {
+        result = await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
+        
+        // Check if the new enrollment will be visible with current filters
+        const matchesFilters = 
+          (enrStudentFilter === undefined || enrStudentFilter === result.studentId) &&
+          (enrCourseFilter === undefined || enrCourseFilter === result.courseId);
+        
+        if (matchesFilters) {
+          showMessage(`Enrollment created: ${result.studentName} → ${result.courseName}`);
+        } else {
+          showMessage(`Enrollment created: ${result.studentName} → ${result.courseName}. Clear filters to see it in the list.`);
+        }
+      }
 
-    setEnrModalOpen(false);
-    await loadEnrollments();
+      setEnrModalOpen(false);
+      await loadEnrollments();
+    } catch (e: any) {
+      const errorMsg = `Error: ${String(e?.message ?? e)}`;
+      showMessage(errorMsg, "error");
+    }
   }
 
   // ---------------- Attendance ----------------
@@ -416,6 +481,51 @@ const onOpenPdf = async (id: number) => {
 
   return (
     <div className="container">
+      {/* Global message display */}
+      {message && (
+        <div 
+          style={{
+            position: "fixed",
+            top: "20px",
+            right: "20px",
+            padding: "16px 24px",
+            backgroundColor: message.type === "success" ? "#4caf50" : "#f44336",
+            color: "white",
+            borderRadius: "4px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+            zIndex: 10000,
+            maxWidth: "400px",
+            fontSize: "14px",
+            lineHeight: "1.5"
+          }}
+          role={message.type === "error" ? "alert" : "status"}
+          aria-live={message.type === "error" ? "assertive" : "polite"}
+          onClick={() => setMessage(null)}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+            <span>{message.text}</span>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setMessage(null);
+              }}
+              aria-label="Close notification"
+              style={{
+                background: "none",
+                border: "none",
+                color: "white",
+                cursor: "pointer",
+                fontSize: "18px",
+                padding: "0",
+                lineHeight: "1"
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+      
       <nav className="tabs">
         <button className={tab === "students" ? "active" : ""} onClick={() => setTab("students")}>Students</button>
         <button className={tab === "courses" ? "active" : ""} onClick={() => setTab("courses")}>Courses</button>

@@ -62,10 +62,6 @@ func (a *App) startup(ctx context.Context) {
 	a.db = db
 	log.Println("DB ready")
 
-	if err := a.db.Ent.Schema.Create(a.ctx); err != nil {
-		log.Fatalf("schema migrate failed: %v", err)
-	}
-
 	// Ensure single Settings record with singleton_id=1 exists
 	exists, err := a.db.Ent.Settings.
 		Query().
