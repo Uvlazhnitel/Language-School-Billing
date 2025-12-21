@@ -152,7 +152,7 @@ export default function App() {
 
   async function saveStudent() {
     if (!sfName.trim()) {
-      alert("Full name is required");
+      showMessage("Full name is required", "error");
       return;
     }
     try {
@@ -163,8 +163,9 @@ export default function App() {
       }
       setStudentModalOpen(false);
       await loadStudents();
+      showMessage(editingStudent ? "Student updated successfully!" : "Student created successfully!");
     } catch (e: any) {
-      alert(String(e?.message ?? e));
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
   }
 
@@ -219,11 +220,11 @@ export default function App() {
 
   async function saveCourse() {
     if (!cfName.trim()) {
-      alert("Course name is required");
+      showMessage("Course name is required", "error");
       return;
     }
     if (cfLessonPrice < 0 || cfSubscriptionPrice < 0) {
-      alert("Prices must be >= 0");
+      showMessage("Prices must be >= 0", "error");
       return;
     }
 
@@ -236,8 +237,9 @@ export default function App() {
 
       setCourseModalOpen(false);
       await loadCourses();
+      showMessage(editingCourse ? "Course updated successfully!" : "Course created successfully!");
     } catch (e: any) {
-      alert(String(e?.message ?? e));
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
   }
 
@@ -246,8 +248,9 @@ export default function App() {
     try {
       await deleteCourse(id);
       await loadCourses();
+      showMessage("Course deleted successfully!");
     } catch (e: any) {
-      alert(String(e?.message ?? e));
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
   }
 
@@ -267,7 +270,6 @@ export default function App() {
   const [efNote, setEfNote] = useState("");
 
   const loadEnrollments = useCallback(async () => {
-    console.log("loadEnrollments called", { enrStudentFilter, enrCourseFilter, enrActiveOnly });
     setEnrLoading(true);
     try {
       await Promise.all([
@@ -276,7 +278,6 @@ export default function App() {
       ]);
 
       const data = await listEnrollments(enrStudentFilter, enrCourseFilter, enrActiveOnly);
-      console.log("Enrollments loaded:", data.length, "enrollments");
       setEnrollments(data);
     } finally {
       setEnrLoading(false);
@@ -288,28 +289,19 @@ export default function App() {
   }, [tab, loadEnrollments]);
 
   function openAddEnrollment() {
-    console.log("openAddEnrollment called", { studentsCount: students.length, coursesCount: courses.length });
-    
     if (students.length === 0) {
-      alert("No students available. Please add students first.");
+      showMessage("No students available. Please add students first.", "error");
       setTab("students");
       return;
     }
     if (courses.length === 0) {
-      alert("No courses available. Please add courses first.");
+      showMessage("No courses available. Please add courses first.", "error");
       setTab("courses");
       return;
     }
 
     const initialStudentId = students[0]?.id ?? 0;
     const initialCourseId = courses[0]?.id ?? 0;
-    
-    console.log("Setting initial values", { 
-      initialStudentId, 
-      initialCourseId,
-      firstStudent: students[0],
-      firstCourse: courses[0]
-    });
 
     setEditingEnr(null);
     setEfStudentId(initialStudentId);
@@ -331,19 +323,12 @@ export default function App() {
   }
 
   async function saveEnrollment() {
-    console.log("saveEnrollment called", { efStudentId, efCourseId, efMode, efDiscount, efNote });
-    
     if (efStudentId <= 0 || efCourseId <= 0) {
-      const msg = "Please select both student and course";
-      console.error("Validation failed: studentId or courseId is <= 0", { efStudentId, efCourseId });
-      showMessage(msg, "error");
-      alert(msg); // Keep alert as fallback
+      showMessage("Please select both student and course", "error");
       return;
     }
     if (efDiscount < 0 || efDiscount > 100) {
-      const msg = "Discount must be between 0 and 100";
-      showMessage(msg, "error");
-      alert(msg); // Keep alert as fallback
+      showMessage("Discount must be between 0 and 100", "error");
       return;
     }
 
@@ -351,11 +336,9 @@ export default function App() {
       let result;
       if (editingEnr) {
         result = await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
-        console.log("Enrollment updated:", result);
         showMessage("Enrollment updated successfully!");
       } else {
         result = await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
-        console.log("Enrollment created:", result);
         
         // Check if the new enrollment will be visible with current filters
         const matchesFilters = 
@@ -371,12 +354,9 @@ export default function App() {
 
       setEnrModalOpen(false);
       await loadEnrollments();
-      console.log("Enrollments reloaded successfully");
     } catch (e: any) {
-      console.error("Error saving enrollment:", e);
       const errorMsg = `Error: ${String(e?.message ?? e)}`;
       showMessage(errorMsg, "error");
-      alert(errorMsg); // Keep alert as fallback
     }
   }
 
