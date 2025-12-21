@@ -122,13 +122,17 @@ export default function App() {
       alert("Full name is required");
       return;
     }
-    if (editingStudent) {
-      await updateStudent(editingStudent.id, sfName, sfPhone, sfEmail, sfNote);
-    } else {
-      await createStudent(sfName, sfPhone, sfEmail, sfNote);
+    try {
+      if (editingStudent) {
+        await updateStudent(editingStudent.id, sfName, sfPhone, sfEmail, sfNote);
+      } else {
+        await createStudent(sfName, sfPhone, sfEmail, sfNote);
+      }
+      setStudentModalOpen(false);
+      await loadStudents();
+    } catch (e: any) {
+      alert(String(e?.message ?? e));
     }
-    setStudentModalOpen(false);
-    await loadStudents();
   }
 
   async function toggleStudentActive(s: StudentDTO) {
@@ -190,14 +194,18 @@ export default function App() {
       return;
     }
 
-    if (editingCourse) {
-      await updateCourse(editingCourse.id, cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
-    } else {
-      await createCourse(cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
-    }
+    try {
+      if (editingCourse) {
+        await updateCourse(editingCourse.id, cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
+      } else {
+        await createCourse(cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
+      }
 
-    setCourseModalOpen(false);
-    await loadCourses();
+      setCourseModalOpen(false);
+      await loadCourses();
+    } catch (e: any) {
+      alert(String(e?.message ?? e));
+    }
   }
 
   async function removeCourse(id: number) {
@@ -285,14 +293,18 @@ export default function App() {
       return;
     }
 
-    if (editingEnr) {
-      await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
-    } else {
-      await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
-    }
+    try {
+      if (editingEnr) {
+        await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
+      } else {
+        await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
+      }
 
-    setEnrModalOpen(false);
-    await loadEnrollments();
+      setEnrModalOpen(false);
+      await loadEnrollments();
+    } catch (e: any) {
+      alert(String(e?.message ?? e));
+    }
   }
 
   // ---------------- Attendance ----------------
