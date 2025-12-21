@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
 
 import {
@@ -70,6 +70,7 @@ export default function App() {
 
   // Global message display
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+  const messageTimeoutRef = useRef<number | null>(null);
 
   // Shared month/year for Attendance + Invoices
   const [year, setYear] = useState(now.getFullYear());
@@ -90,11 +91,31 @@ export default function App() {
 
   const showMessage = useCallback((text: string, type: "success" | "error" = "success") => {
     console.log(`[${type.toUpperCase()}] ${text}`);
+    
+    // Clear any existing timeout
+    if (messageTimeoutRef.current) {
+      clearTimeout(messageTimeoutRef.current);
+      messageTimeoutRef.current = null;
+    }
+    
     setMessage({ text, type });
+    
     // Auto-dismiss success messages after 5 seconds
     if (type === "success") {
-      setTimeout(() => setMessage(null), 5000);
+      messageTimeoutRef.current = setTimeout(() => {
+        setMessage(null);
+        messageTimeoutRef.current = null;
+      }, 5000);
     }
+  }, []);
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (messageTimeoutRef.current) {
+        clearTimeout(messageTimeoutRef.current);
+      }
+    };
   }, []);
 
   const loadStudents = useCallback(async () => {
@@ -497,12 +518,18 @@ const onOpenPdf = async (id: number) => {
             fontSize: "14px",
             lineHeight: "1.5"
           }}
+          role={message.type === "error" ? "alert" : "status"}
+          aria-live={message.type === "error" ? "assertive" : "polite"}
           onClick={() => setMessage(null)}
         >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
             <span>{message.text}</span>
             <button 
-              onClick={() => setMessage(null)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setMessage(null);
+              }}
+              aria-label="Close notification"
               style={{
                 background: "none",
                 border: "none",
