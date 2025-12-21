@@ -68,6 +68,9 @@ export default function App() {
   const now = new Date();
   const [tab, setTab] = useState<Tab>("students");
 
+  // Global message display
+  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
+
   // Shared month/year for Attendance + Invoices
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -84,6 +87,15 @@ export default function App() {
   const [sfPhone, setSfPhone] = useState("");
   const [sfEmail, setSfEmail] = useState("");
   const [sfNote, setSfNote] = useState("");
+
+  const showMessage = useCallback((text: string, type: "success" | "error" = "success") => {
+    console.log(`[${type.toUpperCase()}] ${text}`);
+    setMessage({ text, type });
+    // Auto-dismiss success messages after 5 seconds
+    if (type === "success") {
+      setTimeout(() => setMessage(null), 5000);
+    }
+  }, []);
 
   const loadStudents = useCallback(async () => {
     setStudentLoading(true);
@@ -301,12 +313,16 @@ export default function App() {
     console.log("saveEnrollment called", { efStudentId, efCourseId, efMode, efDiscount, efNote });
     
     if (efStudentId <= 0 || efCourseId <= 0) {
-      alert("Select student and course");
+      const msg = "Please select both student and course";
       console.error("Validation failed: studentId or courseId is <= 0", { efStudentId, efCourseId });
+      showMessage(msg, "error");
+      alert(msg); // Keep alert as fallback
       return;
     }
     if (efDiscount < 0 || efDiscount > 100) {
-      alert("Discount must be 0..100");
+      const msg = "Discount must be between 0 and 100";
+      showMessage(msg, "error");
+      alert(msg); // Keep alert as fallback
       return;
     }
 
@@ -315,7 +331,7 @@ export default function App() {
       if (editingEnr) {
         result = await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
         console.log("Enrollment updated:", result);
-        alert("Enrollment updated successfully!");
+        showMessage("Enrollment updated successfully!");
       } else {
         result = await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
         console.log("Enrollment created:", result);
@@ -326,9 +342,9 @@ export default function App() {
           (enrCourseFilter === undefined || enrCourseFilter === result.courseId);
         
         if (matchesFilters) {
-          alert(`Enrollment created successfully!\n\n${result.studentName} → ${result.courseName}`);
+          showMessage(`Enrollment created: ${result.studentName} → ${result.courseName}`);
         } else {
-          alert(`Enrollment created successfully!\n\n${result.studentName} → ${result.courseName}\n\nNote: Clear filters to see the new enrollment in the list.`);
+          showMessage(`Enrollment created: ${result.studentName} → ${result.courseName}. Clear filters to see it in the list.`);
         }
       }
 
@@ -337,7 +353,9 @@ export default function App() {
       console.log("Enrollments reloaded successfully");
     } catch (e: any) {
       console.error("Error saving enrollment:", e);
-      alert(`Error: ${String(e?.message ?? e)}\n\nPlease check the browser console for more details.`);
+      const errorMsg = `Error: ${String(e?.message ?? e)}`;
+      showMessage(errorMsg, "error");
+      alert(errorMsg); // Keep alert as fallback
     }
   }
 
@@ -462,6 +480,45 @@ const onOpenPdf = async (id: number) => {
 
   return (
     <div className="container">
+      {/* Global message display */}
+      {message && (
+        <div 
+          style={{
+            position: "fixed",
+            top: "20px",
+            right: "20px",
+            padding: "16px 24px",
+            backgroundColor: message.type === "success" ? "#4caf50" : "#f44336",
+            color: "white",
+            borderRadius: "4px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+            zIndex: 10000,
+            maxWidth: "400px",
+            fontSize: "14px",
+            lineHeight: "1.5"
+          }}
+          onClick={() => setMessage(null)}
+        >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+            <span>{message.text}</span>
+            <button 
+              onClick={() => setMessage(null)}
+              style={{
+                background: "none",
+                border: "none",
+                color: "white",
+                cursor: "pointer",
+                fontSize: "18px",
+                padding: "0",
+                lineHeight: "1"
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
+      
       <nav className="tabs">
         <button className={tab === "students" ? "active" : ""} onClick={() => setTab("students")}>Students</button>
         <button className={tab === "courses" ? "active" : ""} onClick={() => setTab("courses")}>Courses</button>
