@@ -234,6 +234,7 @@ export default function App() {
   const [efNote, setEfNote] = useState("");
 
   const loadEnrollments = useCallback(async () => {
+    console.log("loadEnrollments called", { enrStudentFilter, enrCourseFilter, enrActiveOnly });
     setEnrLoading(true);
     try {
       await Promise.all([
@@ -242,6 +243,7 @@ export default function App() {
       ]);
 
       const data = await listEnrollments(enrStudentFilter, enrCourseFilter, enrActiveOnly);
+      console.log("Enrollments loaded:", data.length, "enrollments");
       setEnrollments(data);
     } finally {
       setEnrLoading(false);
@@ -313,9 +315,21 @@ export default function App() {
       if (editingEnr) {
         result = await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
         console.log("Enrollment updated:", result);
+        alert("Enrollment updated successfully!");
       } else {
         result = await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
         console.log("Enrollment created:", result);
+        
+        // Check if the new enrollment will be visible with current filters
+        const matchesFilters = 
+          (enrStudentFilter === undefined || enrStudentFilter === result.studentId) &&
+          (enrCourseFilter === undefined || enrCourseFilter === result.courseId);
+        
+        if (matchesFilters) {
+          alert(`Enrollment created successfully!\n\n${result.studentName} → ${result.courseName}`);
+        } else {
+          alert(`Enrollment created successfully!\n\n${result.studentName} → ${result.courseName}\n\nNote: Clear filters to see the new enrollment in the list.`);
+        }
       }
 
       setEnrModalOpen(false);
