@@ -890,7 +890,7 @@ const onOpenPdf = async (id: number) => {
 
             <select
               value={courseFilter ?? ""}
-              onChange={(e) => setCourseFilter(e.target.value ? parseInt(e.target.value) : undefined)}
+              onChange={(e) => setCourseFilter(intOrUndef(e.target.value))}
             >
               <option value="">All groups</option>
               {courses.map((c) => (
