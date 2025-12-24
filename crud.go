@@ -144,7 +144,8 @@ func (a *App) StudentSetActive(id int, active bool) error {
 	return err
 }
 
-// StudentDelete deletes a student only if inactive and no enrollments/payments exist.
+// StudentDelete deletes a student only if inactive and no history exists.
+// Checks for enrollments, attendance records, invoices, and payments before allowing deletion.
 func (a *App) StudentDelete(id int) error {
 	ctx := a.ctx
 
