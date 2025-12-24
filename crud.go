@@ -272,9 +272,7 @@ func (a *App) CourseDelete(id int) error {
 // -------------------- Enrollments CRUD --------------------
 
 // EnrollmentList lists enrollments, optionally filtered by studentID or courseID.
-// The activeOnly parameter is retained for API compatibility but is no longer used
-// since start_date and end_date fields have been removed.
-func (a *App) EnrollmentList(studentID *int, courseID *int, activeOnly bool) ([]EnrollmentDTO, error) {
+func (a *App) EnrollmentList(studentID *int, courseID *int) ([]EnrollmentDTO, error) {
 	ctx := a.ctx
 
 	q := a.db.Ent.Enrollment.Query().WithStudent().WithCourse()
