@@ -17,11 +17,10 @@ import {
   
   export async function listEnrollments(
     studentId?: number,
-    courseId?: number,
-    activeOnly: boolean = true
+    courseId?: number
   ) {
     // Wails maps nil pointers as null.
-    return (await EnrollmentList(studentId ?? null, courseId ?? null, activeOnly)) as EnrollmentDTO[];
+    return (await EnrollmentList(studentId ?? null, courseId ?? null)) as EnrollmentDTO[];
   }
   
   export async function createEnrollment(

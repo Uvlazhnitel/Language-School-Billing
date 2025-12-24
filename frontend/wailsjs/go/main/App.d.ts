@@ -39,7 +39,7 @@ export function EnrollmentCreate(arg1:number,arg2:number,arg3:string,arg4:number
 
 export function EnrollmentDelete(arg1:number):Promise<void>;
 
-export function EnrollmentList(arg1:any,arg2:any,arg3:boolean):Promise<Array<main.EnrollmentDTO>>;
+export function EnrollmentList(arg1:any,arg2:any):Promise<Array<main.EnrollmentDTO>>;
 
 export function EnrollmentUpdate(arg1:number,arg2:string,arg3:number,arg4:string):Promise<main.EnrollmentDTO>;
 

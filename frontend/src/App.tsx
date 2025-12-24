@@ -253,7 +253,6 @@ export default function App() {
 
   // ---------------- Enrollments ----------------
   const [enrollments, setEnrollments] = useState<EnrollmentDTO[]>([]);
-  const [enrActiveOnly, setEnrActiveOnly] = useState(true);
   const [enrStudentFilter, setEnrStudentFilter] = useState<number | undefined>(undefined);
   const [enrCourseFilter, setEnrCourseFilter] = useState<number | undefined>(undefined);
   const [enrLoading, setEnrLoading] = useState(false);
@@ -274,12 +273,12 @@ export default function App() {
         courses.length === 0 ? listCourses("").then(setCourses) : Promise.resolve(),
       ]);
 
-      const data = await listEnrollments(enrStudentFilter, enrCourseFilter, enrActiveOnly);
+      const data = await listEnrollments(enrStudentFilter, enrCourseFilter);
       setEnrollments(data);
     } finally {
       setEnrLoading(false);
     }
-  }, [enrStudentFilter, enrCourseFilter, enrActiveOnly, students.length, courses.length]);
+  }, [enrStudentFilter, enrCourseFilter, students.length, courses.length]);
 
   useEffect(() => {
     if (tab === "enrollments") loadEnrollments();
@@ -743,15 +742,6 @@ const onOpenPdf = async (id: number) => {
         <>
           <div className="controls">
             <button onClick={openAddEnrollment}>Add enrollment</button>
-
-            <label className="inline">
-              Active only
-              <input
-                type="checkbox"
-                checked={enrActiveOnly}
-                onChange={(e) => setEnrActiveOnly(e.target.checked)}
-              />
-            </label>
 
             <select
               value={enrStudentFilter ?? ""}

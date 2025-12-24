@@ -70,8 +70,8 @@ export function EnrollmentDelete(arg1) {
   return window['go']['main']['App']['EnrollmentDelete'](arg1);
 }
 
-export function EnrollmentList(arg1, arg2, arg3) {
-  return window['go']['main']['App']['EnrollmentList'](arg1, arg2, arg3);
+export function EnrollmentList(arg1, arg2) {
+  return window['go']['main']['App']['EnrollmentList'](arg1, arg2);
 }
 
 export function EnrollmentUpdate(arg1, arg2, arg3, arg4) {
