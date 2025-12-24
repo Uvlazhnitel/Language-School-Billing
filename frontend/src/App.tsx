@@ -381,12 +381,17 @@ export default function App() {
     setLoadingAtt(true);
     try {
       await ensureStudentsLoaded();
+      // Ensure courses are loaded for the dropdown
+      if (courses.length === 0) {
+        const courseData = await listCourses("");
+        setCourses(courseData);
+      }
       const data = await fetchRows(year, month, courseFilter);
       setRows(data);
     } finally {
       setLoadingAtt(false);
     }
-  }, [year, month, courseFilter, ensureStudentsLoaded]);
+  }, [year, month, courseFilter, ensureStudentsLoaded, courses.length]);
 
   useEffect(() => {
     if (tab === "attendance") loadAttendance();
@@ -880,6 +885,18 @@ const onOpenPdf = async (id: number) => {
           {msg && <div className="msg">{msg}</div>}
           <div className="controls">
             <button onClick={onAddAll}>+1 all</button>
+
+            <select
+              value={courseFilter ?? ""}
+              onChange={(e) => setCourseFilter(e.target.value ? parseInt(e.target.value) : undefined)}
+            >
+              <option value="">All groups</option>
+              {courses.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
 
             <input
               placeholder="Search student / phone / group…"
