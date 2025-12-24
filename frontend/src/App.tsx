@@ -377,21 +377,23 @@ export default function App() {
     setStudents(data);
   }, [students.length]);
 
+  const ensureCoursesLoaded = useCallback(async () => {
+    if (courses.length > 0) return;
+    const data = await listCourses("");
+    setCourses(data);
+  }, [courses.length]);
+
   const loadAttendance = useCallback(async () => {
     setLoadingAtt(true);
     try {
       await ensureStudentsLoaded();
-      // Ensure courses are loaded for the dropdown
-      if (courses.length === 0) {
-        const courseData = await listCourses("");
-        setCourses(courseData);
-      }
+      await ensureCoursesLoaded();
       const data = await fetchRows(year, month, courseFilter);
       setRows(data);
     } finally {
       setLoadingAtt(false);
     }
-  }, [year, month, courseFilter, ensureStudentsLoaded, courses.length]);
+  }, [year, month, courseFilter, ensureStudentsLoaded, ensureCoursesLoaded]);
 
   useEffect(() => {
     if (tab === "attendance") loadAttendance();
