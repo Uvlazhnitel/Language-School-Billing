@@ -180,24 +180,39 @@ func (a *App) StudentDelete(id int) error {
 		return errors.New("cannot delete student: has payments (financial records)")
 	}
 
+	// Use a transaction to ensure all deletions succeed or fail together
+	tx, err := a.db.Ent.Tx(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Auto-delete attendance records (these are draft data that can be safely removed)
-	_, err = a.db.Ent.AttendanceMonth.Delete().
+	_, err = tx.AttendanceMonth.Delete().
 		Where(attendancemonth.StudentIDEQ(id)).
 		Exec(ctx)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	// Auto-delete enrollments (these are relationships that can be safely removed)
-	_, err = a.db.Ent.Enrollment.Delete().
+	_, err = tx.Enrollment.Delete().
 		Where(enrollment.StudentIDEQ(id)).
 		Exec(ctx)
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
 	// Finally, delete the student
-	return a.db.Ent.Student.DeleteOneID(id).Exec(ctx)
+	err = tx.Student.DeleteOneID(id).Exec(ctx)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	// Commit the transaction
+	return tx.Commit()
 }
 
 // -------------------- Courses CRUD --------------------
