@@ -422,9 +422,9 @@ export default function App() {
     await loadAttendance();
   };
 
-  const onDeleteEnrollmentFromSheet = async (id: number) => { 
-    await deleteEnrollment(id); 
-    await loadAttendance(); 
+  const onDeleteEnrollmentFromSheet = async (id: number) => {
+    await deleteEnrollment(id);
+    await loadAttendance();
   };
 
 // ---------------- Invoices ----------------
@@ -438,7 +438,7 @@ const ensureStudentsForInvoiceSearch = useCallback(async () => {
   if (students.length > 0) return;
   const data = await listStudents("", true);
   setStudents(data);
-}, []);
+}, [students.length]);
 
 const loadInvoices = useCallback(async () => {
   setLoadingInv(true);
