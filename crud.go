@@ -5,8 +5,11 @@ import (
 	"strings"
 
 	"langschool/ent"
+	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
+	"langschool/ent/invoice"
+	"langschool/ent/payment"
 	"langschool/ent/student"
 )
 
@@ -141,6 +144,76 @@ func (a *App) StudentSetActive(id int, active bool) error {
 	return err
 }
 
+// StudentDelete deletes a student. If inactive, automatically removes enrollments and attendance.
+// Prevents deletion if student has invoices or payments (financial records).
+func (a *App) StudentDelete(id int) error {
+	ctx := a.ctx
+
+	// Check if student is active
+	st, err := a.db.Ent.Student.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if st.IsActive {
+		return errors.New("cannot delete active student; deactivate first")
+	}
+
+	// Check for invoices - these are financial records and should not be auto-deleted
+	hasInvoices, err := a.db.Ent.Invoice.Query().
+		Where(invoice.StudentIDEQ(id)).
+		Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if hasInvoices {
+		return errors.New("cannot delete student: has invoices (financial records)")
+	}
+
+	// Check for payments - these are financial records and should not be auto-deleted
+	hasPayments, err := a.db.Ent.Payment.Query().
+		Where(payment.StudentIDEQ(id)).
+		Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if hasPayments {
+		return errors.New("cannot delete student: has payments (financial records)")
+	}
+
+	// Use a transaction to ensure all deletions succeed or fail together
+	tx, err := a.db.Ent.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	// Defer rollback - will be a no-op if commit succeeds
+	defer tx.Rollback()
+
+	// Auto-delete attendance records (these are draft data that can be safely removed)
+	_, err = tx.AttendanceMonth.Delete().
+		Where(attendancemonth.StudentIDEQ(id)).
+		Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Auto-delete enrollments (these are relationships that can be safely removed)
+	_, err = tx.Enrollment.Delete().
+		Where(enrollment.StudentIDEQ(id)).
+		Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Finally, delete the student
+	err = tx.Student.DeleteOneID(id).Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Commit the transaction
+	return tx.Commit()
+}
+
 // -------------------- Courses CRUD --------------------
 
 // CourseList lists courses. Optional search by name.
@@ -272,9 +345,8 @@ func (a *App) CourseDelete(id int) error {
 // -------------------- Enrollments CRUD --------------------
 
 // EnrollmentList lists enrollments, optionally filtered by studentID or courseID.
-// The activeOnly parameter is retained for API compatibility but is no longer used
-// since start_date and end_date fields have been removed.
-func (a *App) EnrollmentList(studentID *int, courseID *int, activeOnly bool) ([]EnrollmentDTO, error) {
+// NOTE: activeOnly/date filters were removed; API now uses only (studentID, courseID).
+func (a *App) EnrollmentList(studentID *int, courseID *int) ([]EnrollmentDTO, error) {
 	ctx := a.ctx
 
 	q := a.db.Ent.Enrollment.Query().WithStudent().WithCourse()
@@ -331,9 +403,13 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 		return nil, errors.New("discountPct must be between 0 and 100")
 	}
 
-	// Ensure referenced entities exist.
-	if _, err := a.db.Ent.Student.Get(ctx, studentID); err != nil {
+	// Ensure referenced entities exist and student is active.
+	st, err := a.db.Ent.Student.Get(ctx, studentID)
+	if err != nil {
 		return nil, err
+	}
+	if !st.IsActive {
+		return nil, errors.New("cannot enroll a deactivated student")
 	}
 	if _, err := a.db.Ent.Course.Get(ctx, courseID); err != nil {
 		return nil, err
@@ -427,4 +503,3 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct
 		Note:        e2.Note,
 	}, nil
 }
-

@@ -39,7 +39,7 @@ export function EnrollmentCreate(arg1:number,arg2:number,arg3:string,arg4:number
 
 export function EnrollmentDelete(arg1:number):Promise<void>;
 
-export function EnrollmentList(arg1:any,arg2:any,arg3:boolean):Promise<Array<main.EnrollmentDTO>>;
+export function EnrollmentList(arg1:any,arg2:any):Promise<Array<main.EnrollmentDTO>>;
 
 export function EnrollmentUpdate(arg1:number,arg2:string,arg3:number,arg4:string):Promise<main.EnrollmentDTO>;
 
@@ -80,6 +80,8 @@ export function SettingsSetLocale(arg1:string):Promise<void>;
 export function StudentBalance(arg1:number):Promise<payment.BalanceDTO>;
 
 export function StudentCreate(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.StudentDTO>;
+
+export function StudentDelete(arg1:number):Promise<void>;
 
 export function StudentGet(arg1:number):Promise<main.StudentDTO>;
 

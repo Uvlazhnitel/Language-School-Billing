@@ -2,12 +2,10 @@ import {
   AttendanceListPerLesson,
   AttendanceUpsert,
   AttendanceAddOne,
-  AttendanceSetLocked,
   DevSeed,
   DevReset,
-  EnrollmentDelete
+  EnrollmentDelete,
 } from "../../wailsjs/go/main/App";
-
 
 export type Row = {
   enrollmentId: number;
@@ -18,36 +16,40 @@ export type Row = {
   courseType: "group" | "individual";
   lessonPrice: number;
   count: number;
-  locked: boolean;
 };
 
-export async function devSeed() {
-  return await DevSeed();
+function normalizeCourseId(courseId?: number): number | undefined {
+  return typeof courseId === "number" && courseId > 0 ? courseId : undefined;
 }
 
-export async function devReset() {
-  return await DevReset();
+export function devSeed() {
+  return DevSeed();
 }
 
-export async function fetchRows(year: number, month: number, courseId?: number) {
-  const cid: number | undefined = courseId && courseId > 0 ? courseId : undefined;
+export function devReset() {
+  return DevReset();
+}
+
+export async function fetchRows(year: number, month: number, courseId?: number): Promise<Row[]> {
+  const cid = normalizeCourseId(courseId);
   return (await AttendanceListPerLesson(year, month, cid)) as Row[];
 }
 
-export async function saveCount(studentId: number, courseId: number, year: number, month: number, count: number) {
-  await AttendanceUpsert(studentId, courseId, year, month, count);
+export function saveCount(
+  studentId: number,
+  courseId: number,
+  year: number,
+  month: number,
+  count: number
+): Promise<void> {
+  return AttendanceUpsert(studentId, courseId, year, month, count);
 }
 
-export async function addOneMass(year: number, month: number, courseId?: number) {
-  const cid: number | undefined = courseId && courseId > 0 ? courseId : undefined;
-  return await AttendanceAddOne(year, month, cid);
+export function addOneMass(year: number, month: number, courseId?: number) {
+  const cid = normalizeCourseId(courseId);
+  return AttendanceAddOne(year, month, cid);
 }
 
-export async function setLocked(year: number, month: number, courseId: number | undefined, lock: boolean) {
-  const cid: number | undefined = courseId && courseId > 0 ? courseId : undefined;
-  return await AttendanceSetLocked(year, month, cid, lock);
-}
-
-export async function deleteEnrollment(enrollmentId: number) {
-  return await EnrollmentDelete(enrollmentId);
+export function deleteEnrollment(enrollmentId: number) {
+  return EnrollmentDelete(enrollmentId);
 }

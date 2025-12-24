@@ -70,8 +70,8 @@ export function EnrollmentDelete(arg1) {
   return window['go']['main']['App']['EnrollmentDelete'](arg1);
 }
 
-export function EnrollmentList(arg1, arg2, arg3) {
-  return window['go']['main']['App']['EnrollmentList'](arg1, arg2, arg3);
+export function EnrollmentList(arg1, arg2) {
+  return window['go']['main']['App']['EnrollmentList'](arg1, arg2);
 }
 
 export function EnrollmentUpdate(arg1, arg2, arg3, arg4) {
@@ -152,6 +152,10 @@ export function StudentBalance(arg1) {
 
 export function StudentCreate(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['StudentCreate'](arg1, arg2, arg3, arg4);
+}
+
+export function StudentDelete(arg1) {
+  return window['go']['main']['App']['StudentDelete'](arg1);
 }
 
 export function StudentGet(arg1) {
