@@ -364,14 +364,14 @@ export default function App() {
   const [msg, setMsg] = useState("");
   const [attQ, setAttQ] = useState("");
 
-  // For search by phone we need students list (shared with invoices)
+  // For search by phone we need students list (shared with invoices and attendance)
   const studentIndex = useMemo(() => {
     const m = new Map<number, StudentDTO>();
     for (const s of students) m.set(s.id, s);
     return m;
   }, [students]);
 
-  const ensureStudentsForAttendanceSearch = useCallback(async () => {
+  const ensureStudentsLoaded = useCallback(async () => {
     if (students.length > 0) return;
     const data = await listStudents("", true);
     setStudents(data);
@@ -380,13 +380,13 @@ export default function App() {
   const loadAttendance = useCallback(async () => {
     setLoadingAtt(true);
     try {
-      await ensureStudentsForAttendanceSearch();
+      await ensureStudentsLoaded();
       const data = await fetchRows(year, month, courseFilter);
       setRows(data);
     } finally {
       setLoadingAtt(false);
     }
-  }, [year, month, courseFilter, ensureStudentsForAttendanceSearch]);
+  }, [year, month, courseFilter, ensureStudentsLoaded]);
 
   useEffect(() => {
     if (tab === "attendance") loadAttendance();
@@ -434,16 +434,10 @@ const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
 const [loadingInv, setLoadingInv] = useState(false);
 const [invQ, setInvQ] = useState("");
 
-const ensureStudentsForInvoiceSearch = useCallback(async () => {
-  if (students.length > 0) return;
-  const data = await listStudents("", true);
-  setStudents(data);
-}, [students.length]);
-
 const loadInvoices = useCallback(async () => {
   setLoadingInv(true);
   try {
-    await ensureStudentsForInvoiceSearch();
+    await ensureStudentsLoaded();
     const li = await listInvoices(year, month, invStatus);
     setInvItems(li);
     setSelectedInv(null);
@@ -452,7 +446,7 @@ const loadInvoices = useCallback(async () => {
   } finally {
     setLoadingInv(false);
   }
-}, [year, month, invStatus, ensureStudentsForInvoiceSearch]);
+}, [year, month, invStatus, ensureStudentsLoaded]);
 
 useEffect(() => {
   if (tab === "invoice") loadInvoices();
@@ -903,7 +897,9 @@ const onOpenPdf = async (id: number) => {
             <div className="empty">
               {rows.length === 0 
                 ? "No per-lesson rows. Create enrollments first." 
-                : "No matches found for your search."}
+                : attQ.trim() 
+                  ? "No matches found for your search." 
+                  : "No per-lesson rows. Create enrollments first."}
             </div>
           ) : (
             <table>
