@@ -81,6 +81,8 @@ export function StudentBalance(arg1:number):Promise<payment.BalanceDTO>;
 
 export function StudentCreate(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.StudentDTO>;
 
+export function StudentDelete(arg1:number):Promise<void>;
+
 export function StudentGet(arg1:number):Promise<main.StudentDTO>;
 
 export function StudentList(arg1:string,arg2:boolean):Promise<Array<main.StudentDTO>>;

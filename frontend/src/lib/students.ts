@@ -4,6 +4,7 @@ import {
     StudentCreate,
     StudentUpdate,
     StudentSetActive,
+    StudentDelete,
 } from "../../wailsjs/go/main/App";
   
   export type StudentDTO = {
@@ -33,5 +34,9 @@ import {
   
   export async function setStudentActive(id: number, active: boolean) {
     return await StudentSetActive(id, active);
+  }
+
+  export async function deleteStudent(id: number) {
+    return await StudentDelete(id);
   }
   

@@ -5,8 +5,11 @@ import (
 	"strings"
 
 	"langschool/ent"
+	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
+	"langschool/ent/invoice"
+	"langschool/ent/payment"
 	"langschool/ent/student"
 )
 
@@ -139,6 +142,66 @@ func (a *App) StudentSetActive(id int, active bool) error {
 		SetIsActive(active).
 		Save(a.ctx)
 	return err
+}
+
+// StudentDelete deletes a student only if inactive and no enrollments/payments exist.
+func (a *App) StudentDelete(id int) error {
+	ctx := a.ctx
+
+	// Check if student is active
+	st, err := a.db.Ent.Student.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if st.IsActive {
+		return errors.New("cannot delete active student; deactivate first")
+	}
+
+	// Check for enrollments
+	hasEnrollments, err := a.db.Ent.Enrollment.Query().
+		Where(enrollment.StudentIDEQ(id)).
+		Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if hasEnrollments {
+		return errors.New("cannot delete student: has enrollments")
+	}
+
+	// Check for attendance records
+	hasAttendance, err := a.db.Ent.AttendanceMonth.Query().
+		Where(attendancemonth.StudentIDEQ(id)).
+		Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if hasAttendance {
+		return errors.New("cannot delete student: has attendance records")
+	}
+
+	// Check for invoices
+	hasInvoices, err := a.db.Ent.Invoice.Query().
+		Where(invoice.StudentIDEQ(id)).
+		Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if hasInvoices {
+		return errors.New("cannot delete student: has invoices")
+	}
+
+	// Check for payments
+	hasPayments, err := a.db.Ent.Payment.Query().
+		Where(payment.StudentIDEQ(id)).
+		Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if hasPayments {
+		return errors.New("cannot delete student: has payments")
+	}
+
+	return a.db.Ent.Student.DeleteOneID(id).Exec(ctx)
 }
 
 // -------------------- Courses CRUD --------------------
@@ -329,9 +392,13 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 		return nil, errors.New("discountPct must be between 0 and 100")
 	}
 
-	// Ensure referenced entities exist.
-	if _, err := a.db.Ent.Student.Get(ctx, studentID); err != nil {
+	// Ensure referenced entities exist and student is active.
+	st, err := a.db.Ent.Student.Get(ctx, studentID)
+	if err != nil {
 		return nil, err
+	}
+	if !st.IsActive {
+		return nil, errors.New("cannot enroll a deactivated student")
 	}
 	if _, err := a.db.Ent.Course.Get(ctx, courseID); err != nil {
 		return nil, err

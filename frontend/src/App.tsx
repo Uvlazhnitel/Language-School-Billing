@@ -24,6 +24,7 @@ import {
   createStudent,
   updateStudent,
   setStudentActive,
+  deleteStudent,
   StudentDTO,
 } from "./lib/students";
 
@@ -171,6 +172,17 @@ export default function App() {
     await loadStudents();
   }
 
+  async function removeStudent(id: number) {
+    if (!confirm("Delete student? This is only allowed for inactive students with no history.")) return;
+    try {
+      await deleteStudent(id);
+      await loadStudents();
+      showMessage("Student deleted successfully!");
+    } catch (e: any) {
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+    }
+  }
+
   // ---------------- Courses ----------------
   const [courses, setCourses] = useState<CourseDTO[]>([]);
   const [courseQ, setCourseQ] = useState("");
@@ -285,8 +297,9 @@ export default function App() {
   }, [tab, loadEnrollments]);
 
   function openAddEnrollment() {
-    if (students.length === 0) {
-      showMessage("No students available. Please add students first.", "error");
+    const activeStudents = students.filter(s => s.isActive);
+    if (activeStudents.length === 0) {
+      showMessage("No active students available. Please add or activate students first.", "error");
       setTab("students");
       return;
     }
@@ -296,7 +309,7 @@ export default function App() {
       return;
     }
 
-    const initialStudentId = students[0]?.id ?? 0;
+    const initialStudentId = activeStudents[0]?.id ?? 0;
     const initialCourseId = courses[0]?.id ?? 0;
 
     setEditingEnr(null);
@@ -602,6 +615,9 @@ const onOpenPdf = async (id: number) => {
                       <button onClick={() => toggleStudentActive(s)}>
                         {s.isActive ? "Deactivate" : "Activate"}
                       </button>
+                      {!s.isActive && (
+                        <button onClick={() => removeStudent(s.id)}>Delete</button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -813,7 +829,7 @@ const onOpenPdf = async (id: number) => {
                     disabled={!!editingEnr}
                     onChange={(e) => setEfStudentId(parseInt(e.target.value))}
                   >
-                    {students.map((s) => (
+                    {students.filter(s => s.isActive).map((s) => (
                       <option key={s.id} value={s.id}>
                         {s.fullName}
                       </option>
