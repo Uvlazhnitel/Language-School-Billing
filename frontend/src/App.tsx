@@ -375,13 +375,13 @@ export default function App() {
     if (students.length > 0) return;
     const data = await listStudents("", true);
     setStudents(data);
-  }, [students.length]);
+  }, [students]);
 
   const ensureCoursesLoaded = useCallback(async () => {
     if (courses.length > 0) return;
     const data = await listCourses("");
     setCourses(data);
-  }, [courses.length]);
+  }, [courses]);
 
   const loadAttendance = useCallback(async () => {
     setLoadingAtt(true);
@@ -901,7 +901,7 @@ const onOpenPdf = async (id: number) => {
             </select>
 
             <input
-              placeholder="Search student / phone / group…"
+              placeholder="Search student / phone / course…"
               value={attQ}
               onChange={(e) => setAttQ(e.target.value)}
               style={{ width: 260 }}
