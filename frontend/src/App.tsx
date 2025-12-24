@@ -933,7 +933,6 @@ const onOpenPdf = async (id: number) => {
                   <th style={{ textAlign: "right" }}>Lesson price</th>
                   <th style={{ textAlign: "right" }}>Count</th>
                   <th style={{ textAlign: "right" }}>Total</th>
-                  <th>Lock</th>
                   <th></th>
                 </tr>
               </thead>
@@ -948,13 +947,11 @@ const onOpenPdf = async (id: number) => {
                         type="number"
                         min={0}
                         value={r.count}
-                        disabled={r.locked}
                         onChange={(e) => onChangeCount(r, Number(e.target.value))}
                         style={{ width: "5rem", textAlign: "right" }}
                       />
                     </td>
                     <td style={{ textAlign: "right" }}>{(r.count * r.lessonPrice).toFixed(2)}</td>
-                    <td>{r.locked ? "locked" : "open"}</td>
                     <td>
                       <button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>
                         Delete enrollment (danger)

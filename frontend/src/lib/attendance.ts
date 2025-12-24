@@ -2,7 +2,6 @@ import {
   AttendanceListPerLesson,
   AttendanceUpsert,
   AttendanceAddOne,
-  AttendanceSetLocked,
   DevSeed,
   DevReset,
   EnrollmentDelete
@@ -18,7 +17,6 @@ export type Row = {
   courseType: "group" | "individual";
   lessonPrice: number;
   count: number;
-  locked: boolean;
 };
 
 export async function devSeed() {
@@ -41,11 +39,6 @@ export async function saveCount(studentId: number, courseId: number, year: numbe
 export async function addOneMass(year: number, month: number, courseId?: number) {
   const cid: number | undefined = courseId && courseId > 0 ? courseId : undefined;
   return await AttendanceAddOne(year, month, cid);
-}
-
-export async function setLocked(year: number, month: number, courseId: number | undefined, lock: boolean) {
-  const cid: number | undefined = courseId && courseId > 0 ? courseId : undefined;
-  return await AttendanceSetLocked(year, month, cid, lock);
 }
 
 export async function deleteEnrollment(enrollmentId: number) {
