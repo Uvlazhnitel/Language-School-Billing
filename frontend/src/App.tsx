@@ -5,9 +5,6 @@ import {
   fetchRows,
   saveCount,
   addOneMass,
-  setLocked,
-  devSeed,
-  devReset,
   deleteEnrollment,
   Row,
 } from "./lib/attendance";
@@ -365,16 +362,31 @@ export default function App() {
   const [loadingAtt, setLoadingAtt] = useState(false);
   const [courseFilter, setCourseFilter] = useState<number | undefined>(undefined);
   const [msg, setMsg] = useState("");
+  const [attQ, setAttQ] = useState("");
+
+  // For search by phone we need students list (shared with invoices)
+  const studentIndex = useMemo(() => {
+    const m = new Map<number, StudentDTO>();
+    for (const s of students) m.set(s.id, s);
+    return m;
+  }, [students]);
+
+  const ensureStudentsForAttendanceSearch = useCallback(async () => {
+    if (students.length > 0) return;
+    const data = await listStudents("", true);
+    setStudents(data);
+  }, [students.length]);
 
   const loadAttendance = useCallback(async () => {
     setLoadingAtt(true);
     try {
+      await ensureStudentsForAttendanceSearch();
       const data = await fetchRows(year, month, courseFilter);
       setRows(data);
     } finally {
       setLoadingAtt(false);
     }
-  }, [year, month, courseFilter]);
+  }, [year, month, courseFilter, ensureStudentsForAttendanceSearch]);
 
   useEffect(() => {
     if (tab === "attendance") loadAttendance();
@@ -384,6 +396,19 @@ export default function App() {
     () => rows.reduce((s, r) => s + r.count * r.lessonPrice, 0),
     [rows]
   );
+
+  const filteredAttendanceRows = useMemo(() => {
+    const q = attQ.trim().toLowerCase();
+    if (!q) return rows;
+
+    return rows.filter((r) => {
+      const s = studentIndex.get(r.studentId);
+      const studentName = (r.studentName ?? "").toLowerCase();
+      const courseName = (r.courseName ?? "").toLowerCase();
+      const phone = (s?.phone ?? "").toLowerCase();
+      return studentName.includes(q) || courseName.includes(q) || phone.includes(q);
+    });
+  }, [rows, attQ, studentIndex]);
 
   const onChangeCount = async (r: Row, v: number) => {
     if (!Number.isFinite(v)) return;
@@ -397,14 +422,10 @@ export default function App() {
     await loadAttendance();
   };
 
-  const onLock = async (lock: boolean) => {
-    await setLocked(year, month, courseFilter, lock);
-    await loadAttendance();
+  const onDeleteEnrollmentFromSheet = async (id: number) => { 
+    await deleteEnrollment(id); 
+    await loadAttendance(); 
   };
-
-  const onSeed = async () => { await devSeed(); await loadAttendance(); };
-  const onReset = async () => { await devReset(); await loadAttendance(); };
-  const onDeleteEnrollmentFromSheet = async (id: number) => { await deleteEnrollment(id); await loadAttendance(); };
 
 // ---------------- Invoices ----------------
 const [invStatus, setInvStatus] = useState<string>("all");
@@ -412,13 +433,6 @@ const [invItems, setInvItems] = useState<InvoiceListItem[]>([]);
 const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
 const [loadingInv, setLoadingInv] = useState(false);
 const [invQ, setInvQ] = useState("");
-
-// For search by phone/email we need students list
-const studentIndex = useMemo(() => {
-  const m = new Map<number, StudentDTO>();
-  for (const s of students) m.set(s.id, s);
-  return m;
-}, [students]);
 
 const ensureStudentsForInvoiceSearch = useCallback(async () => {
   if (students.length > 0) return;
@@ -872,19 +886,25 @@ const onOpenPdf = async (id: number) => {
           {msg && <div className="msg">{msg}</div>}
           <div className="controls">
             <button onClick={onAddAll}>+1 all</button>
-            <button onClick={() => onLock(true)}>Lock month</button>
-            <button onClick={() => onLock(false)}>Unlock</button>
 
-            <div className="spacer" />
+            <input
+              placeholder="Search student / phone / group…"
+              value={attQ}
+              onChange={(e) => setAttQ(e.target.value)}
+              style={{ width: 260 }}
+            />
 
-            <button onClick={onSeed}>Seed demo</button>
-            <button onClick={onReset}>Reset demo</button>
+            <button onClick={loadAttendance}>Refresh</button>
           </div>
 
           {loadingAtt ? (
             <div>Loading…</div>
-          ) : rows.length === 0 ? (
-            <div className="empty">No per-lesson rows. Create enrollments first.</div>
+          ) : filteredAttendanceRows.length === 0 ? (
+            <div className="empty">
+              {rows.length === 0 
+                ? "No per-lesson rows. Create enrollments first." 
+                : "No matches found for your search."}
+            </div>
           ) : (
             <table>
               <thead>
@@ -899,7 +919,7 @@ const onOpenPdf = async (id: number) => {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r) => (
+                {filteredAttendanceRows.map((r) => (
                   <tr key={r.enrollmentId}>
                     <td>{r.studentName}</td>
                     <td>{r.courseName} ({r.courseType})</td>
