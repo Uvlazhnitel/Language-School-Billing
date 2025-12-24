@@ -895,11 +895,9 @@ const onOpenPdf = async (id: number) => {
             <div>Loading…</div>
           ) : filteredAttendanceRows.length === 0 ? (
             <div className="empty">
-              {rows.length === 0 
-                ? "No per-lesson rows. Create enrollments first." 
-                : attQ.trim() 
-                  ? "No matches found for your search." 
-                  : "No per-lesson rows. Create enrollments first."}
+              {attQ.trim() 
+                ? "No matches found for your search." 
+                : "No per-lesson rows. Create enrollments first."}
             </div>
           ) : (
             <table>
