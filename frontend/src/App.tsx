@@ -71,6 +71,28 @@ export default function App() {
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const messageTimeoutRef = useRef<number | null>(null);
 
+  // Global confirmation dialog
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    message: string;
+    onConfirm: () => void;
+  } | null>(null);
+
+  const showConfirm = (message: string, onConfirm: () => void) => {
+    setConfirmDialog({ isOpen: true, message, onConfirm });
+  };
+
+  const handleConfirmYes = () => {
+    if (confirmDialog?.onConfirm) {
+      confirmDialog.onConfirm();
+    }
+    setConfirmDialog(null);
+  };
+
+  const handleConfirmNo = () => {
+    setConfirmDialog(null);
+  };
+
   // Shared month/year for Attendance + Invoices
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -175,20 +197,21 @@ export default function App() {
 
   async function removeStudent(id: number) {
     console.log("removeStudent called with id:", id);
-    if (!confirm("Delete student? This will automatically remove their enrollments and attendance records. This action cannot be undone.")) {
-      console.log("User cancelled deletion");
-      return;
-    }
-    console.log("User confirmed deletion, calling deleteStudent...");
-    try {
-      await deleteStudent(id);
-      console.log("Student deleted successfully");
-      await loadStudents();
-      showMessage("Student deleted successfully!");
-    } catch (e: any) {
-      console.error("Error deleting student:", e);
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
-    }
+    showConfirm(
+      "Delete student? This will automatically remove their enrollments and attendance records. This action cannot be undone.",
+      async () => {
+        console.log("User confirmed deletion, calling deleteStudent...");
+        try {
+          await deleteStudent(id);
+          console.log("Student deleted successfully");
+          await loadStudents();
+          showMessage("Student deleted successfully!");
+        } catch (e: any) {
+          console.error("Error deleting student:", e);
+          showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+        }
+      }
+    );
   }
 
   // ---------------- Courses ----------------
@@ -261,14 +284,18 @@ export default function App() {
   }
 
   async function removeCourse(id: number) {
-    if (!confirm("Delete course? This is blocked if enrollments exist.")) return;
-    try {
-      await deleteCourse(id);
-      await loadCourses();
-      showMessage("Course deleted successfully!");
-    } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
-    }
+    showConfirm(
+      "Delete course? This is blocked if enrollments exist.",
+      async () => {
+        try {
+          await deleteCourse(id);
+          await loadCourses();
+          showMessage("Course deleted successfully!");
+        } catch (e: any) {
+          showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+        }
+      }
+    );
   }
 
   // ---------------- Enrollments ----------------
@@ -567,6 +594,55 @@ const onOpenPdf = async (id: number) => {
             >
               ×
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Global confirmation dialog */}
+      {confirmDialog?.isOpen && (
+        <div 
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10001
+          }}
+        >
+          <div 
+            style={{
+              backgroundColor: "white",
+              padding: "24px",
+              borderRadius: "8px",
+              maxWidth: "500px",
+              boxShadow: "0 4px 16px rgba(0,0,0,0.3)"
+            }}
+          >
+            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Confirm Action</h3>
+            <p style={{ marginBottom: "24px", lineHeight: "1.5" }}>{confirmDialog.message}</p>
+            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
+              <button onClick={handleConfirmNo} style={{ padding: "8px 16px" }}>
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmYes} 
+                style={{ 
+                  padding: "8px 16px",
+                  backgroundColor: "#f44336",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  cursor: "pointer"
+                }}
+              >
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       )}
