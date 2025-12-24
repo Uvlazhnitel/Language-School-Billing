@@ -69,10 +69,11 @@ export default function App() {
     isOpen: boolean;
     message: string;
     onConfirm: () => void | Promise<void>;
+    confirmButtonLabel?: string;
   } | null>(null);
 
-  const showConfirm = (messageText: string, onConfirm: () => void | Promise<void>) => {
-    setConfirmDialog({ isOpen: true, message: messageText, onConfirm });
+  const showConfirm = (messageText: string, onConfirm: () => void | Promise<void>, confirmButtonLabel?: string) => {
+    setConfirmDialog({ isOpen: true, message: messageText, onConfirm, confirmButtonLabel });
   };
 
   const handleConfirmYes = async () => {
@@ -198,7 +199,7 @@ export default function App() {
 
   async function removeStudent(id: number) {
     showConfirm(
-      "Delete student? This will automatically remove their enrollments and attendance records. This action cannot be undone.",
+      "Delete student? This will automatically remove their enrollments and attendance records. Deletion will fail if the student has any invoices or payments. This action cannot be undone.",
       async () => {
         try {
           await deleteStudent(id);
@@ -675,7 +676,7 @@ export default function App() {
                   cursor: "pointer",
                 }}
               >
-                Delete
+                {confirmDialog.confirmButtonLabel ?? "Delete"}
               </button>
             </div>
           </div>
@@ -1103,7 +1104,7 @@ export default function App() {
                     Per-lesson total:
                   </td>
                   <td style={{ textAlign: "right" }}>{perLessonTotal.toFixed(2)}</td>
-                  <td colSpan={2}></td>
+                  <td></td>
                 </tr>
               </tfoot>
             </table>
@@ -1164,7 +1165,7 @@ export default function App() {
                     <td>
                       <button onClick={() => onOpenInvoice(it.id)}>Open</button>
                       {it.status === "draft" && <button onClick={() => onIssueOne(it.id)}>Issue</button>}
-                      {it.status !== "draft" && it.status !== "canceled" && <button onClick={() => onOpenPdf(it.id)}>PDF</button>}
+                      {it.status !== "draft" && <button onClick={() => onOpenPdf(it.id)}>PDF</button>}
                     </td>
                   </tr>
                 ))}
