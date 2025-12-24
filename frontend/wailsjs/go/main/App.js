@@ -14,6 +14,10 @@ export function AttendanceListPerLesson(arg1, arg2, arg3) {
   return window['go']['main']['App']['AttendanceListPerLesson'](arg1, arg2, arg3);
 }
 
+export function AttendanceSetLocked(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['AttendanceSetLocked'](arg1, arg2, arg3, arg4);
+}
+
 export function AttendanceUpsert(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['AttendanceUpsert'](arg1, arg2, arg3, arg4, arg5);
 }

@@ -345,6 +345,7 @@ func (a *App) CourseDelete(id int) error {
 // -------------------- Enrollments CRUD --------------------
 
 // EnrollmentList lists enrollments, optionally filtered by studentID or courseID.
+// NOTE: activeOnly/date filters were removed; API now uses only (studentID, courseID).
 func (a *App) EnrollmentList(studentID *int, courseID *int) ([]EnrollmentDTO, error) {
 	ctx := a.ctx
 
@@ -502,4 +503,3 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct
 		Note:        e2.Note,
 	}, nil
 }
-
