@@ -12,6 +12,7 @@ import {
 import {
   listInvoices,
   getInvoice,
+  genDrafts,
   issueAll,
   ensurePdfAndOpen,
   InvoiceListItem,
@@ -173,12 +174,19 @@ export default function App() {
   }
 
   async function removeStudent(id: number) {
-    if (!confirm("Delete student? This is only allowed for inactive students with no history.")) return;
+    console.log("removeStudent called with id:", id);
+    if (!confirm("Delete student? This is only allowed for inactive students with no history.")) {
+      console.log("User cancelled deletion");
+      return;
+    }
+    console.log("User confirmed deletion, calling deleteStudent...");
     try {
       await deleteStudent(id);
+      console.log("Student deleted successfully");
       await loadStudents();
       showMessage("Student deleted successfully!");
     } catch (e: any) {
+      console.error("Error deleting student:", e);
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
   }
@@ -488,6 +496,16 @@ const filteredInvItems = useMemo(() => {
 const onOpenInvoice = async (id: number) => {
   const iv = await getInvoice(id);
   setSelectedInv(iv);
+};
+
+const onGenerateDrafts = async () => {
+  try {
+    const res = await genDrafts(year, month);
+    showMessage(`Drafts generated: ${res.created} created, ${res.updated} updated, ${res.skippedHasInvoice} skipped (already issued), ${res.skippedNoLines} skipped (no lines)`);
+    await loadInvoices();
+  } catch (e: any) {
+    showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+  }
 };
 
 const onIssueAll = async () => {
@@ -976,9 +994,11 @@ const onOpenPdf = async (id: number) => {
       {tab === "invoice" && (
   <>
     <div className="controls">
+      <button onClick={onGenerateDrafts}>Generate drafts</button>
       <button onClick={onIssueAll}>Issue all</button>
 
       <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
+        <option value="draft">draft</option>
         <option value="issued">issued</option>
         <option value="paid">paid</option>
         <option value="canceled">canceled</option>
