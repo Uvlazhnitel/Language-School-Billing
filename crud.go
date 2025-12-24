@@ -185,13 +185,14 @@ func (a *App) StudentDelete(id int) error {
 	if err != nil {
 		return err
 	}
+	// Defer rollback - will be a no-op if commit succeeds
+	defer tx.Rollback()
 
 	// Auto-delete attendance records (these are draft data that can be safely removed)
 	_, err = tx.AttendanceMonth.Delete().
 		Where(attendancemonth.StudentIDEQ(id)).
 		Exec(ctx)
 	if err != nil {
-		tx.Rollback()
 		return err
 	}
 
@@ -200,14 +201,12 @@ func (a *App) StudentDelete(id int) error {
 		Where(enrollment.StudentIDEQ(id)).
 		Exec(ctx)
 	if err != nil {
-		tx.Rollback()
 		return err
 	}
 
 	// Finally, delete the student
 	err = tx.Student.DeleteOneID(id).Exec(ctx)
 	if err != nil {
-		tx.Rollback()
 		return err
 	}
 
