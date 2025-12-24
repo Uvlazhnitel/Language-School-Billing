@@ -13,6 +13,7 @@ import {
   listInvoices,
   getInvoice,
   genDrafts,
+  issueOne,
   issueAll,
   ensurePdfAndOpen,
   InvoiceListItem,
@@ -483,6 +484,7 @@ export default function App() {
 
 // ---------------- Invoices ----------------
 const [invStatus, setInvStatus] = useState<string>("all");
+const [invCourseFilter, setInvCourseFilter] = useState<number | undefined>(undefined);
 const [invItems, setInvItems] = useState<InvoiceListItem[]>([]);
 const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
 const [loadingInv, setLoadingInv] = useState(false);
@@ -529,6 +531,16 @@ const onGenerateDrafts = async () => {
   try {
     const res = await genDrafts(year, month);
     showMessage(`Drafts generated: ${res.created} created, ${res.updated} updated, ${res.skippedHasInvoice} skipped (already issued), ${res.skippedNoLines} skipped (no lines)`);
+    await loadInvoices();
+  } catch (e: any) {
+    showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+  }
+};
+
+const onIssueOne = async (id: number) => {
+  try {
+    const res = await issueOne(id);
+    showMessage(`Invoice issued: #${res.number}`);
     await loadInvoices();
   } catch (e: any) {
     showMessage(`Error: ${String(e?.message ?? e)}`, "error");
@@ -1077,7 +1089,6 @@ const onOpenPdf = async (id: number) => {
         <option value="draft">draft</option>
         <option value="issued">issued</option>
         <option value="paid">paid</option>
-        <option value="canceled">canceled</option>
         <option value="all">all</option>
       </select>
 
@@ -1101,7 +1112,6 @@ const onOpenPdf = async (id: number) => {
           <tr>
             <th>Student</th>
             <th>Period</th>
-            <th style={{ textAlign: "right" }}>Lines</th>
             <th style={{ textAlign: "right" }}>Total</th>
             <th>Status</th>
             <th>Number</th>
@@ -1113,12 +1123,14 @@ const onOpenPdf = async (id: number) => {
             <tr key={it.id}>
               <td>{it.studentName}</td>
               <td>{months[it.month - 1]} {it.year}</td>
-              <td style={{ textAlign: "right" }}>{it.linesCount}</td>
               <td style={{ textAlign: "right" }}>{it.total.toFixed(2)}</td>
               <td>{it.status}</td>
               <td>{it.number ?? ""}</td>
               <td>
                 <button onClick={() => onOpenInvoice(it.id)}>Open</button>
+                {it.status === "draft" && (
+                  <button onClick={() => onIssueOne(it.id)}>Issue</button>
+                )}
                 {it.status !== "draft" && it.status !== "canceled" && (
                   <button onClick={() => onOpenPdf(it.id)}>PDF</button>
                 )}
