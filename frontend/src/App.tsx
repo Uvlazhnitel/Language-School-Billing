@@ -175,7 +175,7 @@ export default function App() {
 
   async function removeStudent(id: number) {
     console.log("removeStudent called with id:", id);
-    if (!confirm("Delete student? This is only allowed for inactive students with no history.")) {
+    if (!confirm("Delete student? This will automatically remove their enrollments and attendance records. This action cannot be undone.")) {
       console.log("User cancelled deletion");
       return;
     }

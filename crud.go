@@ -144,8 +144,8 @@ func (a *App) StudentSetActive(id int, active bool) error {
 	return err
 }
 
-// StudentDelete deletes a student only if inactive and no history exists.
-// Checks for enrollments, attendance records, invoices, and payments before allowing deletion.
+// StudentDelete deletes a student. If inactive, automatically removes enrollments and attendance.
+// Prevents deletion if student has invoices or payments (financial records).
 func (a *App) StudentDelete(id int) error {
 	ctx := a.ctx
 
@@ -158,29 +158,7 @@ func (a *App) StudentDelete(id int) error {
 		return errors.New("cannot delete active student; deactivate first")
 	}
 
-	// Check for enrollments
-	hasEnrollments, err := a.db.Ent.Enrollment.Query().
-		Where(enrollment.StudentIDEQ(id)).
-		Exist(ctx)
-	if err != nil {
-		return err
-	}
-	if hasEnrollments {
-		return errors.New("cannot delete student: has enrollments")
-	}
-
-	// Check for attendance records
-	hasAttendance, err := a.db.Ent.AttendanceMonth.Query().
-		Where(attendancemonth.StudentIDEQ(id)).
-		Exist(ctx)
-	if err != nil {
-		return err
-	}
-	if hasAttendance {
-		return errors.New("cannot delete student: has attendance records")
-	}
-
-	// Check for invoices
+	// Check for invoices - these are financial records and should not be auto-deleted
 	hasInvoices, err := a.db.Ent.Invoice.Query().
 		Where(invoice.StudentIDEQ(id)).
 		Exist(ctx)
@@ -188,10 +166,10 @@ func (a *App) StudentDelete(id int) error {
 		return err
 	}
 	if hasInvoices {
-		return errors.New("cannot delete student: has invoices")
+		return errors.New("cannot delete student: has invoices (financial records)")
 	}
 
-	// Check for payments
+	// Check for payments - these are financial records and should not be auto-deleted
 	hasPayments, err := a.db.Ent.Payment.Query().
 		Where(payment.StudentIDEQ(id)).
 		Exist(ctx)
@@ -199,9 +177,26 @@ func (a *App) StudentDelete(id int) error {
 		return err
 	}
 	if hasPayments {
-		return errors.New("cannot delete student: has payments")
+		return errors.New("cannot delete student: has payments (financial records)")
 	}
 
+	// Auto-delete attendance records (these are draft data that can be safely removed)
+	_, err = a.db.Ent.AttendanceMonth.Delete().
+		Where(attendancemonth.StudentIDEQ(id)).
+		Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Auto-delete enrollments (these are relationships that can be safely removed)
+	_, err = a.db.Ent.Enrollment.Delete().
+		Where(enrollment.StudentIDEQ(id)).
+		Exec(ctx)
+	if err != nil {
+		return err
+	}
+
+	// Finally, delete the student
 	return a.db.Ent.Student.DeleteOneID(id).Exec(ctx)
 }
 
