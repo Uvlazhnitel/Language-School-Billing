@@ -137,67 +137,115 @@ func (a *App) DevSeed() (int, error) {
 	// students
 	sAnna, err := db.Student.Query().Where(student.FullNameEQ("Anna K.")).Only(ctx)
 	if err != nil {
-		sAnna, _ = db.Student.Create().
+		sAnna, err = db.Student.Create().
 			SetFullName("Anna K.").
 			SetPhone("+37120000001").
 			SetEmail("anna@example.com").
-			SetIsActive(true). // IMPORTANT
+			SetIsActive(true).
 			Save(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create student Anna: %w", err)
+		}
 	} else {
-		_, _ = sAnna.Update().SetIsActive(true).Save(ctx) // IMPORTANT
+		_, err = sAnna.Update().SetIsActive(true).Save(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to update student Anna: %w", err)
+		}
 	}
 
 	sDima, err := db.Student.Query().Where(student.FullNameEQ("Dmitry L.")).Only(ctx)
 	if err != nil {
-		sDima, _ = db.Student.Create().
+		sDima, err = db.Student.Create().
 			SetFullName("Dmitry L.").
 			SetPhone("+37120000002").
 			SetEmail("dima@example.com").
-			SetIsActive(true). // IMPORTANT
+			SetIsActive(true).
 			Save(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create student Dmitry: %w", err)
+		}
 	} else {
-		_, _ = sDima.Update().SetIsActive(true).Save(ctx) // IMPORTANT
+		_, err = sDima.Update().SetIsActive(true).Save(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to update student Dmitry: %w", err)
+		}
+	}
+
+	// Check that students are not nil before using their IDs
+	if sAnna == nil || sDima == nil {
+		return 0, fmt.Errorf("students are nil after creation/update")
 	}
 
 	// courses
 	cA2, err := db.Course.Query().Where(course.NameEQ("English A2 (group)")).Only(ctx)
 	if err != nil {
-		cA2, _ = db.Course.Create().
+		cA2, err = db.Course.Create().
 			SetName("English A2 (group)").
-			SetType(CourseTypeGroup).SetLessonPrice(15).SetSubscriptionPrice(120).
+			SetType(CourseTypeGroup).
+			SetLessonPrice(15).
+			SetSubscriptionPrice(120).
 			Save(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create course A2: %w", err)
+		}
 	}
+	
 	cB1, err := db.Course.Query().Where(course.NameEQ("English B1 (individual)")).Only(ctx)
 	if err != nil {
-		cB1, _ = db.Course.Create().
+		cB1, err = db.Course.Create().
 			SetName("English B1 (individual)").
-			SetType(CourseTypeIndividual).SetLessonPrice(25).SetSubscriptionPrice(0).
+			SetType(CourseTypeIndividual).
+			SetLessonPrice(25).
+			SetSubscriptionPrice(0).
 			Save(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create course B1: %w", err)
+		}
+	}
+
+	// Check that courses are not nil before using their IDs
+	if cA2 == nil || cB1 == nil {
+		return 0, fmt.Errorf("courses are nil after creation/query")
 	}
 
 	// enrollments (create only if not exists)
 	if _, err := db.Enrollment.Query().
 		Where(enrollment.StudentIDEQ(sAnna.ID), enrollment.CourseIDEQ(cA2.ID)).
 		Only(ctx); err != nil {
-		_, _ = db.Enrollment.Create().
-			SetStudentID(sAnna.ID).SetCourseID(cA2.ID).
-			SetBillingMode(BillingModeSubscription).Save(ctx)
+		_, err = db.Enrollment.Create().
+			SetStudentID(sAnna.ID).
+			SetCourseID(cA2.ID).
+			SetBillingMode(BillingModeSubscription).
+			Save(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create enrollment Anna-A2: %w", err)
+		}
 	}
 
 	if _, err := db.Enrollment.Query().
 		Where(enrollment.StudentIDEQ(sDima.ID), enrollment.CourseIDEQ(cA2.ID)).
 		Only(ctx); err != nil {
-		_, _ = db.Enrollment.Create().
-			SetStudentID(sDima.ID).SetCourseID(cA2.ID).
-			SetBillingMode(BillingModePerLesson).Save(ctx)
+		_, err = db.Enrollment.Create().
+			SetStudentID(sDima.ID).
+			SetCourseID(cA2.ID).
+			SetBillingMode(BillingModePerLesson).
+			Save(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create enrollment Dima-A2: %w", err)
+		}
 	}
 
 	if _, err := db.Enrollment.Query().
 		Where(enrollment.StudentIDEQ(sDima.ID), enrollment.CourseIDEQ(cB1.ID)).
 		Only(ctx); err != nil {
-		_, _ = db.Enrollment.Create().
-			SetStudentID(sDima.ID).SetCourseID(cB1.ID).
-			SetBillingMode(BillingModePerLesson).Save(ctx)
+		_, err = db.Enrollment.Create().
+			SetStudentID(sDima.ID).
+			SetCourseID(cB1.ID).
+			SetBillingMode(BillingModePerLesson).
+			Save(ctx)
+		if err != nil {
+			return 0, fmt.Errorf("failed to create enrollment Dima-B1: %w", err)
+		}
 	}
 
 	return 2, nil // return the number of base students

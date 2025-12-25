@@ -389,7 +389,14 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer func() { _ = tx.Rollback() }()
+	
+	// Proper defer pattern: only rollback if commit hasn't been called
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
 
 	iv, err := tx.Invoice.Get(ctx, id)
 	if err != nil {
@@ -434,6 +441,7 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 	if err := tx.Commit(); err != nil {
 		return "", err
 	}
+	committed = true
 	return number, nil
 }
 
