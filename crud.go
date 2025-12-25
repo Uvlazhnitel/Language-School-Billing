@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"strings"
 
 	"langschool/ent"
@@ -11,6 +12,18 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
 	"langschool/ent/student"
+)
+
+// -------------------- Constants --------------------
+
+const (
+	// Course types
+	CourseTypeGroup      = "group"
+	CourseTypeIndividual = "individual"
+
+	// Billing modes
+	BillingModeSubscription = "subscription"
+	BillingModePerLesson    = "per_lesson"
 )
 
 // -------------------- DTOs for Wails --------------------
@@ -41,6 +54,93 @@ type EnrollmentDTO struct {
 	BillingMode string  `json:"billingMode"` // subscription|per_lesson
 	DiscountPct float64 `json:"discountPct"`
 	Note        string  `json:"note"`
+}
+
+// -------------------- Validation helpers --------------------
+
+// validateNonEmpty checks if a string is non-empty after trimming.
+func validateNonEmpty(value, fieldName string) error {
+	if strings.TrimSpace(value) == "" {
+		return fmt.Errorf("%s is required", fieldName)
+	}
+	return nil
+}
+
+// validatePrices checks if prices are non-negative.
+func validatePrices(lessonPrice, subscriptionPrice float64) error {
+	if lessonPrice < 0 || subscriptionPrice < 0 {
+		return errors.New("prices must be >= 0")
+	}
+	return nil
+}
+
+// validateCourseType checks if the course type is valid.
+func validateCourseType(courseType string) error {
+	if courseType != CourseTypeGroup && courseType != CourseTypeIndividual {
+		return fmt.Errorf("courseType must be '%s' or '%s'", CourseTypeGroup, CourseTypeIndividual)
+	}
+	return nil
+}
+
+// validateBillingMode checks if the billing mode is valid.
+func validateBillingMode(billingMode string) error {
+	if billingMode != BillingModeSubscription && billingMode != BillingModePerLesson {
+		return fmt.Errorf("billingMode must be '%s' or '%s'", BillingModeSubscription, BillingModePerLesson)
+	}
+	return nil
+}
+
+// validateDiscountPct checks if the discount percentage is within valid range.
+func validateDiscountPct(discountPct float64) error {
+	if discountPct < 0 || discountPct > 100 {
+		return errors.New("discountPct must be between 0 and 100")
+	}
+	return nil
+}
+
+// -------------------- DTO conversion helpers --------------------
+
+// toStudentDTO converts an ent.Student to StudentDTO.
+func toStudentDTO(s *ent.Student) StudentDTO {
+	return StudentDTO{
+		ID:       s.ID,
+		FullName: s.FullName,
+		Phone:    s.Phone,
+		Email:    s.Email,
+		Note:     s.Note,
+		IsActive: s.IsActive,
+	}
+}
+
+// toCourseDTO converts an ent.Course to CourseDTO.
+func toCourseDTO(c *ent.Course) CourseDTO {
+	return CourseDTO{
+		ID:                c.ID,
+		Name:              c.Name,
+		Type:              string(c.Type),
+		LessonPrice:       c.LessonPrice,
+		SubscriptionPrice: c.SubscriptionPrice,
+	}
+}
+
+// toEnrollmentDTO converts an ent.Enrollment to EnrollmentDTO.
+// It extracts student and course names from edges if available.
+func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
+	dto := EnrollmentDTO{
+		ID:          e.ID,
+		StudentID:   e.StudentID,
+		CourseID:    e.CourseID,
+		BillingMode: string(e.BillingMode),
+		DiscountPct: e.DiscountPct,
+		Note:        e.Note,
+	}
+	if e.Edges.Student != nil {
+		dto.StudentName = e.Edges.Student.FullName
+	}
+	if e.Edges.Course != nil {
+		dto.CourseName = e.Edges.Course.Name
+	}
+	return dto
 }
 
 // -------------------- Students CRUD --------------------
@@ -76,9 +176,7 @@ func (a *App) StudentList(q string, includeInactive bool) ([]StudentDTO, error) 
 
 	out := make([]StudentDTO, 0, len(studs))
 	for _, s := range studs {
-		out = append(out, StudentDTO{
-			ID: s.ID, FullName: s.FullName, Phone: s.Phone, Email: s.Email, Note: s.Note, IsActive: s.IsActive,
-		})
+		out = append(out, toStudentDTO(s))
 	}
 	return out, nil
 }
@@ -88,15 +186,14 @@ func (a *App) StudentGet(id int) (*StudentDTO, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &StudentDTO{
-		ID: s.ID, FullName: s.FullName, Phone: s.Phone, Email: s.Email, Note: s.Note, IsActive: s.IsActive,
-	}, nil
+	dto := toStudentDTO(s)
+	return &dto, nil
 }
 
 func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, error) {
 	fullName = strings.TrimSpace(fullName)
-	if fullName == "" {
-		return nil, errors.New("fullName is required")
+	if err := validateNonEmpty(fullName, "fullName"); err != nil {
+		return nil, err
 	}
 
 	s, err := a.db.Ent.Student.Create().
@@ -110,15 +207,14 @@ func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, e
 		return nil, err
 	}
 
-	return &StudentDTO{
-		ID: s.ID, FullName: s.FullName, Phone: s.Phone, Email: s.Email, Note: s.Note, IsActive: s.IsActive,
-	}, nil
+	dto := toStudentDTO(s)
+	return &dto, nil
 }
 
 func (a *App) StudentUpdate(id int, fullName, phone, email, note string) (*StudentDTO, error) {
 	fullName = strings.TrimSpace(fullName)
-	if fullName == "" {
-		return nil, errors.New("fullName is required")
+	if err := validateNonEmpty(fullName, "fullName"); err != nil {
+		return nil, err
 	}
 
 	s, err := a.db.Ent.Student.UpdateOneID(id).
@@ -131,9 +227,8 @@ func (a *App) StudentUpdate(id int, fullName, phone, email, note string) (*Stude
 		return nil, err
 	}
 
-	return &StudentDTO{
-		ID: s.ID, FullName: s.FullName, Phone: s.Phone, Email: s.Email, Note: s.Note, IsActive: s.IsActive,
-	}, nil
+	dto := toStudentDTO(s)
+	return &dto, nil
 }
 
 // StudentSetActive deactivates (or activates) a student without deleting history.
@@ -233,13 +328,7 @@ func (a *App) CourseList(q string) ([]CourseDTO, error) {
 
 	out := make([]CourseDTO, 0, len(cs))
 	for _, c := range cs {
-		out = append(out, CourseDTO{
-			ID:                c.ID,
-			Name:              c.Name,
-			Type:              string(c.Type),
-			LessonPrice:       c.LessonPrice,
-			SubscriptionPrice: c.SubscriptionPrice,
-		})
+		out = append(out, toCourseDTO(c))
 	}
 	return out, nil
 }
@@ -249,27 +338,22 @@ func (a *App) CourseGet(id int) (*CourseDTO, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &CourseDTO{
-		ID:                c.ID,
-		Name:              c.Name,
-		Type:              string(c.Type),
-		LessonPrice:       c.LessonPrice,
-		SubscriptionPrice: c.SubscriptionPrice,
-	}, nil
+	dto := toCourseDTO(c)
+	return &dto, nil
 }
 
 func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = strings.TrimSpace(name)
 	courseType = strings.TrimSpace(courseType)
 
-	if name == "" {
-		return nil, errors.New("name is required")
+	if err := validateNonEmpty(name, "name"); err != nil {
+		return nil, err
 	}
-	if courseType != "group" && courseType != "individual" {
-		return nil, errors.New("courseType must be 'group' or 'individual'")
+	if err := validateCourseType(courseType); err != nil {
+		return nil, err
 	}
-	if lessonPrice < 0 || subscriptionPrice < 0 {
-		return nil, errors.New("prices must be >= 0")
+	if err := validatePrices(lessonPrice, subscriptionPrice); err != nil {
+		return nil, err
 	}
 
 	c, err := a.db.Ent.Course.Create().
@@ -282,27 +366,22 @@ func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPri
 		return nil, err
 	}
 
-	return &CourseDTO{
-		ID:                c.ID,
-		Name:              c.Name,
-		Type:              string(c.Type),
-		LessonPrice:       c.LessonPrice,
-		SubscriptionPrice: c.SubscriptionPrice,
-	}, nil
+	dto := toCourseDTO(c)
+	return &dto, nil
 }
 
 func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = strings.TrimSpace(name)
 	courseType = strings.TrimSpace(courseType)
 
-	if name == "" {
-		return nil, errors.New("name is required")
+	if err := validateNonEmpty(name, "name"); err != nil {
+		return nil, err
 	}
-	if courseType != "group" && courseType != "individual" {
-		return nil, errors.New("courseType must be 'group' or 'individual'")
+	if err := validateCourseType(courseType); err != nil {
+		return nil, err
 	}
-	if lessonPrice < 0 || subscriptionPrice < 0 {
-		return nil, errors.New("prices must be >= 0")
+	if err := validatePrices(lessonPrice, subscriptionPrice); err != nil {
+		return nil, err
 	}
 
 	c, err := a.db.Ent.Course.UpdateOneID(id).
@@ -315,13 +394,8 @@ func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscri
 		return nil, err
 	}
 
-	return &CourseDTO{
-		ID:                c.ID,
-		Name:              c.Name,
-		Type:              string(c.Type),
-		LessonPrice:       c.LessonPrice,
-		SubscriptionPrice: c.SubscriptionPrice,
-	}, nil
+	dto := toCourseDTO(c)
+	return &dto, nil
 }
 
 // CourseDelete deletes a course only if no enrollments reference it.
@@ -365,24 +439,7 @@ func (a *App) EnrollmentList(studentID *int, courseID *int) ([]EnrollmentDTO, er
 
 	out := make([]EnrollmentDTO, 0, len(ens))
 	for _, e := range ens {
-		stName := ""
-		if e.Edges.Student != nil {
-			stName = e.Edges.Student.FullName
-		}
-		cName := ""
-		if e.Edges.Course != nil {
-			cName = e.Edges.Course.Name
-		}
-		out = append(out, EnrollmentDTO{
-			ID:          e.ID,
-			StudentID:   e.StudentID,
-			StudentName: stName,
-			CourseID:    e.CourseID,
-			CourseName:  cName,
-			BillingMode: string(e.BillingMode),
-			DiscountPct: e.DiscountPct,
-			Note:        e.Note,
-		})
+		out = append(out, toEnrollmentDTO(e))
 	}
 	return out, nil
 }
@@ -396,11 +453,11 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 		return nil, errors.New("studentID and courseID must be > 0")
 	}
 	billingMode = strings.TrimSpace(billingMode)
-	if billingMode != "subscription" && billingMode != "per_lesson" {
-		return nil, errors.New("billingMode must be 'subscription' or 'per_lesson'")
+	if err := validateBillingMode(billingMode); err != nil {
+		return nil, err
 	}
-	if discountPct < 0 || discountPct > 100 {
-		return nil, errors.New("discountPct must be between 0 and 100")
+	if err := validateDiscountPct(discountPct); err != nil {
+		return nil, err
 	}
 
 	// Ensure referenced entities exist and student is active.
@@ -450,27 +507,19 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 		return nil, err
 	}
 
-	return &EnrollmentDTO{
-		ID:          e2.ID,
-		StudentID:   e2.StudentID,
-		StudentName: e2.Edges.Student.FullName,
-		CourseID:    e2.CourseID,
-		CourseName:  e2.Edges.Course.Name,
-		BillingMode: string(e2.BillingMode),
-		DiscountPct: e2.DiscountPct,
-		Note:        e2.Note,
-	}, nil
+	dto := toEnrollmentDTO(e2)
+	return &dto, nil
 }
 
 func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct float64, note string) (*EnrollmentDTO, error) {
 	ctx := a.ctx
 
 	billingMode = strings.TrimSpace(billingMode)
-	if billingMode != "subscription" && billingMode != "per_lesson" {
-		return nil, errors.New("billingMode must be 'subscription' or 'per_lesson'")
+	if err := validateBillingMode(billingMode); err != nil {
+		return nil, err
 	}
-	if discountPct < 0 || discountPct > 100 {
-		return nil, errors.New("discountPct must be between 0 and 100")
+	if err := validateDiscountPct(discountPct); err != nil {
+		return nil, err
 	}
 
 	_, err := a.db.Ent.Enrollment.UpdateOneID(enrollmentID).
@@ -492,14 +541,6 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct
 		return nil, err
 	}
 
-	return &EnrollmentDTO{
-		ID:          e2.ID,
-		StudentID:   e2.StudentID,
-		StudentName: e2.Edges.Student.FullName,
-		CourseID:    e2.CourseID,
-		CourseName:  e2.Edges.Course.Name,
-		BillingMode: string(e2.BillingMode),
-		DiscountPct: e2.DiscountPct,
-		Note:        e2.Note,
-	}, nil
+	dto := toEnrollmentDTO(e2)
+	return &dto, nil
 }
