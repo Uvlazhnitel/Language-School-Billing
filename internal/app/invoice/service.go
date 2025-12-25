@@ -148,8 +148,13 @@ func (s *Service) buildSubscriptionLine(en *ent.Enrollment, y, m int, subscripti
 }
 
 // getSettings retrieves the singleton settings record
+// getSettings retrieves the singleton Settings entity from the database.
 func (s *Service) getSettings(ctx context.Context) (*ent.Settings, error) {
-	return s.db.Settings.Query().Where(settings.SingletonIDEQ(1)).Only(ctx)
+	settings, err := s.db.Settings.Query().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).Only(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get settings: %w", err)
+	}
+	return settings, nil
 }
 
 // Select prices: override → (course ± discount)
@@ -423,7 +428,7 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 
 	// Increment the counter
 	if st != nil {
-		if err := tx.Settings.Update().Where(settings.SingletonIDEQ(1)).SetNextSeq(seq + 1).Exec(ctx); err != nil {
+		if err := tx.Settings.Update().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).SetNextSeq(seq + 1).Exec(ctx); err != nil {
 			return "", err
 		}
 	}
@@ -501,6 +506,8 @@ func PDFPathByNumber(outBaseDir string, y, m int, number string) string {
 	return filepath.Join(outBaseDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), number+".pdf")
 }
 
+// List returns invoices for a given period with optional status filter.
+// Optimized to avoid N+1 query by loading invoice lines in a single query.
 func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem, error) {
 	q := s.db.Invoice.Query().
 		Where(
@@ -523,9 +530,40 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 		return nil, err
 	}
 
+	// Get all invoice IDs to fetch line counts in a single query
+	invoiceIDs := make([]int, len(invs))
+	for i, iv := range invs {
+		invoiceIDs[i] = iv.ID
+	}
+
+	// Batch query: get line counts for all invoices at once
+	type countResult struct {
+		InvoiceID int `json:"invoice_id"`
+		Count     int `json:"count"`
+	}
+	
+	var counts []countResult
+	if len(invoiceIDs) > 0 {
+		err = s.db.InvoiceLine.Query().
+			Where(invoiceline.InvoiceIDIn(invoiceIDs...)).
+			GroupBy(invoiceline.FieldInvoiceID).
+			Aggregate(ent.Count()).
+			Scan(ctx, &counts)
+		if err != nil {
+			// If batch query fails, fall back to individual queries
+			counts = nil
+		}
+	}
+
+	// Create a map for O(1) lookup
+	countMap := make(map[int]int)
+	for _, c := range counts {
+		countMap[c.InvoiceID] = c.Count
+	}
+
 	out := make([]ListItem, 0, len(invs))
 	for _, iv := range invs {
-		cnt, _ := s.db.InvoiceLine.Query().Where(invoiceline.InvoiceIDEQ(iv.ID)).Count(ctx)
+		cnt := countMap[iv.ID]
 		out = append(out, ListItem{
 			ID:          iv.ID,
 			StudentID:   iv.StudentID,

@@ -15,6 +15,7 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
 	"langschool/ent/settings"
+	"langschool/internal/app"
 )
 
 // Options — where fonts are located and where to save the PDF.
@@ -102,7 +103,7 @@ func GenerateInvoicePDF(ctx context.Context, db *ent.Client, invoiceID int, opt 
 	// --- Output path: YYYY/MM/NUMBER.pdf ---
 	year, month := iv.PeriodYear, iv.PeriodMonth
 	dir := filepath.Join(outBase, fmt.Sprintf("%04d", year), fmt.Sprintf("%02d", month))
-	if err := os.MkdirAll(dir, 0o755); err != nil {
+	if err := os.MkdirAll(dir, app.DirPermission); err != nil {
 		return "", fmt.Errorf("create dir %s: %w", dir, err)
 	}
 	outPath := filepath.Join(dir, fmt.Sprintf("%s.pdf", *iv.Number))

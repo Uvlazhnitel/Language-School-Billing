@@ -66,7 +66,7 @@ func (a *App) startup(ctx context.Context) {
 	// Ensure single Settings record with singleton_id=1 exists
 	exists, err := a.db.Ent.Settings.
 		Query().
-		Where(settings.SingletonIDEQ(1)).
+		Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
 		Exist(ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -541,7 +541,7 @@ func (a *App) DevClearInvoices(year, month int) (int, error) {
 
 func (a *App) SettingsSetLocale(loc string) error {
 	_, err := a.db.Ent.Settings.
-		Update().Where(settings.SingletonIDEQ(1)).
+		Update().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
 		SetLocale(loc).
 		Save(a.ctx)
 	return err
