@@ -6,6 +6,7 @@ import {
   DevReset,
   EnrollmentDelete,
 } from "../../wailsjs/go/main/App";
+import { CourseType } from "./constants";
 
 export type Row = {
   enrollmentId: number;
@@ -13,7 +14,7 @@ export type Row = {
   studentName: string;
   courseId: number;
   courseName: string;
-  courseType: "group" | "individual";
+  courseType: CourseType;
   lessonPrice: number;
   count: number;
 };

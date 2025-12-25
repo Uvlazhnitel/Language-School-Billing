@@ -7,6 +7,7 @@ import (
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
 	"langschool/ent/enrollment"
+	"langschool/internal/app"
 )
 
 type Service struct{ db *ent.Client }
@@ -28,7 +29,7 @@ type Row struct {
 func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([]Row, error) {
 	q := s.db.Enrollment.
 		Query().
-		Where(enrollment.BillingModeEQ("per_lesson")).
+		Where(enrollment.BillingModeEQ(app.BillingModePerLesson)).
 		WithStudent().
 		WithCourse()
 	if courseID != nil && *courseID > 0 {

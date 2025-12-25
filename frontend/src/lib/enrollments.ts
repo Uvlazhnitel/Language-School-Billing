@@ -3,6 +3,7 @@ import {
   EnrollmentCreate,
   EnrollmentUpdate,
 } from "../../wailsjs/go/main/App";
+import { BillingMode } from "./constants";
 
 export type EnrollmentDTO = {
   id: number;
@@ -10,7 +11,7 @@ export type EnrollmentDTO = {
   studentName: string;
   courseId: number;
   courseName: string;
-  billingMode: "subscription" | "per_lesson";
+  billingMode: BillingMode;
   discountPct: number;
   note: string;
 };

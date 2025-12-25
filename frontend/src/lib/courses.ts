@@ -5,11 +5,12 @@ import {
     CourseUpdate,
     CourseDelete,
 } from "../../wailsjs/go/main/App";
+import { CourseType } from "./constants";
   
   export type CourseDTO = {
     id: number;
     name: string;
-    type: "group" | "individual";
+    type: CourseType;
     lessonPrice: number;
     subscriptionPrice: number;
   };
@@ -24,7 +25,7 @@ import {
   
   export async function createCourse(
     name: string,
-    courseType: "group" | "individual",
+    courseType: CourseType,
     lessonPrice: number,
     subscriptionPrice: number
   ) {
@@ -34,7 +35,7 @@ import {
   export async function updateCourse(
     id: number,
     name: string,
-    courseType: "group" | "individual",
+    courseType: CourseType,
     lessonPrice: number,
     subscriptionPrice: number
   ) {
