@@ -7,6 +7,7 @@ import {
     InvoicePaymentSummary,
     PaymentQuickCash
     } from "../../wailsjs/go/main/App";
+import { PaymentMethod } from "./constants";
   
   export type PaymentDTO = {
     id: number;
@@ -14,7 +15,7 @@ import {
     invoiceId?: number;
     paidAt: string;     // RFC3339
     amount: number;
-    method: "cash" | "bank";
+    method: PaymentMethod;
     note: string;
     createdAt: string;  // RFC3339
   };
@@ -49,7 +50,7 @@ import {
     studentId: number,
     invoiceId: number | undefined,
     amount: number,
-    method: "cash" | "bank",
+    method: PaymentMethod,
     paidAt: string, // "YYYY-MM-DD"
     note: string
   ) {

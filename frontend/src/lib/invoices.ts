@@ -8,6 +8,7 @@ import {
     InvoiceEnsurePDF,
     OpenFile,
 } from "../../wailsjs/go/main/App";
+import { InvoiceStatus } from "./constants";
   
   export type InvoiceListItem = {
     id: number;
@@ -16,7 +17,7 @@ import {
     year: number;
     month: number;
     total: number;
-    status: "draft" | "issued" | "paid" | "canceled";
+    status: InvoiceStatus;
     linesCount: number;
     number?: string;
   };
@@ -36,7 +37,7 @@ import {
     year: number;
     month: number;
     total: number;
-    status: "draft" | "issued" | "paid" | "canceled";
+    status: InvoiceStatus;
     number?: string;
     lines: InvoiceLine[];
   };
