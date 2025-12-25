@@ -201,7 +201,14 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 
 // ----- Draft generation -----
 
-// GenerateDrafts creates drafts for students for a given period (rebuilds draft on repeated calls)
+// GenerateDrafts creates draft invoices for all active students in the specified period.
+// For each student enrollment, it determines the appropriate billing method (per-lesson or subscription)
+// and creates invoice lines accordingly. Existing drafts for the period are rebuilt on repeated calls.
+//
+// The method returns:
+// - count: number of draft invoices created
+// - paths: list of PDF paths where issued invoices will be saved (when issued)
+// - error: any error encountered during generation
 func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult, error) {
 	res := GenerateResult{}
 
