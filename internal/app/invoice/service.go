@@ -77,8 +77,6 @@ type GenerateResult struct {
 
 // ----- Domain utilities -----
 
-func round2(v float64) float64 { return math.Round(v*100) / 100 }
-
 func periodBounds(y, m int) (start, end time.Time) {
 	start = time.Date(y, time.Month(m), 1, 0, 0, 0, 0, time.Local)
 	end = start.AddDate(0, 1, -1)
@@ -121,7 +119,7 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 		qty = am.LessonsCount
 	}
 
-	amount := round2(float64(qty) * lessonPrice)
+	amount := utils.Round2(float64(qty) * lessonPrice)
 	desc := fmt.Sprintf("Payment for lessons (%02d.%d), course #%d", m, y, en.CourseID)
 
 	line := s.db.InvoiceLine.Create().
@@ -136,7 +134,7 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 
 // buildSubscriptionLine creates an invoice line for subscription billing
 func (s *Service) buildSubscriptionLine(en *ent.Enrollment, y, m int, subscriptionPrice float64) (*ent.InvoiceLineCreate, float64) {
-	amount := round2(subscriptionPrice)
+	amount := utils.Round2(subscriptionPrice)
 	desc := fmt.Sprintf("Subscription (%02d.%d), course #%d", m, y, en.CourseID)
 
 	line := s.db.InvoiceLine.Create().
@@ -163,8 +161,8 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 	if err == nil && c != nil {
 		lp, sp := c.LessonPrice, c.SubscriptionPrice
 		if en.DiscountPct != 0 {
-			lp = round2(lp * (1 - en.DiscountPct/100.0))
-			sp = round2(sp * (1 - en.DiscountPct/100.0))
+			lp = utils.Round2(lp * (1 - en.DiscountPct/100.0))
+			sp = utils.Round2(sp * (1 - en.DiscountPct/100.0))
 		}
 		lessonPrice, subscriptionPrice = lp, sp
 	}
@@ -259,7 +257,7 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 			res.SkippedNoLines++
 			continue
 		}
-		total = round2(total)
+		total = utils.Round2(total)
 
 		// Find ANY invoice for the period
 		existing, _ := s.db.Invoice.Query().Where(
@@ -327,7 +325,7 @@ func (s *Service) ListDrafts(ctx context.Context, y, m int) ([]ListItem, error) 
 		items = append(items, ListItem{
 			ID: iv.ID, StudentID: iv.StudentID, StudentName: getStudentName(iv),
 			Year: iv.PeriodYear, Month: iv.PeriodMonth,
-			Total: round2(iv.TotalAmount), Status: string(iv.Status), LinesCount: count, Number: iv.Number,
+			Total: utils.Round2(iv.TotalAmount), Status: string(iv.Status), LinesCount: count, Number: iv.Number,
 		})
 	}
 	return items, nil
@@ -347,15 +345,15 @@ func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 		ID: iv.ID, StudentID: iv.StudentID,
 		StudentName: getStudentName(iv),
 		Year:        iv.PeriodYear, Month: iv.PeriodMonth,
-		Total: round2(iv.TotalAmount), Status: string(iv.Status), Number: iv.Number,
+		Total: utils.Round2(iv.TotalAmount), Status: string(iv.Status), Number: iv.Number,
 	}
 	for _, l := range ls {
 		dto.Lines = append(dto.Lines, LineDTO{
 			EnrollmentID: l.EnrollmentID,
 			Description:  l.Description,
 			Qty:          l.Qty,
-			UnitPrice:    round2(l.UnitPrice),
-			Amount:       round2(l.Amount),
+			UnitPrice:    utils.Round2(l.UnitPrice),
+			Amount:       utils.Round2(l.Amount),
 		})
 	}
 	return dto, nil
@@ -534,7 +532,7 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 			StudentName: getStudentName(iv),
 			Year:        iv.PeriodYear,
 			Month:       iv.PeriodMonth,
-			Total:       round2(iv.TotalAmount),
+			Total:       utils.Round2(iv.TotalAmount),
 			Status:      string(iv.Status),
 			LinesCount:  cnt,
 			Number:      iv.Number,

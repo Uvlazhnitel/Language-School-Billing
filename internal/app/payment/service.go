@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"math"
 	"sort"
 	"time"
 
@@ -14,6 +13,7 @@ import (
 	"langschool/ent/payment"
 	"langschool/ent/student"
 	"langschool/internal/app"
+	"langschool/internal/app/utils"
 )
 
 type Service struct{ db *ent.Client }
@@ -57,7 +57,6 @@ type InvoiceSummaryDTO struct {
 	Number    *string `json:"number,omitempty"`
 }
 
-func round2(v float64) float64 { return math.Round(v*100) / 100 }
 
 // eps returns the epsilon value used for floating-point comparisons.
 // The value 0.009 is chosen to account for rounding errors in currency calculations
@@ -113,7 +112,7 @@ func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amo
 
 	p, err := s.db.Payment.Create().
 		SetStudentID(studentID).
-		SetAmount(round2(amount)).
+		SetAmount(utils.Round2(amount)).
 		SetMethod(payment.Method(method)).
 		SetPaidAt(t).
 		SetNote(note).
@@ -176,9 +175,9 @@ func (s *Service) InvoiceSummary(ctx context.Context, invoiceID int) (*InvoiceSu
 	if err != nil {
 		return nil, err
 	}
-	total := round2(iv.TotalAmount)
-	paid = round2(paid)
-	rem := round2(total - paid)
+	total := utils.Round2(iv.TotalAmount)
+	paid = utils.Round2(paid)
+	rem := utils.Round2(total - paid)
 	if rem < 0 {
 		rem = 0
 	}
@@ -207,12 +206,12 @@ func (s *Service) StudentBalance(ctx context.Context, studentID int) (*BalanceDT
 		return nil, err
 	}
 
-	invoiced = round2(invoiced)
-	paid = round2(paid)
-	bal := round2(paid - invoiced)
+	invoiced = utils.Round2(invoiced)
+	paid = utils.Round2(paid)
+	bal := utils.Round2(paid - invoiced)
 	debt := 0.0
 	if bal < 0 {
-		debt = round2(-bal)
+		debt = utils.Round2(-bal)
 	}
 
 	return &BalanceDTO{
@@ -351,7 +350,7 @@ func toDTO(p *ent.Payment) *PaymentDTO {
 		StudentID: p.StudentID,
 		InvoiceID: invID,
 		PaidAt:    p.PaidAt.Format(time.RFC3339),
-		Amount:    round2(p.Amount),
+		Amount:    utils.Round2(p.Amount),
 		Method:    string(p.Method),
 		Note:      p.Note,
 		CreatedAt: p.CreatedAt.Format(time.RFC3339),
