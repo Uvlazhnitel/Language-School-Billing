@@ -19,6 +19,7 @@ import (
 	"langschool/ent/invoiceline"
 	"langschool/ent/settings"
 	"langschool/ent/student"
+	"langschool/internal/app"
 	"langschool/internal/app/attendance"
 
 	invsvc "langschool/internal/app/invoice"
