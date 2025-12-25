@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	rt "runtime"
+	"strings"
 	"time"
 
 	"langschool/ent/course"
@@ -407,13 +408,27 @@ func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 }
 
 // Open file (PDF) in OS
+// Only allows opening files within the LangSchool directory tree to prevent path traversal attacks.
 func (a *App) OpenFile(path string) error {
+	// Normalize the path
 	if abs, err := filepath.Abs(path); err == nil {
 		path = abs
 	}
+	
+	// Security check: Ensure file is within allowed directories
+	allowedBase := filepath.Clean(a.dirs.Base)
+	cleanPath := filepath.Clean(path)
+	
+	// Check if the path is within the LangSchool directory
+	if !strings.HasPrefix(cleanPath, allowedBase) {
+		return fmt.Errorf("access denied: file must be within %s directory", allowedBase)
+	}
+	
+	// Verify file exists
 	if _, err := os.Stat(path); err != nil {
 		return err
 	}
+	
 	var cmd *exec.Cmd
 	switch rt.GOOS {
 	case "darwin":

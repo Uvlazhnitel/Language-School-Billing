@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"html"
 	"strings"
 
 	"langschool/ent"
@@ -12,18 +13,19 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
 	"langschool/ent/student"
+	"langschool/internal/app"
 )
 
-// -------------------- Constants --------------------
+// -------------------- Constants (imported from internal/app) --------------------
 
 const (
 	// Course types
-	CourseTypeGroup      = "group"
-	CourseTypeIndividual = "individual"
+	CourseTypeGroup      = app.CourseTypeGroup
+	CourseTypeIndividual = app.CourseTypeIndividual
 
 	// Billing modes
-	BillingModeSubscription = "subscription"
-	BillingModePerLesson    = "per_lesson"
+	BillingModeSubscription = app.BillingModeSubscription
+	BillingModePerLesson    = app.BillingModePerLesson
 )
 
 // -------------------- DTOs for Wails --------------------
@@ -96,6 +98,13 @@ func validateDiscountPct(discountPct float64) error {
 		return errors.New("discountPct must be between 0 and 100")
 	}
 	return nil
+}
+
+// sanitizeInput trims and HTML-escapes user input to prevent XSS attacks.
+// This is particularly important for fields that end up in PDFs or other outputs.
+func sanitizeInput(input string) string {
+	trimmed := strings.TrimSpace(input)
+	return html.EscapeString(trimmed)
 }
 
 // -------------------- DTO conversion helpers --------------------
@@ -191,16 +200,16 @@ func (a *App) StudentGet(id int) (*StudentDTO, error) {
 }
 
 func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, error) {
-	fullName = strings.TrimSpace(fullName)
+	fullName = sanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
 		return nil, err
 	}
 
 	s, err := a.db.Ent.Student.Create().
 		SetFullName(fullName).
-		SetPhone(strings.TrimSpace(phone)).
-		SetEmail(strings.TrimSpace(email)).
-		SetNote(strings.TrimSpace(note)).
+		SetPhone(sanitizeInput(phone)).
+		SetEmail(sanitizeInput(email)).
+		SetNote(sanitizeInput(note)).
 		SetIsActive(true).
 		Save(a.ctx)
 	if err != nil {
@@ -212,15 +221,16 @@ func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, e
 }
 
 func (a *App) StudentUpdate(id int, fullName, phone, email, note string) (*StudentDTO, error) {
-	fullName = strings.TrimSpace(fullName)
+	fullName = sanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
 		return nil, err
 	}
 
 	s, err := a.db.Ent.Student.UpdateOneID(id).
 		SetFullName(fullName).
-		SetPhone(strings.TrimSpace(phone)).
-		SetEmail(strings.TrimSpace(email)).
+		SetPhone(sanitizeInput(phone)).
+		SetEmail(sanitizeInput(email)).
+		SetNote(sanitizeInput(note)).
 		SetNote(strings.TrimSpace(note)).
 		Save(a.ctx)
 	if err != nil {
@@ -343,7 +353,7 @@ func (a *App) CourseGet(id int) (*CourseDTO, error) {
 }
 
 func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
-	name = strings.TrimSpace(name)
+	name = sanitizeInput(name)
 	courseType = strings.TrimSpace(courseType)
 
 	if err := validateNonEmpty(name, "name"); err != nil {
@@ -371,7 +381,7 @@ func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPri
 }
 
 func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
-	name = strings.TrimSpace(name)
+	name = sanitizeInput(name)
 	courseType = strings.TrimSpace(courseType)
 
 	if err := validateNonEmpty(name, "name"); err != nil {
@@ -491,7 +501,7 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 		SetCourseID(courseID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetDiscountPct(discountPct).
-		SetNote(strings.TrimSpace(note)).
+		SetNote(sanitizeInput(note)).
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -525,7 +535,7 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct
 	_, err := a.db.Ent.Enrollment.UpdateOneID(enrollmentID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetDiscountPct(discountPct).
-		SetNote(strings.TrimSpace(note)).
+		SetNote(sanitizeInput(note)).
 		Save(ctx)
 	if err != nil {
 		return nil, err
