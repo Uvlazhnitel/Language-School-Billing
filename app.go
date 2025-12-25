@@ -163,14 +163,14 @@ func (a *App) DevSeed() (int, error) {
 	if err != nil {
 		cA2, _ = db.Course.Create().
 			SetName("English A2 (group)").
-			SetType("group").SetLessonPrice(15).SetSubscriptionPrice(120).
+			SetType(CourseTypeGroup).SetLessonPrice(15).SetSubscriptionPrice(120).
 			Save(ctx)
 	}
 	cB1, err := db.Course.Query().Where(course.NameEQ("English B1 (individual)")).Only(ctx)
 	if err != nil {
 		cB1, _ = db.Course.Create().
 			SetName("English B1 (individual)").
-			SetType("individual").SetLessonPrice(25).SetSubscriptionPrice(0).
+			SetType(CourseTypeIndividual).SetLessonPrice(25).SetSubscriptionPrice(0).
 			Save(ctx)
 	}
 
@@ -180,7 +180,7 @@ func (a *App) DevSeed() (int, error) {
 		Only(ctx); err != nil {
 		_, _ = db.Enrollment.Create().
 			SetStudentID(sAnna.ID).SetCourseID(cA2.ID).
-			SetBillingMode("subscription").Save(ctx)
+			SetBillingMode(BillingModeSubscription).Save(ctx)
 	}
 
 	if _, err := db.Enrollment.Query().
@@ -188,7 +188,7 @@ func (a *App) DevSeed() (int, error) {
 		Only(ctx); err != nil {
 		_, _ = db.Enrollment.Create().
 			SetStudentID(sDima.ID).SetCourseID(cA2.ID).
-			SetBillingMode("per_lesson").Save(ctx)
+			SetBillingMode(BillingModePerLesson).Save(ctx)
 	}
 
 	if _, err := db.Enrollment.Query().
@@ -196,7 +196,7 @@ func (a *App) DevSeed() (int, error) {
 		Only(ctx); err != nil {
 		_, _ = db.Enrollment.Create().
 			SetStudentID(sDima.ID).SetCourseID(cB1.ID).
-			SetBillingMode("per_lesson").Save(ctx)
+			SetBillingMode(BillingModePerLesson).Save(ctx)
 	}
 
 	return 2, nil // return the number of base students
