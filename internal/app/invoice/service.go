@@ -15,18 +15,19 @@ import (
 	"langschool/ent/priceoverride"
 	"langschool/ent/settings"
 	"langschool/ent/student"
+	"langschool/internal/app"
 	pdfgen "langschool/internal/pdf"
 )
 
-// Constants for invoice statuses and billing modes
+// Constants for invoice statuses and billing modes (aliased from shared package)
 const (
-	StatusDraft    = "draft"
-	StatusIssued   = "issued"
-	StatusPaid     = "paid"
-	StatusCanceled = "canceled"
+	StatusDraft    = app.InvoiceStatusDraft
+	StatusIssued   = app.InvoiceStatusIssued
+	StatusPaid     = app.InvoiceStatusPaid
+	StatusCanceled = app.InvoiceStatusCanceled
 
-	BillingPerLesson    = "per_lesson"
-	BillingSubscription = "subscription"
+	BillingPerLesson    = app.BillingModePerLesson
+	BillingSubscription = app.BillingModeSubscription
 )
 
 type Service struct{ db *ent.Client }

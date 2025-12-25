@@ -13,6 +13,7 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
 	"langschool/ent/student"
+	"langschool/internal/app"
 )
 
 type Service struct{ db *ent.Client }
@@ -80,7 +81,7 @@ func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amo
 	if amount <= 0 {
 		return nil, errors.New("amount must be > 0")
 	}
-	if method != "cash" && method != "bank" {
+	if method != app.PaymentMethodCash && method != app.PaymentMethodBank {
 		return nil, errors.New("method must be 'cash' or 'bank'")
 	}
 	t, err := parseDate(paidAt)
@@ -102,10 +103,10 @@ func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amo
 		if iv.StudentID != studentID {
 			return nil, errors.New("invoice does not belong to student")
 		}
-		if iv.Status == "draft" {
+		if iv.Status == app.InvoiceStatusDraft {
 			return nil, errors.New("cannot attach payment to a draft invoice; issue it first")
 		}
-		if iv.Status == "canceled" {
+		if iv.Status == app.InvoiceStatusCanceled {
 			return nil, errors.New("cannot attach payment to a canceled invoice")
 		}
 	}
@@ -257,7 +258,7 @@ func (s *Service) ListDebtors(ctx context.Context) ([]DebtorDTO, error) {
 // For this session we accept a direct amount from UI, but this helper exists for convenience.
 func (s *Service) QuickCash(ctx context.Context, studentID int, amount float64, note string) (*PaymentDTO, error) {
 	t := time.Now()
-	return s.Create(ctx, studentID, nil, amount, "cash", t.Format("2006-01-02"), note)
+	return s.Create(ctx, studentID, nil, amount, app.PaymentMethodCash, t.Format("2006-01-02"), note)
 }
 
 func (s *Service) recomputeInvoiceStatus(ctx context.Context, invoiceID int) error {
@@ -265,10 +266,10 @@ func (s *Service) recomputeInvoiceStatus(ctx context.Context, invoiceID int) err
 	if err != nil {
 		return err
 	}
-	if iv.Status == "canceled" {
+	if iv.Status == app.InvoiceStatusCanceled {
 		return nil
 	}
-	if iv.Status == "draft" {
+	if iv.Status == app.InvoiceStatusDraft {
 		return nil
 	}
 
@@ -279,16 +280,16 @@ func (s *Service) recomputeInvoiceStatus(ctx context.Context, invoiceID int) err
 
 	total := iv.TotalAmount
 	if paid+eps() >= total {
-		if iv.Status != "paid" {
-			_, err := iv.Update().SetStatus("paid").Save(ctx)
+		if iv.Status != app.InvoiceStatusPaid {
+			_, err := iv.Update().SetStatus(app.InvoiceStatusPaid).Save(ctx)
 			return err
 		}
 		return nil
 	}
 
 	// Not fully paid. If invoice was marked paid earlier, revert to issued.
-	if iv.Status == "paid" {
-		_, err := iv.Update().SetStatus("issued").Save(ctx)
+	if iv.Status == app.InvoiceStatusPaid {
+		_, err := iv.Update().SetStatus(app.InvoiceStatusIssued).Save(ctx)
 		return err
 	}
 	return nil
@@ -326,7 +327,7 @@ func (s *Service) sumInvoicesForStudent(ctx context.Context, studentID int) (flo
 	invs, err := s.db.Invoice.Query().
 		Where(
 			invoice.StudentIDEQ(studentID),
-			invoice.StatusIn("issued", "paid"),
+			invoice.StatusIn(app.InvoiceStatusIssued, app.InvoiceStatusPaid),
 		).
 		All(ctx)
 	if err != nil {
