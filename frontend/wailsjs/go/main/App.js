@@ -54,14 +54,6 @@ export function DevClearInvoices(arg1, arg2) {
   return window['go']['main']['App']['DevClearInvoices'](arg1, arg2);
 }
 
-export function DevReset() {
-  return window['go']['main']['App']['DevReset']();
-}
-
-export function DevSeed() {
-  return window['go']['main']['App']['DevSeed']();
-}
-
 export function EnrollmentCreate(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['EnrollmentCreate'](arg1, arg2, arg3, arg4, arg5);
 }

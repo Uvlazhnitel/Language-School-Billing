@@ -7,7 +7,7 @@
   "frontend:dev:watcher": "npm run dev",
   "frontend:dev:serverUrl": "auto",
   "author": {
-    "name": "Ilya",
-    "email": "ilya.yunkins@gmail.com"
+    "name": "Language School Billing",
+    "email": "info@example.com"
   }
 }
