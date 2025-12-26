@@ -13,12 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"langschool/ent/course"
-	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
 	"langschool/ent/settings"
-	"langschool/ent/student"
 	"langschool/internal/app"
 	"langschool/internal/app/attendance"
 
