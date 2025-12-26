@@ -80,7 +80,7 @@ func (a *App) startup(ctx context.Context) {
 			SetInvoiceDayOfMonth(1).
 			SetAutoIssue(false).
 			SetCurrency("EUR").
-			SetLocale("ru-RU").
+			SetLocale("lv-LV").
 			Save(ctx); err != nil {
 			log.Fatal(err)
 		}
