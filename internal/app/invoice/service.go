@@ -147,7 +147,6 @@ func (s *Service) buildSubscriptionLine(en *ent.Enrollment, y, m int, subscripti
 	return line, amount
 }
 
-// getSettings retrieves the singleton settings record
 // getSettings retrieves the singleton Settings entity from the database.
 func (s *Service) getSettings(ctx context.Context) (*ent.Settings, error) {
 	settings, err := s.db.Settings.Query().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).Only(ctx)
@@ -399,7 +398,7 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Proper defer pattern: only rollback if commit hasn't been called
 	committed := false
 	defer func() {
@@ -548,7 +547,7 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 		InvoiceID int `json:"invoice_id"`
 		Count     int `json:"count"`
 	}
-	
+
 	var counts []countResult
 	if len(invoiceIDs) > 0 {
 		err = s.db.InvoiceLine.Query().

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { listStudents, createStudent, updateStudent, setStudentActive, deleteStudent, StudentDTO } from "../lib/students";
+import { listStudents, StudentDTO } from "../lib/students";
 
 interface StudentsTabProps {
   showMessage: (text: string, type?: "success" | "error") => void;
@@ -17,12 +17,7 @@ interface StudentsTabProps {
 export function StudentsTab({ showMessage, showConfirm }: StudentsTabProps) {
   const [students, setStudents] = useState<StudentDTO[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [editingStudent, setEditingStudent] = useState<StudentDTO | null>(null);
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [formFullName, setFormFullName] = useState("");
-  const [formPhone, setFormPhone] = useState("");
-  const [formEmail, setFormEmail] = useState("");
-  const [formNote, setFormNote] = useState("");
+  const [, setShowCreateForm] = useState(false);
 
   useEffect(() => {
     loadStudents();
@@ -35,25 +30,6 @@ export function StudentsTab({ showMessage, showConfirm }: StudentsTabProps) {
     } catch (error) {
       showMessage(`Failed to load students: ${error}`, "error");
     }
-  };
-
-  const handleCreate = async () => {
-    try {
-      await createStudent(formFullName, formPhone, formEmail, formNote);
-      showMessage("Student created successfully", "success");
-      setShowCreateForm(false);
-      clearForm();
-      loadStudents();
-    } catch (error) {
-      showMessage(`Failed to create student: ${error}`, "error");
-    }
-  };
-
-  const clearForm = () => {
-    setFormFullName("");
-    setFormPhone("");
-    setFormEmail("");
-    setFormNote("");
   };
 
   return (
