@@ -3,7 +3,6 @@ package main
 import (
 	"errors"
 	"fmt"
-	"html"
 	"strings"
 
 	"langschool/ent"
@@ -14,6 +13,7 @@ import (
 	"langschool/ent/payment"
 	"langschool/ent/student"
 	"langschool/internal/app"
+	"langschool/internal/validation"
 )
 
 // -------------------- Constants (imported from internal/app) --------------------
@@ -98,13 +98,6 @@ func validateDiscountPct(discountPct float64) error {
 		return errors.New("discountPct must be between 0 and 100")
 	}
 	return nil
-}
-
-// sanitizeInput trims and HTML-escapes user input to prevent XSS attacks.
-// This is particularly important for fields that end up in PDFs or other outputs.
-func sanitizeInput(input string) string {
-	trimmed := strings.TrimSpace(input)
-	return html.EscapeString(trimmed)
 }
 
 // -------------------- DTO conversion helpers --------------------
@@ -209,16 +202,16 @@ func (a *App) StudentGet(id int) (*StudentDTO, error) {
 // The fullName parameter is required (validated to be non-empty).
 // The student is created as active by default.
 func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, error) {
-	fullName = sanitizeInput(fullName)
+	fullName = validation.SanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
 		return nil, err
 	}
 
 	s, err := a.db.Ent.Student.Create().
 		SetFullName(fullName).
-		SetPhone(sanitizeInput(phone)).
-		SetEmail(sanitizeInput(email)).
-		SetNote(sanitizeInput(note)).
+		SetPhone(validation.SanitizeInput(phone)).
+		SetEmail(validation.SanitizeInput(email)).
+		SetNote(validation.SanitizeInput(note)).
 		SetIsActive(true).
 		Save(a.ctx)
 	if err != nil {
@@ -233,17 +226,16 @@ func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, e
 // All user inputs are sanitized to prevent XSS attacks.
 // The fullName parameter is required (validated to be non-empty).
 func (a *App) StudentUpdate(id int, fullName, phone, email, note string) (*StudentDTO, error) {
-	fullName = sanitizeInput(fullName)
+	fullName = validation.SanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
 		return nil, err
 	}
 
 	s, err := a.db.Ent.Student.UpdateOneID(id).
 		SetFullName(fullName).
-		SetPhone(sanitizeInput(phone)).
-		SetEmail(sanitizeInput(email)).
-		SetNote(sanitizeInput(note)).
-		SetNote(strings.TrimSpace(note)).
+		SetPhone(validation.SanitizeInput(phone)).
+		SetEmail(validation.SanitizeInput(email)).
+		SetNote(validation.SanitizeInput(note)).
 		Save(a.ctx)
 	if err != nil {
 		return nil, err
@@ -374,7 +366,7 @@ func (a *App) CourseGet(id int) (*CourseDTO, error) {
 // The course name is sanitized to prevent XSS attacks.
 // Prices must be non-negative. Course type must be either "group" or "individual".
 func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
-	name = sanitizeInput(name)
+	name = validation.SanitizeInput(name)
 	courseType = strings.TrimSpace(courseType)
 
 	if err := validateNonEmpty(name, "name"); err != nil {
@@ -402,7 +394,7 @@ func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPri
 }
 
 func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
-	name = sanitizeInput(name)
+	name = validation.SanitizeInput(name)
 	courseType = strings.TrimSpace(courseType)
 
 	if err := validateNonEmpty(name, "name"); err != nil {
@@ -524,7 +516,7 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 		SetCourseID(courseID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetDiscountPct(discountPct).
-		SetNote(sanitizeInput(note)).
+		SetNote(validation.SanitizeInput(note)).
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -558,7 +550,7 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct
 	_, err := a.db.Ent.Enrollment.UpdateOneID(enrollmentID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetDiscountPct(discountPct).
-		SetNote(sanitizeInput(note)).
+		SetNote(validation.SanitizeInput(note)).
 		Save(ctx)
 	if err != nil {
 		return nil, err
