@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"html"
 	"strings"
 
 	"langschool/ent"
@@ -12,18 +13,19 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
 	"langschool/ent/student"
+	"langschool/internal/app"
 )
 
-// -------------------- Constants --------------------
+// -------------------- Constants (imported from internal/app) --------------------
 
 const (
 	// Course types
-	CourseTypeGroup      = "group"
-	CourseTypeIndividual = "individual"
+	CourseTypeGroup      = app.CourseTypeGroup
+	CourseTypeIndividual = app.CourseTypeIndividual
 
 	// Billing modes
-	BillingModeSubscription = "subscription"
-	BillingModePerLesson    = "per_lesson"
+	BillingModeSubscription = app.BillingModeSubscription
+	BillingModePerLesson    = app.BillingModePerLesson
 )
 
 // -------------------- DTOs for Wails --------------------
@@ -98,6 +100,13 @@ func validateDiscountPct(discountPct float64) error {
 	return nil
 }
 
+// sanitizeInput trims and HTML-escapes user input to prevent XSS attacks.
+// This is particularly important for fields that end up in PDFs or other outputs.
+func sanitizeInput(input string) string {
+	trimmed := strings.TrimSpace(input)
+	return html.EscapeString(trimmed)
+}
+
 // -------------------- DTO conversion helpers --------------------
 
 // toStudentDTO converts an ent.Student to StudentDTO.
@@ -147,6 +156,9 @@ func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
 
 // StudentList returns active students by default. If includeInactive=true, returns all.
 // If q is not empty, filters by name/phone/email (case-insensitive where supported).
+// StudentList retrieves a list of students, optionally filtered by search query.
+// The query parameter 'q' searches in student names.
+// Set includeInactive to true to include deactivated students in the results.
 func (a *App) StudentList(q string, includeInactive bool) ([]StudentDTO, error) {
 	ctx := a.ctx
 	q = strings.TrimSpace(q)
@@ -181,6 +193,8 @@ func (a *App) StudentList(q string, includeInactive bool) ([]StudentDTO, error) 
 	return out, nil
 }
 
+// StudentGet retrieves a single student by ID.
+// Returns an error if the student is not found.
 func (a *App) StudentGet(id int) (*StudentDTO, error) {
 	s, err := a.db.Ent.Student.Get(a.ctx, id)
 	if err != nil {
@@ -190,17 +204,21 @@ func (a *App) StudentGet(id int) (*StudentDTO, error) {
 	return &dto, nil
 }
 
+// StudentCreate creates a new student with the provided details.
+// All user inputs are sanitized to prevent XSS attacks.
+// The fullName parameter is required (validated to be non-empty).
+// The student is created as active by default.
 func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, error) {
-	fullName = strings.TrimSpace(fullName)
+	fullName = sanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
 		return nil, err
 	}
 
 	s, err := a.db.Ent.Student.Create().
 		SetFullName(fullName).
-		SetPhone(strings.TrimSpace(phone)).
-		SetEmail(strings.TrimSpace(email)).
-		SetNote(strings.TrimSpace(note)).
+		SetPhone(sanitizeInput(phone)).
+		SetEmail(sanitizeInput(email)).
+		SetNote(sanitizeInput(note)).
 		SetIsActive(true).
 		Save(a.ctx)
 	if err != nil {
@@ -211,16 +229,20 @@ func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, e
 	return &dto, nil
 }
 
+// StudentUpdate updates an existing student's information.
+// All user inputs are sanitized to prevent XSS attacks.
+// The fullName parameter is required (validated to be non-empty).
 func (a *App) StudentUpdate(id int, fullName, phone, email, note string) (*StudentDTO, error) {
-	fullName = strings.TrimSpace(fullName)
+	fullName = sanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
 		return nil, err
 	}
 
 	s, err := a.db.Ent.Student.UpdateOneID(id).
 		SetFullName(fullName).
-		SetPhone(strings.TrimSpace(phone)).
-		SetEmail(strings.TrimSpace(email)).
+		SetPhone(sanitizeInput(phone)).
+		SetEmail(sanitizeInput(email)).
+		SetNote(sanitizeInput(note)).
 		SetNote(strings.TrimSpace(note)).
 		Save(a.ctx)
 	if err != nil {
@@ -232,6 +254,8 @@ func (a *App) StudentUpdate(id int, fullName, phone, email, note string) (*Stude
 }
 
 // StudentSetActive deactivates (or activates) a student without deleting history.
+// StudentSetActive activates or deactivates a student.
+// Deactivated students are hidden from most lists and cannot be enrolled in new courses.
 func (a *App) StudentSetActive(id int, active bool) error {
 	_, err := a.db.Ent.Student.UpdateOneID(id).
 		SetIsActive(active).
@@ -241,6 +265,10 @@ func (a *App) StudentSetActive(id int, active bool) error {
 
 // StudentDelete deletes a student. If inactive, automatically removes enrollments and attendance.
 // Prevents deletion if student has invoices or payments (financial records).
+// StudentDelete permanently removes a student and associated data.
+// The student must be deactivated (isActive=false) before deletion.
+// The student must not have any invoices or payments (to preserve financial records).
+// This operation also deletes all enrollments and attendance records for the student.
 func (a *App) StudentDelete(id int) error {
 	ctx := a.ctx
 
@@ -342,8 +370,11 @@ func (a *App) CourseGet(id int) (*CourseDTO, error) {
 	return &dto, nil
 }
 
+// CourseCreate creates a new course with the specified details.
+// The course name is sanitized to prevent XSS attacks.
+// Prices must be non-negative. Course type must be either "group" or "individual".
 func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
-	name = strings.TrimSpace(name)
+	name = sanitizeInput(name)
 	courseType = strings.TrimSpace(courseType)
 
 	if err := validateNonEmpty(name, "name"); err != nil {
@@ -371,7 +402,7 @@ func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPri
 }
 
 func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
-	name = strings.TrimSpace(name)
+	name = sanitizeInput(name)
 	courseType = strings.TrimSpace(courseType)
 
 	if err := validateNonEmpty(name, "name"); err != nil {
@@ -444,8 +475,10 @@ func (a *App) EnrollmentList(studentID *int, courseID *int) ([]EnrollmentDTO, er
 	return out, nil
 }
 
-// EnrollmentCreate creates an enrollment (student -> course).
-// To prevent duplicates, it rejects if an enrollment for the same pair already exists.
+// EnrollmentCreate creates a new enrollment linking a student to a course.
+// The billingMode determines how the student is billed: "subscription" or "per_lesson".
+// The discountPct applies a percentage discount to the course prices (0-100).
+// To prevent duplicates, this method rejects enrollments if the same student-course pair already exists.
 func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, discountPct float64, note string) (*EnrollmentDTO, error) {
 	ctx := a.ctx
 
@@ -491,7 +524,7 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 		SetCourseID(courseID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetDiscountPct(discountPct).
-		SetNote(strings.TrimSpace(note)).
+		SetNote(sanitizeInput(note)).
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -525,7 +558,7 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct
 	_, err := a.db.Ent.Enrollment.UpdateOneID(enrollmentID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetDiscountPct(discountPct).
-		SetNote(strings.TrimSpace(note)).
+		SetNote(sanitizeInput(note)).
 		Save(ctx)
 	if err != nil {
 		return nil, err

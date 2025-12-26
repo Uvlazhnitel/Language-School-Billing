@@ -10,14 +10,13 @@ import (
 	"os/exec"
 	"path/filepath"
 	rt "runtime"
+	"strings"
 	"time"
 
-	"langschool/ent/course"
-	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
 	"langschool/ent/settings"
-	"langschool/ent/student"
+	"langschool/internal/app"
 	"langschool/internal/app/attendance"
 
 	invsvc "langschool/internal/app/invoice"
@@ -65,7 +64,7 @@ func (a *App) startup(ctx context.Context) {
 	// Ensure single Settings record with singleton_id=1 exists
 	exists, err := a.db.Ent.Settings.
 		Query().
-		Where(settings.SingletonIDEQ(1)).
+		Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
 		Exist(ctx)
 	if err != nil {
 		log.Fatal(err)
@@ -81,7 +80,7 @@ func (a *App) startup(ctx context.Context) {
 			SetInvoiceDayOfMonth(1).
 			SetAutoIssue(false).
 			SetCurrency("EUR").
-			SetLocale("ru-RU").
+			SetLocale("lv-LV").
 			Save(ctx); err != nil {
 			log.Fatal(err)
 		}
@@ -101,105 +100,6 @@ func (a *App) shutdown(ctx context.Context) {
 	if a.db != nil {
 		_ = a.db.Ent.Close()
 	}
-}
-
-// DevReset deletes all demo data (except Settings)
-func (a *App) DevReset() (int, error) {
-	ctx := a.ctx
-	db := a.db.Ent
-
-	n1, err := db.AttendanceMonth.Delete().Exec(ctx)
-	if err != nil {
-		return 0, err
-	}
-	n2, err := db.Enrollment.Delete().Exec(ctx)
-	if err != nil {
-		return 0, err
-	}
-	n3, err := db.Course.Delete().Exec(ctx)
-	if err != nil {
-		return 0, err
-	}
-	n4, err := db.Student.Delete().Exec(ctx)
-	if err != nil {
-		return 0, err
-	}
-
-	return n1 + n2 + n3 + n4, nil
-}
-
-// DevSeed inserts demo data, avoiding duplicates
-func (a *App) DevSeed() (int, error) {
-	ctx := a.ctx
-	db := a.db.Ent
-
-	// students
-	sAnna, err := db.Student.Query().Where(student.FullNameEQ("Anna K.")).Only(ctx)
-	if err != nil {
-		sAnna, _ = db.Student.Create().
-			SetFullName("Anna K.").
-			SetPhone("+37120000001").
-			SetEmail("anna@example.com").
-			SetIsActive(true). // IMPORTANT
-			Save(ctx)
-	} else {
-		_, _ = sAnna.Update().SetIsActive(true).Save(ctx) // IMPORTANT
-	}
-
-	sDima, err := db.Student.Query().Where(student.FullNameEQ("Dmitry L.")).Only(ctx)
-	if err != nil {
-		sDima, _ = db.Student.Create().
-			SetFullName("Dmitry L.").
-			SetPhone("+37120000002").
-			SetEmail("dima@example.com").
-			SetIsActive(true). // IMPORTANT
-			Save(ctx)
-	} else {
-		_, _ = sDima.Update().SetIsActive(true).Save(ctx) // IMPORTANT
-	}
-
-	// courses
-	cA2, err := db.Course.Query().Where(course.NameEQ("English A2 (group)")).Only(ctx)
-	if err != nil {
-		cA2, _ = db.Course.Create().
-			SetName("English A2 (group)").
-			SetType(CourseTypeGroup).SetLessonPrice(15).SetSubscriptionPrice(120).
-			Save(ctx)
-	}
-	cB1, err := db.Course.Query().Where(course.NameEQ("English B1 (individual)")).Only(ctx)
-	if err != nil {
-		cB1, _ = db.Course.Create().
-			SetName("English B1 (individual)").
-			SetType(CourseTypeIndividual).SetLessonPrice(25).SetSubscriptionPrice(0).
-			Save(ctx)
-	}
-
-	// enrollments (create only if not exists)
-	if _, err := db.Enrollment.Query().
-		Where(enrollment.StudentIDEQ(sAnna.ID), enrollment.CourseIDEQ(cA2.ID)).
-		Only(ctx); err != nil {
-		_, _ = db.Enrollment.Create().
-			SetStudentID(sAnna.ID).SetCourseID(cA2.ID).
-			SetBillingMode(BillingModeSubscription).Save(ctx)
-	}
-
-	if _, err := db.Enrollment.Query().
-		Where(enrollment.StudentIDEQ(sDima.ID), enrollment.CourseIDEQ(cA2.ID)).
-		Only(ctx); err != nil {
-		_, _ = db.Enrollment.Create().
-			SetStudentID(sDima.ID).SetCourseID(cA2.ID).
-			SetBillingMode(BillingModePerLesson).Save(ctx)
-	}
-
-	if _, err := db.Enrollment.Query().
-		Where(enrollment.StudentIDEQ(sDima.ID), enrollment.CourseIDEQ(cB1.ID)).
-		Only(ctx); err != nil {
-		_, _ = db.Enrollment.Create().
-			SetStudentID(sDima.ID).SetCourseID(cB1.ID).
-			SetBillingMode(BillingModePerLesson).Save(ctx)
-	}
-
-	return 2, nil // return the number of base students
 }
 
 // Delete enrollment (for the "Delete" button in the attendance sheet)
@@ -407,13 +307,27 @@ func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 }
 
 // Open file (PDF) in OS
+// Only allows opening files within the LangSchool directory tree to prevent path traversal attacks.
 func (a *App) OpenFile(path string) error {
+	// Normalize the path
 	if abs, err := filepath.Abs(path); err == nil {
 		path = abs
 	}
+	
+	// Security check: Ensure file is within allowed directories
+	allowedBase := filepath.Clean(a.dirs.Base)
+	cleanPath := filepath.Clean(path)
+	
+	// Check if the path is within the LangSchool directory
+	if !strings.HasPrefix(cleanPath, allowedBase) {
+		return fmt.Errorf("access denied: file must be within %s directory", allowedBase)
+	}
+	
+	// Verify file exists
 	if _, err := os.Stat(path); err != nil {
 		return err
 	}
+	
 	var cmd *exec.Cmd
 	switch rt.GOOS {
 	case "darwin":
@@ -478,7 +392,7 @@ func (a *App) DevClearInvoices(year, month int) (int, error) {
 
 func (a *App) SettingsSetLocale(loc string) error {
 	_, err := a.db.Ent.Settings.
-		Update().Where(settings.SingletonIDEQ(1)).
+		Update().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
 		SetLocale(loc).
 		Save(a.ctx)
 	return err

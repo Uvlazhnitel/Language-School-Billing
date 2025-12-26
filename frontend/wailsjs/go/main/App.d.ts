@@ -31,10 +31,6 @@ export function DebtorsList():Promise<Array<payment.DebtorDTO>>;
 
 export function DevClearInvoices(arg1:number,arg2:number):Promise<number>;
 
-export function DevReset():Promise<number>;
-
-export function DevSeed():Promise<number>;
-
 export function EnrollmentCreate(arg1:number,arg2:number,arg3:string,arg4:number,arg5:string):Promise<main.EnrollmentDTO>;
 
 export function EnrollmentDelete(arg1:number):Promise<void>;

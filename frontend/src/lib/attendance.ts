@@ -2,8 +2,6 @@ import {
   AttendanceListPerLesson,
   AttendanceUpsert,
   AttendanceAddOne,
-  DevSeed,
-  DevReset,
   EnrollmentDelete,
 } from "../../wailsjs/go/main/App";
 import { CourseType } from "./constants";
@@ -21,14 +19,6 @@ export type Row = {
 
 function normalizeCourseId(courseId?: number): number | undefined {
   return typeof courseId === "number" && courseId > 0 ? courseId : undefined;
-}
-
-export function devSeed() {
-  return DevSeed();
-}
-
-export function devReset() {
-  return DevReset();
 }
 
 export async function fetchRows(year: number, month: number, courseId?: number): Promise<Row[]> {
