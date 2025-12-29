@@ -204,27 +204,189 @@ This thesis is organized according to University of Latvia Faculty of Computing 
 
 ## 2. Software Requirements Specification
 
-For detailed requirements documentation, see [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+### 2.1 Purpose and Scope
 
-### 2.1 Functional Requirements Summary
+**Purpose**: This section specifies the functional and non-functional requirements for the Language School Billing System, a desktop application designed to automate administrative billing processes for small to medium-sized language schools.
 
-The system provides comprehensive functionality across six main areas:
+**Scope**:
 
-1. **Student Management (FR-SM)**: Create, update, delete students; manage activation status
-2. **Course Management (FR-CM)**: Manage courses with flexible pricing for different types
-3. **Enrollment Management (FR-EM)**: Link students to courses with custom billing modes
-4. **Attendance Tracking (FR-AT)**: Track monthly lesson attendance with locking capability
-5. **Invoice Generation (FR-IG)**: Generate drafts, issue with sequential numbers, export PDFs
-6. **Payment Tracking (FR-PT)**: Record payments, calculate balances, identify debtors
+**Included Functionality**:
+- Student information management (create, update, activate/deactivate, delete with constraints)
+- Course management with configurable pricing (lesson-based and subscription-based)
+- Student enrollment in courses with flexible billing mode selection (per-lesson or subscription)
+- Monthly attendance tracking with data integrity controls (locking mechanism)
+- Automated invoice draft generation based on attendance records and subscription enrollments
+- Invoice issuance with sequential numbering (format: PREFIX-YYYYMM-SEQ)
+- PDF invoice generation with Cyrillic character support
+- Payment recording and automatic balance calculation
+- Debtor identification and reporting
 
-### 2.2 Non-Functional Requirements Summary
+**Excluded Functionality**:
+- Multi-user access and authentication (single-user application)
+- Cloud synchronization or remote data access
+- Email integration for invoice delivery
+- Online payment processing
+- Mobile application companion
+- Automated backup scheduling
+- Multi-language user interface (English UI only)
+- Accounting system integration
+- Reporting and analytics dashboards
+- Student portal or self-service features
 
-- **Performance**: Fast startup (< 5s), responsive UI (< 1s), efficient PDF generation
-- **Usability**: Intuitive interface, clear error messages, Cyrillic support
-- **Reliability**: Data integrity through transactions, comprehensive validation
-- **Security**: Input sanitization (XSS prevention), prepared statements (SQL injection prevention)
-- **Maintainability**: Clean code structure, comprehensive documentation
-- **Portability**: Cross-platform (Windows, macOS, Linux)
+**System Boundaries**:
+- Application operates entirely offline on local machine
+- Data stored exclusively in local SQLite database (`~/LangSchool/Data/app.sqlite`)
+- PDF files saved to local file system (`~/LangSchool/Invoices/YYYY/MM/`)
+- No external API integrations or network dependencies
+
+### 2.2 Users and Stakeholders
+
+**Primary User**:
+- **Language School Administrator**: Individual responsible for managing student billing, attendance tracking, and financial record-keeping. Typically the school owner or designated administrative staff member.
+
+**User Characteristics**:
+- Basic computer literacy (comfortable with desktop applications)
+- Familiarity with language school operations and billing workflows
+- No programming or technical expertise required
+- [TODO: Validate user characteristics through user interviews or surveys]
+
+**Stakeholder Analysis**:
+
+| Stakeholder | Role | Interest | Influence |
+|-------------|------|----------|-----------|
+| School Owner/Administrator | Primary user | Efficient billing, accurate records, time savings | High |
+| Students | Indirect beneficiary | Accurate invoicing, clear billing information | Low |
+| Accountant/Tax Authority | Data consumer | Accurate financial records, sequential invoice numbering | Medium |
+| [TODO: Add other stakeholders if identified] | | | |
+
+**User Needs**:
+1. Reduce time spent on manual billing (target: reduce from 15-20 hours/month to < 5 hours/month)
+2. Eliminate billing errors from manual calculations
+3. Maintain organized financial records with sequential invoice numbering
+4. Generate professional PDF invoices with school branding
+5. Track student payment status and identify debtors
+6. Ensure data privacy and local storage (GDPR compliance consideration)
+
+[TODO: Add user personas or profiles if developed during requirements gathering]
+
+### 2.3 Operating Environment and Constraints
+
+**Technical Environment**:
+
+**Supported Operating Systems**:
+- Windows 10 or later (64-bit)
+- macOS 11 (Big Sur) or later
+- Linux distributions with modern kernel (Ubuntu 20.04+, Fedora 35+, or equivalent)
+
+**Minimum System Requirements**:
+- CPU: Dual-core processor, 1.5 GHz or faster
+- RAM: 4 GB
+- Disk Space: 100 MB for application + storage for database and PDFs
+- Display: 1024x768 resolution minimum
+
+**Recommended System Requirements**:
+- CPU: Quad-core processor, 2.5 GHz or faster
+- RAM: 8 GB
+- Disk Space: 1 GB free space
+- Display: 1920x1080 resolution or higher
+
+**Software Dependencies**:
+- No external software required (self-contained application)
+- DejaVu Sans fonts (DejaVuSans.ttf, DejaVuSans-Bold.ttf) must be manually placed in `~/LangSchool/Fonts/` for Cyrillic PDF support
+
+**Runtime Environment**:
+- Wails v2 runtime (embedded in application binary)
+- Go 1.24.0 runtime (compiled into application)
+- SQLite 3 (embedded database engine)
+- No web browser required (native desktop application)
+
+**Constraints**:
+
+**Technical Constraints**:
+- **TC-01**: Single-user only (no concurrent access support)
+- **TC-02**: No network connectivity features (offline operation only)
+- **TC-03**: SQLite database limitations (maximum database size: 281 TB, sufficient for use case)
+- **TC-04**: Desktop application only (no web or mobile versions)
+- **TC-05**: Manual font installation required for Cyrillic character support in PDFs
+
+**Business Constraints**:
+- **BC-01**: Zero licensing costs (open-source components only)
+- **BC-02**: No subscription fees or recurring costs
+- **BC-03**: No external service dependencies to minimize operational costs
+
+**Regulatory Constraints**:
+- **RC-01**: Local data storage for GDPR compliance consideration (personal data remains on user's machine)
+- **RC-02**: Sequential invoice numbering for accounting compliance
+- [TODO: Identify specific tax/accounting regulations if applicable to target market]
+
+**Design Constraints**:
+- **DC-01**: Must use Wails v2 framework (architectural decision)
+- **DC-02**: Must use SQLite for data storage (portability requirement)
+- **DC-03**: Must use Go language for backend (performance and type safety requirement)
+- **DC-04**: Must use React + TypeScript for frontend (maintainability requirement)
+- **DC-05**: Must generate PDF invoices (business requirement)
+
+### 2.4 Assumptions and Dependencies
+
+**Assumptions**:
+
+**User Assumptions**:
+- **A-01**: User has basic computer literacy and can operate desktop applications
+- **A-02**: User understands language school billing workflows (per-lesson vs. subscription models)
+- **A-03**: User has administrative access to local machine (for directory creation)
+- **A-04**: User can manually place font files in designated directory
+- **A-05**: User performs manual data backups (copy SQLite file)
+
+**Technical Assumptions**:
+- **A-06**: Operating system provides stable file system access for database and PDF storage
+- **A-07**: System has sufficient disk space for growing database and PDF archive
+- **A-08**: No antivirus software interference with database file access
+- **A-09**: System date/time is configured correctly (for invoice dating and sequential numbering)
+- [TODO: Validate assumption that users have write permissions to home directory]
+
+**Operational Assumptions**:
+- **A-10**: School operates on monthly billing cycle (invoice generation per month)
+- **A-11**: Invoice prefixes remain stable (not changed frequently)
+- **A-12**: Maximum expected data volume: 1,000 students, 100 courses, 10,000 invoices/year
+- **A-13**: Single school location (no multi-branch support needed)
+
+**Dependencies**:
+
+**External Dependencies**:
+- **D-01**: DejaVu Sans font files (must be obtained and installed by user for Cyrillic support)
+  - Source: https://dejavu-fonts.github.io/
+  - Required files: DejaVuSans.ttf, DejaVuSans-Bold.ttf
+  - License: Public domain
+
+**Framework Dependencies**:
+- **D-02**: Wails v2.10.2 framework (embedded in application)
+- **D-03**: Go 1.24.0 runtime (compiled into binary)
+- **D-04**: ent v0.14.5 ORM framework
+- **D-05**: React 18.3 UI library
+- **D-06**: TypeScript 5.7 compiler
+
+**Library Dependencies**:
+- **D-07**: gofpdf library for PDF generation
+- **D-08**: go-sqlite3 driver for database access
+- **D-09**: Vite 6.0 for frontend build process (development only)
+
+**Platform Dependencies**:
+- **D-10**: Operating system file system APIs (directory creation, file I/O)
+- **D-11**: Operating system window management (for desktop application)
+
+**Development Tool Dependencies** (not required for end users):
+- **D-12**: Wails CLI for building application
+- **D-13**: Go compiler for backend compilation
+- **D-14**: Node.js and npm for frontend build
+- **D-15**: Git for version control
+
+[TODO: Confirm whether specific OS versions or patches are required for Wails compatibility]
+
+[TODO: Document any known compatibility issues with specific OS configurations]
+
+---
+
+**Detailed Requirements**: For complete functional requirements (50+) and non-functional requirements (20+), see [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ---
 
