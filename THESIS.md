@@ -1584,71 +1584,506 @@ Application creates directory structure at `~/LangSchool/`:
 
 ---
 
-## 5. Testing Documentation
+## 4. Testing Documentation
 
 For comprehensive testing procedures, see [TESTING.md](TESTING.md) and [docs/TESTING_PROCEDURES.md](docs/TESTING_PROCEDURES.md).
 
-### 5.1 Testing Strategy
+### 4.1 Test Strategy
 
-Multi-level approach:
-1. **Unit Testing**: Validation functions
-2. **Manual Testing**: End-to-end workflows
-3. **Integration Testing**: Service-level operations
+The testing strategy employs a **multi-level approach** aligned with the system's layered architecture:
 
-### 5.2 Test Coverage
+**Level 1: Unit Testing**
+- **Scope**: Individual functions and validation logic
+- **Target**: Validation functions in `internal/validation/`
+- **Coverage Goal**: 100% of validation logic
+- **Rationale**: Validation is critical for security (XSS prevention) and data integrity
 
-**Unit Tests** (`internal/validation/validate_test.go`):
-- 4 test functions
-- 19 individual test cases
-- 100% coverage of validation package
-- 0 failures
+**Level 2: Manual Testing**
+- **Scope**: End-to-end user workflows
+- **Target**: Complete application functionality from UI perspective
+- **Coverage**: All major user scenarios (30+ test cases)
+- **Rationale**: Desktop application with GUI requires human interaction testing
 
-**Test Categories**:
-- Input sanitization (XSS prevention)
-- Non-empty validation
-- Price validation (non-negative)
-- Discount percentage validation (0-100)
+**Level 3: Integration Testing**
+- **Scope**: Service-level operations with database
+- **Target**: Business logic services (informal testing during development)
+- **Coverage**: Key workflows tested manually through UI
+- **Rationale**: Services tested through manual end-to-end tests rather than separate integration tests
 
-### 5.3 Running Tests
+**Testing Philosophy**:
+- **Unit tests** for validation logic (security-critical)
+- **Manual tests** for user experience and workflow verification
+- **No E2E automation** (single-user desktop app, manual testing sufficient)
+- **Regression testing** through manual test suite before releases
 
-**Basic test execution**:
+### 4.2 Unit Tests
+
+#### 4.2.1 Test Framework and Location
+
+**Framework**: Go standard testing package (`testing`)
+
+**Test File**: `internal/validation/validate_test.go`
+
+**Test Count**: 19 test cases across 4 test functions
+
+**Functions Under Test**:
+1. `SanitizeInput(s string) string` - HTML escaping for XSS prevention
+2. `ValidateNonEmpty(value, fieldName string) error` - Required field validation
+3. `ValidatePrices(lesson, subscription float64) error` - Price validation
+4. `ValidateDiscountPct(pct float64) error` - Discount percentage validation
+
+#### 4.2.2 Test Coverage
+
+**Coverage**: 100.0% of statements in `internal/validation/` package
+
+**Verification Command**:
 ```bash
-go test ./...
+go test -cover ./internal/validation/...
 ```
 
-**With verbose output**:
-```bash
-go test -v ./...
+**Expected Output**:
+```
+ok      langschool/internal/validation  0.002s  coverage: 100.0% of statements
 ```
 
-**With coverage report**:
+#### 4.2.3 How to Run Unit Tests
+
+**Basic Test Execution**:
 ```bash
-go test -cover ./...
-go test -coverprofile=coverage.out ./...
+cd /path/to/Language-School-Billing
+go test ./internal/validation/...
+```
+
+**Verbose Output**:
+```bash
+go test -v ./internal/validation/...
+```
+
+**Example Output**:
+```
+=== RUN   TestSanitizeInput
+=== RUN   TestSanitizeInput/normal_text
+=== RUN   TestSanitizeInput/text_with_spaces
+=== RUN   TestSanitizeInput/HTML_tags
+=== RUN   TestSanitizeInput/special_characters
+=== RUN   TestSanitizeInput/quotes
+--- PASS: TestSanitizeInput (0.00s)
+    --- PASS: TestSanitizeInput/normal_text (0.00s)
+    --- PASS: TestSanitizeInput/text_with_spaces (0.00s)
+    --- PASS: TestSanitizeInput/HTML_tags (0.00s)
+    --- PASS: TestSanitizeInput/special_characters (0.00s)
+    --- PASS: TestSanitizeInput/quotes (0.00s)
+[... 3 more test functions ...]
+PASS
+ok      langschool/internal/validation  0.002s
+```
+
+**Coverage Report**:
+```bash
+go test -cover ./internal/validation/...
+```
+
+**Detailed HTML Coverage Report**:
+```bash
+go test -coverprofile=coverage.out ./internal/validation/...
 go tool cover -html=coverage.out
 ```
 
-**With race detection**:
+**Race Condition Detection**:
 ```bash
-go test -race ./...
+go test -race ./internal/validation/...
 ```
 
-### 5.4 Manual Testing Scenarios
-
-Key workflows tested:
-1. Student lifecycle (create, update, delete)
-2. Invoice generation flow (attendance → draft → issue → PDF)
-3. Payment recording and balance calculation
-4. Month locking to prevent attendance changes
-5. Discount application in invoices
-
-### 5.5 Expected Results
-
-All tests pass with 100% success rate:
+**Run Specific Test**:
+```bash
+go test -v ./internal/validation/... -run TestSanitizeInput
 ```
-?       langschool       [no test files]
-ok      langschool/internal/validation  0.002s  coverage: 100.0%
+
+**Run Specific Test Case**:
+```bash
+go test -v ./internal/validation/... -run TestSanitizeInput/HTML_tags
 ```
+
+#### 4.2.4 Test Cases
+
+**Table 4.1**: Unit test cases for validation functions
+
+| Test ID | Test Function | Case Name | Input | Expected Output | Purpose |
+|---------|---------------|-----------|-------|-----------------|---------|
+| TC-01 | TestSanitizeInput | normal_text | "John Doe" | "John Doe" | Verify normal text unchanged |
+| TC-02 | TestSanitizeInput | text_with_spaces | "  John Doe  " | "John Doe" | Verify trimming |
+| TC-03 | TestSanitizeInput | HTML_tags | "&lt;script&gt;alert('xss')&lt;/script&gt;" | "&amp;lt;script&amp;gt;alert(&amp;#39;xss&amp;#39;)&amp;lt;/script&amp;gt;" | XSS prevention |
+| TC-04 | TestSanitizeInput | special_characters | "Test & &lt;test&gt;" | "Test &amp;amp; &amp;lt;test&amp;gt;" | HTML escaping |
+| TC-05 | TestSanitizeInput | quotes | "He said \"Hello\"" | "He said &amp;#34;Hello&amp;#34;" | Quote escaping |
+| TC-06 | TestValidateNonEmpty | valid_value | "John Doe" | No error | Valid input accepted |
+| TC-07 | TestValidateNonEmpty | empty_string | "" | Error | Empty rejected |
+| TC-08 | TestValidateNonEmpty | only_spaces | "   " | Error | Whitespace-only rejected |
+| TC-09 | TestValidateNonEmpty | with_spaces | "  valid  " | No error | Trimming before validation |
+| TC-10 | TestValidatePrices | valid_prices | lesson=10.0, sub=50.0 | No error | Positive prices accepted |
+| TC-11 | TestValidatePrices | zero_prices | lesson=0.0, sub=0.0 | No error | Zero is valid |
+| TC-12 | TestValidatePrices | negative_lesson_price | lesson=-10.0, sub=50.0 | Error | Negative rejected |
+| TC-13 | TestValidatePrices | negative_subscription_price | lesson=10.0, sub=-50.0 | Error | Negative rejected |
+| TC-14 | TestValidateDiscountPct | valid_0% | 0.0 | No error | Zero discount valid |
+| TC-15 | TestValidateDiscountPct | valid_50% | 50.0 | No error | Valid percentage |
+| TC-16 | TestValidateDiscountPct | valid_100% | 100.0 | No error | 100% is valid |
+| TC-17 | TestValidateDiscountPct | invalid_negative | -10.0 | Error | Negative rejected |
+| TC-18 | TestValidateDiscountPct | invalid_over_100 | 110.0 | Error | Over 100% rejected |
+
+**Test Results**: All 19 test cases pass consistently (0 failures).
+
+#### 4.2.5 Critical Test Case Example
+
+**Security Test: XSS Prevention (TC-03)**
+
+**Purpose**: Verify that malicious JavaScript injection attempts are neutralized
+
+**Input**:
+```go
+input := "<script>alert('xss')</script>"
+```
+
+**Expected Output**:
+```go
+expected := "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;"
+```
+
+**Test Code**:
+```go
+func TestSanitizeInput(t *testing.T) {
+    tests := []struct {
+        name     string
+        input    string
+        expected string
+    }{
+        {
+            name:     "HTML tags",
+            input:    "<script>alert('xss')</script>",
+            expected: "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;",
+        },
+        // ... more cases
+    }
+    
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            result := SanitizeInput(tt.input)
+            if result != tt.expected {
+                t.Errorf("SanitizeInput(%q) = %q, want %q", 
+                    tt.input, result, tt.expected)
+            }
+        })
+    }
+}
+```
+
+**Result**: Test passes, confirming XSS attack vector is neutralized through HTML escaping.
+
+### 4.3 Integration and End-to-End Testing
+
+#### 4.3.1 Integration Testing Approach
+
+**Current State**: No dedicated integration test suite
+
+**Rationale**:
+- Services are tested through manual end-to-end workflows
+- Database operations tested through UI interactions
+- Business logic verified through complete user scenarios
+- Separation between unit and E2E sufficient for single-user desktop app
+
+**Alternative Approach Considered**:
+- Service-level integration tests with test database
+- **Decision**: Not implemented due to:
+  - Small team (single developer)
+  - Manual testing covers integration scenarios
+  - Unit tests provide validation coverage
+  - E2E manual tests verify complete flows
+
+[TODO: Consider adding integration tests for invoice generation and payment services in future iterations]
+
+#### 4.3.2 End-to-End Testing
+
+**Approach**: Manual testing through application UI
+
+**Test Environment Requirements**:
+- Go 1.22+ installed
+- Node.js 16+ installed (for frontend build)
+- Wails CLI installed: `go install github.com/wailsapp/wails/v2/cmd/wails@latest`
+- Repository cloned
+- Dependencies installed:
+  ```bash
+  go mod download
+  cd frontend && npm install
+  ```
+
+**Running Application for Testing**:
+```bash
+wails dev
+```
+
+**Test Database**: Application creates fresh database at `~/LangSchool/Data/app.sqlite` on first run
+
+**Manual Test Suite**: 30+ test cases documented in [docs/TESTING_PROCEDURES.md](docs/TESTING_PROCEDURES.md)
+
+**Key E2E Test Scenarios**:
+1. **Complete Monthly Billing Cycle** (13 steps):
+   - Review attendance → Lock month → Generate drafts → Review amounts → Issue invoices → Distribute PDFs
+2. **Student Lifecycle**:
+   - Create student → Update information → Enroll in courses → Deactivate → Delete (with constraint checking)
+3. **Course Management**:
+   - Create group course → Create individual course → Assign prices → Prevent deletion with enrollments
+4. **Attendance Tracking**:
+   - Edit individual lesson counts → Bulk update (+1 to all) → Lock month → Attempt edit on locked month
+5. **Payment Processing**:
+   - Record payment → Link to invoice → Verify auto-status update (draft → issued → paid)
+6. **PDF Generation**:
+   - Issue invoice → Verify PDF created → Check Cyrillic rendering → Verify file organization
+7. **Balance Calculation**:
+   - Multiple invoices and payments → Verify balance formula → Identify debtors
+
+**Test Execution Time**: Complete manual test suite takes approximately 2-3 hours
+
+### 4.4 Test Data and Mocks
+
+#### 4.4.1 Unit Test Data
+
+**Approach**: Hard-coded test data in test table structures
+
+**Example** (from `validate_test.go`):
+```go
+tests := []struct {
+    name     string
+    input    string
+    expected string
+}{
+    {
+        name:     "HTML tags",
+        input:    "<script>alert('xss')</script>",
+        expected: "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;",
+    },
+    // ... more test cases
+}
+```
+
+**Characteristics**:
+- Deterministic inputs and expected outputs
+- Edge cases covered (empty strings, boundary values, malicious input)
+- No external dependencies or files
+- Tests are self-contained and reproducible
+
+#### 4.4.2 Manual Test Data
+
+**Approach**: Test data created manually through UI during test execution
+
+**Sample Test Data** (from TESTING_PROCEDURES.md):
+
+**Students**:
+- John Doe, +371 12345678, john@example.com
+- Jane Smith, +371 87654321, jane@example.com
+- Петр Иванов, +371 11111111, petr@example.com (Cyrillic test)
+
+**Courses**:
+- English A1 (Group), 5€/lesson, 40€/month
+- German B1 (Individual), 15€/lesson, 120€/month
+- French A2 (Group), 6€/lesson, 45€/month
+
+**Enrollments**:
+- John → English A1, per-lesson billing, 10% discount
+- Jane → English A1, subscription billing, 0% discount
+- Петр → German B1, per-lesson billing, 15% discount
+
+**Test Scenarios**:
+1. **Regular Monthly Billing**: 3 students, 2 courses, mixed billing modes, full attendance
+2. **Partial Attendance**: Varied attendance counts, verify correct billing amounts
+3. **Multiple Courses per Student**: Student enrolled in 2+ courses, different billing modes, combined invoice
+
+#### 4.4.3 Mocking Strategy
+
+**Current State**: No mocking framework used
+
+**Rationale**:
+- Validation functions are pure functions (no dependencies to mock)
+- Services use real database (SQLite in-memory for tests not implemented)
+- Manual testing uses real application with local database
+
+**Dependencies Not Mocked**:
+- Database (ent client uses real SQLite)
+- File system (PDFs written to actual ~/LangSchool/ directory)
+- PDF library (gofpdf creates real PDF files)
+
+**Implications**:
+- Unit tests have no external dependencies (pure functions)
+- Manual tests interact with real database and file system
+- Provides confidence in actual system behavior
+- Test isolation achieved through fresh database creation
+
+[TODO: Consider adding in-memory SQLite database for service integration tests]  
+[TODO: Consider mocking PDF generation for faster service-level tests]
+
+### 4.5 Known Issues and Limitations
+
+#### 4.5.1 Test Coverage Limitations
+
+**Unit Test Coverage**:
+- **Covered**: 100% of validation logic (`internal/validation/`)
+- **Not Covered**: Business logic services (attendance, invoice, payment)
+- **Not Covered**: CRUD operations (`crud.go`)
+- **Not Covered**: PDF generation (`internal/pdf/`)
+- **Not Covered**: Frontend TypeScript code
+
+**Rationale for Limited Unit Testing**:
+- Services tested through manual E2E workflows
+- Database operations require integration testing infrastructure
+- PDF generation requires file system access
+- Frontend testing requires browser automation (not implemented)
+
+**Overall Test Coverage Estimate**:
+- Unit test coverage: ~5% of total Go codebase
+- Manual test coverage: ~90% of user-facing functionality
+- Combined functional coverage: High confidence in critical paths
+
+[TODO: Expand unit test coverage to include service layer logic]  
+[TODO: Add integration tests for invoice generation service]  
+[TODO: Consider frontend testing framework (e.g., Playwright, Cypress)]
+
+#### 4.5.2 Testing Environment Constraints
+
+**Cross-Platform Testing**:
+- **Windows**: Primary development and testing platform
+- **macOS**: Limited testing (TODO: needs more validation)
+- **Linux**: Limited testing (TODO: needs validation on Ubuntu/Fedora)
+
+**Font Testing**:
+- Cyrillic rendering tested manually with sample data
+- Requires manual installation of DejaVu fonts
+- No automated verification of font availability
+
+**Performance Testing**:
+- No automated performance benchmarks
+- Manual testing with ~100 students (adequate performance observed)
+- Scalability to 1,000 students not formally tested
+
+[TODO: Implement cross-platform testing on macOS and Linux]  
+[TODO: Add performance benchmarks for invoice generation]  
+[TODO: Load testing with 1,000+ students to verify NFR-4]
+
+#### 4.5.3 Known Test Gaps
+
+**Missing Test Scenarios**:
+1. **Concurrent Operations**: No testing of concurrent database access (not expected in single-user app, but should validate)
+2. **Data Migration**: No tests for database schema migrations
+3. **Backup/Restore**: No automated backup testing (feature not implemented)
+4. **Error Recovery**: Limited testing of error scenarios (database corruption, disk full, etc.)
+5. **Localization**: No testing of non-English/Russian characters beyond Cyrillic
+6. **Long-Running Operations**: No testing of application behavior over extended periods
+
+[TODO: Add test cases for concurrent access scenarios]  
+[TODO: Create database migration test suite]  
+[TODO: Test error recovery scenarios (disk full, database locked)]
+
+#### 4.5.4 Test Execution Issues
+
+**Build Requirement**: Full application cannot be tested with `go test ./...` due to frontend build requirement
+
+**Workaround**: Run tests on specific packages:
+```bash
+go test ./internal/validation/...  # Works
+go test ./...                      # Fails (requires frontend/dist)
+```
+
+**CI/CD Limitations**:
+- No continuous integration pipeline
+- No automated test execution on commits
+- Manual test execution before releases
+
+[TODO: Set up GitHub Actions for automated unit test execution]  
+[TODO: Create CI pipeline that builds frontend before running tests]  
+[TODO: Add pre-commit hooks to run unit tests automatically]
+
+#### 4.5.5 Test Documentation
+
+**Documented**:
+- Unit test cases with examples
+- Manual test procedures (30+ test cases in docs/TESTING_PROCEDURES.md)
+- Test execution commands
+- Sample test data
+
+**Not Documented**:
+- Test execution results (no test reports repository)
+- Historical test metrics
+- Bug tracking (no formal bug database)
+- Regression test history
+
+[TODO: Create test execution report template]  
+[TODO: Maintain test results history]  
+[TODO: Set up issue tracking for bug management]
+
+---
+
+**Testing Summary**:
+- **Strengths**: 100% validation coverage, comprehensive manual test suite, security-focused testing
+- **Weaknesses**: Limited automated testing, no CI/CD, service layer not unit tested
+- **Confidence Level**: High for validation and core workflows, medium for edge cases and cross-platform behavior
+
+**Testing Resources**: See [docs/TESTING_PROCEDURES.md](docs/TESTING_PROCEDURES.md) for complete test case details, execution procedures, and test templates.
+
+---
+
+## 5. Implementation Overview
+
+### 5.1 Repository Structure
+
+**Repository**: https://github.com/Uvlazhnitel/Language-School-Billing
+
+Key directories:
+- `ent/schema/`: Entity definitions (9 schemas)
+- `internal/app/`: Business logic services
+- `internal/infra/`: Infrastructure (database)
+- `internal/pdf/`: PDF generation
+- `internal/validation/`: Input validation
+- `frontend/src/`: React frontend
+- `frontend/src/lib/`: API wrappers
+- `docs/`: Comprehensive documentation
+
+**Lines of Code**:
+- Go backend: ~1,800 lines
+- TypeScript frontend: ~1,000 lines
+- Total handwritten: ~2,800 lines
+- Generated code (ent): ~15,000+ lines
+
+### 5.2 Technology Implementation
+
+**Wails Integration**: Desktop framework providing Go-TypeScript bridge with automatic binding generation
+
+**ent ORM**: Type-safe database operations with code generation from schema definitions
+
+**PDF Generation**: gofpdf library with DejaVu Sans fonts for Cyrillic character support
+
+**React Frontend**: Component-based UI with hooks for state management
+
+### 5.3 Build and Deployment
+
+**Development**:
+```bash
+go generate ./ent
+go mod download
+cd frontend && npm install && npm run build
+cd .. && wails dev
+```
+
+**Production**:
+```bash
+wails build
+```
+
+**Cross-platform**: Supports Windows, macOS, and Linux builds
+
+### 5.4 Data Storage
+
+Application creates directory structure at `~/LangSchool/`:
+- `Data/`: SQLite database
+- `Invoices/YYYY/MM/`: PDF invoices organized by date
+- `Fonts/`: DejaVu TTF files for PDF generation
+- `Backups/`: (Reserved for future backup feature)
+- `Exports/`: (Reserved for future export feature)
 
 ---
 
