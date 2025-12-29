@@ -784,61 +784,743 @@ The following functional requirements are organized by subsystem. Each requireme
 
 ## 3. Detailed Design
 
-For detailed architecture documentation, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+For comprehensive architecture documentation, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-### 3.1 System Architecture Overview
+### 3.1 Architecture Overview
 
-The system follows a **layered architecture** pattern:
+#### 3.1.1 Architectural Style
+
+The Language School Billing System employs a **Layered Architecture** pattern with clear separation of concerns across four primary layers. This design ensures maintainability, testability, and scalability while maintaining clear boundaries between components.
+
+**Layer Structure**:
 
 ```
-Presentation Layer (React/TypeScript)
-         ↓ Wails Bindings
-Application Layer (Go - app.go, crud.go)
-         ↓
-Business Logic Layer (Services)
-         ↓
-Data Access Layer (ent ORM)
-         ↓
-Data Storage (SQLite)
+┌─────────────────────────────────────────────────────────────┐
+│              PRESENTATION LAYER                             │
+│           (React + TypeScript + Vite)                       │
+│  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐   │
+│  │ Students │  │  Courses │  │Attendance│  │ Invoices │   │
+│  │   Tab    │  │    Tab   │  │   Tab    │  │   Tab    │   │
+│  └──────────┘  └──────────┘  └──────────┘  └──────────┘   │
+│        Location: frontend/src/App.tsx                       │
+│        API Wrappers: frontend/src/lib/*.ts                  │
+└───────────────────────┬─────────────────────────────────────┘
+                        │ Wails Bindings (Type-Safe)
+┌───────────────────────▼─────────────────────────────────────┐
+│            APPLICATION LAYER (Go)                           │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  app.go - Application Controller                    │   │
+│  │    - Lifecycle management (startup/shutdown)        │   │
+│  │    - Service initialization                         │   │
+│  │    - Directory setup (~LangSchool/)                 │   │
+│  └─────────────────────────────────────────────────────┘   │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  crud.go - CRUD Operations                          │   │
+│  │    - Student/Course/Enrollment CRUD                 │   │
+│  │    - Input validation & sanitization               │   │
+│  │    - DTO conversion                                 │   │
+│  └─────────────────────────────────────────────────────┘   │
+│        Location: main.go, app.go, crud.go                  │
+└───────────────────────┬─────────────────────────────────────┘
+                        │
+┌───────────────────────▼─────────────────────────────────────┐
+│         BUSINESS LOGIC LAYER (Services)                     │
+│  ┌──────────────────────┐  ┌───────────────────────────┐   │
+│  │ Attendance Service   │  │   Invoice Service         │   │
+│  │  - Monthly tracking  │  │   - Draft generation      │   │
+│  │  - Lock/unlock       │  │   - Sequential numbering  │   │
+│  │  - Bulk updates      │  │   - PDF coordination      │   │
+│  └──────────────────────┘  └───────────────────────────┘   │
+│  ┌──────────────────────┐  ┌───────────────────────────┐   │
+│  │  Payment Service     │  │   PDF Generation          │   │
+│  │  - Payment recording │  │   - gofpdf integration    │   │
+│  │  - Balance calc      │  │   - Cyrillic fonts        │   │
+│  │  - Debtor tracking   │  │   - File organization     │   │
+│  └──────────────────────┘  └───────────────────────────┘   │
+│        Location: internal/app/*, internal/pdf/             │
+└───────────────────────┬─────────────────────────────────────┘
+                        │
+┌───────────────────────▼─────────────────────────────────────┐
+│           DATA ACCESS LAYER (ent ORM)                       │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │  Entity Schemas (ent/schema/*.go)                   │   │
+│  │    - 9 entity definitions                           │   │
+│  │    - Relationships (edges)                          │   │
+│  │  Generated Code (ent/*)                             │   │
+│  │    - Type-safe queries                              │   │
+│  │    - Automatic migrations                           │   │
+│  └─────────────────────────────────────────────────────┘   │
+│        Location: ent/schema/, ent/* (generated)            │
+└───────────────────────┬─────────────────────────────────────┘
+                        │
+┌───────────────────────▼─────────────────────────────────────┐
+│           DATA STORAGE LAYER (SQLite)                       │
+│  Database file: ~/LangSchool/Data/app.sqlite                │
+│  PDF files: ~/LangSchool/Invoices/YYYY/MM/NUMBER.pdf        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 3.2 Component Structure
+**Figure 3.1**: Layered architecture diagram showing component relationships and data flow
 
-**Backend Components**:
-- `main.go`: Application entry point
-- `app.go`: Main controller and service coordination
-- `crud.go`: CRUD operations with validation
-- `internal/app/`: Business logic services (attendance, invoice, payment)
-- `internal/infra/`: Database management
-- `internal/pdf/`: PDF generation
-- `internal/validation/`: Input validation and sanitization
+#### 3.1.2 Component Relationships
 
-**Frontend Components**:
-- `App.tsx`: Main UI component with tab navigation
-- `lib/`: Type-safe API wrappers for backend calls
-- `wailsjs/`: Auto-generated Wails bindings
+**Key Relationships**:
+- **Presentation → Application**: Wails framework provides type-safe Go↔TypeScript bindings
+- **Application → Business Logic**: Direct service method invocation
+- **Business Logic → Data Access**: ent client provides query builders
+- **Data Access → Storage**: SQLite driver (go-sqlite3)
 
-### 3.3 Database Design
+### 3.2 Data Model and Storage
 
-The system uses ent ORM with 9 main entities:
+#### 3.2.1 Entity Relationship Diagram
 
-1. **Student**: Student information and status
-2. **Course**: Course definitions with pricing
-3. **Enrollment**: Student-course links with billing mode
-4. **AttendanceMonth**: Monthly lesson attendance records
-5. **Invoice**: Invoice headers with status tracking
-6. **InvoiceLine**: Individual invoice line items
-7. **Payment**: Payment records with method tracking
-8. **Settings**: Application configuration (singleton)
-9. **PriceOverride**: Time-bound custom pricing
+The system database consists of 9 entities with relationships defined through ent ORM schemas located in `ent/schema/`:
 
-### 3.4 Key Design Patterns
+**Table 3.1**: Database entities and their primary responsibilities
 
-- **Service Layer Pattern**: Business logic encapsulated in services
-- **DTO Pattern**: Data transfer objects for API responses
-- **Repository Pattern**: ent ORM provides data access abstraction
-- **Singleton Pattern**: Settings entity ensures single configuration
-- **Factory Pattern**: Service initialization in app.go
+| Entity | Schema File | Primary Key | Purpose |
+|--------|-------------|-------------|---------|
+| Student | `student.go` | id (int) | Student information and active status |
+| Course | `course.go` | id (int) | Course type, name, and pricing |
+| Enrollment | `enrollment.go` | id (int) | Student-course link with billing config |
+| AttendanceMonth | `attendancemonth.go` | id (int) | Monthly lesson count tracking |
+| Invoice | `invoice.go` | id (int) | Invoice header with status and number |
+| InvoiceLine | `invoiceline.go` | id (int) | Individual invoice line items |
+| Payment | `payment.go` | id (int) | Payment transaction records |
+| Settings | `settings.go` | id (int) | Application configuration (singleton) |
+| PriceOverride | `priceoverride.go` | id (int) | Time-bound custom pricing |
+
+#### 3.2.2 Entity Relationships
+
+```
+Student (1) ──< (N) Enrollment (N) >── (1) Course
+   │                    │
+   │                    ├──< (N) AttendanceMonth
+   │                    │        (year, month, lessons_count, is_locked)
+   │                    │
+   │                    └──< (N) PriceOverride
+   │                             (from_date, to_date, custom_price)
+   │
+   ├──< (N) Invoice
+   │        (number, status, issued_at, total_amount)
+   │        │
+   │        ├──< (N) InvoiceLine
+   │        │        (description, quantity, unit_price, amount)
+   │        │
+   │        └──< (N) Payment
+   │                 (amount, method, payment_date, note)
+   │
+   └──< (N) Payment (student-level payments without invoice link)
+
+Settings (singleton)
+   - organization_name
+   - organization_address
+   - invoice_prefix
+   - next_seq_number
+```
+
+#### 3.2.3 Key Entity Attributes
+
+**Student**:
+- `full_name` (string, required): Student's full name
+- `phone` (string, optional): Contact phone number
+- `email` (string, optional): Contact email address
+- `note` (text, optional): Administrative notes
+- `is_active` (boolean, default true): Active enrollment status
+
+**Course**:
+- `name` (string, required): Course name
+- `course_type` (enum: "group"/"individual"): Teaching format
+- `lesson_price` (float): Price per single lesson
+- `subscription_price` (float): Monthly subscription price
+
+**Enrollment**:
+- `student_id` (FK): Reference to Student
+- `course_id` (FK): Reference to Course
+- `billing_mode` (enum: "per_lesson"/"subscription"): Billing type
+- `discount_pct` (float, 0-100): Discount percentage applied to prices
+
+**AttendanceMonth**:
+- `enrollment_id` (FK): Reference to Enrollment
+- `year` (int): Year (e.g., 2024)
+- `month` (int): Month (1-12)
+- `lessons_count` (int, default 0): Number of lessons attended
+- `is_locked` (boolean, default false): Prevents editing when true
+- Unique constraint: (enrollment_id, year, month)
+
+**Invoice**:
+- `student_id` (FK): Reference to Student
+- `number` (string, nullable): Sequential number (NULL for drafts)
+- `status` (enum: "draft"/"issued"/"paid"/"canceled"): Invoice status
+- `issued_at` (datetime, nullable): Timestamp when issued
+- `total_amount` (float): Sum of all invoice lines
+
+**InvoiceLine**:
+- `invoice_id` (FK): Reference to Invoice
+- `description` (string): Line item description (e.g., "English A2 - 4 lessons")
+- `quantity` (float): Quantity (lessons count or 1 for subscription)
+- `unit_price` (float): Price per unit
+- `amount` (float): quantity × unit_price
+
+**Payment**:
+- `student_id` (FK): Reference to Student
+- `invoice_id` (FK, nullable): Optional reference to Invoice
+- `amount` (float): Payment amount
+- `method` (enum: "cash"/"bank"): Payment method
+- `payment_date` (date): Date of payment
+- `note` (text, optional): Payment note
+
+**Settings** (singleton pattern):
+- `organization_name` (string): School name for invoices
+- `organization_address` (text): School address for invoices
+- `invoice_prefix` (string, default "LS"): Invoice number prefix
+- `next_seq_number` (int, default 1): Next sequential number for invoices
+
+#### 3.2.4 Data Storage Implementation
+
+**Database**: SQLite 3
+- **Location**: `~/LangSchool/Data/app.sqlite`
+- **Driver**: `github.com/ncruces/go-sqlite3`
+- **ORM**: ent v0.14.5 for schema management and queries
+- **Migrations**: Automatic schema migrations on application startup
+
+**File Storage**:
+- **PDF Invoices**: `~/LangSchool/Invoices/YYYY/MM/NUMBER.pdf`
+- **Fonts**: `~/LangSchool/Fonts/` (DejaVuSans.ttf, DejaVuSans-Bold.ttf)
+- **Backups**: `~/LangSchool/Backups/` (manual backup location)
+
+**Database Initialization**: `internal/infra/db.go`
+```go
+func InitDB(dbPath string) (*ent.Client, error)
+```
+- Opens SQLite connection
+- Creates ent client
+- Runs automatic migrations
+- Returns client for application use
+
+### 3.3 Key Modules and Responsibilities
+
+#### 3.3.1 Application Layer Modules
+
+**File: `main.go`** (Root directory)
+- **Responsibility**: Wails application entry point
+- **Key Functions**:
+  - Initialize Wails runtime
+  - Create App instance
+  - Configure window properties (size, title)
+  - Bind backend methods to frontend
+  - Start application event loop
+
+**File: `app.go`** (Root directory)
+- **Responsibility**: Application controller and lifecycle management
+- **Key Methods**:
+  - `startup(ctx context.Context)`: Initialize database, services, directories
+  - `shutdown(ctx context.Context)`: Cleanup resources
+  - `resolveFontsDir()`: Locate font files for PDF generation
+- **Service Coordination**: Initializes and holds references to all services
+- **Directory Management**: Creates `~/LangSchool/{Data,Invoices,Backups,Exports,Fonts}`
+
+**File: `crud.go`** (Root directory)
+- **Responsibility**: CRUD operations for Student, Course, Enrollment entities
+- **Key Methods**:
+  - `ListStudents()`, `CreateStudent()`, `UpdateStudent()`, `DeleteStudent()`
+  - `ListCourses()`, `CreateCourse()`, `UpdateCourse()`, `DeleteCourse()`
+  - `ListEnrollments()`, `CreateEnrollment()`, `UpdateEnrollment()`, `DeleteEnrollment()`
+- **Validation**: Calls validation functions before database operations
+- **Sanitization**: Applies HTML escaping to text inputs
+- **DTO Conversion**: Converts ent entities to Data Transfer Objects for frontend
+
+#### 3.3.2 Business Logic Layer Modules
+
+**File: `internal/app/attendance/service.go`**
+- **Responsibility**: Monthly attendance tracking and month locking
+- **Key Methods**:
+  - `GetAttendanceForMonth(year, month)`: Retrieve attendance grid for display
+  - `UpdateLessonsCount(id, count)`: Update lesson count for specific record
+  - `AddOneToAll(year, month)`: Bulk increment all attendance counts
+  - `LockMonth(year, month)`: Prevent further edits to month
+  - `UnlockMonth(year, month)`: Re-enable editing
+- **Business Rules**:
+  - Cannot edit attendance if `is_locked = true`
+  - Auto-creates attendance records for active enrollments
+  - Lessons count must be ≥ 0
+
+**File: `internal/app/invoice/service.go`**
+- **Responsibility**: Invoice draft generation, issuance, and PDF coordination
+- **Key Methods**:
+  - `GenerateDrafts(year, month)`: Create draft invoices for all students
+  - `Issue(invoiceID)`: Issue draft with sequential number and generate PDF
+  - `IssueAll()`: Batch issue all draft invoices
+  - `Cancel(invoiceID)`: Cancel an invoice
+- **Draft Generation Algorithm**:
+  1. Query all active students
+  2. For each student, query enrollments
+  3. For per-lesson enrollments: calculate `lessons × lesson_price × (1 - discount/100)`
+  4. For subscription enrollments: calculate `subscription_price × (1 - discount/100)`
+  5. Create invoice with calculated lines
+  6. Sum lines to get total amount
+- **Issuance Algorithm**:
+  1. Validate invoice status is "draft"
+  2. Get settings for prefix and next sequence
+  3. Format number: `{prefix}-{YYYYMM}-{seq}` (e.g., "LS-202412-001")
+  4. Update invoice: `status="issued"`, `number=formatted`, `issued_at=now()`
+  5. Increment `settings.next_seq_number`
+  6. Generate PDF (calls PDF service)
+  7. Return updated invoice DTO
+
+**File: `internal/app/payment/service.go`**
+- **Responsibility**: Payment recording, balance calculation, debtor tracking
+- **Key Methods**:
+  - `Create(input)`: Record new payment
+  - `GetBalance(studentID)`: Calculate current balance
+  - `GetDebtors()`: List students with negative balances
+- **Balance Calculation Formula**:
+  ```
+  balance = Σ(invoice.total_amount WHERE status IN ('issued', 'paid'))
+          - Σ(payment.amount)
+  ```
+- **Auto-Status Update Logic**:
+  - When payment is linked to invoice
+  - Sum all payments for that invoice
+  - If `sum(payments) ≥ invoice.total_amount`, set `status = "paid"`
+
+**File: `internal/pdf/invoice_pdf.go`**
+- **Responsibility**: PDF document generation with Cyrillic support
+- **Key Functions**:
+  - `GenerateInvoicePDF(invoice, lines, settings, outputPath)`: Create PDF file
+- **PDF Structure**:
+  1. Header with organization name and address
+  2. Invoice metadata (number, date, student name)
+  3. Table with columns: Description, Quantity, Unit Price, Amount
+  4. Total amount row
+- **Font Handling**:
+  - Attempts to load `DejaVuSans.ttf` from `~/LangSchool/Fonts/`
+  - Uses `DejaVuSans-Bold.ttf` for headers
+  - Falls back to default font if not found (Cyrillic characters won't render)
+- **File Path**: Organizes PDFs as `~/LangSchool/Invoices/{YYYY}/{MM}/{NUMBER}.pdf`
+
+**File: `internal/validation/validate.go`**
+- **Responsibility**: Input validation and sanitization
+- **Key Functions**:
+  - `SanitizeInput(s string) string`: HTML escape using `html.EscapeString()`
+  - `ValidateNonEmpty(field, value string) error`: Check required fields
+  - `ValidatePrices(lesson, subscription float64) error`: Ensure prices ≥ 0
+  - `ValidateDiscountPct(pct float64) error`: Ensure discount in range 0-100
+- **Coverage**: 100% unit test coverage (19 test cases in `validate_test.go`)
+
+#### 3.3.3 Frontend Modules
+
+**File: `frontend/src/App.tsx`**
+- **Responsibility**: Main UI component with tab-based navigation
+- **Structure**: Four tabs (Students, Courses, Attendance, Invoices/Payments)
+- **State Management**: React useState hooks for local state
+- **API Integration**: Calls API wrappers from `lib/` directory
+
+**Directory: `frontend/src/lib/`**
+- **Responsibility**: Type-safe API wrappers for backend methods
+- **Files**:
+  - `students.ts`: Student CRUD operations
+  - `courses.ts`: Course CRUD operations
+  - `enrollments.ts`: Enrollment CRUD operations
+  - `attendance.ts`: Attendance tracking operations
+  - `invoices.ts`: Invoice generation and management
+  - `payments.ts`: Payment recording operations
+  - `constants.ts`: Shared constants (mirrors backend)
+- **Pattern**: Each wrapper calls Wails-generated bindings from `wailsjs/go/main/`
+
+### 3.4 Main Flows
+
+#### 3.4.1 Application Startup Flow
+
+```
+1. User launches application
+   ↓
+2. main.go: Wails runtime initializes
+   ↓
+3. app.go: startup(ctx) called
+   ↓
+4. internal/infra/db.go: InitDB()
+   - Open SQLite connection at ~/LangSchool/Data/app.sqlite
+   - Create ent client
+   - Run automatic schema migrations
+   ↓
+5. app.go: Initialize services
+   - attendance.NewService(client)
+   - invoice.NewService(client, pdfGen)
+   - payment.NewService(client)
+   ↓
+6. app.go: resolveFontsDir()
+   - Check for fonts in ~/LangSchool/Fonts/
+   - Log availability for PDF generation
+   ↓
+7. Frontend: React app renders
+   - Display Students tab (default)
+   - Load student list via API
+```
+
+#### 3.4.2 Complete Monthly Billing Cycle Flow
+
+**User Goal**: Generate and issue invoices for completed month
+
+```
+Step 1: Review and Lock Attendance
+┌─────────────────────────────────────────────────────────────┐
+│ User: Navigate to Attendance tab                            │
+│ User: Review attendance records for month                   │
+│ User: Make corrections if needed                            │
+│ User: Click "Lock Month"                                    │
+│   ↓                                                          │
+│ attendance.Service.LockMonth(year, month)                   │
+│   - Update all AttendanceMonth records                      │
+│   - Set is_locked = true                                    │
+└─────────────────────────────────────────────────────────────┘
+                        ↓
+Step 2: Generate Draft Invoices
+┌─────────────────────────────────────────────────────────────┐
+│ User: Navigate to Invoices tab                              │
+│ User: Select year and month                                 │
+│ User: Click "Generate Drafts"                               │
+│   ↓                                                          │
+│ invoice.Service.GenerateDrafts(year, month)                 │
+│   1. Query: SELECT * FROM students WHERE is_active = true   │
+│   2. For each student:                                      │
+│      - Query enrollments                                    │
+│      - For per_lesson enrollments:                          │
+│        * Get attendance.lessons_count                       │
+│        * Calculate: lessons × price × (1 - discount/100)    │
+│      - For subscription enrollments:                        │
+│        * Calculate: sub_price × (1 - discount/100)          │
+│      - Create Invoice (status="draft", number=NULL)         │
+│      - Create InvoiceLine records                           │
+│      - Calculate total_amount = Σ(line.amount)              │
+│   3. Return array of invoice DTOs                           │
+│   ↓                                                          │
+│ Frontend: Display draft invoices in table                   │
+└─────────────────────────────────────────────────────────────┘
+                        ↓
+Step 3: Review Drafts (User)
+┌─────────────────────────────────────────────────────────────┐
+│ User: Review draft amounts for accuracy                     │
+│ User: Verify all students included                          │
+│ Optional: Delete incorrect drafts and regenerate            │
+└─────────────────────────────────────────────────────────────┘
+                        ↓
+Step 4: Issue Invoices
+┌─────────────────────────────────────────────────────────────┐
+│ User: Click "Issue All" (or "Issue" individually)           │
+│   ↓                                                          │
+│ invoice.Service.Issue(invoiceID) [for each draft]           │
+│   1. Load invoice, validate status = "draft"                │
+│   2. Load Settings                                          │
+│   3. Generate sequential number:                            │
+│      number = "{prefix}-{YYYYMM}-{seq:03d}"                 │
+│      Example: "LS-202412-001"                               │
+│   4. Begin transaction:                                     │
+│      - UPDATE invoices SET                                  │
+│          status = 'issued',                                 │
+│          number = 'LS-202412-001',                          │
+│          issued_at = NOW()                                  │
+│        WHERE id = ?                                         │
+│      - UPDATE settings SET                                  │
+│          next_seq_number = next_seq_number + 1              │
+│   5. Commit transaction                                     │
+│   6. Generate PDF:                                          │
+│      - internal/pdf/invoice_pdf.go: GenerateInvoicePDF()    │
+│      - Create directory ~/LangSchool/Invoices/2024/12/      │
+│      - Save PDF to LS-202412-001.pdf                        │
+│   7. Return updated invoice DTO                             │
+│   ↓                                                          │
+│ Frontend: Show success message, update invoice list         │
+└─────────────────────────────────────────────────────────────┘
+                        ↓
+Step 5: Distribute Invoices (Manual)
+┌─────────────────────────────────────────────────────────────┐
+│ User: Navigate to ~/LangSchool/Invoices/2024/12/            │
+│ User: Send PDF files to students (email, print, etc.)       │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### 3.4.3 Payment Recording Flow
+
+```
+User: Receive payment from student (cash/bank transfer)
+  ↓
+User: Navigate to Payments tab
+  ↓
+User: Click "Add Payment"
+  ↓
+User: Fill form (amount, method, date, optional invoice link, optional note)
+  ↓
+User: Click "Save"
+  ↓
+payments.createPayment(input)
+  ↓
+payment.Service.Create(ctx, input)
+  1. Validate: amount > 0
+  2. Create Payment entity:
+     INSERT INTO payments (student_id, invoice_id, amount, method, payment_date, note)
+     VALUES (?, ?, ?, ?, ?, ?)
+  3. If invoice_id is provided:
+     a. Query all payments for that invoice:
+        SELECT SUM(amount) FROM payments WHERE invoice_id = ?
+     b. Compare to invoice.total_amount
+     c. If sum >= total_amount:
+        UPDATE invoices SET status = 'paid' WHERE id = ?
+  4. Return Payment DTO
+  ↓
+Frontend: Display success message, refresh payment list
+  ↓
+User: View updated balance (automatically recalculated)
+```
+
+### 3.5 Error Handling and Logging
+
+#### 3.5.1 Error Propagation Strategy
+
+The system implements a layered error handling approach with errors flowing upward through the architecture:
+
+```
+[Data Access Layer]
+  Database error (e.g., constraint violation)
+    ↓ Return error
+[Business Logic Layer]
+  Log error with context
+  Wrap error with business context
+    ↓ Return wrapped error
+[Application Layer]
+  Convert to user-friendly message
+  Return error to frontend
+    ↓ Serialize error
+[Wails Binding]
+  Serialize error as JSON
+    ↓ Pass to frontend
+[Frontend]
+  Display error message in alert/toast
+```
+
+#### 3.5.2 Error Types and Handling
+
+**Validation Errors**:
+- **Source**: `internal/validation/validate.go`
+- **Format**: `fmt.Errorf("{field} {reason}")` (e.g., "student name cannot be empty")
+- **Handling**: Return immediately to user with specific field error
+- **Example**:
+  ```go
+  if err := validateNonEmpty("student name", input.FullName); err != nil {
+      return StudentDTO{}, err  // Propagate to frontend
+  }
+  ```
+
+**Database Errors**:
+- **Source**: ent ORM operations
+- **Types**: 
+  - `ent.NotFoundError`: Entity not found
+  - `ent.ConstraintError`: Foreign key or unique constraint violation
+  - Generic database errors
+- **Handling**: Log error, return user-friendly message
+- **Example**:
+  ```go
+  student, err := client.Student.Get(ctx, id)
+  if ent.IsNotFound(err) {
+      return StudentDTO{}, fmt.Errorf("student not found")
+  }
+  if ent.IsConstraintError(err) {
+      return StudentDTO{}, fmt.Errorf("cannot delete student with active enrollments")
+  }
+  ```
+
+**Business Logic Errors**:
+- **Source**: Service layer validation
+- **Examples**:
+  - "Cannot modify issued invoice"
+  - "Cannot edit locked month"
+  - "Month is locked"
+- **Handling**: Return descriptive error message to user
+
+**File System Errors**:
+- **Source**: PDF generation, directory creation
+- **Examples**:
+  - "Failed to create invoice directory"
+  - "Font file not found"
+- **Handling**: Log error, return error to user, provide troubleshooting guidance
+
+#### 3.5.3 Logging Implementation
+
+**Logging Library**: Go standard library `log` package
+
+**Log Levels** (informal, no structured logging framework):
+- **Fatal**: Application cannot continue (e.g., database initialization failure)
+- **Error**: Operation failed but application continues (e.g., PDF generation failure)
+- **Info**: Notable events (e.g., "DB ready at ~/LangSchool/Data/app.sqlite")
+- **Debug**: Detailed information (e.g., "InvoiceGenerateDrafts called for 2024-12")
+
+**Logging Locations**:
+
+**Application Startup** (`app.go`):
+```go
+log.Println("Data path:", a.appDBPath)
+log.Println("DB ready")
+log.Printf("resolveFontsDir: using %s", fontsPath)
+```
+
+**Database Initialization** (`internal/infra/db.go`):
+```go
+log.Println("DB ready at", dbPath)
+```
+
+**Error Logging** (`internal/app/payment/service.go`):
+```go
+log.Printf("failed to calculate balance for student %d (%s): %v", 
+    st.ID, st.FullName, err)
+```
+
+**Invoice Operations** (`app.go`):
+```go
+log.Printf("InvoiceGenerateDrafts called for %04d-%02d", year, month)
+log.Printf("InvoiceGenerateDrafts error: %v", err)
+```
+
+**Logging Destinations**:
+- **Development**: stdout (terminal output)
+- **Production**: stdout (can be redirected to file by user)
+
+**Limitations**:
+- No structured logging (JSON format)
+- No log rotation
+- No log levels filtering
+- No separate log files
+
+[TODO: Consider implementing structured logging with zap or zerolog for production use]  
+[TODO: Add log rotation for long-running instances]  
+[TODO: Implement log levels (DEBUG, INFO, WARN, ERROR) with filtering]
+
+### 3.6 Security Considerations
+
+#### 3.6.1 Threat Model
+
+**Attack Surface**:
+- **User Input**: Text fields, numeric fields, file paths
+- **Database**: SQL injection risks
+- **File System**: Path traversal, unauthorized access
+
+**Out of Scope** (single-user desktop application):
+- Network-based attacks (no network exposure)
+- Authentication/authorization (single user)
+- Session management (no sessions)
+
+#### 3.6.2 Input Validation and Sanitization
+
+**XSS Prevention**:
+- **Mechanism**: HTML escaping via `html.EscapeString()`
+- **Implementation**: `internal/validation/validate.go`
+- **Coverage**: All text inputs (student names, course names, notes, descriptions)
+- **Application Point**: In `crud.go` before database persistence
+- **Test Coverage**: 100% (unit tests in `validate_test.go`)
+
+**Example**:
+```go
+func SanitizeInput(s string) string {
+    return html.EscapeString(strings.TrimSpace(s))
+}
+
+// Applied to all text inputs
+input.FullName = validation.SanitizeInput(input.FullName)
+```
+
+**Test Case**:
+```go
+input := "<script>alert('xss')</script>"
+sanitized := SanitizeInput(input)
+// Result: "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;"
+```
+
+#### 3.6.3 SQL Injection Prevention
+
+**Mechanism**: ent ORM generates parameterized queries automatically
+
+**How it works**:
+- User input never directly concatenated into SQL
+- ent uses placeholders (`?`) and parameters
+- Database driver handles escaping
+
+**Example**:
+```go
+// User provides potentially malicious input
+studentName := "John'; DROP TABLE students; --"
+
+// ent generates safe parameterized query
+student, err := client.Student.
+    Query().
+    Where(student.FullNameEQ(studentName)).  // Parameterized
+    Only(ctx)
+
+// SQL executed:
+// SELECT * FROM students WHERE full_name = ?
+// Parameter: ["John'; DROP TABLE students; --"]
+```
+
+**Coverage**: 100% (all database operations use ent ORM)
+
+#### 3.6.4 Business Rule Enforcement
+
+**Data Integrity Constraints**:
+
+1. **Cannot Delete Student with Dependencies**:
+   - Checks for existing enrollments or invoices before deletion
+   - Returns error: "cannot delete student with active enrollments"
+   - Implemented in: `crud.go` DeleteStudent()
+
+2. **Cannot Modify Issued Invoices**:
+   - Validates invoice status before updates
+   - Returns error: "cannot modify issued invoice"
+   - Implemented in: `internal/app/invoice/service.go`
+
+3. **Cannot Edit Locked Months**:
+   - Checks `is_locked` flag before attendance updates
+   - Returns error: "month is locked"
+   - Implemented in: `internal/app/attendance/service.go`
+
+4. **Unique Constraint Enforcement**:
+   - Database unique constraints on (student_id, course_id) for enrollments
+   - Database unique constraints on (enrollment_id, year, month) for attendance
+   - ent ORM handles constraint violations gracefully
+
+#### 3.6.5 File System Security
+
+**Directory Access**:
+- **User Directory**: `~/LangSchool/` (respects OS user permissions)
+- **Database File**: `~/LangSchool/Data/app.sqlite` (user-only access)
+- **PDF Files**: `~/LangSchool/Invoices/` (user-only access)
+
+**Path Validation**:
+- All file paths constructed using `filepath.Join()` (prevents path traversal)
+- No user-provided file paths accepted
+- PDF filenames derived from sequential invoice numbers (no user input)
+
+**Font Loading**:
+- Only loads fonts from predefined directory: `~/LangSchool/Fonts/`
+- No arbitrary file path input from users
+- Fails gracefully if fonts not found (uses default font)
+
+#### 3.6.6 Security Testing
+
+**Manual Security Testing** (covered in Section 5):
+- XSS injection attempts in text fields
+- SQL injection attempts in queries
+- Invalid numeric inputs (negative prices, out-of-range discounts)
+- Path traversal attempts (none possible, no user file path input)
+
+**Automated Security Testing**:
+- Unit tests for validation functions (100% coverage)
+- Test cases include malicious inputs
+- Example test: `TestSanitizeInput_ScriptTag`
+
+[TODO: Consider adding automated security scanning tools]  
+[TODO: Document security update procedures for dependencies]
+
+---
+
+**Detailed Architecture**: For complete component diagrams, sequence diagrams, and additional design details, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
