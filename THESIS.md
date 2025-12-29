@@ -2942,101 +2942,208 @@ The Language School Billing System successfully achieved its primary goal of pro
 
 ## 8. Conclusions
 
-### 8.1 Summary of Achievements
+### 8.1 Summary of Goals and Objectives
 
-This thesis successfully designed and implemented a **Language School Billing System** that addresses core administrative challenges for language schools. The application provides:
+This Bachelor's thesis set out to **design, develop, and validate a desktop billing management system tailored specifically for small to medium-sized language schools** (Section 1.2). The system was intended to address operational challenges in manual billing processes, reduce administrative time, ensure data privacy through local storage, and provide domain-specific features unavailable in generic accounting software.
 
-1. Comprehensive student and course management
-2. Automated billing based on attendance and subscriptions
-3. Professional invoice generation with PDF export
-4. Payment tracking with balance calculations
-5. User-friendly desktop interface
+**Achievement of Objectives** (referencing Section 1.3):
 
-All functional requirements (Section 2) were met, and the system demonstrates clean architectural design with proper separation of concerns.
+1. ✅ **Requirements Analysis** (Objective 1): Comprehensive requirements analysis completed and documented in Section 2, identifying 10 functional requirements (FR-1 to FR-10) and 17 non-functional requirements (NFR-1 to NFR-17), along with 7 detailed use cases representing key language school billing workflows.
 
-### 8.2 Technology Assessment
+2. ✅ **System Architecture Design** (Objective 2): Layered software architecture designed and implemented with clear separation of concerns across four layers: Presentation (React frontend), Application (Wails bindings), Business Logic (service layer), and Data Access (ent ORM). Architecture documented in Section 3 with Figure 3.1 and component relationship diagrams.
 
-**Excellent Choices**:
-- **Wails v2**: Perfect for desktop apps with web tech
-- **ent ORM**: Type safety prevents many errors
-- **SQLite**: Ideal for single-user local storage
-- **React + TypeScript**: Solid foundation for UI
+3. ✅ **Implementation of Core Features** (Objective 3): All core features successfully implemented:
+   - Student and course management with activation status tracking (FR-1, FR-2)
+   - Enrollment management with per-lesson and subscription billing modes (FR-3)
+   - Monthly attendance tracking with month locking for data integrity (FR-4)
+   - Automated invoice draft generation based on attendance records (FR-5)
+   - Sequential invoice numbering (PREFIX-YYYYMM-SEQ format) (FR-6)
+   - PDF invoice generation with Cyrillic character support using DejaVu fonts (FR-7)
+   - Payment tracking with automatic balance calculation (FR-8, FR-9)
+   - Settings configuration with sequential numbering persistence (FR-10)
 
-**Key Benefits**:
-- Cross-platform with single codebase
-- Type safety across full stack
-- Zero-configuration database
-- Native performance
+4. ✅ **Data Security Implementation** (Objective 4): Input validation and sanitization mechanisms implemented in `internal/validation/validate.go` with 100% test coverage (19 unit tests, all passing). XSS prevention achieved through `html.EscapeString()` for all user inputs. SQL injection prevention achieved through ent ORM's parameterized queries. Security validation documented in Section 7.1.5.
 
-### 8.3 Lessons Learned
+5. ⚠️ **Testing and Validation** (Objective 5): Partially achieved. Unit testing completed for validation layer (100% coverage, 19 tests), and comprehensive manual testing executed (30+ test cases, 7 E2E scenarios). However, overall code coverage remains at 5% with service layer and business logic untested. Testing procedures documented in Sections 4 and 5, with known limitations identified in Section 4.5.
 
-**Validation is Critical**: 100% test coverage for input validation ensured security and reliability
+6. ✅ **Documentation** (Objective 6): Complete technical documentation produced following University of Latvia graduation paper requirements, including THESIS.md (60KB, 3,245 lines), docs/REQUIREMENTS.md (24KB), docs/ARCHITECTURE.md (25KB), and docs/TESTING_PROCEDURES.md (16KB).
 
-**Service Layer Pattern Works**: Clear business logic boundaries made code maintainable
+**Overall Achievement**: 5.5 out of 6 objectives fully achieved (92%), with testing objective partially achieved due to limited unit test coverage beyond validation layer. The thesis goal has been **substantially met**, delivering a functional, secure, and well-documented billing system for language schools.
 
-**Documentation Matters**: Comprehensive docs accelerated development
+**Measurable Results** (from Section 7.1):
+- **Features**: 10/10 functional requirements implemented with 45+ features
+- **Code Volume**: ~2,800 lines of code (98 Go files, 16 TypeScript files)
+- **Testing**: 19/19 unit tests passing (100% validation coverage), 30+ manual test cases
+- **Performance**: Startup 1.8s (target ≤5s), UI response <100ms (target ≤1s), PDF generation 1.7s (target ≤3s)
+- **Security**: XSS prevention 100%, SQL injection blocked, 4 business rules enforced
+- **NFR Compliance**: 15/17 non-functional requirements achieved (88%)
 
-**Type Safety Pays Off**: TypeScript + Go combination caught errors early
+### 8.2 Practical Recommendations
 
-### 8.4 Objectives Assessment
+Based on the development and validation of this system, the following practical recommendations are offered for applying the results:
 
-Referring to Section 1.2 objectives:
+#### 8.2.1 For Language School Administrators
 
-✅ **Automate billing**: Fully achieved  
-✅ **Track attendance**: Fully achieved  
-✅ **Generate PDFs**: Fully achieved  
-✅ **Intuitive UI**: Achieved  
-✅ **Data integrity**: Achieved  
+1. **Deployment Considerations**:
+   - System is suitable for language schools with up to 100 students (tested capacity) and can theoretically scale to 1,000 students (design target).
+   - Requires manual DejaVu fonts installation for proper Cyrillic PDF rendering on first setup (documented in installation guide).
+   - Recommended hardware: Quad-core CPU 2.5GHz+, 8GB RAM, 1GB disk space for optimal performance.
 
-### 8.5 Challenges Overcome
+2. **Workflow Integration**:
+   - Follow the monthly billing cycle workflow (Section 2.7, Use Case 1): lock month → generate drafts → review → batch issue → distribute PDFs.
+   - Use attendance tracking as the single source of truth for billing; correct attendance errors before invoice issuance to avoid manual adjustments.
+   - Leverage discount settings at enrollment level (0-100%) to handle special pricing agreements.
 
-1. **PDF Cyrillic Support**: Integrated DejaVu Sans fonts
-2. **Sequential Numbering**: Settings singleton maintains sequence
-3. **Discount Calculation**: Helper functions with proper rounding
-4. **Month Locking**: Flag with UI enforcement
+3. **Data Management**:
+   - Database stored at `~/LangSchool/Data/app.sqlite` (single file, portable)
+   - PDF invoices organized by year/month at `~/LangSchool/Invoices/YYYY/MM/`
+   - Implement regular backup strategy (manual file copy recommended, backup automation not yet implemented - see Section 8.3)
+   - No cloud sync available; data remains local for privacy compliance
 
-### 8.6 Future Work
+4. **Operational Best Practices**:
+   - Test with sample data before production use (test scenarios provided in docs/TESTING_PROCEDURES.md)
+   - Avoid deleting students/courses with historical enrollments/invoices (system prevents deletion but archive via deactivation is safer)
+   - Review debtor list monthly via balance calculation feature (FR-9)
 
-**Short-term (3-6 months)**:
-- Enhanced reporting (revenue, statistics)
-- Backup automation
-- UI improvements (dark mode, themes)
-- Email integration
+#### 8.2.2 For Software Developers
 
-**Medium-term (6-12 months)**:
-- Recurring invoices
-- Analytics dashboard
-- Import/export features
-- Multi-currency support
+1. **Technology Stack Recommendations**:
+   - **Wails v2 + Go + React + TypeScript**: This combination proved excellent for desktop application development, delivering native performance with web technology productivity. Would recommend for similar single-user desktop applications (see Section 7.2.3).
+   - **ent ORM**: Highly recommended for Go projects requiring type-safe database operations and automated migrations. Code generation approach significantly reduced boilerplate.
+   - **SQLite**: Suitable for single-user applications with embedded database requirements; consider PostgreSQL for multi-user evolution.
 
-**Long-term (12+ months)**:
-- Multi-user support with authentication
-- Cloud sync option
-- Mobile companion apps
-- Web-based version
+2. **Architectural Patterns**:
+   - **Service Layer Pattern**: Successfully enforced business logic boundaries; recommend for any application with non-trivial business rules (see Section 7.2.4).
+   - **DTO Pattern**: Reduced coupling between layers; recommend for desktop applications with frontend/backend separation.
+   - **Repository Pattern**: Implemented via ent ORM; for projects requiring database abstraction, consider explicit repository interfaces (identified as missed opportunity in Section 7.2.4).
 
-### 8.7 Broader Implications
+3. **Security Implementation**:
+   - **Input Sanitization**: Implement comprehensive validation with 100% test coverage before production deployment; security-critical code must be unit tested (lesson learned in Section 7.2.6).
+   - **XSS Prevention**: Use `html.EscapeString()` for all user-supplied data displayed in PDFs or UI; test with malicious inputs (test case example in Section 4.2).
+   - **SQL Injection Prevention**: Rely on ORM parameterized queries; avoid string concatenation for SQL construction.
 
-This project demonstrates:
-- Desktop applications remain relevant
-- Modern web tech creates native-like experiences
-- Type-safe development prevents runtime errors
-- Good architecture enables rapid development
-- Documentation is essential for maintainability
+4. **Development Process**:
+   - **Documentation-Driven Development**: Write comprehensive documentation (README, architecture docs, test procedures) early in development cycle; accelerates feature implementation and reduces rework (Section 7.2.5).
+   - **Iterative Development**: Implement features vertically (full stack per feature) rather than horizontally (layer-by-layer); enables earlier validation (Section 7.2.5).
+   - **Code Generation**: Leverage code generators (ent for database, Wails bindings) to reduce manual errors and increase development speed.
 
-### 8.8 Academic Contributions
+5. **Testing Strategy**:
+   - **Critical Path Focus**: Prioritize unit testing for security-critical validation and business logic; 100% coverage may not be economical for all code (Section 4.1).
+   - **Manual Testing**: For single-user desktop applications, comprehensive manual testing (30+ test cases) may be more cost-effective than E2E automation (Section 4.3).
+   - **Test-First for Validation**: Write tests before implementing validation logic to ensure security requirements are met (contra to test-last approach used, which is identified as a mistake in Section 7.2.5).
 
-- Practical application of software engineering principles
-- Modern desktop development case study
-- Real-world ORM usage demonstration
-- Effective testing strategy illustration
-- Reusable patterns for billing systems
+#### 8.2.3 For Academic Research
 
-### 8.9 Final Remarks
+1. **Desktop Application Viability**: This thesis demonstrates that desktop applications remain viable in 2025 for use cases requiring offline operation, data privacy, and single-user workflows. Modern frameworks (Wails) enable rapid development with web technologies while delivering native performance.
 
-The Language School Billing System successfully achieves its goals. It is production-ready, well-tested, and thoroughly documented. The project serves as both a practical tool and a demonstration of modern desktop application development practices.
+2. **Type Safety Benefits**: Strong typing across full stack (Go backend, TypeScript frontend) prevented numerous runtime errors during development; quantitative analysis would benefit from controlled comparison study [TODO: No error metrics collected].
 
-With recommended enhancements, the system can evolve into a comprehensive school management solution. The technology stack and architectural decisions have proven sound, providing a solid foundation for future growth.
+3. **Code Generation Value**: Code generation tools (ent, Wails bindings) reduced development time significantly; formal time tracking would provide empirical validation [TODO: No detailed time logs available].
+
+### 8.3 Areas for Further Work
+
+Based on the implementation, testing, and analysis conducted in this thesis, the following areas for further work have been identified:
+
+#### 8.3.1 Technical Enhancements
+
+1. **Expanded Test Coverage** (Priority: High)
+   - **Current State**: 5% overall code coverage (validation only), 90% reliant on manual testing (Section 4.5)
+   - **Recommendation**: Implement unit tests for service layer (attendance, invoice, payment services) targeting 60-70% overall coverage
+   - **Effort Estimate**: 2-3 weeks
+   - **Rationale**: Service layer contains critical billing logic; automated tests would prevent regression bugs during future enhancements
+
+2. **CI/CD Pipeline Implementation** (Priority: High)
+   - **Current State**: No continuous integration, manual quality checks only (Section 6.2.2)
+   - **Recommendation**: Implement GitHub Actions workflow (template provided in Section 6.2.2) for automated build, test, and lint on every commit
+   - **Effort Estimate**: 1 week for basic pipeline, 2-3 days for cross-platform builds
+   - **Rationale**: Automated quality gates prevent regressions and ensure code quality consistency
+
+3. **Cross-Platform Testing** (Priority: Medium)
+   - **Current State**: Primary development on Windows, limited macOS/Linux testing (Section 4.5, Section 7.1.7)
+   - **Recommendation**: Conduct comprehensive testing on macOS 11+ and Linux distributions (Ubuntu 20.04+, Fedora 35+), document platform-specific issues
+   - **Effort Estimate**: 1 week per platform
+   - **Rationale**: Portability is NFR-16; validation required for production deployment on non-Windows platforms
+
+4. **Structured Logging** (Priority: Medium)
+   - **Current State**: Basic Go log package with unstructured output (Section 3.5.3)
+   - **Recommendation**: Implement structured logging (e.g., zerolog, zap) with log levels, structured fields, and log rotation
+   - **Effort Estimate**: 1 week
+   - **Rationale**: Facilitates troubleshooting in production deployments; identified as limitation in Section 3.5.3
+
+5. **Backup Automation** (Priority: Medium)
+   - **Current State**: Manual file copy required for database and PDF backups (Section 7.1.7)
+   - **Recommendation**: Implement scheduled backup feature with configurable retention policy and backup verification
+   - **Effort Estimate**: 2 weeks
+   - **Rationale**: Critical for data protection; currently relies on user discipline
+
+#### 8.3.2 Functional Extensions
+
+6. **Enhanced Reporting** (Priority: High)
+   - **Current State**: No reporting features beyond debtor list and balance calculation (Section 7.1.7)
+   - **Recommendation**: Implement revenue reports (monthly/quarterly/annual), student enrollment trends, course popularity analysis, payment method distribution
+   - **Effort Estimate**: 3-4 weeks
+   - **Rationale**: Language school owners need financial insights for business decisions (stakeholder requirement from Section 2.2)
+
+7. **Email Integration** (Priority: Low)
+   - **Current State**: Manual PDF distribution required (Section 2.1, excluded functionality)
+   - **Recommendation**: Implement email integration for automated invoice delivery with configurable SMTP settings
+   - **Effort Estimate**: 2 weeks
+   - **Rationale**: Reduces administrative burden; however, requires network connectivity (trade-off with offline-first design)
+
+8. **Multi-Currency Support** (Priority: Low)
+   - **Current State**: Single currency assumed, no currency fields in database (Section 7.1.7)
+   - **Recommendation**: Add currency configuration, multi-currency pricing, exchange rate handling for international language schools
+   - **Effort Estimate**: 3 weeks (requires database schema migration)
+   - **Rationale**: Expands addressable market to language schools operating in multiple countries
+
+#### 8.3.3 Scalability and Architecture
+
+9. **Multi-User Support** (Priority: Low, High Effort)
+   - **Current State**: Single-user desktop application, no authentication or authorization (Section 2.1, Section 7.2.8)
+   - **Recommendation**: Evolve to multi-user system with role-based access control (administrator, accountant, instructor roles)
+   - **Effort Estimate**: 3-4 months (6 major changes identified in Section 7.2.8: authentication, authorization, database migration to client-server, concurrent access handling, audit logging, session management)
+   - **Rationale**: Required for larger language schools with multiple administrative staff
+
+10. **Cloud Sync Option** (Priority: Low)
+    - **Current State**: Local-only data storage (Section 2.1, design decision for data privacy)
+    - **Recommendation**: Add optional encrypted cloud sync for disaster recovery and multi-device access while maintaining local-first architecture
+    - **Effort Estimate**: 4-6 weeks (sync conflict resolution is complex)
+    - **Rationale**: Provides backup redundancy and enables work-from-home scenarios while preserving offline capability
+
+11. **Repository Abstraction Layer** (Priority: Medium, Refactoring)
+    - **Current State**: Direct ent ORM usage in service layer couples business logic to database implementation (Section 7.2.4, missed opportunity)
+    - **Recommendation**: Introduce repository interfaces abstracting database operations, enabling future migration to alternative databases or testing with in-memory implementations
+    - **Effort Estimate**: 2-3 weeks (refactoring existing services)
+    - **Rationale**: Improves testability and flexibility; facilitates multi-user evolution requiring PostgreSQL
+
+#### 8.3.4 Research and Validation
+
+12. **User Acceptance Testing** (Priority: High)
+    - **Current State**: No real user validation, requirements based on general analysis (Section 2.2, TODO noted for user personas)
+    - **Recommendation**: Conduct structured user acceptance testing with 3-5 language school administrators, collect usability feedback, measure time savings against 15-20h → <5h goal
+    - **Effort Estimate**: 2-3 weeks (user recruitment, testing facilitation, analysis)
+    - **Rationale**: Validates thesis assumptions about user needs and usability; provides empirical evidence for practical value
+
+13. **Performance Benchmarking** (Priority: Medium)
+    - **Current State**: Informal performance measurements, no systematic benchmarking (Section 7.1.4, TODO for automated benchmarks)
+    - **Recommendation**: Implement automated performance benchmarks for critical operations (database queries, PDF generation, bulk operations), establish performance regression tests
+    - **Effort Estimate**: 1 week
+    - **Rationale**: Prevents performance degradation in future development; validates NFR-1, NFR-2, NFR-3 systematically
+
+14. **Comparative Study** (Priority: Low, Academic)
+    - **Current State**: Qualitative comparison with alternatives (spreadsheets, accounting software) based on analysis (Section 7.2.7), no empirical comparison
+    - **Recommendation**: Conduct controlled study comparing productivity metrics (time per invoice, error rates) between Language School Billing System and alternative approaches (spreadsheets, QuickBooks, FreshBooks)
+    - **Effort Estimate**: 4-6 weeks (study design, execution, analysis)
+    - **Rationale**: Provides quantitative validation of thesis value proposition; contributes to academic understanding of domain-specific vs. generic software effectiveness
+
+**Priority Summary**:
+- **High Priority**: Test coverage expansion (1), CI/CD implementation (2), enhanced reporting (6), user acceptance testing (12)
+- **Medium Priority**: Cross-platform testing (3), structured logging (4), backup automation (5), repository abstraction (11), performance benchmarking (13)
+- **Low Priority**: Email integration (7), multi-currency support (8), multi-user support (9), cloud sync (10), comparative study (14)
+
+---
+
+**Note**: Effort estimates assume single developer with existing codebase familiarity. Estimates may vary based on specific requirements and priorities.
 
 ---
 
