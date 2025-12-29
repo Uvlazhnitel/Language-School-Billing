@@ -2,6 +2,8 @@
 
 This guide explains how to manually run tests in the Language School Billing application.
 
+> **📚 For comprehensive testing procedures including manual testing scenarios, integration tests, and test cases, see [docs/TESTING_PROCEDURES.md](docs/TESTING_PROCEDURES.md)**
+
 ## Prerequisites
 
 - Go 1.22+ installed

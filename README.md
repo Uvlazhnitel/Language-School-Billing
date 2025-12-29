@@ -37,3 +37,12 @@ Troubleshooting
   
   * Wails runtime issues → run wails doctor and install suggested deps.
 
+## Documentation
+
+- **[THESIS.md](THESIS.md)** - Complete Bachelor's thesis documentation for University of Latvia
+- **[PROJECT_MAP.md](PROJECT_MAP.md)** - Project structure and architecture overview
+- **[TESTING.md](TESTING.md)** - Quick testing guide
+- **[docs/REQUIREMENTS.md](docs/REQUIREMENTS.md)** - Detailed software requirements specification
+- **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and design documentation
+- **[docs/TESTING_PROCEDURES.md](docs/TESTING_PROCEDURES.md)** - Comprehensive testing procedures
+
