@@ -386,7 +386,399 @@ This thesis is organized according to University of Latvia Faculty of Computing 
 
 ---
 
-**Detailed Requirements**: For complete functional requirements (50+) and non-functional requirements (20+), see [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
+### 2.5 Functional Requirements
+
+The following functional requirements are organized by subsystem. Each requirement includes a unique identifier (FR-X), description, and acceptance criteria.
+
+#### FR-1: Student Information Management
+**Description**: System shall allow creating and managing student records with validation and sanitization.  
+**Acceptance Criteria**:
+- User can create student with full name (required), phone (optional), email (optional), note (optional)
+- System validates that full name is non-empty
+- System sanitizes all text inputs to prevent XSS attacks
+- Student appears in student list after creation
+- User can update student information and toggle active status
+- System prevents deletion of students with existing enrollments or invoices
+
+#### FR-2: Course Management
+**Description**: System shall support course creation with configurable pricing for different course types.  
+**Acceptance Criteria**:
+- User can create courses with type "group" or "individual"
+- User can set lesson price and subscription price (non-negative floats)
+- System validates that prices are non-negative
+- User can update and delete courses
+- System prevents deletion of courses with active enrollments
+- Course prices are used in invoice calculations
+
+#### FR-3: Enrollment Management
+**Description**: System shall allow enrolling students in courses with flexible billing configuration.  
+**Acceptance Criteria**:
+- User can create enrollment linking student to course
+- User can select billing mode: "per_lesson" or "subscription"
+- User can set discount percentage (0-100%)
+- System validates discount percentage range
+- System prevents duplicate enrollments (same student-course pair)
+- Enrollment configuration affects invoice generation
+
+#### FR-4: Monthly Attendance Tracking
+**Description**: System shall track lesson attendance per student-course pair with data integrity controls.  
+**Acceptance Criteria**:
+- User can view attendance grid organized by month
+- User can edit lesson count for each student-course-month combination
+- User can use "Add +1 to all" feature for bulk attendance updates
+- User can lock/unlock months to prevent/allow changes
+- System prevents editing attendance for locked months
+- Attendance data is used for per-lesson invoice calculations
+
+#### FR-5: Invoice Draft Generation
+**Description**: System shall automatically generate invoice drafts based on attendance and subscription enrollments.  
+**Acceptance Criteria**:
+- User can trigger draft generation for specific year and month
+- System creates drafts for all students with active enrollments
+- For per-lesson enrollments: amount = lessons × lesson_price × (1 - discount/100)
+- For subscription enrollments: amount = subscription_price × (1 - discount/100)
+- Drafts can be reviewed before issuance
+- System calculates total from individual invoice lines
+
+#### FR-6: Invoice Issuance with Sequential Numbering
+**Description**: System shall issue invoices with sequential numbering following format PREFIX-YYYYMM-SEQ.  
+**Acceptance Criteria**:
+- User can issue individual draft invoices
+- User can batch-issue all draft invoices
+- System assigns sequential number on issuance (e.g., LS-202412-001)
+- System maintains sequential order without gaps
+- System increments sequence counter after each issuance
+- Issued invoices cannot be modified (immutable)
+- System changes invoice status from "draft" to "issued"
+
+#### FR-7: PDF Invoice Generation
+**Description**: System shall generate PDF invoices with organization details and Cyrillic character support.  
+**Acceptance Criteria**:
+- PDF is automatically generated when invoice is issued
+- PDF contains organization name and address (if configured)
+- PDF contains invoice number, date, and student information
+- PDF contains table with invoice lines (description, quantity, unit price, amount)
+- PDF displays total amount
+- Cyrillic characters render correctly (requires DejaVu fonts)
+- PDF is saved to `~/LangSchool/Invoices/YYYY/MM/NUMBER.pdf`
+
+#### FR-8: Payment Recording
+**Description**: System shall allow recording payments with automatic invoice status updates.  
+**Acceptance Criteria**:
+- User can record payment with amount, method (cash/bank), and date
+- User can link payment to specific invoice (optional)
+- User can add note to payment record
+- System validates payment amount > 0
+- When payment is linked to invoice and total payments ≥ invoice amount, system automatically changes invoice status to "paid"
+- Payment record is saved and displayed in payment list
+
+#### FR-9: Balance Calculation and Debtor Tracking
+**Description**: System shall calculate student balances and identify debtors.  
+**Acceptance Criteria**:
+- System calculates balance = Σ(invoice.total where status IN (issued, paid)) - Σ(payment.amount)
+- User can view balance for individual students
+- User can view debtor list (students with negative balance)
+- Debtor list shows student name and balance amount
+- Balance calculations are mathematically correct
+
+#### FR-10: Settings Configuration
+**Description**: System shall allow configuring organization details and invoice settings.  
+**Acceptance Criteria**:
+- User can set organization name and address
+- User can configure invoice prefix (default: "LS")
+- System maintains next sequence number for invoice numbering
+- User can configure currency code and locale (for future use)
+- Settings are persisted and survive application restart
+- Organization details appear on generated invoices
+
+[TODO: Validate completeness of functional requirements through stakeholder review]
+
+### 2.6 Non-Functional Requirements
+
+#### NFR-1: Performance - Application Startup
+**Description**: Application shall start quickly on standard hardware.  
+**Requirement**: Startup time ≤ 5 seconds from launch to UI ready  
+**Measurement**: Time measured from process start to window display  
+**Priority**: Medium
+
+#### NFR-2: Performance - UI Responsiveness
+**Description**: User interface operations shall be responsive.  
+**Requirement**: UI operations complete within 1 second  
+**Measurement**: Time from user action (button click) to UI update  
+**Priority**: High  
+**Applicable Operations**: Student list load, course list load, form submissions, attendance grid updates
+
+#### NFR-3: Performance - PDF Generation
+**Description**: PDF generation shall not cause noticeable delays.  
+**Requirement**: PDF generation ≤ 3 seconds per invoice  
+**Measurement**: Time from issue command to PDF file saved  
+**Priority**: Medium
+
+#### NFR-4: Performance - Scalability
+**Description**: System shall handle expected data volumes efficiently.  
+**Requirement**: Supports at least 1,000 students with query times < 1 second  
+**Measurement**: Database query execution time  
+**Priority**: Medium
+
+#### NFR-5: Security - Input Sanitization
+**Description**: System shall prevent cross-site scripting (XSS) attacks.  
+**Requirement**: All text inputs must be HTML-escaped before storage and display  
+**Implementation**: Use html.EscapeString() in validation layer  
+**Test**: Attempt to inject `<script>alert('xss')</script>` - should be escaped  
+**Priority**: Critical
+
+#### NFR-6: Security - SQL Injection Prevention
+**Description**: System shall prevent SQL injection attacks.  
+**Requirement**: All database queries must use parameterized statements  
+**Implementation**: ent ORM automatically generates parameterized queries  
+**Test**: Attempt to inject SQL via text inputs - should be safely escaped  
+**Priority**: Critical
+
+#### NFR-7: Usability - Intuitive Interface
+**Description**: Application shall be easy to use for target users.  
+**Requirement**: User can complete basic tasks without documentation  
+**Measurement**: Task completion by new user without training  
+**Priority**: High
+
+#### NFR-8: Usability - Error Messages
+**Description**: Error messages shall be clear and actionable.  
+**Requirement**: Error messages explain what went wrong and how to fix it  
+**Examples**: "Student name cannot be empty", "Cannot delete student with active enrollments"  
+**Priority**: High
+
+#### NFR-9: Usability - Cyrillic Support
+**Description**: System shall support Cyrillic characters in PDFs.  
+**Requirement**: PDF invoices correctly display Cyrillic text  
+**Implementation**: Use DejaVu Sans fonts  
+**Constraint**: Requires manual font installation  
+**Priority**: High
+
+#### NFR-10: Reliability - Data Integrity
+**Description**: System shall maintain data consistency.  
+**Requirement**: Use database transactions for multi-step operations  
+**Implementation**: ent ORM transaction support  
+**Examples**: Invoice issuance (update invoice + increment sequence) must be atomic  
+**Priority**: Critical
+
+#### NFR-11: Reliability - Input Validation
+**Description**: System shall validate all user inputs before processing.  
+**Requirement**: 100% of user inputs validated before database operations  
+**Coverage**: Test coverage for validation package = 100%  
+**Priority**: High
+
+#### NFR-12: Reliability - Error Handling
+**Description**: System shall handle errors gracefully without crashing.  
+**Requirement**: All errors caught and logged, user-friendly messages displayed  
+**Priority**: High
+
+#### NFR-13: Maintainability - Code Quality
+**Description**: Code shall follow language best practices.  
+**Requirement**: Code passes linter checks (golangci-lint for Go, ESLint for TypeScript)  
+**Implementation**: Configured linters in project  
+**Priority**: Medium
+
+#### NFR-14: Maintainability - Code Organization
+**Description**: Code shall be organized with clear separation of concerns.  
+**Requirement**: Layered architecture (presentation, application, business logic, data access)  
+**Verification**: Clear package boundaries in repository structure  
+**Priority**: High
+
+#### NFR-15: Maintainability - Documentation
+**Description**: Code and system shall be documented.  
+**Requirement**: Package-level documentation, function comments for public APIs  
+**Coverage**: Comprehensive markdown documentation (README, THESIS, docs/)  
+**Priority**: High
+
+#### NFR-16: Portability - Cross-Platform Support
+**Description**: Application shall run on multiple operating systems.  
+**Requirement**: Builds and runs on Windows 10+, macOS 11+, Linux (Ubuntu 20.04+)  
+**Implementation**: Wails v2 framework provides cross-platform support  
+**Priority**: High
+
+#### NFR-17: Portability - No Platform-Specific Code
+**Description**: Codebase shall avoid platform-specific dependencies.  
+**Requirement**: Use cross-platform libraries and APIs only  
+**Verification**: Single codebase compiles for all target platforms  
+**Priority**: High
+
+[TODO: Add NFR for logging/auditing if required]  
+[TODO: Add NFR for localization if multi-language UI is planned]  
+[TODO: Validate performance requirements through formal testing]
+
+### 2.7 Use Cases and User Stories
+
+#### Use Case 1: Complete Monthly Billing Cycle
+**Actor**: Language School Administrator  
+**Goal**: Generate and issue invoices for all students for completed month  
+**Preconditions**: Students enrolled in courses, attendance recorded for month  
+
+**Main Flow**:
+1. Administrator navigates to Attendance tab
+2. Administrator reviews attendance records for month
+3. Administrator clicks "Lock Month" to prevent further changes
+4. Administrator navigates to Invoices tab
+5. Administrator selects year and month
+6. Administrator clicks "Generate Drafts"
+7. System creates draft invoices for all students based on:
+   - Attendance records (for per-lesson billing)
+   - Active subscriptions (for subscription billing)
+8. Administrator reviews draft invoices for accuracy
+9. Administrator clicks "Issue All" to issue all draft invoices
+10. System assigns sequential numbers to invoices
+11. System generates PDF files for all invoices
+12. System saves PDFs to organized directory structure
+13. Administrator distributes invoice PDFs to students (manual process)
+
+**Postconditions**: All invoices issued with sequential numbers, PDFs generated and saved
+
+**Alternative Flows**:
+- 8a. Administrator finds error in draft: Administrator can delete draft and regenerate after fixing attendance
+- 9a. Administrator wants to issue invoices individually: Administrator clicks "Issue" on each invoice
+
+#### Use Case 2: Record Student Payment and Update Balance
+**Actor**: Language School Administrator  
+**Goal**: Record received payment and update student's account status  
+**Preconditions**: Student has issued invoice(s)  
+
+**Main Flow**:
+1. Administrator receives payment from student (cash or bank transfer)
+2. Administrator navigates to Payments tab
+3. Administrator clicks "Add Payment"
+4. Administrator enters payment amount
+5. Administrator selects payment method (cash or bank)
+6. Administrator selects payment date
+7. Administrator links payment to specific invoice (if applicable)
+8. Administrator adds optional note
+9. Administrator clicks "Save"
+10. System validates payment amount > 0
+11. System creates payment record
+12. System checks if linked invoice is fully paid
+13. If total payments ≥ invoice amount, system updates invoice status to "paid"
+14. System displays updated payment list and student balance
+
+**Postconditions**: Payment recorded, invoice status updated if fully paid, balance calculated
+
+#### Use Case 3: Set Up New Course and Enroll Students
+**Actor**: Language School Administrator  
+**Goal**: Add new course offering and enroll students  
+**Preconditions**: Students exist in system  
+
+**Main Flow**:
+1. Administrator navigates to Courses tab
+2. Administrator clicks "Add Course"
+3. Administrator enters course name (e.g., "English A2 Group")
+4. Administrator selects course type "group"
+5. Administrator sets lesson price (e.g., 5.00 EUR)
+6. Administrator sets subscription price (e.g., 40.00 EUR per month)
+7. Administrator clicks "Save"
+8. System validates prices ≥ 0
+9. System creates course record
+10. Administrator navigates to Enrollments tab
+11. For each student to enroll:
+    - Administrator clicks "Add Enrollment"
+    - Administrator selects student
+    - Administrator selects newly created course
+    - Administrator selects billing mode (per-lesson or subscription)
+    - Administrator sets discount percentage (0-100%, default 0)
+    - Administrator clicks "Save"
+    - System validates inputs
+    - System creates enrollment record
+
+**Postconditions**: New course created, students enrolled with configured billing
+
+#### Use Case 4: Handle Late Payment and Identify Debtors
+**Actor**: Language School Administrator  
+**Goal**: Identify students with outstanding balances  
+**Preconditions**: Invoices have been issued, some payments overdue  
+
+**Main Flow**:
+1. Administrator navigates to Payments tab
+2. Administrator clicks "Show Debtors" or similar view
+3. System calculates balance for each student:
+   - Balance = Σ(issued/paid invoices) - Σ(payments)
+4. System displays list of students with negative balance (debtors)
+5. Administrator reviews debtor list
+6. Administrator contacts students with outstanding balances (manual process)
+7. When payment is received:
+   - Administrator follows Use Case 2 to record payment
+   - System updates balance automatically
+   - If balance ≥ 0, student is removed from debtor list
+
+**Postconditions**: Debtor list generated, administrator has visibility into outstanding balances
+
+#### Use Case 5: Correct Attendance Error Before Invoice Issuance
+**Actor**: Language School Administrator  
+**Goal**: Fix attendance error discovered during invoice review  
+**Preconditions**: Draft invoices generated, error discovered in attendance  
+
+**Main Flow**:
+1. Administrator reviews draft invoices
+2. Administrator notices incorrect amount on an invoice
+3. Administrator identifies that attendance count is wrong
+4. Administrator navigates to Invoices tab
+5. Administrator deletes incorrect draft invoice
+6. Administrator navigates to Attendance tab
+7. Administrator verifies month is not locked
+8. Administrator corrects attendance count
+9. Administrator navigates back to Invoices tab
+10. Administrator regenerates draft for specific student or all students
+11. System recalculates invoice based on corrected attendance
+12. Administrator verifies corrected draft invoice
+13. Administrator proceeds with issuance
+
+**Postconditions**: Attendance corrected, accurate invoice generated
+
+**Alternative Flows**:
+- 7a. Month is locked: Administrator unlocks month, corrects attendance, re-locks month
+
+#### Use Case 6: Apply Special Discount to Student Enrollment
+**Actor**: Language School Administrator  
+**Goal**: Provide discounted pricing to specific student  
+**Preconditions**: Student and course exist, enrollment may or may not exist  
+
+**Main Flow**:
+1. Administrator navigates to Enrollments tab
+2. If enrollment exists:
+   - Administrator clicks "Edit" on enrollment
+   - Administrator updates discount percentage (e.g., 15%)
+   - Administrator clicks "Save"
+3. If enrollment does not exist:
+   - Administrator follows enrollment creation flow
+   - Administrator sets discount percentage during creation
+4. System validates discount percentage (0-100%)
+5. System saves enrollment with discount configuration
+6. When invoice is generated, system applies discount:
+   - Amount = base_amount × (1 - discount_pct/100)
+7. Invoice line shows discounted amount
+
+**Postconditions**: Discount configured, future invoices reflect discounted pricing
+
+#### Use Case 7: Month-End Workflow with Batch Operations
+**Actor**: Language School Administrator  
+**Goal**: Complete all billing tasks efficiently at month-end  
+**Preconditions**: Month is complete, all attendance recorded  
+
+**Main Flow**:
+1. Administrator uses "Add +1 to all" feature to quickly update attendance for students who attended standard number of lessons
+2. Administrator manually adjusts attendance for students with different attendance
+3. Administrator locks month to prevent accidental changes
+4. Administrator generates all draft invoices for the month
+5. Administrator performs quick review of draft totals
+6. Administrator uses "Issue All" to batch-issue all invoices
+7. System processes all invoices sequentially, assigning numbers
+8. System generates all PDFs in batch
+9. Administrator navigates to invoice directory to access PDFs
+10. Administrator sends PDFs to students via email (external to system)
+11. Administrator tracks incoming payments over following weeks
+
+**Postconditions**: Complete month processed, all invoices issued, PDFs ready for distribution
+
+[TODO: Add use case for settings configuration if not covered elsewhere]  
+[TODO: Add use case for handling subscription changes mid-month if supported]
+
+---
+
+**Detailed Requirements**: For complete functional requirements (50+) and non-functional requirements (20+) with full details, see [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md).
 
 ---
 
