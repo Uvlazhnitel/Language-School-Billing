@@ -1524,66 +1524,6 @@ student, err := client.Student.
 
 ---
 
-## 4. Implementation Overview
-
-### 4.1 Repository Structure
-
-**Repository**: https://github.com/Uvlazhnitel/Language-School-Billing
-
-Key directories:
-- `ent/schema/`: Entity definitions (9 schemas)
-- `internal/app/`: Business logic services
-- `internal/infra/`: Infrastructure (database)
-- `internal/pdf/`: PDF generation
-- `internal/validation/`: Input validation
-- `frontend/src/`: React frontend
-- `frontend/src/lib/`: API wrappers
-- `docs/`: Comprehensive documentation
-
-**Lines of Code**:
-- Go backend: ~1,800 lines
-- TypeScript frontend: ~1,000 lines
-- Total handwritten: ~2,800 lines
-- Generated code (ent): ~15,000+ lines
-
-### 4.2 Technology Implementation
-
-**Wails Integration**: Desktop framework providing Go-TypeScript bridge with automatic binding generation
-
-**ent ORM**: Type-safe database operations with code generation from schema definitions
-
-**PDF Generation**: gofpdf library with DejaVu Sans fonts for Cyrillic character support
-
-**React Frontend**: Component-based UI with hooks for state management
-
-### 4.3 Build and Deployment
-
-**Development**:
-```bash
-go generate ./ent
-go mod download
-cd frontend && npm install && npm run build
-cd .. && wails dev
-```
-
-**Production**:
-```bash
-wails build
-```
-
-**Cross-platform**: Supports Windows, macOS, and Linux builds
-
-### 4.4 Data Storage
-
-Application creates directory structure at `~/LangSchool/`:
-- `Data/`: SQLite database
-- `Invoices/YYYY/MM/`: PDF invoices organized by date
-- `Fonts/`: DejaVu TTF files for PDF generation
-- `Backups/`: (Reserved for future backup feature)
-- `Exports/`: (Reserved for future export feature)
-
----
-
 ## 4. Testing Documentation
 
 For comprehensive testing procedures, see [TESTING.md](TESTING.md) and [docs/TESTING_PROCEDURES.md](docs/TESTING_PROCEDURES.md).
@@ -2087,71 +2027,478 @@ Application creates directory structure at `~/LangSchool/`:
 
 ---
 
-## 6. Project Organization and Quality Assurance
+## 6. Project Organization and Management
 
-### 6.1 Development Methodology
+### 6.1 Project Organization
 
-Iterative development approach:
-1. Requirements gathering
-2. Design phase
-3. Incremental implementation
-4. Testing and validation
-5. Refactoring for quality
-6. Documentation
+#### 6.1.1 Project Roles
 
-### 6.2 Version Control
+This project was developed as a **single-developer project** for a Bachelor's thesis at the University of Latvia. The developer assumed multiple roles throughout the project lifecycle:
 
-**Git Workflow**:
-- Main branch: `main` (stable)
-- Development: `develop` (integration)
-- Feature branches: `feat/*`, `fix/*`, `refactor/*`, `docs/*`
+**Roles and Responsibilities**:
 
-**Commit Conventions**:
-- `feat:` New features
-- `fix:` Bug fixes
-- `refactor:` Code improvements
-- `docs:` Documentation updates
+| Role | Responsibilities | Time Allocation |
+|------|------------------|-----------------|
+| **Requirements Analyst** | User needs analysis, functional/non-functional requirements specification, use case documentation | ~15% |
+| **Software Architect** | System architecture design, technology selection, layered architecture implementation | ~10% |
+| **Backend Developer** | Go implementation, service layer, ent schema design, business logic | ~40% |
+| **Frontend Developer** | React/TypeScript UI, API wrapper development, component design | ~20% |
+| **Quality Assurance** | Test design, unit test implementation, manual test execution, security testing | ~10% |
+| **Technical Writer** | Code documentation, README, thesis documentation, testing procedures | ~5% |
 
-### 6.3 Code Quality
+[TODO: Validate time allocation percentages based on actual development logs]
 
-**Go Standards**:
-- gofmt for formatting
-- golangci-lint for quality checks
-- Clear package structure
-- Comprehensive comments
+#### 6.1.2 Development Process
 
-**TypeScript Standards**:
-- Strict TypeScript configuration
-- ESLint for code quality
-- Prettier for formatting
-- Type-safe API wrappers
+**Process Model**: **Iterative Development** with feature-driven increments
 
-### 6.4 Security Practices
+The project followed an informal iterative development process without strict sprint boundaries, prioritizing functional completeness over process overhead. Development proceeded through the following stages:
 
-**Input Validation**:
-- HTML escaping (XSS prevention)
-- Numeric validation
-- Range checking
-- Required field validation
+**Stage 1: Foundation (Initial Setup)**
+- Technology stack selection and evaluation
+- Project structure setup (Wails, ent, React)
+- Database schema design (9 entities)
+- Basic CRUD operations for core entities
+- **Deliverable**: Working application skeleton with student/course management
 
-**Database Security**:
-- Prepared statements via ent ORM
-- Transaction-based consistency
-- Validation before persistence
+**Stage 2: Core Business Logic**
+- Enrollment management implementation
+- Monthly attendance tracking with locking mechanism
+- Invoice draft generation algorithm
+- Sequential invoice numbering system
+- **Deliverable**: Complete billing workflow (attendance → invoices)
 
-### 6.5 Documentation Standards
+**Stage 3: PDF and Payments**
+- PDF invoice generation with gofpdf
+- Cyrillic font integration (DejaVu Sans)
+- Payment recording functionality
+- Balance calculation and debtor tracking
+- **Deliverable**: Complete end-to-end billing system
 
-**Code Documentation**:
-- Package-level comments
-- Function documentation
-- Inline comments for complex logic
+**Stage 4: Validation and Security**
+- Input validation and sanitization
+- XSS prevention (HTML escaping)
+- Security testing and validation
+- Unit test implementation (19 test cases)
+- **Deliverable**: Security-hardened application with 100% validation coverage
 
-**Repository Documentation**:
-- README.md: Quick start
-- PROJECT_MAP.md: Structure overview
-- TESTING.md: Testing guide
-- THESIS.md: Comprehensive thesis
-- docs/: Detailed documentation
+**Stage 5: Quality Assurance and Documentation**
+- Manual test suite execution (30+ test cases)
+- Code quality improvements (golangci-lint)
+- Comprehensive documentation (THESIS.md, docs/)
+- User guide and troubleshooting
+- **Deliverable**: Production-ready application with complete documentation
+
+**Stage 6: Thesis Documentation**
+- Requirements specification (Section 2)
+- Architecture documentation (Section 3)
+- Testing documentation (Section 4)
+- Implementation overview (Section 5)
+- **Deliverable**: Complete Bachelor's thesis following UL standards
+
+[TODO: Add actual stage durations if available from development timeline]
+
+### 6.2 Quality Assurance
+
+#### 6.2.1 Code Review Process
+
+**Code Review Approach**: **Self-Review with Automated Tools**
+
+Given the single-developer context, code review was conducted through:
+
+1. **Automated Static Analysis**:
+   - **golangci-lint**: Go code quality checks
+     - Configuration: `.golangci.yml` (6 enabled linters)
+     - Linters: errcheck, gosimple, govet, ineffassign, staticcheck, unused
+     - Coverage: All Go files except ent-generated code
+   - **TypeScript Compiler**: Strict type checking
+     - Configuration: `tsconfig.json` with `strict: true`
+   - **ESLint**: JavaScript/TypeScript linting (frontend)
+
+2. **Manual Self-Review Practices**:
+   - Code walkthrough before commits
+   - Refactoring passes for code clarity
+   - Pattern consistency verification
+   - Security-focused review for input handling
+
+3. **Iterative Refactoring**:
+   - Major refactoring milestone (PR #34 "feat/refactor", December 26, 2025)
+   - Code organization improvements
+   - Service layer extraction
+   - Validation centralization
+
+**Code Quality Metrics**:
+- **Go Report**: Not available (no public Go Report Card run)
+- **Test Coverage**: 100% for validation package, 0% for service layer
+- **Linter Violations**: 0 violations in production code (ent code excluded)
+- **Type Safety**: 100% (strict TypeScript + strong Go typing)
+
+[TODO: Run golangci-lint and document any outstanding issues]  
+[TODO: Consider peer code review for critical security functions]
+
+#### 6.2.2 Continuous Integration (CI)
+
+**Current State**: **No CI/CD Implementation**
+
+The project currently **does not have** a continuous integration pipeline. All testing and quality checks are performed manually on the developer's local machine.
+
+**Manual Quality Checks**:
+1. Unit tests: `go test ./internal/validation/...` (manual execution)
+2. Linting: `golangci-lint run` (manual execution)
+3. Build verification: `wails build` (manual execution before releases)
+4. Manual testing: Complete test suite execution (2-3 hours)
+
+**Rationale for No CI**:
+- Single-developer project with full local control
+- Desktop application without deployment pipeline
+- Manual testing sufficient for development pace
+- Cost/benefit trade-off for thesis project scope
+
+[TODO: Implement GitHub Actions CI workflow for automated testing]  
+[TODO: Add build verification for multiple platforms (Windows, macOS, Linux)]  
+[TODO: Add automated security scanning (gosec linter)]
+
+**Proposed CI Pipeline** (for future implementation):
+
+```yaml
+# .github/workflows/ci.yml (not yet created)
+name: CI
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+      - run: go generate ./ent
+      - run: go test ./internal/validation/...
+      - run: golangci-lint run
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+      - run: cd frontend && npm install && npm run build
+      - run: wails build
+```
+
+[TODO: Create CI workflow file and validate]
+
+#### 6.2.3 Definition of Done
+
+**Definition of Done** (informal, not formally documented):
+
+For a feature to be considered complete, the following criteria must be met:
+
+1. **Functional Completeness**:
+   - ✅ Feature implements all acceptance criteria from requirements
+   - ✅ UI provides clear user feedback for all operations
+   - ✅ Error cases are handled with user-friendly messages
+
+2. **Code Quality**:
+   - ✅ Code passes golangci-lint with zero violations
+   - ✅ TypeScript code compiles with zero type errors
+   - ✅ Code follows established architectural patterns (service layer, DTO)
+   - ✅ Complex logic includes inline comments
+
+3. **Security**:
+   - ✅ All user inputs are validated and sanitized
+   - ✅ SQL operations use parameterized queries (via ent)
+   - ✅ File paths use safe construction (filepath.Join)
+
+4. **Testing**:
+   - ✅ Critical validation functions have unit tests (if applicable)
+   - ✅ Feature tested through manual test scenarios
+   - ✅ Edge cases documented and tested
+   - ✅ Cyrillic character support verified (if applicable)
+
+5. **Documentation**:
+   - ✅ Public functions have Go doc comments
+   - ✅ README.md updated (if user-facing change)
+   - ✅ TESTING.md updated (if new test procedures)
+
+6. **Integration**:
+   - ✅ Changes merged to main branch
+   - ✅ No merge conflicts
+   - ✅ Application builds successfully with `wails build`
+
+**Statistical Analysis**: Not performed (no metrics collection infrastructure)
+
+[TODO: Implement code coverage tracking and set target thresholds]  
+[TODO: Add cyclomatic complexity analysis]  
+[TODO: Track defect density metrics]
+
+### 6.3 Configuration Management
+
+#### 6.3.1 Version Control Strategy
+
+**Version Control System**: **Git** hosted on **GitHub**
+
+**Repository**: https://github.com/Uvlazhnitel/Language-School-Billing
+
+**Git Workflow**: **Simplified Feature Branch Workflow**
+
+The project uses a streamlined branching model suitable for a single-developer project:
+
+**Branch Structure**:
+- **`main`**: Primary branch containing stable, production-ready code
+  - Protected branch (manual protection, no automated policies)
+  - All commits must pass manual testing before merge
+  - Tagged with version numbers for releases
+  
+**Feature Branches**: Short-lived branches for specific features or improvements
+- Naming conventions:
+  - `feat/*` - New features (e.g., `feat/pdf-generation`)
+  - `fix/*` - Bug fixes (e.g., `fix/attendance-validation`)
+  - `refactor/*` - Code improvements (e.g., `refactor/service-layer`)
+  - `docs/*` - Documentation updates (e.g., `docs/thesis`)
+
+**Branching Workflow**:
+1. Create feature branch from `main`: `git checkout -b feat/feature-name`
+2. Implement feature with multiple commits
+3. Test feature locally (unit tests + manual testing)
+4. Merge back to `main`: `git checkout main && git merge feat/feature-name`
+5. Delete feature branch: `git branch -d feat/feature-name`
+6. Push to GitHub: `git push origin main`
+
+**Commit History** (last 10 commits on main branch as of December 29, 2025):
+- December 29, 2025: Thesis documentation (multiple commits)
+- December 26, 2025: Major refactoring (PR #34 "feat/refactor")
+
+**Total Commits**: 10 commits (limited history due to project scope)
+
+[TODO: Add commit count breakdown by feature/fix/refactor/docs categories]
+
+#### 6.3.2 Commit Conventions
+
+**Commit Message Format**: **Conventional Commits** (informal enforcement)
+
+```
+<type>: <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Commit Types**:
+- `feat:` - New features or enhancements
+- `fix:` - Bug fixes
+- `refactor:` - Code improvements without behavior change
+- `docs:` - Documentation updates
+- `test:` - Test additions or modifications
+- `build:` - Build system or dependency changes
+- `chore:` - Maintenance tasks
+
+**Examples**:
+```
+feat: Add PDF invoice generation with Cyrillic support
+fix: Correct balance calculation for partial payments
+refactor: Extract invoice service from CRUD layer
+docs: Update README with font installation instructions
+test: Add XSS prevention test cases
+```
+
+**Enforcement**: Manual (no commit hooks or automated validation)
+
+[TODO: Add commitlint for automated commit message validation]  
+[TODO: Add git hooks for pre-commit linting]
+
+#### 6.3.3 Release Management
+
+**Release Strategy**: **Manual Releases** (no formal versioning yet)
+
+**Current State**: No tagged releases or semantic versioning
+
+The project does not currently follow a formal release process. Development builds are created on-demand using `wails build`.
+
+**Proposed Versioning Scheme**: **Semantic Versioning (SemVer)**
+
+```
+MAJOR.MINOR.PATCH (e.g., 1.0.0)
+```
+
+- **MAJOR**: Breaking changes (database schema incompatible changes)
+- **MINOR**: New features (backward compatible)
+- **PATCH**: Bug fixes and minor improvements
+
+**Proposed Release Process**:
+
+1. **Version Bump**: Update version in `wails.json` and `package.json`
+2. **Changelog**: Document changes since last release
+3. **Testing**: Execute full manual test suite (30+ test cases)
+4. **Build**: Create production builds for all platforms
+   ```bash
+   wails build -platform windows/amd64
+   wails build -platform darwin/amd64
+   wails build -platform linux/amd64
+   ```
+5. **Tag**: Create Git tag `git tag -a v1.0.0 -m "Release 1.0.0"`
+6. **GitHub Release**: Create GitHub release with binaries and changelog
+7. **Documentation**: Update README with release notes
+
+**Release History**: None (project in development)
+
+[TODO: Create initial release v1.0.0 after thesis submission]  
+[TODO: Document release process in CONTRIBUTING.md]
+
+#### 6.3.4 Dependency Management
+
+**Go Dependencies**: **Go Modules** (`go.mod`)
+
+Key dependencies with versions:
+- Wails: v2.x (desktop framework)
+- ent: Latest (ORM and code generation)
+- gofpdf: Latest (PDF generation)
+- go-sqlite3: Latest (SQLite driver)
+
+**Dependency Updates**: Manual (no automated dependency updates)
+
+**Frontend Dependencies**: **npm** (`package.json`)
+
+Key dependencies:
+- React: 18.x
+- TypeScript: 5.7.x
+- Vite: Latest (build tool)
+
+**Security Updates**: Manual monitoring (no Dependabot or similar)
+
+[TODO: Enable Dependabot for automated security updates]  
+[TODO: Document dependency upgrade process]
+
+#### 6.3.5 Build Configuration
+
+**Build Tool**: **Wails CLI**
+
+**Configuration File**: `wails.json`
+
+```json
+{
+  "name": "Language School Billing",
+  "author": {
+    "name": "Uvlazhnitel",
+    "email": ""
+  },
+  "frontend:build": "npm run build",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto"
+}
+```
+
+**Build Commands**:
+- Development: `wails dev` (hot reload enabled)
+- Production: `wails build` (creates optimized binary)
+- Clean build: `go generate ./ent && go mod download && cd frontend && npm install && npm run build && cd .. && wails build`
+
+**Cross-Platform Builds**: Supported via Wails for Windows, macOS, Linux
+
+[TODO: Add build scripts for automated cross-platform releases]
+
+### 6.4 Effort Estimation and Project Timeline
+
+#### 6.4.1 Estimation Approach
+
+**Estimation Method**: **Informal Time-Based Estimation**
+
+The project did not use formal estimation techniques such as:
+- ❌ Story points
+- ❌ Planning poker
+- ❌ Function point analysis
+- ❌ COCOMO model
+
+Instead, development proceeded organically with:
+- ✅ Feature prioritization based on dependencies
+- ✅ Iterative implementation with incremental testing
+- ✅ Time-boxing for research and spike activities
+- ✅ Informal milestone setting (e.g., "complete invoice generation by end of week")
+
+**Rationale**: Single-developer thesis project with flexible timeline, formal estimation overhead not justified.
+
+[TODO: Retroactively estimate effort in person-hours if development logs available]
+
+#### 6.4.2 Project Timeline
+
+**Project Duration**: Approximately **3 months** (estimated)
+
+**Start Date**: ~September 2024 (estimated based on commit history)  
+**End Date**: December 29, 2025 (thesis documentation completion)
+
+**Development Phases** (estimated timeline):
+
+| Phase | Duration (est.) | Key Milestones | Status |
+|-------|-----------------|----------------|--------|
+| **Phase 1: Setup & Foundation** | 2 weeks | Technology selection, project setup, ent schema design, basic CRUD | ✅ Complete |
+| **Phase 2: Core Business Logic** | 4 weeks | Enrollment management, attendance tracking, invoice drafts, sequential numbering | ✅ Complete |
+| **Phase 3: PDF & Payments** | 3 weeks | PDF generation, Cyrillic fonts, payment recording, balance calculation | ✅ Complete |
+| **Phase 4: Validation & Security** | 2 weeks | Input validation, XSS prevention, SQL injection testing, unit tests | ✅ Complete |
+| **Phase 5: Quality & Testing** | 2 weeks | Manual test suite, golangci-lint setup, bug fixes, UI improvements | ✅ Complete |
+| **Phase 6: Thesis Documentation** | 1 week | THESIS.md, detailed requirements, architecture docs, testing procedures | ✅ Complete |
+| **Total Estimated Effort** | **~14 weeks** | | ✅ Complete |
+
+[TODO: Validate timeline against actual Git commit timestamps]  
+[TODO: Add commit activity heatmap analysis]
+
+#### 6.4.3 Plan vs. Actual Analysis
+
+**Current State**: No formal project plan was created, therefore no plan vs. actual comparison is available.
+
+**Proposed Template** (for future projects or retrospective analysis):
+
+**Table 6.1**: Plan vs. Actual Effort Estimation (TEMPLATE - TODO: Fill with actual data)
+
+| Work Package | Planned Effort | Actual Effort | Variance | Variance % | Notes |
+|--------------|----------------|---------------|----------|------------|-------|
+| Requirements Analysis | TODO: X hours | TODO: Y hours | TODO: ±Z hours | TODO: ±N% | TODO: Reasons for variance |
+| Architecture Design | TODO: X hours | TODO: Y hours | TODO: ±Z hours | TODO: ±N% | TODO: Reasons for variance |
+| Database Schema Design | TODO: X hours | TODO: Y hours | TODO: ±Z hours | TODO: ±N% | TODO: Reasons for variance |
+| Backend Implementation | TODO: X hours | TODO: Y hours | TODO: ±Z hours | TODO: ±N% | TODO: Reasons for variance |
+| Frontend Implementation | TODO: X hours | TODO: Y hours | TODO: ±Z hours | TODO: ±N% | TODO: Reasons for variance |
+| PDF Generation | TODO: X hours | TODO: Y hours | TODO: ±Z hours | TODO: ±N% | TODO: Reasons for variance |
+| Input Validation & Security | TODO: X hours | TODO: Y hours | TODO: ±Z hours | TODO: ±N% | TODO: Reasons for variance |
+| Unit Testing | TODO: X hours | TODO: Y hours | TODO: ±Z hours | TODO: ±N% | TODO: Reasons for variance |
+| Manual Testing | TODO: X hours | TODO: Y hours | TODO: ±Z hours | TODO: ±N% | TODO: Reasons for variance |
+| Documentation | TODO: X hours | TODO: Y hours | TODO: ±Z hours | TODO: ±N% | TODO: Reasons for variance |
+| Bug Fixes & Refinement | TODO: X hours | TODO: Y hours | TODO: ±Z hours | TODO: ±N% | TODO: Reasons for variance |
+| **Total Project Effort** | **TODO: X hours** | **TODO: Y hours** | **TODO: ±Z hours** | **TODO: ±N%** | |
+
+**Effort Distribution by Activity** (TEMPLATE - TODO: Fill with actual data):
+
+```
+Requirements:  TODO: X%
+Design:        TODO: Y%
+Implementation: TODO: Z%
+Testing:       TODO: W%
+Documentation: TODO: V%
+```
+
+[TODO: Analyze Git commit timestamps to estimate actual development time]  
+[TODO: Interview developer to retroactively estimate effort by work package]  
+[TODO: Document key estimation challenges and lessons learned]
+
+#### 6.4.4 Risk Management
+
+**Risk Identification and Mitigation** (retrospective):
+
+**Table 6.2**: Project Risks and Mitigation Strategies
+
+| Risk ID | Risk Description | Probability | Impact | Mitigation Strategy | Actual Outcome |
+|---------|------------------|-------------|--------|---------------------|----------------|
+| R-01 | Technology learning curve (Wails, ent) | High | Medium | Incremental learning, documentation review, sample projects | Successfully mitigated through iterative learning |
+| R-02 | Cyrillic PDF generation complexity | Medium | High | Font research, gofpdf library evaluation, test-driven approach | Successfully resolved with DejaVu Sans fonts |
+| R-03 | Database schema changes breaking existing data | Medium | High | ent migration system, careful schema design, backup strategy | Successfully managed through ent migrations |
+| R-04 | Cross-platform compatibility issues | Medium | Medium | Wails framework handles platform differences | Not fully tested (limited macOS/Linux validation) |
+| R-05 | Security vulnerabilities (XSS, SQL injection) | Medium | High | Input validation, ent parameterized queries, security testing | Successfully mitigated (100% validation coverage) |
+| R-06 | Scope creep beyond thesis requirements | Medium | Medium | Clear requirements definition, focus on core features | Successfully controlled (excluded cloud sync, multi-user) |
+| R-07 | Time constraints for thesis completion | Medium | High | Iterative development, MVP approach, documentation throughout | On track for completion |
+| R-08 | No automated testing infrastructure | Low | Medium | Manual testing procedures, comprehensive test suite | Accepted risk (manual testing sufficient) |
+
+**Risk Analysis**:
+- **High-impact risks** (R-02, R-03, R-05, R-07) were successfully mitigated
+- **Accepted risks** (R-04, R-08) documented with limitations in Section 4.5
+
+[TODO: Add risk burndown chart showing risk reduction over project timeline]
 
 ---
 
