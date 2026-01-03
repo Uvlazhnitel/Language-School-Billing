@@ -248,23 +248,16 @@ func (a *App) AttendanceListPerLesson(year, month int, courseID *int) ([]attenda
 }
 
 // AttendanceUpsert creates or updates an attendance record for a student-course
-// pair for a specific month. If the month is locked, the update will fail.
+// pair for a specific month.
 func (a *App) AttendanceUpsert(studentID, courseID, year, month, count int) error {
 	return a.att.Upsert(a.ctx, studentID, courseID, year, month, count)
 }
 
-// AttendanceAddOne increments the lesson count by 1 for all unlocked attendance
+// AttendanceAddOne increments the lesson count by 1 for all attendance
 // records matching the filter (year, month, optional courseID).
 // Returns the number of records that were successfully updated.
 func (a *App) AttendanceAddOne(year, month int, courseID *int) (int, error) {
 	return a.att.AddOneForFilter(a.ctx, year, month, courseID)
-}
-
-// AttendanceSetLocked sets the locked status for all attendance records matching
-// the filter (year, month, optional courseID). Locked records cannot be modified.
-// Returns the number of records that were updated.
-func (a *App) AttendanceSetLocked(year, month int, courseID *int, lock bool) (int, error) {
-	return a.att.SetLocked(a.ctx, year, month, courseID, lock)
 }
 
 // ---------- Invoice issuing & PDF bindings ----------

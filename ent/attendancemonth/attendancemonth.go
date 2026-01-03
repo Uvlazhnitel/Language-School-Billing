@@ -23,8 +23,6 @@ const (
 	FieldMonth = "month"
 	// FieldLessonsCount holds the string denoting the lessons_count field in the database.
 	FieldLessonsCount = "lessons_count"
-	// FieldLocked holds the string denoting the locked field in the database.
-	FieldLocked = "locked"
 	// FieldSource holds the string denoting the source field in the database.
 	FieldSource = "source"
 	// Table holds the table name of the attendancemonth in the database.
@@ -39,7 +37,6 @@ var Columns = []string{
 	FieldYear,
 	FieldMonth,
 	FieldLessonsCount,
-	FieldLocked,
 	FieldSource,
 }
 
@@ -56,8 +53,6 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultLessonsCount holds the default value on creation for the "lessons_count" field.
 	DefaultLessonsCount int
-	// DefaultLocked holds the default value on creation for the "locked" field.
-	DefaultLocked bool
 )
 
 // Source defines the type for the "source" enum field.
@@ -117,11 +112,6 @@ func ByMonth(opts ...sql.OrderTermOption) OrderOption {
 // ByLessonsCount orders the results by the lessons_count field.
 func ByLessonsCount(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLessonsCount, opts...).ToFunc()
-}
-
-// ByLocked orders the results by the locked field.
-func ByLocked(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLocked, opts...).ToFunc()
 }
 
 // BySource orders the results by the source field.

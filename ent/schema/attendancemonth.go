@@ -15,7 +15,6 @@ func (AttendanceMonth) Fields() []ent.Field {
 		field.Int("year"),
 		field.Int("month"),
 		field.Int("lessons_count").Default(0),
-		field.Bool("locked").Default(false),
 		field.Enum("source").Values("monthly", "daily_agg").Default("monthly"),
 	}
 }

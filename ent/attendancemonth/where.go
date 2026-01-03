@@ -78,11 +78,6 @@ func LessonsCount(v int) predicate.AttendanceMonth {
 	return predicate.AttendanceMonth(sql.FieldEQ(FieldLessonsCount, v))
 }
 
-// Locked applies equality check predicate on the "locked" field. It's identical to LockedEQ.
-func Locked(v bool) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldEQ(FieldLocked, v))
-}
-
 // StudentIDEQ applies the EQ predicate on the "student_id" field.
 func StudentIDEQ(v int) predicate.AttendanceMonth {
 	return predicate.AttendanceMonth(sql.FieldEQ(FieldStudentID, v))
@@ -281,16 +276,6 @@ func LessonsCountLT(v int) predicate.AttendanceMonth {
 // LessonsCountLTE applies the LTE predicate on the "lessons_count" field.
 func LessonsCountLTE(v int) predicate.AttendanceMonth {
 	return predicate.AttendanceMonth(sql.FieldLTE(FieldLessonsCount, v))
-}
-
-// LockedEQ applies the EQ predicate on the "locked" field.
-func LockedEQ(v bool) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldEQ(FieldLocked, v))
-}
-
-// LockedNEQ applies the NEQ predicate on the "locked" field.
-func LockedNEQ(v bool) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldNEQ(FieldLocked, v))
 }
 
 // SourceEQ applies the EQ predicate on the "source" field.

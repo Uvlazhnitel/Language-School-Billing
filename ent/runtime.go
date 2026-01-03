@@ -24,10 +24,6 @@ func init() {
 	attendancemonthDescLessonsCount := attendancemonthFields[4].Descriptor()
 	// attendancemonth.DefaultLessonsCount holds the default value on creation for the lessons_count field.
 	attendancemonth.DefaultLessonsCount = attendancemonthDescLessonsCount.Default.(int)
-	// attendancemonthDescLocked is the schema descriptor for locked field.
-	attendancemonthDescLocked := attendancemonthFields[5].Descriptor()
-	// attendancemonth.DefaultLocked holds the default value on creation for the locked field.
-	attendancemonth.DefaultLocked = attendancemonthDescLocked.Default.(bool)
 	courseFields := schema.Course{}.Fields()
 	_ = courseFields
 	// courseDescLessonPrice is the schema descriptor for lesson_price field.

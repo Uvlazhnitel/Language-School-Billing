@@ -26,8 +26,6 @@ type AttendanceMonth struct {
 	Month int `json:"month,omitempty"`
 	// LessonsCount holds the value of the "lessons_count" field.
 	LessonsCount int `json:"lessons_count,omitempty"`
-	// Locked holds the value of the "locked" field.
-	Locked bool `json:"locked,omitempty"`
 	// Source holds the value of the "source" field.
 	Source       attendancemonth.Source `json:"source,omitempty"`
 	selectValues sql.SelectValues
@@ -38,8 +36,6 @@ func (*AttendanceMonth) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case attendancemonth.FieldLocked:
-			values[i] = new(sql.NullBool)
 		case attendancemonth.FieldID, attendancemonth.FieldStudentID, attendancemonth.FieldCourseID, attendancemonth.FieldYear, attendancemonth.FieldMonth, attendancemonth.FieldLessonsCount:
 			values[i] = new(sql.NullInt64)
 		case attendancemonth.FieldSource:
@@ -94,12 +90,6 @@ func (_m *AttendanceMonth) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field lessons_count", values[i])
 			} else if value.Valid {
 				_m.LessonsCount = int(value.Int64)
-			}
-		case attendancemonth.FieldLocked:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field locked", values[i])
-			} else if value.Valid {
-				_m.Locked = value.Bool
 			}
 		case attendancemonth.FieldSource:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -157,9 +147,6 @@ func (_m *AttendanceMonth) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("lessons_count=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LessonsCount))
-	builder.WriteString(", ")
-	builder.WriteString("locked=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Locked))
 	builder.WriteString(", ")
 	builder.WriteString("source=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Source))

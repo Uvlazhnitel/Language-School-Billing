@@ -59,7 +59,6 @@ type AttendanceMonthMutation struct {
 	addmonth         *int
 	lessons_count    *int
 	addlessons_count *int
-	locked           *bool
 	source           *attendancemonth.Source
 	clearedFields    map[string]struct{}
 	done             bool
@@ -445,42 +444,6 @@ func (m *AttendanceMonthMutation) ResetLessonsCount() {
 	m.addlessons_count = nil
 }
 
-// SetLocked sets the "locked" field.
-func (m *AttendanceMonthMutation) SetLocked(b bool) {
-	m.locked = &b
-}
-
-// Locked returns the value of the "locked" field in the mutation.
-func (m *AttendanceMonthMutation) Locked() (r bool, exists bool) {
-	v := m.locked
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldLocked returns the old "locked" field's value of the AttendanceMonth entity.
-// If the AttendanceMonth object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AttendanceMonthMutation) OldLocked(ctx context.Context) (v bool, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldLocked is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldLocked requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldLocked: %w", err)
-	}
-	return oldValue.Locked, nil
-}
-
-// ResetLocked resets all changes to the "locked" field.
-func (m *AttendanceMonthMutation) ResetLocked() {
-	m.locked = nil
-}
-
 // SetSource sets the "source" field.
 func (m *AttendanceMonthMutation) SetSource(a attendancemonth.Source) {
 	m.source = &a
@@ -551,7 +514,7 @@ func (m *AttendanceMonthMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AttendanceMonthMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 6)
 	if m.student_id != nil {
 		fields = append(fields, attendancemonth.FieldStudentID)
 	}
@@ -566,9 +529,6 @@ func (m *AttendanceMonthMutation) Fields() []string {
 	}
 	if m.lessons_count != nil {
 		fields = append(fields, attendancemonth.FieldLessonsCount)
-	}
-	if m.locked != nil {
-		fields = append(fields, attendancemonth.FieldLocked)
 	}
 	if m.source != nil {
 		fields = append(fields, attendancemonth.FieldSource)
@@ -591,8 +551,6 @@ func (m *AttendanceMonthMutation) Field(name string) (ent.Value, bool) {
 		return m.Month()
 	case attendancemonth.FieldLessonsCount:
 		return m.LessonsCount()
-	case attendancemonth.FieldLocked:
-		return m.Locked()
 	case attendancemonth.FieldSource:
 		return m.Source()
 	}
@@ -614,8 +572,6 @@ func (m *AttendanceMonthMutation) OldField(ctx context.Context, name string) (en
 		return m.OldMonth(ctx)
 	case attendancemonth.FieldLessonsCount:
 		return m.OldLessonsCount(ctx)
-	case attendancemonth.FieldLocked:
-		return m.OldLocked(ctx)
 	case attendancemonth.FieldSource:
 		return m.OldSource(ctx)
 	}
@@ -661,13 +617,6 @@ func (m *AttendanceMonthMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLessonsCount(v)
-		return nil
-	case attendancemonth.FieldLocked:
-		v, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetLocked(v)
 		return nil
 	case attendancemonth.FieldSource:
 		v, ok := value.(attendancemonth.Source)
@@ -802,9 +751,6 @@ func (m *AttendanceMonthMutation) ResetField(name string) error {
 		return nil
 	case attendancemonth.FieldLessonsCount:
 		m.ResetLessonsCount()
-		return nil
-	case attendancemonth.FieldLocked:
-		m.ResetLocked()
 		return nil
 	case attendancemonth.FieldSource:
 		m.ResetSource()

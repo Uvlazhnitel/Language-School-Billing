@@ -132,20 +132,6 @@ func (_u *AttendanceMonthUpdate) AddLessonsCount(v int) *AttendanceMonthUpdate {
 	return _u
 }
 
-// SetLocked sets the "locked" field.
-func (_u *AttendanceMonthUpdate) SetLocked(v bool) *AttendanceMonthUpdate {
-	_u.mutation.SetLocked(v)
-	return _u
-}
-
-// SetNillableLocked sets the "locked" field if the given value is not nil.
-func (_u *AttendanceMonthUpdate) SetNillableLocked(v *bool) *AttendanceMonthUpdate {
-	if v != nil {
-		_u.SetLocked(*v)
-	}
-	return _u
-}
-
 // SetSource sets the "source" field.
 func (_u *AttendanceMonthUpdate) SetSource(v attendancemonth.Source) *AttendanceMonthUpdate {
 	_u.mutation.SetSource(v)
@@ -243,9 +229,6 @@ func (_u *AttendanceMonthUpdate) sqlSave(ctx context.Context) (_node int, err er
 	}
 	if value, ok := _u.mutation.AddedLessonsCount(); ok {
 		_spec.AddField(attendancemonth.FieldLessonsCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.Locked(); ok {
-		_spec.SetField(attendancemonth.FieldLocked, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Source(); ok {
 		_spec.SetField(attendancemonth.FieldSource, field.TypeEnum, value)
@@ -372,20 +355,6 @@ func (_u *AttendanceMonthUpdateOne) SetNillableLessonsCount(v *int) *AttendanceM
 // AddLessonsCount adds value to the "lessons_count" field.
 func (_u *AttendanceMonthUpdateOne) AddLessonsCount(v int) *AttendanceMonthUpdateOne {
 	_u.mutation.AddLessonsCount(v)
-	return _u
-}
-
-// SetLocked sets the "locked" field.
-func (_u *AttendanceMonthUpdateOne) SetLocked(v bool) *AttendanceMonthUpdateOne {
-	_u.mutation.SetLocked(v)
-	return _u
-}
-
-// SetNillableLocked sets the "locked" field if the given value is not nil.
-func (_u *AttendanceMonthUpdateOne) SetNillableLocked(v *bool) *AttendanceMonthUpdateOne {
-	if v != nil {
-		_u.SetLocked(*v)
-	}
 	return _u
 }
 
@@ -516,9 +485,6 @@ func (_u *AttendanceMonthUpdateOne) sqlSave(ctx context.Context) (_node *Attenda
 	}
 	if value, ok := _u.mutation.AddedLessonsCount(); ok {
 		_spec.AddField(attendancemonth.FieldLessonsCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.Locked(); ok {
-		_spec.SetField(attendancemonth.FieldLocked, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Source(); ok {
 		_spec.SetField(attendancemonth.FieldSource, field.TypeEnum, value)

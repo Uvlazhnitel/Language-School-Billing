@@ -4,7 +4,6 @@ package attendance
 
 import (
 	"context"
-	"errors"
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
@@ -22,7 +21,7 @@ func New(db *ent.Client) *Service { return &Service{db: db} }
 
 // Row represents a single attendance record in the attendance sheet.
 // It combines enrollment, student, and course information with the
-// attendance count and lock status for a specific month.
+// attendance count for a specific month.
 type Row struct {
 	EnrollmentID int     `json:"enrollmentId"` // ID of the enrollment
 	StudentID    int     `json:"studentId"`    // ID of the student
@@ -32,7 +31,6 @@ type Row struct {
 	CourseType   string  `json:"courseType"`    // Course type: "group" or "individual"
 	LessonPrice  float64 `json:"lessonPrice"`  // Price per lesson for this enrollment
 	Count        int     `json:"count"`         // Number of lessons attended in the month
-	Locked       bool    `json:"locked"`       // Whether this month is locked from editing
 }
 
 // ListPerLesson retrieves attendance records for all enrollments with per-lesson billing
@@ -70,24 +68,23 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 				attendancemonth.MonthEQ(m),
 			).Only(ctx)
 
-		cnt, locked := 0, false
+		cnt := 0
 		if am != nil {
-			cnt, locked = am.LessonsCount, am.Locked
+			cnt = am.LessonsCount
 		}
 
 		rows = append(rows, Row{
 			EnrollmentID: e.ID,
 			StudentID:    e.StudentID, StudentName: sname,
 			CourseID: e.CourseID, CourseName: c.Name, CourseType: string(c.Type),
-			LessonPrice: c.LessonPrice, Count: cnt, Locked: locked,
+			LessonPrice: c.LessonPrice, Count: cnt,
 		})
 	}
 	return rows, nil
 }
 
 // Upsert creates or updates an attendance record for a student-course pair
-// for a specific month. If the month is locked, the update will fail with an error.
-// If no record exists, a new one is created. If a record exists, it is updated.
+// for a specific month. If no record exists, a new one is created. If a record exists, it is updated.
 func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count int) error {
 	am, err := s.db.AttendanceMonth.
 		Query().
@@ -98,9 +95,6 @@ func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count i
 			attendancemonth.MonthEQ(m),
 		).Only(ctx)
 	if err == nil {
-		if am.Locked {
-			return errors.New("month locked for this pair")
-		}
 		_, err = am.Update().SetLessonsCount(count).Save(ctx)
 		return err
 	}
@@ -114,7 +108,7 @@ func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count i
 	return err
 }
 
-// AddOneForFilter increments the lesson count by 1 for all unlocked attendance
+// AddOneForFilter increments the lesson count by 1 for all attendance
 // records matching the filter (year, month, optional courseID).
 // This is useful for bulk operations like "add one lesson to all students in a course".
 // Returns the number of records that were successfully updated.
@@ -125,39 +119,8 @@ func (s *Service) AddOneForFilter(ctx context.Context, y, m int, courseID *int) 
 	}
 	changed := 0
 	for _, r := range rows {
-		if r.Locked {
-			continue
-		}
 		if err := s.Upsert(ctx, r.StudentID, r.CourseID, y, m, r.Count+1); err == nil {
 			changed++
-		}
-	}
-	return changed, nil
-}
-
-// SetLocked sets the locked status for all attendance records matching
-// the filter (year, month, optional courseID). Locked records cannot be modified
-// to prevent accidental changes to finalized attendance data.
-// Returns the number of records that were updated.
-func (s *Service) SetLocked(ctx context.Context, y, m int, courseID *int, lock bool) (int, error) {
-	rows, err := s.ListPerLesson(ctx, y, m, courseID)
-	if err != nil {
-		return 0, err
-	}
-	changed := 0
-	for _, r := range rows {
-		am, err := s.db.AttendanceMonth.
-			Query().
-			Where(
-				attendancemonth.StudentIDEQ(r.StudentID),
-				attendancemonth.CourseIDEQ(r.CourseID),
-				attendancemonth.YearEQ(y),
-				attendancemonth.MonthEQ(m),
-			).Only(ctx)
-		if err == nil && am.Locked != lock {
-			if _, e := am.Update().SetLocked(lock).Save(ctx); e == nil {
-				changed++
-			}
 		}
 	}
 	return changed, nil

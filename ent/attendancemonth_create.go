@@ -57,20 +57,6 @@ func (_c *AttendanceMonthCreate) SetNillableLessonsCount(v *int) *AttendanceMont
 	return _c
 }
 
-// SetLocked sets the "locked" field.
-func (_c *AttendanceMonthCreate) SetLocked(v bool) *AttendanceMonthCreate {
-	_c.mutation.SetLocked(v)
-	return _c
-}
-
-// SetNillableLocked sets the "locked" field if the given value is not nil.
-func (_c *AttendanceMonthCreate) SetNillableLocked(v *bool) *AttendanceMonthCreate {
-	if v != nil {
-		_c.SetLocked(*v)
-	}
-	return _c
-}
-
 // SetSource sets the "source" field.
 func (_c *AttendanceMonthCreate) SetSource(v attendancemonth.Source) *AttendanceMonthCreate {
 	_c.mutation.SetSource(v)
@@ -124,10 +110,6 @@ func (_c *AttendanceMonthCreate) defaults() {
 		v := attendancemonth.DefaultLessonsCount
 		_c.mutation.SetLessonsCount(v)
 	}
-	if _, ok := _c.mutation.Locked(); !ok {
-		v := attendancemonth.DefaultLocked
-		_c.mutation.SetLocked(v)
-	}
 	if _, ok := _c.mutation.Source(); !ok {
 		v := attendancemonth.DefaultSource
 		_c.mutation.SetSource(v)
@@ -150,9 +132,6 @@ func (_c *AttendanceMonthCreate) check() error {
 	}
 	if _, ok := _c.mutation.LessonsCount(); !ok {
 		return &ValidationError{Name: "lessons_count", err: errors.New(`ent: missing required field "AttendanceMonth.lessons_count"`)}
-	}
-	if _, ok := _c.mutation.Locked(); !ok {
-		return &ValidationError{Name: "locked", err: errors.New(`ent: missing required field "AttendanceMonth.locked"`)}
 	}
 	if _, ok := _c.mutation.Source(); !ok {
 		return &ValidationError{Name: "source", err: errors.New(`ent: missing required field "AttendanceMonth.source"`)}
@@ -207,10 +186,6 @@ func (_c *AttendanceMonthCreate) createSpec() (*AttendanceMonth, *sqlgraph.Creat
 	if value, ok := _c.mutation.LessonsCount(); ok {
 		_spec.SetField(attendancemonth.FieldLessonsCount, field.TypeInt, value)
 		_node.LessonsCount = value
-	}
-	if value, ok := _c.mutation.Locked(); ok {
-		_spec.SetField(attendancemonth.FieldLocked, field.TypeBool, value)
-		_node.Locked = value
 	}
 	if value, ok := _c.mutation.Source(); ok {
 		_spec.SetField(attendancemonth.FieldSource, field.TypeEnum, value)

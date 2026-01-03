@@ -11,8 +11,6 @@ export function AttendanceAddOne(arg1:number,arg2:number,arg3:any):Promise<numbe
 
 export function AttendanceListPerLesson(arg1:number,arg2:number,arg3:any):Promise<Array<attendance.Row>>;
 
-export function AttendanceSetLocked(arg1:number,arg2:number,arg3:any,arg4:boolean):Promise<number>;
-
 export function AttendanceUpsert(arg1:number,arg2:number,arg3:number,arg4:number,arg5:number):Promise<void>;
 
 export function BackupNow():Promise<string>;

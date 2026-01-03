@@ -16,7 +16,6 @@ var (
 		{Name: "year", Type: field.TypeInt},
 		{Name: "month", Type: field.TypeInt},
 		{Name: "lessons_count", Type: field.TypeInt, Default: 0},
-		{Name: "locked", Type: field.TypeBool, Default: false},
 		{Name: "source", Type: field.TypeEnum, Enums: []string{"monthly", "daily_agg"}, Default: "monthly"},
 	}
 	// AttendanceMonthsTable holds the schema information for the "attendance_months" table.
