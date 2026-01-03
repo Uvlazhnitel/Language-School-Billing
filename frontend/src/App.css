@@ -317,7 +317,7 @@
   }
   
   /* ---------- Modal ---------- */
-  .modal {
+  .modal-overlay {
     position: fixed;
     inset: 0;
     z-index: 50;
@@ -327,6 +327,31 @@
     background: rgba(0,0,0,0.55);
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
+  }
+
+  .modal {
+    width: min(400px, 100%);
+    border-radius: var(--r-lg);
+    border: 1px solid rgba(255,255,255,0.14);
+    background:
+      radial-gradient(900px 280px at 30% 0%, rgba(124,92,255,0.20), transparent 55%),
+      linear-gradient(180deg, rgba(255,255,255,0.10), rgba(255,255,255,0.05));
+    box-shadow: var(--shadow);
+    padding: 24px;
+    animation: pop .16s ease-out;
+  }
+
+  .modal h3 {
+    margin: 0 0 16px;
+    font-size: 18px;
+  }
+
+  .modal label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 13px;
   }
   
   .modalBody {

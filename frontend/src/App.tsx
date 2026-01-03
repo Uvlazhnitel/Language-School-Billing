@@ -27,6 +27,8 @@ import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from
 
 import { listEnrollments, createEnrollment, updateEnrollment, EnrollmentDTO } from "./lib/enrollments";
 
+import { listDebtors, DebtorDTO, createPayment, invoiceSummary, InvoiceSummaryDTO } from "./lib/payments";
+
 const months = [
   "January",
   "February",
@@ -42,7 +44,7 @@ const months = [
   "December",
 ];
 
-type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice";
+type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
 
 function numOrZero(s: string): number {
   if (s.trim() === "") return 0;
@@ -502,6 +504,13 @@ export default function App() {
   const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
   const [loadingInv, setLoadingInv] = useState(false);
   const [invQ, setInvQ] = useState("");
+  const [invSummary, setInvSummary] = useState<InvoiceSummaryDTO | null>(null);
+  
+  // Payment modal state
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentAmount, setPaymentAmount] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank">("cash");
+  const [paymentNote, setPaymentNote] = useState("");
 
   const loadInvoices = useCallback(async () => {
     setLoadingInv(true);
@@ -521,6 +530,26 @@ export default function App() {
     if (tab === "invoice") loadInvoices();
   }, [tab, loadInvoices]);
 
+  // ---------------- Debtors ----------------
+  const [debtors, setDebtors] = useState<DebtorDTO[]>([]);
+  const [debtorsLoading, setDebtorsLoading] = useState(false);
+
+  const loadDebtors = useCallback(async () => {
+    setDebtorsLoading(true);
+    try {
+      const data = await listDebtors();
+      setDebtors(data);
+    } catch (e: any) {
+      showMessage(`Error loading debtors: ${String(e?.message ?? e)}`, "error");
+    } finally {
+      setDebtorsLoading(false);
+    }
+  }, [showMessage]);
+
+  useEffect(() => {
+    if (tab === "debtors") loadDebtors();
+  }, [tab, loadDebtors]);
+
   const filteredInvItems = useMemo(() => {
     const q = invQ.trim().toLowerCase();
     if (!q) return invItems;
@@ -539,6 +568,53 @@ export default function App() {
     try {
       const iv = await getInvoice(id);
       setSelectedInv(iv);
+      // Load payment summary
+      if (iv.status !== "draft") {
+        const summary = await invoiceSummary(id);
+        setInvSummary(summary);
+      } else {
+        setInvSummary(null);
+      }
+    } catch (e: any) {
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+    }
+  };
+
+  const openPaymentModal = () => {
+    if (!selectedInv) return;
+    const remaining = invSummary ? invSummary.remaining : selectedInv.total;
+    setPaymentAmount(remaining.toFixed(2));
+    setPaymentMethod("cash");
+    setPaymentNote("");
+    setPaymentModalOpen(true);
+  };
+
+  const handleCreatePayment = async () => {
+    if (!selectedInv) return;
+    
+    const amount = parseFloat(paymentAmount);
+    if (isNaN(amount) || amount <= 0) {
+      showMessage("Please enter a valid amount", "error");
+      return;
+    }
+
+    try {
+      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+      await createPayment(
+        selectedInv.studentId,
+        selectedInv.id,
+        amount,
+        paymentMethod,
+        today,
+        paymentNote
+      );
+      
+      setPaymentModalOpen(false);
+      showMessage("Payment recorded successfully!");
+      
+      // Reload invoice and summary
+      await onOpenInvoice(selectedInv.id);
+      await loadInvoices();
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
@@ -700,6 +776,9 @@ export default function App() {
         </button>
         <button className={tab === "invoice" ? "active" : ""} onClick={() => setTab("invoice")}>
           Invoices
+        </button>
+        <button className={tab === "debtors" ? "active" : ""} onClick={() => setTab("debtors")}>
+          Debtors
         </button>
 
         <div className="spacer" />
@@ -1177,10 +1256,38 @@ export default function App() {
 
           {selectedInv && (
             <div className="panel">
-              <h3>
-                Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} — {selectedInv.studentName} —{" "}
-                {months[selectedInv.month - 1]} {selectedInv.year}
-              </h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <h3>
+                  Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} — {selectedInv.studentName} —{" "}
+                  {months[selectedInv.month - 1]} {selectedInv.year}
+                </h3>
+                {selectedInv.status !== "draft" && (
+                  <button onClick={openPaymentModal}>Record Payment</button>
+                )}
+              </div>
+
+              {invSummary && selectedInv.status !== "draft" && (
+                <div style={{ marginBottom: "1rem", padding: "0.5rem", backgroundColor: "#f5f5f5", borderRadius: "4px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Total:</span>
+                    <span style={{ fontWeight: "bold" }}>€{invSummary.total.toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Paid:</span>
+                    <span style={{ color: "#2e7d32" }}>€{invSummary.paid.toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>Remaining:</span>
+                    <span style={{ fontWeight: "bold", color: invSummary.remaining > 0 ? "#d32f2f" : "#2e7d32" }}>
+                      €{invSummary.remaining.toFixed(2)}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.5rem" }}>
+                    <span>Status:</span>
+                    <span style={{ fontWeight: "bold" }}>{invSummary.status}</span>
+                  </div>
+                </div>
+              )}
 
               <table>
                 <thead>
@@ -1211,6 +1318,95 @@ export default function App() {
                 </tfoot>
               </table>
             </div>
+          )}
+
+          {/* Payment Modal */}
+          {paymentModalOpen && selectedInv && (
+            <div className="modal" onClick={() => setPaymentModalOpen(false)}>
+              <div className="modalBody" onClick={(e) => e.stopPropagation()}>
+                <h3>Record Payment</h3>
+                <div className="formRow">
+                  <label>Amount (€):</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={paymentAmount}
+                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="formRow">
+                  <label>Method:</label>
+                  <select
+                    value={paymentMethod}
+                    onChange={(e) => setPaymentMethod(e.target.value as "cash" | "bank")}
+                  >
+                    <option value="cash">Cash</option>
+                    <option value="bank">Bank</option>
+                  </select>
+                </div>
+                <div className="formRow">
+                  <label>Note (optional):</label>
+                  <input
+                    type="text"
+                    value={paymentNote}
+                    onChange={(e) => setPaymentNote(e.target.value)}
+                    placeholder="Payment note..."
+                  />
+                </div>
+                <div className="modalActions">
+                  <button onClick={() => setPaymentModalOpen(false)}>Cancel</button>
+                  <button onClick={handleCreatePayment}>Record Payment</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ---------------- Debtors ---------------- */}
+      {tab === "debtors" && (
+        <>
+          <div className="controls">
+            <button onClick={loadDebtors}>Refresh</button>
+          </div>
+
+          {debtorsLoading ? (
+            <div>Loading…</div>
+          ) : debtors.length === 0 ? (
+            <div className="empty">No debtors found. All students are up to date with payments.</div>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Student Name</th>
+                  <th style={{ textAlign: "right" }}>Debt</th>
+                  <th style={{ textAlign: "right" }}>Total Invoiced</th>
+                  <th style={{ textAlign: "right" }}>Total Paid</th>
+                </tr>
+              </thead>
+              <tbody>
+                {debtors.map((d) => (
+                  <tr key={d.studentId}>
+                    <td>{d.studentName}</td>
+                    <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
+                      €{d.debt.toFixed(2)}
+                    </td>
+                    <td style={{ textAlign: "right" }}>€{d.totalInvoiced.toFixed(2)}</td>
+                    <td style={{ textAlign: "right" }}>€{d.totalPaid.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td style={{ fontWeight: "bold" }}>Total Debt:</td>
+                  <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
+                    €{debtors.reduce((sum, d) => sum + d.debt, 0).toFixed(2)}
+                  </td>
+                  <td colSpan={2}></td>
+                </tr>
+              </tfoot>
+            </table>
           )}
         </>
       )}
