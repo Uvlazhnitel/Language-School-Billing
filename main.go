@@ -10,9 +10,16 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
 )
 
+// assets embeds the frontend/dist directory into the binary at compile time.
+// This allows the application to serve the frontend assets without requiring
+// a separate web server or file system access.
+//
 //go:embed all:frontend/dist
 var assets embed.FS
 
+// main is the entry point of the application.
+// It initializes the App instance and configures the Wails application
+// with window settings, lifecycle hooks, and the embedded frontend assets.
 func main() {
 	app := NewApp()
 

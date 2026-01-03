@@ -1,3 +1,5 @@
+// Package attendance provides services for tracking student attendance.
+// Attendance is tracked monthly per student-course pair for per-lesson billing.
 package attendance
 
 import (
@@ -10,22 +12,33 @@ import (
 	"langschool/internal/app"
 )
 
+// Service provides attendance tracking functionality.
+// It manages monthly attendance records for students enrolled in courses
+// with per-lesson billing mode.
 type Service struct{ db *ent.Client }
 
+// New creates a new attendance service with the given database client.
 func New(db *ent.Client) *Service { return &Service{db: db} }
 
+// Row represents a single attendance record in the attendance sheet.
+// It combines enrollment, student, and course information with the
+// attendance count and lock status for a specific month.
 type Row struct {
-	EnrollmentID int     `json:"enrollmentId"`
-	StudentID    int     `json:"studentId"`
-	StudentName  string  `json:"studentName"`
-	CourseID     int     `json:"courseId"`
-	CourseName   string  `json:"courseName"`
-	CourseType   string  `json:"courseType"` // group|individual
-	LessonPrice  float64 `json:"lessonPrice"`
-	Count        int     `json:"count"`
-	Locked       bool    `json:"locked"`
+	EnrollmentID int     `json:"enrollmentId"` // ID of the enrollment
+	StudentID    int     `json:"studentId"`    // ID of the student
+	StudentName  string  `json:"studentName"`  // Student's full name
+	CourseID     int     `json:"courseId"`     // ID of the course
+	CourseName   string  `json:"courseName"`   // Course name
+	CourseType   string  `json:"courseType"`    // Course type: "group" or "individual"
+	LessonPrice  float64 `json:"lessonPrice"`  // Price per lesson for this enrollment
+	Count        int     `json:"count"`         // Number of lessons attended in the month
+	Locked       bool    `json:"locked"`       // Whether this month is locked from editing
 }
 
+// ListPerLesson retrieves attendance records for all enrollments with per-lesson billing
+// for the specified year and month. Optionally filters by courseID.
+// Returns a list of rows with student, course, and attendance information.
+// If no attendance record exists for a student-course pair, the count defaults to 0.
 func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([]Row, error) {
 	q := s.db.Enrollment.
 		Query().
@@ -72,6 +85,9 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 	return rows, nil
 }
 
+// Upsert creates or updates an attendance record for a student-course pair
+// for a specific month. If the month is locked, the update will fail with an error.
+// If no record exists, a new one is created. If a record exists, it is updated.
 func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count int) error {
 	am, err := s.db.AttendanceMonth.
 		Query().
@@ -98,6 +114,10 @@ func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count i
 	return err
 }
 
+// AddOneForFilter increments the lesson count by 1 for all unlocked attendance
+// records matching the filter (year, month, optional courseID).
+// This is useful for bulk operations like "add one lesson to all students in a course".
+// Returns the number of records that were successfully updated.
 func (s *Service) AddOneForFilter(ctx context.Context, y, m int, courseID *int) (int, error) {
 	rows, err := s.ListPerLesson(ctx, y, m, courseID)
 	if err != nil {
@@ -115,6 +135,10 @@ func (s *Service) AddOneForFilter(ctx context.Context, y, m int, courseID *int) 
 	return changed, nil
 }
 
+// SetLocked sets the locked status for all attendance records matching
+// the filter (year, month, optional courseID). Locked records cannot be modified
+// to prevent accidental changes to finalized attendance data.
+// Returns the number of records that were updated.
 func (s *Service) SetLocked(ctx context.Context, y, m int, courseID *int, lock bool) (int, error) {
 	rows, err := s.ListPerLesson(ctx, y, m, courseID)
 	if err != nil {
@@ -139,6 +163,9 @@ func (s *Service) SetLocked(ctx context.Context, y, m int, courseID *int, lock b
 	return changed, nil
 }
 
+// DeleteEnrollment deletes an enrollment and all associated attendance records.
+// This ensures that when an enrollment is removed, all attendance history
+// for that student-course pair is also cleaned up.
 func (s *Service) DeleteEnrollment(ctx context.Context, enrollmentID int) error {
 	en, err := s.db.Enrollment.Get(ctx, enrollmentID)
 	if err != nil {

@@ -1,3 +1,5 @@
+// Package payment provides services for payment processing and financial tracking.
+// It handles payment creation, balance calculations, and invoice payment tracking.
 package payment
 
 import (
@@ -16,45 +18,51 @@ import (
 	"langschool/internal/app/utils"
 )
 
+// Service provides payment processing and financial tracking functionality.
 type Service struct{ db *ent.Client }
 
+// New creates a new payment service with the given database client.
 func New(db *ent.Client) *Service { return &Service{db: db} }
 
+// PaymentDTO represents a payment record in the frontend.
 type PaymentDTO struct {
-	ID        int     `json:"id"`
-	StudentID int     `json:"studentId"`
-	InvoiceID *int    `json:"invoiceId,omitempty"`
-	PaidAt    string  `json:"paidAt"` // RFC3339
-	Amount    float64 `json:"amount"`
-	Method    string  `json:"method"` // cash|bank
-	Note      string  `json:"note"`
-	CreatedAt string  `json:"createdAt"` // RFC3339
+	ID        int     `json:"id"`        // Payment ID
+	StudentID int     `json:"studentId"` // ID of the student who made the payment
+	InvoiceID *int    `json:"invoiceId,omitempty"` // Optional: ID of invoice this payment is for
+	PaidAt    string  `json:"paidAt"`    // Payment date in RFC3339 format
+	Amount    float64 `json:"amount"`    // Payment amount
+	Method    string  `json:"method"`    // Payment method: "cash" or "bank"
+	Note      string  `json:"note"`      // Optional notes about the payment
+	CreatedAt string  `json:"createdAt"` // Record creation date in RFC3339 format
 }
 
+// BalanceDTO represents a student's financial balance.
 type BalanceDTO struct {
-	StudentID     int     `json:"studentId"`
-	StudentName   string  `json:"studentName"`
-	TotalInvoiced float64 `json:"totalInvoiced"` // issued+paid
-	TotalPaid     float64 `json:"totalPaid"`     // all payments
-	Balance       float64 `json:"balance"`       // paid - invoiced (negative => owes)
-	Debt          float64 `json:"debt"`          // max(0, -balance)
+	StudentID     int     `json:"studentId"`     // Student ID
+	StudentName   string  `json:"studentName"`   // Student's full name
+	TotalInvoiced float64 `json:"totalInvoiced"` // Total amount invoiced (issued + paid invoices)
+	TotalPaid     float64 `json:"totalPaid"`     // Total amount paid (all payments)
+	Balance       float64 `json:"balance"`       // Balance: paid - invoiced (negative => student owes)
+	Debt          float64 `json:"debt"`           // Debt: max(0, -balance), amount student owes
 }
 
+// DebtorDTO represents a student with outstanding debt.
 type DebtorDTO struct {
-	StudentID     int     `json:"studentId"`
-	StudentName   string  `json:"studentName"`
-	Debt          float64 `json:"debt"`
-	TotalInvoiced float64 `json:"totalInvoiced"`
-	TotalPaid     float64 `json:"totalPaid"`
+	StudentID     int     `json:"studentId"`     // Student ID
+	StudentName   string  `json:"studentName"`   // Student's full name
+	Debt          float64 `json:"debt"`          // Amount owed
+	TotalInvoiced float64 `json:"totalInvoiced"` // Total amount invoiced
+	TotalPaid     float64 `json:"totalPaid"`     // Total amount paid
 }
 
+// InvoiceSummaryDTO represents payment summary for a specific invoice.
 type InvoiceSummaryDTO struct {
-	InvoiceID int     `json:"invoiceId"`
-	Total     float64 `json:"total"`
-	Paid      float64 `json:"paid"`
-	Remaining float64 `json:"remaining"`
-	Status    string  `json:"status"`
-	Number    *string `json:"number,omitempty"`
+	InvoiceID int     `json:"invoiceId"` // Invoice ID
+	Total     float64 `json:"total"`      // Total invoice amount
+	Paid      float64 `json:"paid"`       // Amount paid so far
+	Remaining float64 `json:"remaining"`  // Remaining amount to pay
+	Status    string  `json:"status"`     // Invoice status
+	Number    *string `json:"number,omitempty"` // Invoice number
 }
 
 
@@ -65,6 +73,8 @@ type InvoiceSummaryDTO struct {
 // while being large enough to handle typical floating-point precision issues.
 func eps() float64 { return 0.009 }
 
+// parseDate parses a date string in either "YYYY-MM-DD" or RFC3339 format.
+// This flexible parsing allows the frontend to send dates in either format.
 func parseDate(s string) (time.Time, error) {
 	// Accept YYYY-MM-DD or RFC3339.
 	if t, err := time.Parse("2006-01-02", s); err == nil {
@@ -73,6 +83,11 @@ func parseDate(s string) (time.Time, error) {
 	return time.Parse(time.RFC3339, s)
 }
 
+// Create creates a new payment record. If invoiceID is provided, the payment
+// is linked to that invoice and the invoice status may be automatically updated
+// (e.g., from "issued" to "paid" if fully paid). Validates that the student exists,
+// the invoice belongs to the student (if provided), and the invoice is not in
+// draft or canceled status.
 func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
 	if studentID <= 0 {
 		return nil, errors.New("studentID must be > 0")
@@ -132,6 +147,9 @@ func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amo
 	return toDTO(p), nil
 }
 
+// Delete removes a payment record. If the payment was linked to an invoice,
+// the invoice status will be recomputed (e.g., from "paid" back to "issued"
+// if the invoice is no longer fully paid).
 func (s *Service) Delete(ctx context.Context, paymentID int) error {
 	p, err := s.db.Payment.Get(ctx, paymentID)
 	if err != nil {
@@ -151,6 +169,8 @@ func (s *Service) Delete(ctx context.Context, paymentID int) error {
 	return nil
 }
 
+// ListForStudent returns all payments for a specific student,
+// ordered by payment date (most recent first).
 func (s *Service) ListForStudent(ctx context.Context, studentID int) ([]PaymentDTO, error) {
 	ps, err := s.db.Payment.Query().
 		Where(payment.StudentIDEQ(studentID)).
@@ -166,6 +186,8 @@ func (s *Service) ListForStudent(ctx context.Context, studentID int) ([]PaymentD
 	return out, nil
 }
 
+// InvoiceSummary calculates the payment summary for a specific invoice,
+// including total amount, amount paid, remaining balance, and current status.
 func (s *Service) InvoiceSummary(ctx context.Context, invoiceID int) (*InvoiceSummaryDTO, error) {
 	iv, err := s.db.Invoice.Get(ctx, invoiceID)
 	if err != nil {
@@ -191,6 +213,10 @@ func (s *Service) InvoiceSummary(ctx context.Context, invoiceID int) (*InvoiceSu
 	}, nil
 }
 
+// StudentBalance calculates the financial balance for a student, including
+// total invoiced amount (from issued and paid invoices), total paid amount
+// (all payments), current balance, and debt (if any). The balance is calculated
+// as paid - invoiced, so a negative balance means the student owes money.
 func (s *Service) StudentBalance(ctx context.Context, studentID int) (*BalanceDTO, error) {
 	st, err := s.db.Student.Get(ctx, studentID)
 	if err != nil {
@@ -224,6 +250,10 @@ func (s *Service) StudentBalance(ctx context.Context, studentID int) (*BalanceDT
 	}, nil
 }
 
+// ListDebtors returns a list of all active students who have outstanding debt,
+// sorted by debt amount (highest first). Only students with debt greater than
+// the epsilon threshold (0.009) are included to account for floating-point
+// rounding errors.
 func (s *Service) ListDebtors(ctx context.Context) ([]DebtorDTO, error) {
 	studs, err := s.db.Student.Query().
 		Where(student.IsActiveEQ(true)).
@@ -260,6 +290,10 @@ func (s *Service) QuickCash(ctx context.Context, studentID int, amount float64, 
 	return s.Create(ctx, studentID, nil, amount, app.PaymentMethodCash, t.Format("2006-01-02"), note)
 }
 
+// recomputeInvoiceStatus updates an invoice's status based on payment amounts.
+// If the invoice is fully paid (within epsilon), status is set to "paid".
+// If it was previously "paid" but is no longer fully paid, status reverts to "issued".
+// Draft and canceled invoices are not modified.
 func (s *Service) recomputeInvoiceStatus(ctx context.Context, invoiceID int) error {
 	iv, err := s.db.Invoice.Get(ctx, invoiceID)
 	if err != nil {
@@ -294,6 +328,8 @@ func (s *Service) recomputeInvoiceStatus(ctx context.Context, invoiceID int) err
 	return nil
 }
 
+// sumPaymentsForInvoice calculates the total amount of all payments
+// linked to a specific invoice.
 func (s *Service) sumPaymentsForInvoice(ctx context.Context, invoiceID int) (float64, error) {
 	ps, err := s.db.Payment.Query().
 		Where(payment.InvoiceIDEQ(invoiceID)).
@@ -308,6 +344,8 @@ func (s *Service) sumPaymentsForInvoice(ctx context.Context, invoiceID int) (flo
 	return sum, nil
 }
 
+// sumPaymentsForStudent calculates the total amount of all payments
+// made by a specific student (both linked and unlinked to invoices).
 func (s *Service) sumPaymentsForStudent(ctx context.Context, studentID int) (float64, error) {
 	ps, err := s.db.Payment.Query().
 		Where(payment.StudentIDEQ(studentID)).
@@ -322,6 +360,9 @@ func (s *Service) sumPaymentsForStudent(ctx context.Context, studentID int) (flo
 	return sum, nil
 }
 
+// sumInvoicesForStudent calculates the total amount of all invoices
+// for a student that are in "issued" or "paid" status. Draft and canceled
+// invoices are not included in the calculation.
 func (s *Service) sumInvoicesForStudent(ctx context.Context, studentID int) (float64, error) {
 	invs, err := s.db.Invoice.Query().
 		Where(
@@ -339,6 +380,7 @@ func (s *Service) sumInvoicesForStudent(ctx context.Context, studentID int) (flo
 	return sum, nil
 }
 
+// toDTO converts an ent.Payment entity to a PaymentDTO for frontend consumption.
 func toDTO(p *ent.Payment) *PaymentDTO {
 	var invID *int
 	if p.InvoiceID != nil {

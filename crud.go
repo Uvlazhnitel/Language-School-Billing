@@ -1,3 +1,8 @@
+// crud.go
+// Package main contains CRUD (Create, Read, Update, Delete) operations
+// for the core entities: Students, Courses, and Enrollments.
+// All operations include input validation and sanitization to prevent
+// security issues like XSS attacks and data corruption.
 package main
 
 import (
@@ -18,44 +23,50 @@ import (
 
 // -------------------- Constants (imported from internal/app) --------------------
 
+// Constants for course types and billing modes, re-exported from the app package
+// for use in Wails bindings.
 const (
 	// Course types
-	CourseTypeGroup      = app.CourseTypeGroup
-	CourseTypeIndividual = app.CourseTypeIndividual
+	CourseTypeGroup      = app.CourseTypeGroup      // Group course type
+	CourseTypeIndividual = app.CourseTypeIndividual // Individual course type
 
 	// Billing modes
-	BillingModeSubscription = app.BillingModeSubscription
-	BillingModePerLesson    = app.BillingModePerLesson
+	BillingModeSubscription = app.BillingModeSubscription // Subscription-based billing
+	BillingModePerLesson    = app.BillingModePerLesson    // Per-lesson billing
 )
 
 // -------------------- DTOs for Wails --------------------
 
+// StudentDTO represents a student in the frontend.
+// DTOs are used to transfer data between the Go backend and TypeScript frontend.
 type StudentDTO struct {
-	ID       int    `json:"id"`
-	FullName string `json:"fullName"`
-	Phone    string `json:"phone"`
-	Email    string `json:"email"`
-	Note     string `json:"note"`
-	IsActive bool   `json:"isActive"`
+	ID       int    `json:"id"`       // Unique student identifier
+	FullName string `json:"fullName"` // Student's full name
+	Phone    string `json:"phone"`    // Contact phone number
+	Email    string `json:"email"`    // Contact email address
+	Note     string `json:"note"`     // Optional notes about the student
+	IsActive bool   `json:"isActive"` // Whether the student is currently active
 }
 
+// CourseDTO represents a course in the frontend.
 type CourseDTO struct {
-	ID                int     `json:"id"`
-	Name              string  `json:"name"`
-	Type              string  `json:"type"` // group|individual
-	LessonPrice       float64 `json:"lessonPrice"`
-	SubscriptionPrice float64 `json:"subscriptionPrice"`
+	ID                int     `json:"id"`                // Unique course identifier
+	Name              string  `json:"name"`              // Course name
+	Type              string  `json:"type"`              // Course type: "group" or "individual"
+	LessonPrice       float64 `json:"lessonPrice"`       // Price per lesson
+	SubscriptionPrice float64 `json:"subscriptionPrice"` // Monthly subscription price
 }
 
+// EnrollmentDTO represents a student's enrollment in a course.
 type EnrollmentDTO struct {
-	ID          int     `json:"id"`
-	StudentID   int     `json:"studentId"`
-	StudentName string  `json:"studentName"`
-	CourseID    int     `json:"courseId"`
-	CourseName  string  `json:"courseName"`
-	BillingMode string  `json:"billingMode"` // subscription|per_lesson
-	DiscountPct float64 `json:"discountPct"`
-	Note        string  `json:"note"`
+	ID          int     `json:"id"`          // Unique enrollment identifier
+	StudentID   int     `json:"studentId"`   // ID of the enrolled student
+	StudentName string  `json:"studentName"` // Student's full name (for display)
+	CourseID    int     `json:"courseId"`    // ID of the course
+	CourseName  string  `json:"courseName"`  // Course name (for display)
+	BillingMode string  `json:"billingMode"` // Billing mode: "subscription" or "per_lesson"
+	DiscountPct float64 `json:"discountPct"` // Discount percentage (0-100)
+	Note        string  `json:"note"`        // Optional notes about the enrollment
 }
 
 // -------------------- Validation helpers --------------------
@@ -361,6 +372,8 @@ func (a *App) CourseList(q string) ([]CourseDTO, error) {
 	return out, nil
 }
 
+// CourseGet retrieves a single course by ID.
+// Returns an error if the course is not found.
 func (a *App) CourseGet(id int) (*CourseDTO, error) {
 	c, err := a.db.Ent.Course.Get(a.ctx, id)
 	if err != nil {
@@ -401,6 +414,9 @@ func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPri
 	return &dto, nil
 }
 
+// CourseUpdate updates an existing course's information.
+// The course name is sanitized to prevent XSS attacks.
+// Prices must be non-negative. Course type must be either "group" or "individual".
 func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = sanitizeInput(name)
 	courseType = strings.TrimSpace(courseType)
@@ -544,6 +560,10 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 	return &dto, nil
 }
 
+// EnrollmentUpdate updates an existing enrollment's billing mode, discount, and notes.
+// The billingMode must be "subscription" or "per_lesson".
+// The discountPct must be between 0 and 100.
+// All user inputs are sanitized to prevent XSS attacks.
 func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct float64, note string) (*EnrollmentDTO, error) {
 	ctx := a.ctx
 

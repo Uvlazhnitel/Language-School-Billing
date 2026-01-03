@@ -26,21 +26,29 @@ import (
 	paysvc "langschool/internal/app/payment"
 )
 
+// App is the main application struct that holds all application state and services.
+// It provides methods that are bound to the frontend via Wails, allowing the
+// frontend to interact with the database, file system, and business logic.
 type App struct {
-	ctx       context.Context
-	dirs      paths.Dirs
-	db        *infra.DB
-	appDBPath string
+	ctx       context.Context // Application context for database operations
+	dirs      paths.Dirs      // Application directory paths (data, backups, invoices, etc.)
+	db        *infra.DB       // Database connection wrapper
+	appDBPath string          // Path to the SQLite database file
 
-	// services
-	att *attendance.Service
-	inv *invsvc.Service
-	pay *paysvc.Service
+	// services provide business logic for different domains
+	att *attendance.Service // Attendance tracking service
+	inv *invsvc.Service     // Invoice generation and management service
+	pay *paysvc.Service     // Payment processing service
 }
 
+// NewApp creates a new App instance. The instance is initialized with
+// default values and will be fully configured during the startup lifecycle hook.
 func NewApp() *App { return &App{} }
 
-// startup is called by Wails when the app starts.
+// startup is called by Wails when the application starts.
+// It initializes the database connection, ensures required directories exist,
+// creates the singleton Settings record if it doesn't exist, and initializes
+// all service instances. This is where all one-time setup logic runs.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
@@ -92,21 +100,30 @@ func (a *App) startup(ctx context.Context) {
 	a.pay = paysvc.New(a.db.Ent)
 }
 
-// domReady is called by Wails when the frontend is ready.
+// domReady is called by Wails when the frontend DOM is ready.
+// Currently unused, but available for any initialization that needs to
+// happen after the frontend has fully loaded.
 func (a *App) domReady(ctx context.Context) {}
 
-// shutdown is called by Wails when the app is quitting.
+// shutdown is called by Wails when the application is quitting.
+// It performs cleanup operations, such as closing the database connection
+// to ensure data integrity and proper resource cleanup.
 func (a *App) shutdown(ctx context.Context) {
 	if a.db != nil {
 		_ = a.db.Ent.Close()
 	}
 }
 
-// Delete enrollment (for the "Delete" button in the attendance sheet)
+// EnrollmentDelete deletes an enrollment and all associated attendance records.
+// This is used by the attendance sheet UI to remove enrollments.
+// The deletion is handled by the attendance service to ensure all related
+// attendance data is properly cleaned up.
 func (a *App) EnrollmentDelete(enrollmentID int) error {
 	return a.att.DeleteEnrollment(a.ctx, enrollmentID)
 }
 
+// userHome returns the user's home directory path.
+// Falls back to "." if the home directory cannot be determined.
 func userHome() string {
 	if h, err := os.UserHomeDir(); err == nil {
 		return h
@@ -168,8 +185,12 @@ func (a *App) resolveFontsDir() (string, error) {
 
 // ---------- Simple diagnostics ----------
 
+// Ping is a simple health check endpoint that returns "ok".
+// Used to verify that the backend is responding to frontend calls.
 func (a *App) Ping() string { return "ok" }
 
+// Greet returns a greeting message for the given name.
+// Used as a simple test function to verify frontend-backend communication.
 func (a *App) Greet(name string) string {
 	if name == "" {
 		return "HI!"
@@ -219,27 +240,43 @@ func copyFile(src, dst string) error {
 
 // ---------- Attendance bindings ----------
 
+// AttendanceListPerLesson retrieves attendance records for per-lesson billing
+// enrollments for the specified year, month, and optionally filtered by course.
+// Returns a list of rows containing student, course, and attendance count information.
 func (a *App) AttendanceListPerLesson(year, month int, courseID *int) ([]attendance.Row, error) {
 	return a.att.ListPerLesson(a.ctx, year, month, courseID)
 }
 
+// AttendanceUpsert creates or updates an attendance record for a student-course
+// pair for a specific month. If the month is locked, the update will fail.
 func (a *App) AttendanceUpsert(studentID, courseID, year, month, count int) error {
 	return a.att.Upsert(a.ctx, studentID, courseID, year, month, count)
 }
 
+// AttendanceAddOne increments the lesson count by 1 for all unlocked attendance
+// records matching the filter (year, month, optional courseID).
+// Returns the number of records that were successfully updated.
 func (a *App) AttendanceAddOne(year, month int, courseID *int) (int, error) {
 	return a.att.AddOneForFilter(a.ctx, year, month, courseID)
 }
 
+// AttendanceSetLocked sets the locked status for all attendance records matching
+// the filter (year, month, optional courseID). Locked records cannot be modified.
+// Returns the number of records that were updated.
 func (a *App) AttendanceSetLocked(year, month int, courseID *int, lock bool) (int, error) {
 	return a.att.SetLocked(a.ctx, year, month, courseID, lock)
 }
 
 // ---------- Invoice issuing & PDF bindings ----------
 
+// Type aliases for invoice DTOs to simplify the API surface
 type InvoiceListItem = invsvc.ListItem
 type InvoiceDTO = invsvc.InvoiceDTO
 
+// InvoiceGenerateDrafts generates draft invoices for all active students
+// for the specified year and month. Existing drafts are rebuilt, while
+// issued/paid/canceled invoices are skipped. Returns statistics about
+// the generation process.
 func (a *App) InvoiceGenerateDrafts(year, month int) (invsvc.GenerateResult, error) {
 	log.Printf("InvoiceGenerateDrafts called for %04d-%02d", year, month)
 	res, err := a.inv.GenerateDrafts(a.ctx, year, month)
@@ -252,35 +289,44 @@ func (a *App) InvoiceGenerateDrafts(year, month int) (invsvc.GenerateResult, err
 	return res, nil
 }
 
+// InvoiceListDrafts returns a list of draft invoices for the specified year and month.
 func (a *App) InvoiceListDrafts(year, month int) ([]InvoiceListItem, error) {
 	return a.inv.ListDrafts(a.ctx, year, month)
 }
 
+// InvoiceGet retrieves a single invoice by ID with all its line items.
+// Works for invoices in any status (draft, issued, paid, canceled).
 func (a *App) InvoiceGet(id int) (*InvoiceDTO, error) {
 	return a.inv.Get(a.ctx, id)
 }
 
+// InvoiceDeleteDraft deletes a draft invoice and all its line items.
+// Only draft invoices can be deleted; issued/paid/canceled invoices are protected.
 func (a *App) InvoiceDeleteDraft(id int) error {
 	return a.inv.DeleteDraft(a.ctx, id)
 }
 
-// Result of "issue one invoice"
+// IssueResult contains the result of issuing a single invoice.
 type IssueResult struct {
-	Number  string `json:"number"`
-	PdfPath string `json:"pdfPath"`
+	Number  string `json:"number"`  // The assigned invoice number
+	PdfPath string `json:"pdfPath"` // Path to the generated PDF file
 }
 
+// IssueAllResult contains the result of issuing all draft invoices for a period.
 type IssueAllResult struct {
-	Count    int      `json:"count"`
-	PdfPaths []string `json:"pdfPaths"`
+	Count    int      `json:"count"`    // Number of invoices issued
+	PdfPaths []string `json:"pdfPaths"` // Paths to all generated PDF files
 }
 
-// List by status
+// InvoiceList returns invoices for the specified year and month, optionally
+// filtered by status. Status can be "draft", "issued", "paid", "canceled", or "all".
 func (a *App) InvoiceList(year, month int, status string) ([]invsvc.ListItem, error) {
 	return a.inv.List(a.ctx, year, month, status)
 }
 
-// Issue one: return object
+// InvoiceIssue issues a single draft invoice by assigning it a number,
+// changing its status to "issued", and generating a PDF file.
+// Returns the invoice number and path to the generated PDF.
 func (a *App) InvoiceIssue(id int) (IssueResult, error) {
 	fonts, err := a.resolveFontsDir()
 	if err != nil {
@@ -293,7 +339,9 @@ func (a *App) InvoiceIssue(id int) (IssueResult, error) {
 	return IssueResult{Number: num, PdfPath: path}, nil
 }
 
-// Issue all for the period
+// InvoiceIssueAll issues all draft invoices for the specified year and month.
+// Each invoice is assigned a number, marked as issued, and a PDF is generated.
+// Returns the count of issued invoices and paths to all generated PDFs.
 func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 	fonts, err := a.resolveFontsDir()
 	if err != nil {
@@ -313,21 +361,21 @@ func (a *App) OpenFile(path string) error {
 	if abs, err := filepath.Abs(path); err == nil {
 		path = abs
 	}
-	
+
 	// Security check: Ensure file is within allowed directories
 	allowedBase := filepath.Clean(a.dirs.Base)
 	cleanPath := filepath.Clean(path)
-	
+
 	// Check if the path is within the LangSchool directory
 	if !strings.HasPrefix(cleanPath, allowedBase) {
 		return fmt.Errorf("access denied: file must be within %s directory", allowedBase)
 	}
-	
+
 	// Verify file exists
 	if _, err := os.Stat(path); err != nil {
 		return err
 	}
-	
+
 	var cmd *exec.Cmd
 	switch rt.GOOS {
 	case "darwin":
@@ -340,6 +388,9 @@ func (a *App) OpenFile(path string) error {
 	return cmd.Start()
 }
 
+// InvoiceEnsurePDF ensures that a PDF exists for an issued invoice.
+// If the PDF already exists, returns its path. Otherwise, regenerates it.
+// Only works for invoices that have been issued (have a number).
 func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 	dto, err := a.inv.Get(a.ctx, id)
 	if err != nil {
@@ -365,6 +416,9 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 	return p, nil
 }
 
+// DevClearInvoices is a development utility that deletes all invoices
+// (and their line items) for a specific period. Use with caution as
+// this permanently removes financial records.
 func (a *App) DevClearInvoices(year, month int) (int, error) {
 	ctx := a.ctx
 	db := a.db.Ent
@@ -390,6 +444,8 @@ func (a *App) DevClearInvoices(year, month int) (int, error) {
 	return len(invs), nil
 }
 
+// SettingsSetLocale updates the application locale setting.
+// The locale affects date, number, and currency formatting in invoices.
 func (a *App) SettingsSetLocale(loc string) error {
 	_, err := a.db.Ent.Settings.
 		Update().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
@@ -400,37 +456,51 @@ func (a *App) SettingsSetLocale(loc string) error {
 
 // ---------- Payment bindings ----------
 
+// Type aliases for payment-related DTOs
 type PaymentDTO = paysvc.PaymentDTO
 type BalanceDTO = paysvc.BalanceDTO
 type DebtorDTO = paysvc.DebtorDTO
 type InvoiceSummaryDTO = paysvc.InvoiceSummaryDTO
 
-// PaymentCreate creates a payment. paidAt accepts "YYYY-MM-DD" or RFC3339.
+// PaymentCreate creates a new payment record. The paidAt parameter accepts
+// either "YYYY-MM-DD" format or RFC3339. If invoiceID is provided, the payment
+// is linked to that invoice and the invoice status may be updated automatically.
 func (a *App) PaymentCreate(studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
 	return a.pay.Create(a.ctx, studentID, invoiceID, amount, method, paidAt, note)
 }
 
+// PaymentDelete deletes a payment record. If the payment was linked to an invoice,
+// the invoice status will be recomputed (e.g., from "paid" back to "issued" if needed).
 func (a *App) PaymentDelete(paymentID int) error {
 	return a.pay.Delete(a.ctx, paymentID)
 }
 
+// PaymentListForStudent returns all payments for a specific student,
+// ordered by payment date (most recent first).
 func (a *App) PaymentListForStudent(studentID int) ([]PaymentDTO, error) {
 	return a.pay.ListForStudent(a.ctx, studentID)
 }
 
+// StudentBalance calculates the financial balance for a student, including
+// total invoiced amount, total paid amount, current balance, and debt (if any).
 func (a *App) StudentBalance(studentID int) (*BalanceDTO, error) {
 	return a.pay.StudentBalance(a.ctx, studentID)
 }
 
+// DebtorsList returns a list of all active students who have outstanding debt,
+// sorted by debt amount (highest first).
 func (a *App) DebtorsList() ([]DebtorDTO, error) {
 	return a.pay.ListDebtors(a.ctx)
 }
 
+// InvoicePaymentSummary returns a summary of payment status for a specific invoice,
+// including total amount, paid amount, remaining balance, and current status.
 func (a *App) InvoicePaymentSummary(invoiceID int) (*InvoiceSummaryDTO, error) {
 	return a.pay.InvoiceSummary(a.ctx, invoiceID)
 }
 
-// QuickCash creates an unlinked cash payment (e.g. "cash for lesson now").
+// PaymentQuickCash creates an unlinked cash payment for immediate payment scenarios
+// (e.g., "cash for lesson now"). The payment is not linked to any invoice.
 func (a *App) PaymentQuickCash(studentID int, amount float64, note string) (*PaymentDTO, error) {
 	return a.pay.QuickCash(a.ctx, studentID, amount, note)
 }

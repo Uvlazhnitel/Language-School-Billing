@@ -1,3 +1,5 @@
+// Package invoice provides services for invoice generation, management, and PDF creation.
+// It handles the complete invoice lifecycle from draft creation to final issuance.
 package invoice
 
 import (
@@ -21,76 +23,86 @@ import (
 
 // Constants for invoice statuses and billing modes (aliased from shared package)
 const (
-	StatusDraft    = app.InvoiceStatusDraft
-	StatusIssued   = app.InvoiceStatusIssued
-	StatusPaid     = app.InvoiceStatusPaid
-	StatusCanceled = app.InvoiceStatusCanceled
+	StatusDraft    = app.InvoiceStatusDraft    // Draft invoice status
+	StatusIssued   = app.InvoiceStatusIssued  // Issued invoice status
+	StatusPaid     = app.InvoiceStatusPaid     // Paid invoice status
+	StatusCanceled = app.InvoiceStatusCanceled // Canceled invoice status
 
-	BillingPerLesson    = app.BillingModePerLesson
-	BillingSubscription = app.BillingModeSubscription
+	BillingPerLesson    = app.BillingModePerLesson    // Per-lesson billing mode
+	BillingSubscription = app.BillingModeSubscription // Subscription billing mode
 )
 
+// Service provides invoice generation, management, and PDF creation functionality.
 type Service struct{ db *ent.Client }
 
+// New creates a new invoice service with the given database client.
 func New(db *ent.Client) *Service { return &Service{db: db} }
 
 // ----- DTO for UI -----
 
+// ListItem represents a summary of an invoice for list views.
 type ListItem struct {
-	ID          int     `json:"id"`
-	StudentID   int     `json:"studentId"`
-	StudentName string  `json:"studentName"`
-	Year        int     `json:"year"`
-	Month       int     `json:"month"`
-	Total       float64 `json:"total"`
-	Status      string  `json:"status"`
-	LinesCount  int     `json:"linesCount"`
-	Number      *string `json:"number,omitempty"`
+	ID          int     `json:"id"`          // Invoice ID
+	StudentID   int     `json:"studentId"`   // Student ID
+	StudentName string  `json:"studentName"`  // Student's full name
+	Year        int     `json:"year"`         // Invoice period year
+	Month       int     `json:"month"`        // Invoice period month
+	Total       float64 `json:"total"`        // Total invoice amount
+	Status      string  `json:"status"`       // Invoice status
+	LinesCount  int     `json:"linesCount"`   // Number of line items
+	Number      *string `json:"number,omitempty"` // Invoice number (nil for drafts)
 }
 
+// LineDTO represents a single line item in an invoice.
 type LineDTO struct {
-	EnrollmentID int     `json:"enrollmentId"`
-	Description  string  `json:"description"`
-	Qty          int     `json:"qty"`
-	UnitPrice    float64 `json:"unitPrice"`
-	Amount       float64 `json:"amount"`
+	EnrollmentID int     `json:"enrollmentId"` // ID of the enrollment this line is for
+	Description  string  `json:"description"`   // Line item description
+	Qty          int     `json:"qty"`            // Quantity (e.g., number of lessons)
+	UnitPrice    float64 `json:"unitPrice"`      // Price per unit
+	Amount       float64 `json:"amount"`         // Total amount for this line (qty * unitPrice)
 }
 
+// InvoiceDTO represents a complete invoice with all line items.
 type InvoiceDTO struct {
-	ID          int       `json:"id"`
-	StudentID   int       `json:"studentId"`
-	StudentName string    `json:"studentName"`
-	Year        int       `json:"year"`
-	Month       int       `json:"month"`
-	Total       float64   `json:"total"`
-	Status      string    `json:"status"`
-	Number      *string   `json:"number,omitempty"`
-	Lines       []LineDTO `json:"lines"`
+	ID          int       `json:"id"`          // Invoice ID
+	StudentID   int       `json:"studentId"`   // Student ID
+	StudentName string    `json:"studentName"`  // Student's full name
+	Year        int       `json:"year"`         // Invoice period year
+	Month       int       `json:"month"`        // Invoice period month
+	Total       float64   `json:"total"`        // Total invoice amount
+	Status      string    `json:"status"`       // Invoice status
+	Number      *string   `json:"number,omitempty"` // Invoice number (nil for drafts)
+	Lines       []LineDTO `json:"lines"`        // All line items in the invoice
 }
 
+// GenerateResult contains statistics about invoice generation.
 type GenerateResult struct {
-	Created           int `json:"created"`           // new drafts
-	Updated           int `json:"updated"`           // rebuilt existing drafts
-	SkippedHasInvoice int `json:"skippedHasInvoice"` // skipped: already issued/paid/canceled
-	SkippedNoLines    int `json:"skippedNoLines"`    // skipped: no lines (0 attendance and/or 0 prices)
+	Created           int `json:"created"`           // Number of new draft invoices created
+	Updated           int `json:"updated"`           // Number of existing drafts that were rebuilt
+	SkippedHasInvoice int `json:"skippedHasInvoice"` // Number skipped: already issued/paid/canceled
+	SkippedNoLines    int `json:"skippedNoLines"`    // Number skipped: no lines (0 attendance and/or 0 prices)
 }
 
 // ----- Domain utilities -----
 
+// periodBounds calculates the start and end dates for a given year and month.
+// Start is the first day of the month at 00:00:00, end is the last day of the month.
 func periodBounds(y, m int) (start, end time.Time) {
 	start = time.Date(y, time.Month(m), 1, 0, 0, 0, 0, time.Local)
 	end = start.AddDate(0, 1, -1)
 	return
 }
 
+// activeInPeriod determines if an enrollment is active for the given period.
+// Since start_date and end_date have been removed, all enrollments are considered active.
+// This means invoice generation will include all enrollments for the specified period,
+// regardless of when the enrollment was created or ended.
 func activeInPeriod(en *ent.Enrollment, y, m int) bool {
-	// Since start_date and end_date have been removed, all enrollments are now considered active.
-	// This means invoice generation will include all enrollments for the specified period,
-	// regardless of when the enrollment was created or ended.
 	return true
 }
 
-// getStudentName safely retrieves student name from invoice edges
+// getStudentName safely retrieves the student name from invoice edges.
+// Returns an empty string if the student edge is not loaded.
 func getStudentName(iv *ent.Invoice) string {
 	if iv.Edges.Student != nil {
 		return iv.Edges.Student.FullName
@@ -157,7 +169,10 @@ func (s *Service) getSettings(ctx context.Context) (*ent.Settings, error) {
 	return settings, nil
 }
 
-// Select prices: override → (course ± discount)
+// resolvePrices determines the effective prices for an enrollment in a given period.
+// It considers price overrides first, then falls back to course prices with discounts applied.
+// Price overrides take precedence if they are valid for the period.
+// Returns both lesson price and subscription price.
 func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m int) (lessonPrice, subscriptionPrice float64) {
 	lessonPrice, subscriptionPrice = 0, 0
 
@@ -318,7 +333,8 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 	return res, nil
 }
 
-// ListDrafts — list drafts for a given period
+// ListDrafts returns a list of draft invoices for the given year and month.
+// Only invoices with status "draft" are included.
 func (s *Service) ListDrafts(ctx context.Context, y, m int) ([]ListItem, error) {
 	invs, err := s.db.Invoice.Query().
 		Where(
@@ -343,7 +359,8 @@ func (s *Service) ListDrafts(ctx context.Context, y, m int) ([]ListItem, error) 
 	return items, nil
 }
 
-// Get — retrieve an invoice with lines (any status)
+// Get retrieves a single invoice by ID with all its line items.
+// Works for invoices in any status (draft, issued, paid, canceled).
 func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 	iv, err := s.db.Invoice.Query().Where(invoice.IDEQ(id)).WithStudent().Only(ctx)
 	if err != nil {
@@ -371,7 +388,8 @@ func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 	return dto, nil
 }
 
-// DeleteDraft — delete a draft only
+// DeleteDraft deletes a draft invoice and all its line items.
+// Only draft invoices can be deleted; issued/paid/canceled invoices are protected.
 func (s *Service) DeleteDraft(ctx context.Context, id int) error {
 	iv, err := s.db.Invoice.Get(ctx, id)
 	if err != nil {
@@ -388,12 +406,16 @@ func (s *Service) DeleteDraft(ctx context.Context, id int) error {
 
 // ----- Issuing, numbering, PDF generation -----
 
-// FormatNumber: PREFIX-YYYYMM-SEQ (SEQ = 3 digits with leading zeros)
+// FormatNumber generates an invoice number in the format PREFIX-YYYYMM-SEQ.
+// SEQ is a 3-digit sequence number with leading zeros (e.g., LS-202401-001).
 func FormatNumber(prefix string, y, m, seq int) string {
 	return fmt.Sprintf("%s-%04d%02d-%03d", prefix, y, m, seq)
 }
 
-// issueOne: assign a number and change status draft->issued (transaction)
+// issueOne assigns an invoice number and changes the status from draft to issued.
+// This operation is performed in a transaction to ensure atomicity.
+// The invoice number is generated using the settings prefix and sequence number,
+// which is then incremented. Returns the assigned invoice number.
 func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 	tx, err := s.db.Tx(ctx)
 	if err != nil {
@@ -455,7 +477,9 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 	return number, nil
 }
 
-// Issue: issue a single draft and generate a PDF; return (number, PDF path)
+// Issue issues a single draft invoice and generates its PDF.
+// This combines issueOne (assigning number and status) with PDF generation.
+// Returns the invoice number and the path to the generated PDF file.
 func (s *Service) Issue(ctx context.Context, id int, outBaseDir, fontsDir string) (string, string, error) {
 	number, err := s.issueOne(ctx, id)
 	if err != nil {
@@ -478,7 +502,10 @@ func (s *Service) Issue(ctx context.Context, id int, outBaseDir, fontsDir string
 	return number, p, nil
 }
 
-// IssueAll: issue all drafts for a given period; return (count, PDF paths)
+// IssueAll issues all draft invoices for a given year and month.
+// Each invoice is assigned a number, marked as issued, and a PDF is generated.
+// Returns the count of issued invoices and paths to all generated PDFs.
+// If any invoice fails to issue, the operation stops and returns an error.
 func (s *Service) IssueAll(ctx context.Context, y, m int, outBaseDir, fontsDir string) (int, []string, error) {
 	invs, err := s.db.Invoice.Query().
 		Where(
@@ -508,7 +535,8 @@ func (s *Service) IssueAll(ctx context.Context, y, m int, outBaseDir, fontsDir s
 	return count, paths, nil
 }
 
-// PDFPathByNumber — helper
+// PDFPathByNumber generates the file path for an invoice PDF based on its number.
+// The path structure is: outBaseDir/YYYY/MM/number.pdf
 func PDFPathByNumber(outBaseDir string, y, m int, number string) string {
 	return filepath.Join(outBaseDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), number+".pdf")
 }

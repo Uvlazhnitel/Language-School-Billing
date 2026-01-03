@@ -175,12 +175,14 @@ export default function App() {
     }
     try {
       if (editingStudent) {
+        // Update existing student
         await updateStudent(editingStudent.id, sfName, sfPhone, sfEmail, sfNote);
       } else {
+        // Create new student
         await createStudent(sfName, sfPhone, sfEmail, sfNote);
       }
       setStudentModalOpen(false);
-      await loadStudents();
+      await loadStudents(); // Refresh list
       showMessage(editingStudent ? "Student updated successfully!" : "Student created successfully!");
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
