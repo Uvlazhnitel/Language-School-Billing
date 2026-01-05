@@ -1267,27 +1267,31 @@ export default function App() {
               </div>
 
               {invSummary && selectedInv.status !== "draft" && (
-                <div style={{ marginBottom: "1rem", padding: "0.5rem", backgroundColor: "#f5f5f5", borderRadius: "4px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Total:</span>
-                    <span style={{ fontWeight: "bold" }}>€{invSummary.total.toFixed(2)}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Paid:</span>
-                    <span style={{ color: "#2e7d32" }}>€{invSummary.paid.toFixed(2)}</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Remaining:</span>
-                    <span style={{ fontWeight: "bold", color: invSummary.remaining > 0 ? "#d32f2f" : "#2e7d32" }}>
-                      €{invSummary.remaining.toFixed(2)}
-                    </span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: "0.5rem" }}>
-                    <span>Status:</span>
-                    <span style={{ fontWeight: "bold" }}>{invSummary.status}</span>
-                  </div>
-                </div>
-              )}
+  <div className="invSummary">
+    <div className="invSummaryRow">
+      <span>Total:</span>
+      <span className="money">€{invSummary.total.toFixed(2)}</span>
+    </div>
+
+    <div className="invSummaryRow">
+      <span>Paid:</span>
+      <span className="money good">€{invSummary.paid.toFixed(2)}</span>
+    </div>
+
+    <div className="invSummaryRow">
+      <span>Remaining:</span>
+      <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
+        €{invSummary.remaining.toFixed(2)}
+      </span>
+    </div>
+
+    <div className="invSummaryRow">
+      <span>Status:</span>
+      <span className="money">{invSummary.status}</span>
+    </div>
+  </div>
+)}
+
 
               <table>
                 <thead>
