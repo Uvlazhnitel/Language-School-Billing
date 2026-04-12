@@ -126,6 +126,12 @@ func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amo
 		}
 	}
 
+	// Global debtor payments should reduce the oldest open invoices first so
+	// invoice-level "Paid" values and statuses stay in sync with the debt view.
+	if invoiceID == nil {
+		return s.allocateToOldestInvoices(ctx, studentID, amount, method, t, note)
+	}
+
 	p, err := s.db.Payment.Create().
 		SetStudentID(studentID).
 		SetAmount(utils.Round2(amount)).
@@ -146,6 +152,94 @@ func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amo
 	}
 
 	return toDTO(p), nil
+}
+
+func (s *Service) allocateToOldestInvoices(ctx context.Context, studentID int, amount float64, method string, paidAt time.Time, note string) (*PaymentDTO, error) {
+	remaining := utils.Round2(amount)
+
+	invoices, err := s.db.Invoice.Query().
+		Where(
+			invoice.StudentIDEQ(studentID),
+			invoice.StatusIn(app.InvoiceStatusIssued, app.InvoiceStatusPaid),
+		).
+		Order(
+			ent.Asc(invoice.FieldPeriodYear),
+			ent.Asc(invoice.FieldPeriodMonth),
+			ent.Asc(invoice.FieldID),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var firstCreated *ent.Payment
+
+	for _, iv := range invoices {
+		if remaining <= eps() {
+			break
+		}
+
+		paid, err := s.sumPaymentsForInvoice(ctx, iv.ID)
+		if err != nil {
+			return nil, err
+		}
+
+		invoiceRemaining := utils.Round2(iv.TotalAmount - paid)
+		if invoiceRemaining <= eps() {
+			continue
+		}
+
+		applied := invoiceRemaining
+		if remaining < applied {
+			applied = remaining
+		}
+		applied = utils.Round2(applied)
+
+		invoiceID := iv.ID
+		p, err := s.db.Payment.Create().
+			SetStudentID(studentID).
+			SetAmount(applied).
+			SetMethod(payment.Method(method)).
+			SetPaidAt(paidAt).
+			SetNote(note).
+			SetNillableInvoiceID(&invoiceID).
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if firstCreated == nil {
+			firstCreated = p
+		}
+
+		if err := s.recomputeInvoiceStatus(ctx, iv.ID); err != nil {
+			return nil, err
+		}
+
+		remaining = utils.Round2(remaining - applied)
+	}
+
+	// If payment is larger than the current debt, keep the extra part as student credit.
+	if remaining > eps() || firstCreated == nil {
+		creditAmount := remaining
+		if creditAmount <= eps() {
+			creditAmount = amount
+		}
+		p, err := s.db.Payment.Create().
+			SetStudentID(studentID).
+			SetAmount(utils.Round2(creditAmount)).
+			SetMethod(payment.Method(method)).
+			SetPaidAt(paidAt).
+			SetNote(note).
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if firstCreated == nil {
+			firstCreated = p
+		}
+	}
+
+	return toDTO(firstCreated), nil
 }
 
 // Delete removes a payment record. If the payment was linked to an invoice,
@@ -288,7 +382,21 @@ func (s *Service) ListDebtors(ctx context.Context) ([]DebtorDTO, error) {
 // For this session we accept a direct amount from UI, but this helper exists for convenience.
 func (s *Service) QuickCash(ctx context.Context, studentID int, amount float64, note string) (*PaymentDTO, error) {
 	t := time.Now()
-	return s.Create(ctx, studentID, nil, amount, app.PaymentMethodCash, t.Format("2006-01-02"), note)
+	if _, err := s.db.Student.Get(ctx, studentID); err != nil {
+		return nil, err
+	}
+
+	p, err := s.db.Payment.Create().
+		SetStudentID(studentID).
+		SetAmount(utils.Round2(amount)).
+		SetMethod(payment.Method(app.PaymentMethodCash)).
+		SetPaidAt(t).
+		SetNote(note).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return toDTO(p), nil
 }
 
 // recomputeInvoiceStatus updates an invoice's status based on payment amounts.
