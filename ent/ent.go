@@ -12,7 +12,6 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
-	"langschool/ent/priceoverride"
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"reflect"
@@ -87,7 +86,6 @@ func checkColumn(t, c string) error {
 			invoice.Table:         invoice.ValidColumn,
 			invoiceline.Table:     invoiceline.ValidColumn,
 			payment.Table:         payment.ValidColumn,
-			priceoverride.Table:   priceoverride.ValidColumn,
 			settings.Table:        settings.ValidColumn,
 			student.Table:         student.ValidColumn,
 		})

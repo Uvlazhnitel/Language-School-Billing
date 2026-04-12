@@ -80,18 +80,6 @@ func (f PaymentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PaymentMutation", m)
 }
 
-// The PriceOverrideFunc type is an adapter to allow the use of ordinary
-// function as PriceOverride mutator.
-type PriceOverrideFunc func(context.Context, *ent.PriceOverrideMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f PriceOverrideFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.PriceOverrideMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PriceOverrideMutation", m)
-}
-
 // The SettingsFunc type is an adapter to allow the use of ordinary
 // function as Settings mutator.
 type SettingsFunc func(context.Context, *ent.SettingsMutation) (ent.Value, error)

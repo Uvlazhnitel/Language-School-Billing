@@ -10,7 +10,6 @@ import (
 	"langschool/ent/enrollment"
 	"langschool/ent/invoiceline"
 	"langschool/ent/predicate"
-	"langschool/ent/priceoverride"
 	"langschool/ent/student"
 
 	"entgo.io/ent/dialect/sql"
@@ -133,21 +132,6 @@ func (_u *EnrollmentUpdate) AddInvoiceLines(v ...*InvoiceLine) *EnrollmentUpdate
 	return _u.AddInvoiceLineIDs(ids...)
 }
 
-// AddPriceOverrideIDs adds the "price_overrides" edge to the PriceOverride entity by IDs.
-func (_u *EnrollmentUpdate) AddPriceOverrideIDs(ids ...int) *EnrollmentUpdate {
-	_u.mutation.AddPriceOverrideIDs(ids...)
-	return _u
-}
-
-// AddPriceOverrides adds the "price_overrides" edges to the PriceOverride entity.
-func (_u *EnrollmentUpdate) AddPriceOverrides(v ...*PriceOverride) *EnrollmentUpdate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddPriceOverrideIDs(ids...)
-}
-
 // Mutation returns the EnrollmentMutation object of the builder.
 func (_u *EnrollmentUpdate) Mutation() *EnrollmentMutation {
 	return _u.mutation
@@ -184,27 +168,6 @@ func (_u *EnrollmentUpdate) RemoveInvoiceLines(v ...*InvoiceLine) *EnrollmentUpd
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveInvoiceLineIDs(ids...)
-}
-
-// ClearPriceOverrides clears all "price_overrides" edges to the PriceOverride entity.
-func (_u *EnrollmentUpdate) ClearPriceOverrides() *EnrollmentUpdate {
-	_u.mutation.ClearPriceOverrides()
-	return _u
-}
-
-// RemovePriceOverrideIDs removes the "price_overrides" edge to PriceOverride entities by IDs.
-func (_u *EnrollmentUpdate) RemovePriceOverrideIDs(ids ...int) *EnrollmentUpdate {
-	_u.mutation.RemovePriceOverrideIDs(ids...)
-	return _u
-}
-
-// RemovePriceOverrides removes "price_overrides" edges to PriceOverride entities.
-func (_u *EnrollmentUpdate) RemovePriceOverrides(v ...*PriceOverride) *EnrollmentUpdate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemovePriceOverrideIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -377,51 +340,6 @@ func (_u *EnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
-	if _u.mutation.PriceOverridesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   enrollment.PriceOverridesTable,
-			Columns: []string{enrollment.PriceOverridesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(priceoverride.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedPriceOverridesIDs(); len(nodes) > 0 && !_u.mutation.PriceOverridesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   enrollment.PriceOverridesTable,
-			Columns: []string{enrollment.PriceOverridesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(priceoverride.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.PriceOverridesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   enrollment.PriceOverridesTable,
-			Columns: []string{enrollment.PriceOverridesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(priceoverride.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{enrollment.Label}
@@ -544,21 +462,6 @@ func (_u *EnrollmentUpdateOne) AddInvoiceLines(v ...*InvoiceLine) *EnrollmentUpd
 	return _u.AddInvoiceLineIDs(ids...)
 }
 
-// AddPriceOverrideIDs adds the "price_overrides" edge to the PriceOverride entity by IDs.
-func (_u *EnrollmentUpdateOne) AddPriceOverrideIDs(ids ...int) *EnrollmentUpdateOne {
-	_u.mutation.AddPriceOverrideIDs(ids...)
-	return _u
-}
-
-// AddPriceOverrides adds the "price_overrides" edges to the PriceOverride entity.
-func (_u *EnrollmentUpdateOne) AddPriceOverrides(v ...*PriceOverride) *EnrollmentUpdateOne {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddPriceOverrideIDs(ids...)
-}
-
 // Mutation returns the EnrollmentMutation object of the builder.
 func (_u *EnrollmentUpdateOne) Mutation() *EnrollmentMutation {
 	return _u.mutation
@@ -595,27 +498,6 @@ func (_u *EnrollmentUpdateOne) RemoveInvoiceLines(v ...*InvoiceLine) *Enrollment
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveInvoiceLineIDs(ids...)
-}
-
-// ClearPriceOverrides clears all "price_overrides" edges to the PriceOverride entity.
-func (_u *EnrollmentUpdateOne) ClearPriceOverrides() *EnrollmentUpdateOne {
-	_u.mutation.ClearPriceOverrides()
-	return _u
-}
-
-// RemovePriceOverrideIDs removes the "price_overrides" edge to PriceOverride entities by IDs.
-func (_u *EnrollmentUpdateOne) RemovePriceOverrideIDs(ids ...int) *EnrollmentUpdateOne {
-	_u.mutation.RemovePriceOverrideIDs(ids...)
-	return _u
-}
-
-// RemovePriceOverrides removes "price_overrides" edges to PriceOverride entities.
-func (_u *EnrollmentUpdateOne) RemovePriceOverrides(v ...*PriceOverride) *EnrollmentUpdateOne {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemovePriceOverrideIDs(ids...)
 }
 
 // Where appends a list predicates to the EnrollmentUpdate builder.
@@ -811,51 +693,6 @@ func (_u *EnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Enrollment, 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(invoiceline.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.PriceOverridesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   enrollment.PriceOverridesTable,
-			Columns: []string{enrollment.PriceOverridesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(priceoverride.FieldID, field.TypeInt),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedPriceOverridesIDs(); len(nodes) > 0 && !_u.mutation.PriceOverridesCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   enrollment.PriceOverridesTable,
-			Columns: []string{enrollment.PriceOverridesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(priceoverride.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.PriceOverridesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   enrollment.PriceOverridesTable,
-			Columns: []string{enrollment.PriceOverridesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(priceoverride.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

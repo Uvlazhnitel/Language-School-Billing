@@ -17,7 +17,6 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
-	"langschool/ent/priceoverride"
 	"langschool/ent/settings"
 	"langschool/ent/student"
 
@@ -44,8 +43,6 @@ type Client struct {
 	InvoiceLine *InvoiceLineClient
 	// Payment is the client for interacting with the Payment builders.
 	Payment *PaymentClient
-	// PriceOverride is the client for interacting with the PriceOverride builders.
-	PriceOverride *PriceOverrideClient
 	// Settings is the client for interacting with the Settings builders.
 	Settings *SettingsClient
 	// Student is the client for interacting with the Student builders.
@@ -67,7 +64,6 @@ func (c *Client) init() {
 	c.Invoice = NewInvoiceClient(c.config)
 	c.InvoiceLine = NewInvoiceLineClient(c.config)
 	c.Payment = NewPaymentClient(c.config)
-	c.PriceOverride = NewPriceOverrideClient(c.config)
 	c.Settings = NewSettingsClient(c.config)
 	c.Student = NewStudentClient(c.config)
 }
@@ -168,7 +164,6 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Invoice:         NewInvoiceClient(cfg),
 		InvoiceLine:     NewInvoiceLineClient(cfg),
 		Payment:         NewPaymentClient(cfg),
-		PriceOverride:   NewPriceOverrideClient(cfg),
 		Settings:        NewSettingsClient(cfg),
 		Student:         NewStudentClient(cfg),
 	}, nil
@@ -196,7 +191,6 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Invoice:         NewInvoiceClient(cfg),
 		InvoiceLine:     NewInvoiceLineClient(cfg),
 		Payment:         NewPaymentClient(cfg),
-		PriceOverride:   NewPriceOverrideClient(cfg),
 		Settings:        NewSettingsClient(cfg),
 		Student:         NewStudentClient(cfg),
 	}, nil
@@ -229,7 +223,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.AttendanceMonth, c.Course, c.Enrollment, c.Invoice, c.InvoiceLine, c.Payment,
-		c.PriceOverride, c.Settings, c.Student,
+		c.Settings, c.Student,
 	} {
 		n.Use(hooks...)
 	}
@@ -240,7 +234,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.AttendanceMonth, c.Course, c.Enrollment, c.Invoice, c.InvoiceLine, c.Payment,
-		c.PriceOverride, c.Settings, c.Student,
+		c.Settings, c.Student,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -261,8 +255,6 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.InvoiceLine.mutate(ctx, m)
 	case *PaymentMutation:
 		return c.Payment.mutate(ctx, m)
-	case *PriceOverrideMutation:
-		return c.PriceOverride.mutate(ctx, m)
 	case *SettingsMutation:
 		return c.Settings.mutate(ctx, m)
 	case *StudentMutation:
@@ -703,22 +695,6 @@ func (c *EnrollmentClient) QueryInvoiceLines(_m *Enrollment) *InvoiceLineQuery {
 			sqlgraph.From(enrollment.Table, enrollment.FieldID, id),
 			sqlgraph.To(invoiceline.Table, invoiceline.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, enrollment.InvoiceLinesTable, enrollment.InvoiceLinesColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryPriceOverrides queries the price_overrides edge of a Enrollment.
-func (c *EnrollmentClient) QueryPriceOverrides(_m *Enrollment) *PriceOverrideQuery {
-	query := (&PriceOverrideClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(enrollment.Table, enrollment.FieldID, id),
-			sqlgraph.To(priceoverride.Table, priceoverride.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, enrollment.PriceOverridesTable, enrollment.PriceOverridesColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -1262,155 +1238,6 @@ func (c *PaymentClient) mutate(ctx context.Context, m *PaymentMutation) (Value, 
 	}
 }
 
-// PriceOverrideClient is a client for the PriceOverride schema.
-type PriceOverrideClient struct {
-	config
-}
-
-// NewPriceOverrideClient returns a client for the PriceOverride from the given config.
-func NewPriceOverrideClient(c config) *PriceOverrideClient {
-	return &PriceOverrideClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `priceoverride.Hooks(f(g(h())))`.
-func (c *PriceOverrideClient) Use(hooks ...Hook) {
-	c.hooks.PriceOverride = append(c.hooks.PriceOverride, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `priceoverride.Intercept(f(g(h())))`.
-func (c *PriceOverrideClient) Intercept(interceptors ...Interceptor) {
-	c.inters.PriceOverride = append(c.inters.PriceOverride, interceptors...)
-}
-
-// Create returns a builder for creating a PriceOverride entity.
-func (c *PriceOverrideClient) Create() *PriceOverrideCreate {
-	mutation := newPriceOverrideMutation(c.config, OpCreate)
-	return &PriceOverrideCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of PriceOverride entities.
-func (c *PriceOverrideClient) CreateBulk(builders ...*PriceOverrideCreate) *PriceOverrideCreateBulk {
-	return &PriceOverrideCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *PriceOverrideClient) MapCreateBulk(slice any, setFunc func(*PriceOverrideCreate, int)) *PriceOverrideCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &PriceOverrideCreateBulk{err: fmt.Errorf("calling to PriceOverrideClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*PriceOverrideCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &PriceOverrideCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for PriceOverride.
-func (c *PriceOverrideClient) Update() *PriceOverrideUpdate {
-	mutation := newPriceOverrideMutation(c.config, OpUpdate)
-	return &PriceOverrideUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *PriceOverrideClient) UpdateOne(_m *PriceOverride) *PriceOverrideUpdateOne {
-	mutation := newPriceOverrideMutation(c.config, OpUpdateOne, withPriceOverride(_m))
-	return &PriceOverrideUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *PriceOverrideClient) UpdateOneID(id int) *PriceOverrideUpdateOne {
-	mutation := newPriceOverrideMutation(c.config, OpUpdateOne, withPriceOverrideID(id))
-	return &PriceOverrideUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for PriceOverride.
-func (c *PriceOverrideClient) Delete() *PriceOverrideDelete {
-	mutation := newPriceOverrideMutation(c.config, OpDelete)
-	return &PriceOverrideDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *PriceOverrideClient) DeleteOne(_m *PriceOverride) *PriceOverrideDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *PriceOverrideClient) DeleteOneID(id int) *PriceOverrideDeleteOne {
-	builder := c.Delete().Where(priceoverride.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &PriceOverrideDeleteOne{builder}
-}
-
-// Query returns a query builder for PriceOverride.
-func (c *PriceOverrideClient) Query() *PriceOverrideQuery {
-	return &PriceOverrideQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypePriceOverride},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a PriceOverride entity by its id.
-func (c *PriceOverrideClient) Get(ctx context.Context, id int) (*PriceOverride, error) {
-	return c.Query().Where(priceoverride.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *PriceOverrideClient) GetX(ctx context.Context, id int) *PriceOverride {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QueryEnrollment queries the enrollment edge of a PriceOverride.
-func (c *PriceOverrideClient) QueryEnrollment(_m *PriceOverride) *EnrollmentQuery {
-	query := (&EnrollmentClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(priceoverride.Table, priceoverride.FieldID, id),
-			sqlgraph.To(enrollment.Table, enrollment.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, priceoverride.EnrollmentTable, priceoverride.EnrollmentColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *PriceOverrideClient) Hooks() []Hook {
-	return c.hooks.PriceOverride
-}
-
-// Interceptors returns the client interceptors.
-func (c *PriceOverrideClient) Interceptors() []Interceptor {
-	return c.inters.PriceOverride
-}
-
-func (c *PriceOverrideClient) mutate(ctx context.Context, m *PriceOverrideMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&PriceOverrideCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&PriceOverrideUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&PriceOverrideUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&PriceOverrideDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown PriceOverride mutation op: %q", m.Op())
-	}
-}
-
 // SettingsClient is a client for the Settings schema.
 type SettingsClient struct {
 	config
@@ -1728,11 +1555,11 @@ func (c *StudentClient) mutate(ctx context.Context, m *StudentMutation) (Value, 
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		AttendanceMonth, Course, Enrollment, Invoice, InvoiceLine, Payment,
-		PriceOverride, Settings, Student []ent.Hook
+		AttendanceMonth, Course, Enrollment, Invoice, InvoiceLine, Payment, Settings,
+		Student []ent.Hook
 	}
 	inters struct {
-		AttendanceMonth, Course, Enrollment, Invoice, InvoiceLine, Payment,
-		PriceOverride, Settings, Student []ent.Interceptor
+		AttendanceMonth, Course, Enrollment, Invoice, InvoiceLine, Payment, Settings,
+		Student []ent.Interceptor
 	}
 )

@@ -10,7 +10,6 @@ import (
 	"langschool/ent/attendancemonth"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoiceline"
-	"langschool/ent/priceoverride"
 	"langschool/internal/app"
 	"langschool/internal/app/utils"
 )
@@ -161,12 +160,6 @@ func (s *Service) DeleteEnrollment(ctx context.Context, enrollmentID int) error 
 			attendancemonth.StudentIDEQ(en.StudentID),
 			attendancemonth.CourseIDEQ(en.CourseID),
 		).Exec(ctx); err != nil {
-		return err
-	}
-	if _, err := s.db.PriceOverride.
-		Delete().
-		Where(priceoverride.EnrollmentIDEQ(enrollmentID)).
-		Exec(ctx); err != nil {
 		return err
 	}
 	return s.db.Enrollment.DeleteOneID(enrollmentID).Exec(ctx)

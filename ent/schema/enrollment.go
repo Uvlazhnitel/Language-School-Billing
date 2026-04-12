@@ -35,8 +35,7 @@ func (Enrollment) Edges() []ent.Edge {
 			Unique(), // one enrollment has exactly 1 course
 
 		// Inverse sides to the FK owners from other tables:
-		edge.To("invoice_lines", InvoiceLine.Type),     // inverse to InvoiceLine.enrollment
-		edge.To("price_overrides", PriceOverride.Type), // inverse to PriceOverride.enrollment
+		edge.To("invoice_lines", InvoiceLine.Type), // inverse to InvoiceLine.enrollment
 	}
 }
 

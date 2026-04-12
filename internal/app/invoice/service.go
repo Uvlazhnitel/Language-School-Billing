@@ -13,7 +13,6 @@ import (
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
-	"langschool/ent/priceoverride"
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"langschool/internal/app"
@@ -170,8 +169,7 @@ func (s *Service) getSettings(ctx context.Context) (*ent.Settings, error) {
 }
 
 // resolvePrices determines the effective prices for an enrollment in a given period.
-// It considers price overrides first, then falls back to course prices with discounts applied.
-// Price overrides take precedence if they are valid for the period.
+// It uses the course prices and applies the enrollment discount, if any.
 // Returns both lesson price and subscription price.
 func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m int) (lessonPrice, subscriptionPrice float64) {
 	lessonPrice, subscriptionPrice = 0, 0
@@ -185,30 +183,6 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 			sp = utils.Round2(sp * (1 - en.DiscountPct/100.0))
 		}
 		lessonPrice, subscriptionPrice = lp, sp
-	}
-
-	ps, pe := periodBounds(y, m)
-
-	// Override — take the latest valid_from that intersects with the period
-	ovr, _ := s.db.PriceOverride.
-		Query().
-		Where(
-			priceoverride.EnrollmentIDEQ(en.ID),
-			priceoverride.ValidFromLTE(pe),
-		).
-		Order(ent.Desc(priceoverride.FieldValidFrom)).
-		All(ctx)
-
-	for _, o := range ovr {
-		if o.ValidTo == nil || !o.ValidTo.Before(ps) {
-			if o.LessonPrice != nil {
-				lessonPrice = utils.Round2(*o.LessonPrice)
-			}
-			if o.SubscriptionPrice != nil {
-				subscriptionPrice = utils.Round2(*o.SubscriptionPrice)
-			}
-			break
-		}
 	}
 
 	return utils.Round2(lessonPrice), utils.Round2(subscriptionPrice)

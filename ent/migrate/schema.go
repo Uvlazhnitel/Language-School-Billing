@@ -198,29 +198,6 @@ var (
 			},
 		},
 	}
-	// PriceOverridesColumns holds the columns for the "price_overrides" table.
-	PriceOverridesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt, Increment: true},
-		{Name: "valid_from", Type: field.TypeTime},
-		{Name: "valid_to", Type: field.TypeTime, Nullable: true},
-		{Name: "lesson_price", Type: field.TypeFloat64, Nullable: true},
-		{Name: "subscription_price", Type: field.TypeFloat64, Nullable: true},
-		{Name: "enrollment_id", Type: field.TypeInt},
-	}
-	// PriceOverridesTable holds the schema information for the "price_overrides" table.
-	PriceOverridesTable = &schema.Table{
-		Name:       "price_overrides",
-		Columns:    PriceOverridesColumns,
-		PrimaryKey: []*schema.Column{PriceOverridesColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "price_overrides_enrollments_price_overrides",
-				Columns:    []*schema.Column{PriceOverridesColumns[5]},
-				RefColumns: []*schema.Column{EnrollmentsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-	}
 	// SettingsColumns holds the columns for the "settings" table.
 	SettingsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -263,7 +240,6 @@ var (
 		InvoicesTable,
 		InvoiceLinesTable,
 		PaymentsTable,
-		PriceOverridesTable,
 		SettingsTable,
 		StudentsTable,
 	}
@@ -277,5 +253,4 @@ func init() {
 	InvoiceLinesTable.ForeignKeys[1].RefTable = InvoicesTable
 	PaymentsTable.ForeignKeys[0].RefTable = InvoicesTable
 	PaymentsTable.ForeignKeys[1].RefTable = StudentsTable
-	PriceOverridesTable.ForeignKeys[0].RefTable = EnrollmentsTable
 }

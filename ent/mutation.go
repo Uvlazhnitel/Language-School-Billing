@@ -13,7 +13,6 @@ import (
 	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
 	"langschool/ent/predicate"
-	"langschool/ent/priceoverride"
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"sync"
@@ -38,7 +37,6 @@ const (
 	TypeInvoice         = "Invoice"
 	TypeInvoiceLine     = "InvoiceLine"
 	TypePayment         = "Payment"
-	TypePriceOverride   = "PriceOverride"
 	TypeSettings        = "Settings"
 	TypeStudent         = "Student"
 )
@@ -1514,27 +1512,24 @@ func (m *CourseMutation) ResetEdge(name string) error {
 // EnrollmentMutation represents an operation that mutates the Enrollment nodes in the graph.
 type EnrollmentMutation struct {
 	config
-	op                     Op
-	typ                    string
-	id                     *int
-	billing_mode           *enrollment.BillingMode
-	discount_pct           *float64
-	adddiscount_pct        *float64
-	note                   *string
-	clearedFields          map[string]struct{}
-	student                *int
-	clearedstudent         bool
-	course                 *int
-	clearedcourse          bool
-	invoice_lines          map[int]struct{}
-	removedinvoice_lines   map[int]struct{}
-	clearedinvoice_lines   bool
-	price_overrides        map[int]struct{}
-	removedprice_overrides map[int]struct{}
-	clearedprice_overrides bool
-	done                   bool
-	oldValue               func(context.Context) (*Enrollment, error)
-	predicates             []predicate.Enrollment
+	op                   Op
+	typ                  string
+	id                   *int
+	billing_mode         *enrollment.BillingMode
+	discount_pct         *float64
+	adddiscount_pct      *float64
+	note                 *string
+	clearedFields        map[string]struct{}
+	student              *int
+	clearedstudent       bool
+	course               *int
+	clearedcourse        bool
+	invoice_lines        map[int]struct{}
+	removedinvoice_lines map[int]struct{}
+	clearedinvoice_lines bool
+	done                 bool
+	oldValue             func(context.Context) (*Enrollment, error)
+	predicates           []predicate.Enrollment
 }
 
 var _ ent.Mutation = (*EnrollmentMutation)(nil)
@@ -1943,60 +1938,6 @@ func (m *EnrollmentMutation) ResetInvoiceLines() {
 	m.removedinvoice_lines = nil
 }
 
-// AddPriceOverrideIDs adds the "price_overrides" edge to the PriceOverride entity by ids.
-func (m *EnrollmentMutation) AddPriceOverrideIDs(ids ...int) {
-	if m.price_overrides == nil {
-		m.price_overrides = make(map[int]struct{})
-	}
-	for i := range ids {
-		m.price_overrides[ids[i]] = struct{}{}
-	}
-}
-
-// ClearPriceOverrides clears the "price_overrides" edge to the PriceOverride entity.
-func (m *EnrollmentMutation) ClearPriceOverrides() {
-	m.clearedprice_overrides = true
-}
-
-// PriceOverridesCleared reports if the "price_overrides" edge to the PriceOverride entity was cleared.
-func (m *EnrollmentMutation) PriceOverridesCleared() bool {
-	return m.clearedprice_overrides
-}
-
-// RemovePriceOverrideIDs removes the "price_overrides" edge to the PriceOverride entity by IDs.
-func (m *EnrollmentMutation) RemovePriceOverrideIDs(ids ...int) {
-	if m.removedprice_overrides == nil {
-		m.removedprice_overrides = make(map[int]struct{})
-	}
-	for i := range ids {
-		delete(m.price_overrides, ids[i])
-		m.removedprice_overrides[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedPriceOverrides returns the removed IDs of the "price_overrides" edge to the PriceOverride entity.
-func (m *EnrollmentMutation) RemovedPriceOverridesIDs() (ids []int) {
-	for id := range m.removedprice_overrides {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// PriceOverridesIDs returns the "price_overrides" edge IDs in the mutation.
-func (m *EnrollmentMutation) PriceOverridesIDs() (ids []int) {
-	for id := range m.price_overrides {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetPriceOverrides resets all changes to the "price_overrides" edge.
-func (m *EnrollmentMutation) ResetPriceOverrides() {
-	m.price_overrides = nil
-	m.clearedprice_overrides = false
-	m.removedprice_overrides = nil
-}
-
 // Where appends a list predicates to the EnrollmentMutation builder.
 func (m *EnrollmentMutation) Where(ps ...predicate.Enrollment) {
 	m.predicates = append(m.predicates, ps...)
@@ -2213,7 +2154,7 @@ func (m *EnrollmentMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *EnrollmentMutation) AddedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 3)
 	if m.student != nil {
 		edges = append(edges, enrollment.EdgeStudent)
 	}
@@ -2222,9 +2163,6 @@ func (m *EnrollmentMutation) AddedEdges() []string {
 	}
 	if m.invoice_lines != nil {
 		edges = append(edges, enrollment.EdgeInvoiceLines)
-	}
-	if m.price_overrides != nil {
-		edges = append(edges, enrollment.EdgePriceOverrides)
 	}
 	return edges
 }
@@ -2247,24 +2185,15 @@ func (m *EnrollmentMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case enrollment.EdgePriceOverrides:
-		ids := make([]ent.Value, 0, len(m.price_overrides))
-		for id := range m.price_overrides {
-			ids = append(ids, id)
-		}
-		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *EnrollmentMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 3)
 	if m.removedinvoice_lines != nil {
 		edges = append(edges, enrollment.EdgeInvoiceLines)
-	}
-	if m.removedprice_overrides != nil {
-		edges = append(edges, enrollment.EdgePriceOverrides)
 	}
 	return edges
 }
@@ -2279,19 +2208,13 @@ func (m *EnrollmentMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
-	case enrollment.EdgePriceOverrides:
-		ids := make([]ent.Value, 0, len(m.removedprice_overrides))
-		for id := range m.removedprice_overrides {
-			ids = append(ids, id)
-		}
-		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *EnrollmentMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 4)
+	edges := make([]string, 0, 3)
 	if m.clearedstudent {
 		edges = append(edges, enrollment.EdgeStudent)
 	}
@@ -2300,9 +2223,6 @@ func (m *EnrollmentMutation) ClearedEdges() []string {
 	}
 	if m.clearedinvoice_lines {
 		edges = append(edges, enrollment.EdgeInvoiceLines)
-	}
-	if m.clearedprice_overrides {
-		edges = append(edges, enrollment.EdgePriceOverrides)
 	}
 	return edges
 }
@@ -2317,8 +2237,6 @@ func (m *EnrollmentMutation) EdgeCleared(name string) bool {
 		return m.clearedcourse
 	case enrollment.EdgeInvoiceLines:
 		return m.clearedinvoice_lines
-	case enrollment.EdgePriceOverrides:
-		return m.clearedprice_overrides
 	}
 	return false
 }
@@ -2349,9 +2267,6 @@ func (m *EnrollmentMutation) ResetEdge(name string) error {
 		return nil
 	case enrollment.EdgeInvoiceLines:
 		m.ResetInvoiceLines()
-		return nil
-	case enrollment.EdgePriceOverrides:
-		m.ResetPriceOverrides()
 		return nil
 	}
 	return fmt.Errorf("unknown Enrollment edge %s", name)
@@ -4903,733 +4818,6 @@ func (m *PaymentMutation) ResetEdge(name string) error {
 		return nil
 	}
 	return fmt.Errorf("unknown Payment edge %s", name)
-}
-
-// PriceOverrideMutation represents an operation that mutates the PriceOverride nodes in the graph.
-type PriceOverrideMutation struct {
-	config
-	op                    Op
-	typ                   string
-	id                    *int
-	valid_from            *time.Time
-	valid_to              *time.Time
-	lesson_price          *float64
-	addlesson_price       *float64
-	subscription_price    *float64
-	addsubscription_price *float64
-	clearedFields         map[string]struct{}
-	enrollment            *int
-	clearedenrollment     bool
-	done                  bool
-	oldValue              func(context.Context) (*PriceOverride, error)
-	predicates            []predicate.PriceOverride
-}
-
-var _ ent.Mutation = (*PriceOverrideMutation)(nil)
-
-// priceoverrideOption allows management of the mutation configuration using functional options.
-type priceoverrideOption func(*PriceOverrideMutation)
-
-// newPriceOverrideMutation creates new mutation for the PriceOverride entity.
-func newPriceOverrideMutation(c config, op Op, opts ...priceoverrideOption) *PriceOverrideMutation {
-	m := &PriceOverrideMutation{
-		config:        c,
-		op:            op,
-		typ:           TypePriceOverride,
-		clearedFields: make(map[string]struct{}),
-	}
-	for _, opt := range opts {
-		opt(m)
-	}
-	return m
-}
-
-// withPriceOverrideID sets the ID field of the mutation.
-func withPriceOverrideID(id int) priceoverrideOption {
-	return func(m *PriceOverrideMutation) {
-		var (
-			err   error
-			once  sync.Once
-			value *PriceOverride
-		)
-		m.oldValue = func(ctx context.Context) (*PriceOverride, error) {
-			once.Do(func() {
-				if m.done {
-					err = errors.New("querying old values post mutation is not allowed")
-				} else {
-					value, err = m.Client().PriceOverride.Get(ctx, id)
-				}
-			})
-			return value, err
-		}
-		m.id = &id
-	}
-}
-
-// withPriceOverride sets the old PriceOverride of the mutation.
-func withPriceOverride(node *PriceOverride) priceoverrideOption {
-	return func(m *PriceOverrideMutation) {
-		m.oldValue = func(context.Context) (*PriceOverride, error) {
-			return node, nil
-		}
-		m.id = &node.ID
-	}
-}
-
-// Client returns a new `ent.Client` from the mutation. If the mutation was
-// executed in a transaction (ent.Tx), a transactional client is returned.
-func (m PriceOverrideMutation) Client() *Client {
-	client := &Client{config: m.config}
-	client.init()
-	return client
-}
-
-// Tx returns an `ent.Tx` for mutations that were executed in transactions;
-// it returns an error otherwise.
-func (m PriceOverrideMutation) Tx() (*Tx, error) {
-	if _, ok := m.driver.(*txDriver); !ok {
-		return nil, errors.New("ent: mutation is not running in a transaction")
-	}
-	tx := &Tx{config: m.config}
-	tx.init()
-	return tx, nil
-}
-
-// ID returns the ID value in the mutation. Note that the ID is only available
-// if it was provided to the builder or after it was returned from the database.
-func (m *PriceOverrideMutation) ID() (id int, exists bool) {
-	if m.id == nil {
-		return
-	}
-	return *m.id, true
-}
-
-// IDs queries the database and returns the entity ids that match the mutation's predicate.
-// That means, if the mutation is applied within a transaction with an isolation level such
-// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
-// or updated by the mutation.
-func (m *PriceOverrideMutation) IDs(ctx context.Context) ([]int, error) {
-	switch {
-	case m.op.Is(OpUpdateOne | OpDeleteOne):
-		id, exists := m.ID()
-		if exists {
-			return []int{id}, nil
-		}
-		fallthrough
-	case m.op.Is(OpUpdate | OpDelete):
-		return m.Client().PriceOverride.Query().Where(m.predicates...).IDs(ctx)
-	default:
-		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
-	}
-}
-
-// SetEnrollmentID sets the "enrollment_id" field.
-func (m *PriceOverrideMutation) SetEnrollmentID(i int) {
-	m.enrollment = &i
-}
-
-// EnrollmentID returns the value of the "enrollment_id" field in the mutation.
-func (m *PriceOverrideMutation) EnrollmentID() (r int, exists bool) {
-	v := m.enrollment
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldEnrollmentID returns the old "enrollment_id" field's value of the PriceOverride entity.
-// If the PriceOverride object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *PriceOverrideMutation) OldEnrollmentID(ctx context.Context) (v int, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldEnrollmentID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldEnrollmentID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldEnrollmentID: %w", err)
-	}
-	return oldValue.EnrollmentID, nil
-}
-
-// ResetEnrollmentID resets all changes to the "enrollment_id" field.
-func (m *PriceOverrideMutation) ResetEnrollmentID() {
-	m.enrollment = nil
-}
-
-// SetValidFrom sets the "valid_from" field.
-func (m *PriceOverrideMutation) SetValidFrom(t time.Time) {
-	m.valid_from = &t
-}
-
-// ValidFrom returns the value of the "valid_from" field in the mutation.
-func (m *PriceOverrideMutation) ValidFrom() (r time.Time, exists bool) {
-	v := m.valid_from
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldValidFrom returns the old "valid_from" field's value of the PriceOverride entity.
-// If the PriceOverride object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *PriceOverrideMutation) OldValidFrom(ctx context.Context) (v time.Time, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldValidFrom is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldValidFrom requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldValidFrom: %w", err)
-	}
-	return oldValue.ValidFrom, nil
-}
-
-// ResetValidFrom resets all changes to the "valid_from" field.
-func (m *PriceOverrideMutation) ResetValidFrom() {
-	m.valid_from = nil
-}
-
-// SetValidTo sets the "valid_to" field.
-func (m *PriceOverrideMutation) SetValidTo(t time.Time) {
-	m.valid_to = &t
-}
-
-// ValidTo returns the value of the "valid_to" field in the mutation.
-func (m *PriceOverrideMutation) ValidTo() (r time.Time, exists bool) {
-	v := m.valid_to
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldValidTo returns the old "valid_to" field's value of the PriceOverride entity.
-// If the PriceOverride object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *PriceOverrideMutation) OldValidTo(ctx context.Context) (v *time.Time, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldValidTo is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldValidTo requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldValidTo: %w", err)
-	}
-	return oldValue.ValidTo, nil
-}
-
-// ClearValidTo clears the value of the "valid_to" field.
-func (m *PriceOverrideMutation) ClearValidTo() {
-	m.valid_to = nil
-	m.clearedFields[priceoverride.FieldValidTo] = struct{}{}
-}
-
-// ValidToCleared returns if the "valid_to" field was cleared in this mutation.
-func (m *PriceOverrideMutation) ValidToCleared() bool {
-	_, ok := m.clearedFields[priceoverride.FieldValidTo]
-	return ok
-}
-
-// ResetValidTo resets all changes to the "valid_to" field.
-func (m *PriceOverrideMutation) ResetValidTo() {
-	m.valid_to = nil
-	delete(m.clearedFields, priceoverride.FieldValidTo)
-}
-
-// SetLessonPrice sets the "lesson_price" field.
-func (m *PriceOverrideMutation) SetLessonPrice(f float64) {
-	m.lesson_price = &f
-	m.addlesson_price = nil
-}
-
-// LessonPrice returns the value of the "lesson_price" field in the mutation.
-func (m *PriceOverrideMutation) LessonPrice() (r float64, exists bool) {
-	v := m.lesson_price
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldLessonPrice returns the old "lesson_price" field's value of the PriceOverride entity.
-// If the PriceOverride object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *PriceOverrideMutation) OldLessonPrice(ctx context.Context) (v *float64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldLessonPrice is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldLessonPrice requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldLessonPrice: %w", err)
-	}
-	return oldValue.LessonPrice, nil
-}
-
-// AddLessonPrice adds f to the "lesson_price" field.
-func (m *PriceOverrideMutation) AddLessonPrice(f float64) {
-	if m.addlesson_price != nil {
-		*m.addlesson_price += f
-	} else {
-		m.addlesson_price = &f
-	}
-}
-
-// AddedLessonPrice returns the value that was added to the "lesson_price" field in this mutation.
-func (m *PriceOverrideMutation) AddedLessonPrice() (r float64, exists bool) {
-	v := m.addlesson_price
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ClearLessonPrice clears the value of the "lesson_price" field.
-func (m *PriceOverrideMutation) ClearLessonPrice() {
-	m.lesson_price = nil
-	m.addlesson_price = nil
-	m.clearedFields[priceoverride.FieldLessonPrice] = struct{}{}
-}
-
-// LessonPriceCleared returns if the "lesson_price" field was cleared in this mutation.
-func (m *PriceOverrideMutation) LessonPriceCleared() bool {
-	_, ok := m.clearedFields[priceoverride.FieldLessonPrice]
-	return ok
-}
-
-// ResetLessonPrice resets all changes to the "lesson_price" field.
-func (m *PriceOverrideMutation) ResetLessonPrice() {
-	m.lesson_price = nil
-	m.addlesson_price = nil
-	delete(m.clearedFields, priceoverride.FieldLessonPrice)
-}
-
-// SetSubscriptionPrice sets the "subscription_price" field.
-func (m *PriceOverrideMutation) SetSubscriptionPrice(f float64) {
-	m.subscription_price = &f
-	m.addsubscription_price = nil
-}
-
-// SubscriptionPrice returns the value of the "subscription_price" field in the mutation.
-func (m *PriceOverrideMutation) SubscriptionPrice() (r float64, exists bool) {
-	v := m.subscription_price
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSubscriptionPrice returns the old "subscription_price" field's value of the PriceOverride entity.
-// If the PriceOverride object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *PriceOverrideMutation) OldSubscriptionPrice(ctx context.Context) (v *float64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSubscriptionPrice is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSubscriptionPrice requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSubscriptionPrice: %w", err)
-	}
-	return oldValue.SubscriptionPrice, nil
-}
-
-// AddSubscriptionPrice adds f to the "subscription_price" field.
-func (m *PriceOverrideMutation) AddSubscriptionPrice(f float64) {
-	if m.addsubscription_price != nil {
-		*m.addsubscription_price += f
-	} else {
-		m.addsubscription_price = &f
-	}
-}
-
-// AddedSubscriptionPrice returns the value that was added to the "subscription_price" field in this mutation.
-func (m *PriceOverrideMutation) AddedSubscriptionPrice() (r float64, exists bool) {
-	v := m.addsubscription_price
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ClearSubscriptionPrice clears the value of the "subscription_price" field.
-func (m *PriceOverrideMutation) ClearSubscriptionPrice() {
-	m.subscription_price = nil
-	m.addsubscription_price = nil
-	m.clearedFields[priceoverride.FieldSubscriptionPrice] = struct{}{}
-}
-
-// SubscriptionPriceCleared returns if the "subscription_price" field was cleared in this mutation.
-func (m *PriceOverrideMutation) SubscriptionPriceCleared() bool {
-	_, ok := m.clearedFields[priceoverride.FieldSubscriptionPrice]
-	return ok
-}
-
-// ResetSubscriptionPrice resets all changes to the "subscription_price" field.
-func (m *PriceOverrideMutation) ResetSubscriptionPrice() {
-	m.subscription_price = nil
-	m.addsubscription_price = nil
-	delete(m.clearedFields, priceoverride.FieldSubscriptionPrice)
-}
-
-// ClearEnrollment clears the "enrollment" edge to the Enrollment entity.
-func (m *PriceOverrideMutation) ClearEnrollment() {
-	m.clearedenrollment = true
-	m.clearedFields[priceoverride.FieldEnrollmentID] = struct{}{}
-}
-
-// EnrollmentCleared reports if the "enrollment" edge to the Enrollment entity was cleared.
-func (m *PriceOverrideMutation) EnrollmentCleared() bool {
-	return m.clearedenrollment
-}
-
-// EnrollmentIDs returns the "enrollment" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// EnrollmentID instead. It exists only for internal usage by the builders.
-func (m *PriceOverrideMutation) EnrollmentIDs() (ids []int) {
-	if id := m.enrollment; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetEnrollment resets all changes to the "enrollment" edge.
-func (m *PriceOverrideMutation) ResetEnrollment() {
-	m.enrollment = nil
-	m.clearedenrollment = false
-}
-
-// Where appends a list predicates to the PriceOverrideMutation builder.
-func (m *PriceOverrideMutation) Where(ps ...predicate.PriceOverride) {
-	m.predicates = append(m.predicates, ps...)
-}
-
-// WhereP appends storage-level predicates to the PriceOverrideMutation builder. Using this method,
-// users can use type-assertion to append predicates that do not depend on any generated package.
-func (m *PriceOverrideMutation) WhereP(ps ...func(*sql.Selector)) {
-	p := make([]predicate.PriceOverride, len(ps))
-	for i := range ps {
-		p[i] = ps[i]
-	}
-	m.Where(p...)
-}
-
-// Op returns the operation name.
-func (m *PriceOverrideMutation) Op() Op {
-	return m.op
-}
-
-// SetOp allows setting the mutation operation.
-func (m *PriceOverrideMutation) SetOp(op Op) {
-	m.op = op
-}
-
-// Type returns the node type of this mutation (PriceOverride).
-func (m *PriceOverrideMutation) Type() string {
-	return m.typ
-}
-
-// Fields returns all fields that were changed during this mutation. Note that in
-// order to get all numeric fields that were incremented/decremented, call
-// AddedFields().
-func (m *PriceOverrideMutation) Fields() []string {
-	fields := make([]string, 0, 5)
-	if m.enrollment != nil {
-		fields = append(fields, priceoverride.FieldEnrollmentID)
-	}
-	if m.valid_from != nil {
-		fields = append(fields, priceoverride.FieldValidFrom)
-	}
-	if m.valid_to != nil {
-		fields = append(fields, priceoverride.FieldValidTo)
-	}
-	if m.lesson_price != nil {
-		fields = append(fields, priceoverride.FieldLessonPrice)
-	}
-	if m.subscription_price != nil {
-		fields = append(fields, priceoverride.FieldSubscriptionPrice)
-	}
-	return fields
-}
-
-// Field returns the value of a field with the given name. The second boolean
-// return value indicates that this field was not set, or was not defined in the
-// schema.
-func (m *PriceOverrideMutation) Field(name string) (ent.Value, bool) {
-	switch name {
-	case priceoverride.FieldEnrollmentID:
-		return m.EnrollmentID()
-	case priceoverride.FieldValidFrom:
-		return m.ValidFrom()
-	case priceoverride.FieldValidTo:
-		return m.ValidTo()
-	case priceoverride.FieldLessonPrice:
-		return m.LessonPrice()
-	case priceoverride.FieldSubscriptionPrice:
-		return m.SubscriptionPrice()
-	}
-	return nil, false
-}
-
-// OldField returns the old value of the field from the database. An error is
-// returned if the mutation operation is not UpdateOne, or the query to the
-// database failed.
-func (m *PriceOverrideMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
-	switch name {
-	case priceoverride.FieldEnrollmentID:
-		return m.OldEnrollmentID(ctx)
-	case priceoverride.FieldValidFrom:
-		return m.OldValidFrom(ctx)
-	case priceoverride.FieldValidTo:
-		return m.OldValidTo(ctx)
-	case priceoverride.FieldLessonPrice:
-		return m.OldLessonPrice(ctx)
-	case priceoverride.FieldSubscriptionPrice:
-		return m.OldSubscriptionPrice(ctx)
-	}
-	return nil, fmt.Errorf("unknown PriceOverride field %s", name)
-}
-
-// SetField sets the value of a field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *PriceOverrideMutation) SetField(name string, value ent.Value) error {
-	switch name {
-	case priceoverride.FieldEnrollmentID:
-		v, ok := value.(int)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetEnrollmentID(v)
-		return nil
-	case priceoverride.FieldValidFrom:
-		v, ok := value.(time.Time)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetValidFrom(v)
-		return nil
-	case priceoverride.FieldValidTo:
-		v, ok := value.(time.Time)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetValidTo(v)
-		return nil
-	case priceoverride.FieldLessonPrice:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetLessonPrice(v)
-		return nil
-	case priceoverride.FieldSubscriptionPrice:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSubscriptionPrice(v)
-		return nil
-	}
-	return fmt.Errorf("unknown PriceOverride field %s", name)
-}
-
-// AddedFields returns all numeric fields that were incremented/decremented during
-// this mutation.
-func (m *PriceOverrideMutation) AddedFields() []string {
-	var fields []string
-	if m.addlesson_price != nil {
-		fields = append(fields, priceoverride.FieldLessonPrice)
-	}
-	if m.addsubscription_price != nil {
-		fields = append(fields, priceoverride.FieldSubscriptionPrice)
-	}
-	return fields
-}
-
-// AddedField returns the numeric value that was incremented/decremented on a field
-// with the given name. The second boolean return value indicates that this field
-// was not set, or was not defined in the schema.
-func (m *PriceOverrideMutation) AddedField(name string) (ent.Value, bool) {
-	switch name {
-	case priceoverride.FieldLessonPrice:
-		return m.AddedLessonPrice()
-	case priceoverride.FieldSubscriptionPrice:
-		return m.AddedSubscriptionPrice()
-	}
-	return nil, false
-}
-
-// AddField adds the value to the field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *PriceOverrideMutation) AddField(name string, value ent.Value) error {
-	switch name {
-	case priceoverride.FieldLessonPrice:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddLessonPrice(v)
-		return nil
-	case priceoverride.FieldSubscriptionPrice:
-		v, ok := value.(float64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddSubscriptionPrice(v)
-		return nil
-	}
-	return fmt.Errorf("unknown PriceOverride numeric field %s", name)
-}
-
-// ClearedFields returns all nullable fields that were cleared during this
-// mutation.
-func (m *PriceOverrideMutation) ClearedFields() []string {
-	var fields []string
-	if m.FieldCleared(priceoverride.FieldValidTo) {
-		fields = append(fields, priceoverride.FieldValidTo)
-	}
-	if m.FieldCleared(priceoverride.FieldLessonPrice) {
-		fields = append(fields, priceoverride.FieldLessonPrice)
-	}
-	if m.FieldCleared(priceoverride.FieldSubscriptionPrice) {
-		fields = append(fields, priceoverride.FieldSubscriptionPrice)
-	}
-	return fields
-}
-
-// FieldCleared returns a boolean indicating if a field with the given name was
-// cleared in this mutation.
-func (m *PriceOverrideMutation) FieldCleared(name string) bool {
-	_, ok := m.clearedFields[name]
-	return ok
-}
-
-// ClearField clears the value of the field with the given name. It returns an
-// error if the field is not defined in the schema.
-func (m *PriceOverrideMutation) ClearField(name string) error {
-	switch name {
-	case priceoverride.FieldValidTo:
-		m.ClearValidTo()
-		return nil
-	case priceoverride.FieldLessonPrice:
-		m.ClearLessonPrice()
-		return nil
-	case priceoverride.FieldSubscriptionPrice:
-		m.ClearSubscriptionPrice()
-		return nil
-	}
-	return fmt.Errorf("unknown PriceOverride nullable field %s", name)
-}
-
-// ResetField resets all changes in the mutation for the field with the given name.
-// It returns an error if the field is not defined in the schema.
-func (m *PriceOverrideMutation) ResetField(name string) error {
-	switch name {
-	case priceoverride.FieldEnrollmentID:
-		m.ResetEnrollmentID()
-		return nil
-	case priceoverride.FieldValidFrom:
-		m.ResetValidFrom()
-		return nil
-	case priceoverride.FieldValidTo:
-		m.ResetValidTo()
-		return nil
-	case priceoverride.FieldLessonPrice:
-		m.ResetLessonPrice()
-		return nil
-	case priceoverride.FieldSubscriptionPrice:
-		m.ResetSubscriptionPrice()
-		return nil
-	}
-	return fmt.Errorf("unknown PriceOverride field %s", name)
-}
-
-// AddedEdges returns all edge names that were set/added in this mutation.
-func (m *PriceOverrideMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
-	if m.enrollment != nil {
-		edges = append(edges, priceoverride.EdgeEnrollment)
-	}
-	return edges
-}
-
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
-// name in this mutation.
-func (m *PriceOverrideMutation) AddedIDs(name string) []ent.Value {
-	switch name {
-	case priceoverride.EdgeEnrollment:
-		if id := m.enrollment; id != nil {
-			return []ent.Value{*id}
-		}
-	}
-	return nil
-}
-
-// RemovedEdges returns all edge names that were removed in this mutation.
-func (m *PriceOverrideMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
-	return edges
-}
-
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
-// the given name in this mutation.
-func (m *PriceOverrideMutation) RemovedIDs(name string) []ent.Value {
-	return nil
-}
-
-// ClearedEdges returns all edge names that were cleared in this mutation.
-func (m *PriceOverrideMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
-	if m.clearedenrollment {
-		edges = append(edges, priceoverride.EdgeEnrollment)
-	}
-	return edges
-}
-
-// EdgeCleared returns a boolean which indicates if the edge with the given name
-// was cleared in this mutation.
-func (m *PriceOverrideMutation) EdgeCleared(name string) bool {
-	switch name {
-	case priceoverride.EdgeEnrollment:
-		return m.clearedenrollment
-	}
-	return false
-}
-
-// ClearEdge clears the value of the edge with the given name. It returns an error
-// if that edge is not defined in the schema.
-func (m *PriceOverrideMutation) ClearEdge(name string) error {
-	switch name {
-	case priceoverride.EdgeEnrollment:
-		m.ClearEnrollment()
-		return nil
-	}
-	return fmt.Errorf("unknown PriceOverride unique edge %s", name)
-}
-
-// ResetEdge resets all changes to the edge with the given name in this mutation.
-// It returns an error if the edge is not defined in the schema.
-func (m *PriceOverrideMutation) ResetEdge(name string) error {
-	switch name {
-	case priceoverride.EdgeEnrollment:
-		m.ResetEnrollment()
-		return nil
-	}
-	return fmt.Errorf("unknown PriceOverride edge %s", name)
 }
 
 // SettingsMutation represents an operation that mutates the Settings nodes in the graph.

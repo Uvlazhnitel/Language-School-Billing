@@ -9,7 +9,6 @@ import (
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoiceline"
-	"langschool/ent/priceoverride"
 	"langschool/ent/student"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -92,21 +91,6 @@ func (_c *EnrollmentCreate) AddInvoiceLines(v ...*InvoiceLine) *EnrollmentCreate
 		ids[i] = v[i].ID
 	}
 	return _c.AddInvoiceLineIDs(ids...)
-}
-
-// AddPriceOverrideIDs adds the "price_overrides" edge to the PriceOverride entity by IDs.
-func (_c *EnrollmentCreate) AddPriceOverrideIDs(ids ...int) *EnrollmentCreate {
-	_c.mutation.AddPriceOverrideIDs(ids...)
-	return _c
-}
-
-// AddPriceOverrides adds the "price_overrides" edges to the PriceOverride entity.
-func (_c *EnrollmentCreate) AddPriceOverrides(v ...*PriceOverride) *EnrollmentCreate {
-	ids := make([]int, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddPriceOverrideIDs(ids...)
 }
 
 // Mutation returns the EnrollmentMutation object of the builder.
@@ -263,22 +247,6 @@ func (_c *EnrollmentCreate) createSpec() (*Enrollment, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(invoiceline.FieldID, field.TypeInt),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.PriceOverridesIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   enrollment.PriceOverridesTable,
-			Columns: []string{enrollment.PriceOverridesColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(priceoverride.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
