@@ -659,9 +659,11 @@ export default function App() {
     }
   };
 
-  const openPaymentModal = () => {
-    if (!selectedInv) return;
-    const remaining = invSummary ? invSummary.remaining : selectedInv.total;
+  const openPaymentModal = (inv?: InvoiceDTO, summary?: InvoiceSummaryDTO | null) => {
+    const currentInv = inv ?? selectedInv;
+    const currentSummary = summary !== undefined ? summary : invSummary;
+    if (!currentInv) return;
+    const remaining = currentSummary ? currentSummary.remaining : currentInv.total;
     setPaymentAmount(remaining.toFixed(2));
     setPaymentMethod("cash");
     setPaymentNote("");
@@ -1362,6 +1364,23 @@ export default function App() {
                       <button onClick={() => onOpenInvoice(it.id)}>Open</button>
                       {it.status === "draft" && <button onClick={() => onIssueOne(it.id)}>Issue</button>}
                       {it.status !== "draft" && <button onClick={() => onOpenPdf(it.id)}>PDF</button>}
+                      {it.status !== "draft" && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              const iv = await getInvoice(it.id);
+                              setSelectedInv(iv);
+                              const summary = await invoiceSummary(it.id);
+                              setInvSummary(summary);
+                              openPaymentModal(iv, summary);
+                            } catch (e: any) {
+                              showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+                            }
+                          }}
+                        >
+                          Record Payment
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1371,14 +1390,11 @@ export default function App() {
 
           {selectedInv && (
             <div className="panel">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <div style={{ marginBottom: "1rem" }}>
                 <h3>
                   Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} — {selectedInv.studentName} —{" "}
                   {months[selectedInv.month - 1]} {selectedInv.year}
                 </h3>
-                {selectedInv.status !== "draft" && (
-                  <button onClick={openPaymentModal}>Record Payment</button>
-                )}
               </div>
 
               {invSummary && selectedInv.status !== "draft" && (
