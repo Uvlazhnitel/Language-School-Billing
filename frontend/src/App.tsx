@@ -130,7 +130,8 @@ export default function App() {
   const [month, setMonth] = useState(now.getMonth() + 1);
 
   // ---------------- Students ----------------
-  const [students, setStudents] = useState<StudentDTO[]>([]);
+  const [studentList, setStudentList] = useState<StudentDTO[]>([]);
+  const [allStudents, setAllStudents] = useState<StudentDTO[]>([]);
   const [studentQ, setStudentQ] = useState("");
   const [includeInactive, setIncludeInactive] = useState(false);
   const [studentLoading, setStudentLoading] = useState(false);
@@ -146,15 +147,25 @@ export default function App() {
     setStudentLoading(true);
     try {
       const data = await listStudents(studentQ, includeInactive);
-      setStudents(data);
+      setStudentList(data);
     } finally {
       setStudentLoading(false);
     }
   }, [studentQ, includeInactive]);
 
+  const loadAllStudents = useCallback(async () => {
+    const data = await listStudents("", true);
+    setAllStudents(data);
+    return data;
+  }, []);
+
   useEffect(() => {
     if (tab === "students") loadStudents();
   }, [tab, loadStudents]);
+
+  useEffect(() => {
+    void loadAllStudents();
+  }, [loadAllStudents]);
 
   function openAddStudent() {
     setEditingStudent(null);
@@ -188,7 +199,7 @@ export default function App() {
         await createStudent(sfName, sfPhone, sfEmail, sfNote);
       }
       setStudentModalOpen(false);
-      await loadStudents(); // Refresh list
+      await Promise.all([loadStudents(), loadAllStudents()]);
       showMessage(editingStudent ? "Student updated successfully!" : "Student created successfully!");
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
@@ -198,7 +209,7 @@ export default function App() {
   async function toggleStudentActive(s: StudentDTO) {
     try {
       await setStudentActive(s.id, !s.isActive);
-      await loadStudents();
+      await Promise.all([loadStudents(), loadAllStudents()]);
       showMessage(s.isActive ? "Student deactivated" : "Student activated");
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
@@ -211,7 +222,7 @@ export default function App() {
       async () => {
         try {
           await deleteStudent(id);
-          await loadStudents();
+          await Promise.all([loadStudents(), loadAllStudents()]);
           showMessage("Student deleted successfully!");
         } catch (e: any) {
           showMessage(`Error: ${String(e?.message ?? e)}`, "error");
@@ -317,10 +328,10 @@ export default function App() {
   const [efDiscount, setEfDiscount] = useState(0);
   const [efNote, setEfNote] = useState("");
 
-  const activeStudents = useMemo(() => students.filter((s) => s.isActive), [students]);
+  const activeStudents = useMemo(() => allStudents.filter((s) => s.isActive), [allStudents]);
   const selectedEnrollmentStudent = useMemo(
-    () => students.find((s) => s.id === efStudentId) ?? null,
-    [students, efStudentId]
+    () => allStudents.find((s) => s.id === efStudentId) ?? null,
+    [allStudents, efStudentId]
   );
   const filteredEnrollmentStudents = useMemo(() => {
     const q = efStudentSearch.trim().toLowerCase();
@@ -335,7 +346,7 @@ export default function App() {
     setEnrLoading(true);
     try {
       await Promise.all([
-        students.length === 0 ? listStudents("", true).then(setStudents) : Promise.resolve(),
+        allStudents.length === 0 ? loadAllStudents() : Promise.resolve(),
         courses.length === 0 ? listCourses("").then(setCourses) : Promise.resolve(),
       ]);
 
@@ -344,7 +355,7 @@ export default function App() {
     } finally {
       setEnrLoading(false);
     }
-  }, [enrStudentFilter, enrCourseFilter, students.length, courses.length]);
+  }, [enrStudentFilter, enrCourseFilter, allStudents.length, courses.length, loadAllStudents]);
 
   useEffect(() => {
     if (tab === "enrollments") loadEnrollments();
@@ -435,15 +446,14 @@ export default function App() {
   // For search by phone we need students list (shared with invoices and attendance)
   const studentIndex = useMemo(() => {
     const m = new Map<number, StudentDTO>();
-    for (const s of students) m.set(s.id, s);
+    for (const s of allStudents) m.set(s.id, s);
     return m;
-  }, [students]);
+  }, [allStudents]);
 
   const ensureStudentsLoaded = useCallback(async () => {
-    if (students.length > 0) return;
-    const data = await listStudents("", true);
-    setStudents(data);
-  }, [students.length]);
+    if (allStudents.length > 0) return;
+    await loadAllStudents();
+  }, [allStudents.length, loadAllStudents]);
 
   const ensureCoursesLoaded = useCallback(async () => {
     if (courses.length > 0) return;
@@ -850,7 +860,7 @@ export default function App() {
 
           {studentLoading ? (
             <div>Loading…</div>
-          ) : students.length === 0 ? (
+          ) : studentList.length === 0 ? (
             <div className="empty">No students yet.</div>
           ) : (
             <table>
@@ -864,7 +874,7 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {students.map((s) => (
+                {studentList.map((s) => (
                   <tr key={s.id}>
                     <td>{s.fullName}</td>
                     <td>{s.phone}</td>
@@ -1017,7 +1027,7 @@ export default function App() {
 
             <select value={enrStudentFilter ?? ""} onChange={(e) => setEnrStudentFilter(intOrUndef(e.target.value))}>
               <option value="">All students</option>
-              {students.map((s) => (
+              {allStudents.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.fullName}
                 </option>
