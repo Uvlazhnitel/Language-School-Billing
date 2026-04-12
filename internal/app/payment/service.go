@@ -89,6 +89,7 @@ func parseDate(s string) (time.Time, error) {
 // the invoice belongs to the student (if provided), and the invoice is not in
 // draft or canceled status.
 func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
+	amount = utils.Round2(amount)
 	if studentID <= 0 {
 		return nil, errors.New("studentID must be > 0")
 	}

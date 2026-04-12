@@ -202,16 +202,16 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 	for _, o := range ovr {
 		if o.ValidTo == nil || !o.ValidTo.Before(ps) {
 			if o.LessonPrice != nil {
-				lessonPrice = *o.LessonPrice
+				lessonPrice = utils.Round2(*o.LessonPrice)
 			}
 			if o.SubscriptionPrice != nil {
-				subscriptionPrice = *o.SubscriptionPrice
+				subscriptionPrice = utils.Round2(*o.SubscriptionPrice)
 			}
 			break
 		}
 	}
 
-	return
+	return utils.Round2(lessonPrice), utils.Round2(subscriptionPrice)
 }
 
 // ----- Draft generation -----

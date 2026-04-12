@@ -918,8 +918,8 @@ export default function App() {
                 <tr>
                   <th>Name</th>
                   <th>Type</th>
-                  <th style={{ textAlign: "right" }}>Lesson</th>
-                  <th style={{ textAlign: "right" }}>Subscription</th>
+                  <th style={{ textAlign: "right" }}>Lesson (EUR)</th>
+                  <th style={{ textAlign: "right" }}>Subscription (EUR)</th>
                   <th></th>
                 </tr>
               </thead>
@@ -1153,9 +1153,9 @@ export default function App() {
                 <tr>
                   <th>Student</th>
                   <th>Course</th>
-                  <th style={{ textAlign: "right" }}>Lesson price</th>
+                  <th style={{ textAlign: "right" }}>Lesson price (EUR)</th>
                   <th style={{ textAlign: "right" }}>Count</th>
-                  <th style={{ textAlign: "right" }}>Total</th>
+                  <th style={{ textAlign: "right" }}>Total (EUR)</th>
                   <th></th>
                 </tr>
               </thead>
@@ -1186,7 +1186,7 @@ export default function App() {
               <tfoot>
                 <tr>
                   <td colSpan={4} style={{ textAlign: "right" }}>
-                    Per-lesson total:
+                    Per-lesson total (EUR):
                   </td>
                   <td style={{ textAlign: "right" }}>{formatEUR(perLessonTotal)}</td>
                   <td></td>
@@ -1231,7 +1231,7 @@ export default function App() {
                 <tr>
                   <th>Student</th>
                   <th>Period</th>
-                  <th style={{ textAlign: "right" }}>Total</th>
+                  <th style={{ textAlign: "right" }}>Total (EUR)</th>
                   <th>Status</th>
                   <th>Number</th>
                   <th></th>
@@ -1302,8 +1302,8 @@ export default function App() {
                   <tr>
                     <th>Description</th>
                     <th style={{ textAlign: "right" }}>Qty</th>
-                    <th style={{ textAlign: "right" }}>Unit</th>
-                    <th style={{ textAlign: "right" }}>Amount</th>
+                    <th style={{ textAlign: "right" }}>Unit (EUR)</th>
+                    <th style={{ textAlign: "right" }}>Amount (EUR)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1319,7 +1319,7 @@ export default function App() {
                 <tfoot>
                   <tr>
                     <td colSpan={3} style={{ textAlign: "right" }}>
-                      Total:
+                      Total (EUR):
                     </td>
                     <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
                   </tr>
@@ -1388,9 +1388,9 @@ export default function App() {
               <thead>
                 <tr>
                   <th>Student Name</th>
-                  <th style={{ textAlign: "right" }}>Debt</th>
-                  <th style={{ textAlign: "right" }}>Total Invoiced</th>
-                  <th style={{ textAlign: "right" }}>Total Paid</th>
+                  <th style={{ textAlign: "right" }}>Debt (EUR)</th>
+                  <th style={{ textAlign: "right" }}>Total Invoiced (EUR)</th>
+                  <th style={{ textAlign: "right" }}>Total Paid (EUR)</th>
                 </tr>
               </thead>
               <tbody>
@@ -1407,7 +1407,7 @@ export default function App() {
               </tbody>
               <tfoot>
                 <tr>
-                  <td style={{ fontWeight: "bold" }}>Total Debt:</td>
+                  <td style={{ fontWeight: "bold" }}>Total Debt (EUR):</td>
                   <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
                     {formatEUR(debtors.reduce((sum, d) => sum + d.debt, 0))}
                   </td>

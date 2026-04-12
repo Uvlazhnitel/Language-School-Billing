@@ -19,6 +19,7 @@ import (
 	"langschool/ent/payment"
 	"langschool/ent/student"
 	"langschool/internal/app"
+	"langschool/internal/app/utils"
 )
 
 // -------------------- Constants (imported from internal/app) --------------------
@@ -138,8 +139,8 @@ func toCourseDTO(c *ent.Course) CourseDTO {
 		ID:                c.ID,
 		Name:              c.Name,
 		Type:              string(c.Type),
-		LessonPrice:       c.LessonPrice,
-		SubscriptionPrice: c.SubscriptionPrice,
+		LessonPrice:       utils.Round2(c.LessonPrice),
+		SubscriptionPrice: utils.Round2(c.SubscriptionPrice),
 	}
 }
 
@@ -389,6 +390,8 @@ func (a *App) CourseGet(id int) (*CourseDTO, error) {
 func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = sanitizeInput(name)
 	courseType = strings.TrimSpace(courseType)
+	lessonPrice = utils.Round2(lessonPrice)
+	subscriptionPrice = utils.Round2(subscriptionPrice)
 
 	if err := validateNonEmpty(name, "name"); err != nil {
 		return nil, err
@@ -420,6 +423,8 @@ func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPri
 func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = sanitizeInput(name)
 	courseType = strings.TrimSpace(courseType)
+	lessonPrice = utils.Round2(lessonPrice)
+	subscriptionPrice = utils.Round2(subscriptionPrice)
 
 	if err := validateNonEmpty(name, "name"); err != nil {
 		return nil, err
