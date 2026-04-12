@@ -245,7 +245,8 @@ export default function App() {
   }
 
   // ---------------- Courses ----------------
-  const [courses, setCourses] = useState<CourseDTO[]>([]);
+  const [courseList, setCourseList] = useState<CourseDTO[]>([]);
+  const [allCourses, setAllCourses] = useState<CourseDTO[]>([]);
   const [courseQ, setCourseQ] = useState("");
   const [courseLoading, setCourseLoading] = useState(false);
 
@@ -265,15 +266,25 @@ export default function App() {
     setCourseLoading(true);
     try {
       const data = await listCourses(courseQ);
-      setCourses(data);
+      setCourseList(data);
     } finally {
       setCourseLoading(false);
     }
   }, [courseQ]);
 
+  const loadAllCourses = useCallback(async () => {
+    const data = await listCourses("");
+    setAllCourses(data);
+    return data;
+  }, []);
+
   useEffect(() => {
     if (tab === "courses") loadCourses();
   }, [tab, loadCourses]);
+
+  useEffect(() => {
+    void loadAllCourses();
+  }, [loadAllCourses]);
 
   function openAddCourse() {
     setEditingCourse(null);
@@ -314,7 +325,7 @@ export default function App() {
       }
 
       setCourseModalOpen(false);
-      await loadCourses();
+      await Promise.all([loadCourses(), loadAllCourses()]);
       showMessage(editingCourse ? "Course updated successfully!" : "Course created successfully!");
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
@@ -325,7 +336,7 @@ export default function App() {
     showConfirm("Delete course? This is blocked if enrollments exist.", async () => {
       try {
         await deleteCourse(id);
-        await loadCourses();
+        await Promise.all([loadCourses(), loadAllCourses()]);
         showMessage("Course deleted successfully!");
       } catch (e: any) {
         showMessage(`Error: ${String(e?.message ?? e)}`, "error");
@@ -344,6 +355,7 @@ export default function App() {
   const [efStudentId, setEfStudentId] = useState<number>(0);
   const [efStudentSearch, setEfStudentSearch] = useState("");
   const [efStudentPickerOpen, setEfStudentPickerOpen] = useState(false);
+  const efStudentComboRef = useRef<HTMLDivElement | null>(null);
   const [efCourseId, setEfCourseId] = useState<number>(0);
   const [efMode, setEfMode] = useState<"subscription" | "per_lesson">("per_lesson");
   const [efDiscount, setEfDiscount] = useState(0);
@@ -363,12 +375,27 @@ export default function App() {
     });
   }, [activeStudents, efStudentSearch]);
 
+  useEffect(() => {
+    if (!efStudentPickerOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!efStudentComboRef.current?.contains(event.target as Node)) {
+        setEfStudentPickerOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [efStudentPickerOpen]);
+
   const loadEnrollments = useCallback(async () => {
     setEnrLoading(true);
     try {
       await Promise.all([
         allStudents.length === 0 ? loadAllStudents() : Promise.resolve(),
-        courses.length === 0 ? listCourses("").then(setCourses) : Promise.resolve(),
+        allCourses.length === 0 ? loadAllCourses() : Promise.resolve(),
       ]);
 
       const data = await listEnrollments(enrStudentFilter, enrCourseFilter);
@@ -376,7 +403,7 @@ export default function App() {
     } finally {
       setEnrLoading(false);
     }
-  }, [enrStudentFilter, enrCourseFilter, allStudents.length, courses.length, loadAllStudents]);
+  }, [enrStudentFilter, enrCourseFilter, allStudents.length, allCourses.length, loadAllStudents, loadAllCourses]);
 
   useEffect(() => {
     if (tab === "enrollments") loadEnrollments();
@@ -388,18 +415,17 @@ export default function App() {
       setTab("students");
       return;
     }
-    if (courses.length === 0) {
+    if (allCourses.length === 0) {
       showMessage("No courses available. Please add courses first.", "error");
       setTab("courses");
       return;
     }
 
-    const initialStudentId = activeStudents[0]?.id ?? 0;
-    const initialCourseId = courses[0]?.id ?? 0;
+    const initialCourseId = allCourses[0]?.id ?? 0;
 
     setEditingEnr(null);
-    setEfStudentId(initialStudentId);
-    setEfStudentSearch(activeStudents[0]?.fullName ?? "");
+    setEfStudentId(0);
+    setEfStudentSearch("");
     setEfStudentPickerOpen(false);
     setEfCourseId(initialCourseId);
     setEfMode("per_lesson");
@@ -477,10 +503,9 @@ export default function App() {
   }, [allStudents.length, loadAllStudents]);
 
   const ensureCoursesLoaded = useCallback(async () => {
-    if (courses.length > 0) return;
-    const data = await listCourses("");
-    setCourses(data);
-  }, [courses.length]);
+    if (allCourses.length > 0) return;
+    await loadAllCourses();
+  }, [allCourses.length, loadAllCourses]);
 
   const loadAttendance = useCallback(async () => {
     setLoadingAtt(true);
@@ -960,7 +985,7 @@ export default function App() {
 
           {courseLoading ? (
             <div>Loading…</div>
-          ) : courses.length === 0 ? (
+          ) : courseList.length === 0 ? (
             <div className="empty">No courses yet.</div>
           ) : (
             <table>
@@ -974,7 +999,7 @@ export default function App() {
                 </tr>
               </thead>
               <tbody>
-                {courses.map((c) => (
+                {courseList.map((c) => (
                   <tr key={c.id}>
                     <td>{c.name}</td>
                     <td>{c.type}</td>
@@ -1059,7 +1084,7 @@ export default function App() {
 
             <select value={enrCourseFilter ?? ""} onChange={(e) => setEnrCourseFilter(intOrUndef(e.target.value))}>
               <option value="">All courses</option>
-              {courses.map((c) => (
+              {allCourses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
@@ -1110,7 +1135,7 @@ export default function App() {
                   {editingEnr ? (
                     <input value={selectedEnrollmentStudent?.fullName ?? efStudentSearch} disabled />
                   ) : (
-                    <div className="comboBox">
+                    <div className="comboBox" ref={efStudentComboRef}>
                       <input
                         value={efStudentSearch}
                         onChange={(e) => {
@@ -1118,6 +1143,11 @@ export default function App() {
                           setEfStudentPickerOpen(true);
                         }}
                         onFocus={() => setEfStudentPickerOpen(true)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape") {
+                            setEfStudentPickerOpen(false);
+                          }
+                        }}
                         placeholder="Search student by name, phone, or email…"
                       />
                       {efStudentPickerOpen && (
@@ -1150,7 +1180,7 @@ export default function App() {
                 <div className="formRow">
                   <label>Course</label>
                   <select value={efCourseId} disabled={!!editingEnr} onChange={(e) => setEfCourseId(parseInt(e.target.value))}>
-                    {courses.map((c) => (
+                    {allCourses.map((c) => (
                       <option key={c.id} value={c.id}>
                         {c.name}
                       </option>
@@ -1201,7 +1231,7 @@ export default function App() {
 
             <select value={courseFilter ?? ""} onChange={(e) => setCourseFilter(intOrUndef(e.target.value))}>
               <option value="">All groups</option>
-              {courses.map((c) => (
+              {allCourses.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
                 </option>
