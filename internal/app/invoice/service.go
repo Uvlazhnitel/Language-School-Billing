@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"time"
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
@@ -83,22 +82,6 @@ type GenerateResult struct {
 }
 
 // ----- Domain utilities -----
-
-// periodBounds calculates the start and end dates for a given year and month.
-// Start is the first day of the month at 00:00:00, end is the last day of the month.
-func periodBounds(y, m int) (start, end time.Time) {
-	start = time.Date(y, time.Month(m), 1, 0, 0, 0, 0, time.Local)
-	end = start.AddDate(0, 1, -1)
-	return
-}
-
-// activeInPeriod determines if an enrollment is active for the given period.
-// Since start_date and end_date have been removed, all enrollments are considered active.
-// This means invoice generation will include all enrollments for the specified period,
-// regardless of when the enrollment was created or ended.
-func activeInPeriod(en *ent.Enrollment, y, m int) bool {
-	return true
-}
 
 // getStudentName safely retrieves the student name from invoice edges.
 // Returns an empty string if the student edge is not loaded.
@@ -227,10 +210,6 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 		total := 0.0
 
 		for _, en := range ens {
-			if !activeInPeriod(en, y, m) {
-				continue
-			}
-
 			lp, sp := s.resolvePrices(ctx, en, y, m)
 
 			switch en.BillingMode {

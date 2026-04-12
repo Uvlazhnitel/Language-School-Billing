@@ -46,10 +46,6 @@ export function DebtorsList() {
   return window['go']['main']['App']['DebtorsList']();
 }
 
-export function DevClearInvoices(arg1, arg2) {
-  return window['go']['main']['App']['DevClearInvoices'](arg1, arg2);
-}
-
 export function EnrollmentCreate(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['EnrollmentCreate'](arg1, arg2, arg3, arg4, arg5);
 }
@@ -64,10 +60,6 @@ export function EnrollmentList(arg1, arg2) {
 
 export function EnrollmentUpdate(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['EnrollmentUpdate'](arg1, arg2, arg3, arg4);
-}
-
-export function Greet(arg1) {
-  return window['go']['main']['App']['Greet'](arg1);
 }
 
 export function InvoiceDeleteDraft(arg1) {
@@ -98,10 +90,6 @@ export function InvoiceList(arg1, arg2, arg3) {
   return window['go']['main']['App']['InvoiceList'](arg1, arg2, arg3);
 }
 
-export function InvoiceListDrafts(arg1, arg2) {
-  return window['go']['main']['App']['InvoiceListDrafts'](arg1, arg2);
-}
-
 export function InvoicePaymentSummary(arg1) {
   return window['go']['main']['App']['InvoicePaymentSummary'](arg1);
 }
@@ -124,10 +112,6 @@ export function PaymentListForStudent(arg1) {
 
 export function PaymentQuickCash(arg1, arg2, arg3) {
   return window['go']['main']['App']['PaymentQuickCash'](arg1, arg2, arg3);
-}
-
-export function Ping() {
-  return window['go']['main']['App']['Ping']();
 }
 
 export function SettingsSetLocale(arg1) {

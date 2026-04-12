@@ -1,11 +1,7 @@
 import {
     PaymentCreate,
-    PaymentDelete,
-    PaymentListForStudent,
-    StudentBalance,
     DebtorsList,
     InvoicePaymentSummary,
-    PaymentQuickCash
     } from "../../wailsjs/go/main/App";
 import { PaymentMethod } from "./constants";
   
@@ -18,15 +14,6 @@ import { PaymentMethod } from "./constants";
     method: PaymentMethod;
     note: string;
     createdAt: string;  // RFC3339
-  };
-  
-  export type BalanceDTO = {
-    studentId: number;
-    studentName: string;
-    totalInvoiced: number;
-    totalPaid: number;
-    balance: number; // paid - invoiced
-    debt: number;
   };
   
   export type DebtorDTO = {
@@ -58,18 +45,6 @@ import { PaymentMethod } from "./constants";
     return (await PaymentCreate(studentId, inv, amount, method, paidAt, note)) as PaymentDTO;
   }
   
-  export async function deletePayment(id: number) {
-    return await PaymentDelete(id);
-  }
-  
-  export async function listPayments(studentId: number) {
-    return (await PaymentListForStudent(studentId)) as PaymentDTO[];
-  }
-  
-  export async function studentBalance(studentId: number) {
-    return (await StudentBalance(studentId)) as BalanceDTO;
-  }
-  
   export async function listDebtors() {
     return (await DebtorsList()) as DebtorDTO[];
   }
@@ -78,7 +53,4 @@ import { PaymentMethod } from "./constants";
     return (await InvoicePaymentSummary(invoiceId)) as InvoiceSummaryDTO;
   }
   
-  export async function quickCash(studentId: number, amount: number, note: string) {
-    return (await PaymentQuickCash(studentId, amount, note)) as PaymentDTO;
-  }
   

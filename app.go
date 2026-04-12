@@ -13,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"langschool/ent/invoice"
-	"langschool/ent/invoiceline"
 	"langschool/ent/settings"
 	"langschool/internal/app"
 	"langschool/internal/app/attendance"
@@ -191,21 +189,6 @@ func (a *App) resolveFontsDir() (string, error) {
 	return "", fmt.Errorf("DejaVuSans.ttf & DejaVuSans-Bold.ttf not found in any known location; set LS_FONTS_DIR or place fonts into ~/LangSchool/Fonts or ./Fonts")
 }
 
-// ---------- Simple diagnostics ----------
-
-// Ping is a simple health check endpoint that returns "ok".
-// Used to verify that the backend is responding to frontend calls.
-func (a *App) Ping() string { return "ok" }
-
-// Greet returns a greeting message for the given name.
-// Used as a simple test function to verify frontend-backend communication.
-func (a *App) Greet(name string) string {
-	if name == "" {
-		return "HI!"
-	}
-	return fmt.Sprintf("Hi, %s!", name)
-}
-
 // ---------- App info / utilities ----------
 
 // AppDirs returns application directories for UI (useful for exports/backups).
@@ -288,11 +271,6 @@ func (a *App) InvoiceGenerateDrafts(year, month int) (invsvc.GenerateResult, err
 	log.Printf("InvoiceGenerateDrafts result: created=%d updated=%d skippedHasInvoice=%d skippedNoLines=%d",
 		res.Created, res.Updated, res.SkippedHasInvoice, res.SkippedNoLines)
 	return res, nil
-}
-
-// InvoiceListDrafts returns a list of draft invoices for the specified year and month.
-func (a *App) InvoiceListDrafts(year, month int) ([]InvoiceListItem, error) {
-	return a.inv.ListDrafts(a.ctx, year, month)
 }
 
 // InvoiceGet retrieves a single invoice by ID with all its line items.
@@ -415,34 +393,6 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 		return "", err
 	}
 	return p, nil
-}
-
-// DevClearInvoices is a development utility that deletes all invoices
-// (and their line items) for a specific period. Use with caution as
-// this permanently removes financial records.
-func (a *App) DevClearInvoices(year, month int) (int, error) {
-	ctx := a.ctx
-	db := a.db.Ent
-
-	// Collect invoice IDs for the period
-	invs, err := db.Invoice.
-		Query().
-		Where(
-			invoice.PeriodYearEQ(year),
-			invoice.PeriodMonthEQ(month),
-		).All(ctx)
-	if err != nil {
-		return 0, err
-	}
-	for _, iv := range invs {
-		if _, err := db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(iv.ID)).Exec(ctx); err != nil {
-			return 0, err
-		}
-		if err := db.Invoice.DeleteOneID(iv.ID).Exec(ctx); err != nil {
-			return 0, err
-		}
-	}
-	return len(invs), nil
 }
 
 // SettingsSetLocale updates the application locale setting.
