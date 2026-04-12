@@ -9,6 +9,7 @@ import (
 	"langschool/ent/attendancemonth"
 	"langschool/ent/enrollment"
 	"langschool/internal/app"
+	"langschool/internal/app/utils"
 )
 
 // Service provides attendance tracking functionality.
@@ -77,7 +78,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			EnrollmentID: e.ID,
 			StudentID:    e.StudentID, StudentName: sname,
 			CourseID: e.CourseID, CourseName: c.Name, CourseType: string(c.Type),
-			LessonPrice: c.LessonPrice, Count: cnt,
+			LessonPrice: utils.Round2(c.LessonPrice), Count: cnt,
 		})
 	}
 	return rows, nil
