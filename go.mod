@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	entgo.io/ent v0.14.5
+	github.com/jung-kurt/gofpdf v1.0.0
 	github.com/mattn/go-sqlite3 v1.14.17
 	github.com/ncruces/go-sqlite3 v0.29.1
 	github.com/wailsapp/wails/v2 v2.10.2
@@ -23,7 +24,6 @@ require (
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/hashicorp/hcl/v2 v2.18.1 // indirect
 	github.com/jchv/go-winloader v0.0.0-20250406163304-c1995be93bd1 // indirect
-	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/labstack/echo/v4 v4.15.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/leaanthony/go-ansi-parser v1.6.1 // indirect
