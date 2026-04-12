@@ -64,6 +64,13 @@ function decimalOrZero(s: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
+function normalizeMoneyInput(value: string): string | null {
+  const normalized = value.replace(",", ".");
+  if (normalized === "") return "";
+  if (/^\d+(\.\d{0,2})?$/.test(normalized)) return normalized;
+  return null;
+}
+
 function formatEUR(value: number): string {
   return `€${value.toFixed(2)}`;
 }
@@ -248,6 +255,11 @@ export default function App() {
   const [cfType, setCfType] = useState<"group" | "individual">("group");
   const [cfLessonPrice, setCfLessonPrice] = useState("0.00");
   const [cfSubscriptionPrice, setCfSubscriptionPrice] = useState("0.00");
+
+  const handleCoursePriceChange = (value: string, setter: (value: string) => void) => {
+    const next = normalizeMoneyInput(value);
+    if (next !== null) setter(next);
+  };
 
   const loadCourses = useCallback(async () => {
     setCourseLoading(true);
@@ -999,22 +1011,24 @@ export default function App() {
                 <div className="formRow">
                   <label>Lesson price (EUR)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     min={0}
                     step="0.01"
                     value={cfLessonPrice}
-                    onChange={(e) => setCfLessonPrice(e.target.value)}
+                    onChange={(e) => handleCoursePriceChange(e.target.value, setCfLessonPrice)}
                   />
                 </div>
 
                 <div className="formRow">
                   <label>Subscription price (EUR)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     min={0}
                     step="0.01"
                     value={cfSubscriptionPrice}
-                    onChange={(e) => setCfSubscriptionPrice(e.target.value)}
+                    onChange={(e) => handleCoursePriceChange(e.target.value, setCfSubscriptionPrice)}
                   />
                 </div>
 
