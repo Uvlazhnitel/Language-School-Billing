@@ -92,6 +92,14 @@ func (a *App) startup(ctx context.Context) {
 			Save(ctx); err != nil {
 			log.Fatal(err)
 		}
+	} else {
+		if _, err := a.db.Ent.Settings.
+			Update().
+			Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
+			SetCurrency("EUR").
+			Save(ctx); err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	// initialize services

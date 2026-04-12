@@ -58,6 +58,10 @@ function intOrUndef(s: string): number | undefined {
   return Number.isFinite(n) ? Math.trunc(n) : undefined;
 }
 
+function formatEUR(value: number): string {
+  return `€${value.toFixed(2)}`;
+}
+
 export default function App() {
   const now = new Date();
   const [tab, setTab] = useState<Tab>("students");
@@ -924,8 +928,8 @@ export default function App() {
                   <tr key={c.id}>
                     <td>{c.name}</td>
                     <td>{c.type}</td>
-                    <td style={{ textAlign: "right" }}>{c.lessonPrice.toFixed(2)}</td>
-                    <td style={{ textAlign: "right" }}>{c.subscriptionPrice.toFixed(2)}</td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(c.lessonPrice)}</td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(c.subscriptionPrice)}</td>
                     <td>
                       <button onClick={() => openEditCourse(c)}>Edit</button>
                       <button onClick={() => removeCourse(c.id)}>Delete</button>
@@ -955,7 +959,7 @@ export default function App() {
                 </div>
 
                 <div className="formRow">
-                  <label>Lesson price</label>
+                  <label>Lesson price (EUR)</label>
                   <input
                     type="number"
                     min={0}
@@ -966,7 +970,7 @@ export default function App() {
                 </div>
 
                 <div className="formRow">
-                  <label>Subscription price</label>
+                  <label>Subscription price (EUR)</label>
                   <input
                     type="number"
                     min={0}
@@ -1162,7 +1166,7 @@ export default function App() {
                     <td>
                       {r.courseName} ({r.courseType})
                     </td>
-                    <td style={{ textAlign: "right" }}>{r.lessonPrice.toFixed(2)}</td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(r.lessonPrice)}</td>
                     <td style={{ textAlign: "right" }}>
                       <input
                         type="number"
@@ -1172,7 +1176,7 @@ export default function App() {
                         style={{ width: "5rem", textAlign: "right" }}
                       />
                     </td>
-                    <td style={{ textAlign: "right" }}>{(r.count * r.lessonPrice).toFixed(2)}</td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(r.count * r.lessonPrice)}</td>
                     <td>
                       <button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>Delete enrollment</button>
                     </td>
@@ -1184,7 +1188,7 @@ export default function App() {
                   <td colSpan={4} style={{ textAlign: "right" }}>
                     Per-lesson total:
                   </td>
-                  <td style={{ textAlign: "right" }}>{perLessonTotal.toFixed(2)}</td>
+                  <td style={{ textAlign: "right" }}>{formatEUR(perLessonTotal)}</td>
                   <td></td>
                 </tr>
               </tfoot>
@@ -1240,7 +1244,7 @@ export default function App() {
                     <td>
                       {months[it.month - 1]} {it.year}
                     </td>
-                    <td style={{ textAlign: "right" }}>{it.total.toFixed(2)}</td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(it.total)}</td>
                     <td>{it.status}</td>
                     <td>{it.number ?? ""}</td>
                     <td>
@@ -1270,18 +1274,18 @@ export default function App() {
   <div className="invSummary">
     <div className="invSummaryRow">
       <span>Total:</span>
-      <span className="money">€{invSummary.total.toFixed(2)}</span>
+      <span className="money">{formatEUR(invSummary.total)}</span>
     </div>
 
     <div className="invSummaryRow">
       <span>Paid:</span>
-      <span className="money good">€{invSummary.paid.toFixed(2)}</span>
+      <span className="money good">{formatEUR(invSummary.paid)}</span>
     </div>
 
     <div className="invSummaryRow">
       <span>Remaining:</span>
       <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
-        €{invSummary.remaining.toFixed(2)}
+        {formatEUR(invSummary.remaining)}
       </span>
     </div>
 
@@ -1307,8 +1311,8 @@ export default function App() {
                     <tr key={idx}>
                       <td>{l.description}</td>
                       <td style={{ textAlign: "right" }}>{l.qty}</td>
-                      <td style={{ textAlign: "right" }}>{l.unitPrice.toFixed(2)}</td>
-                      <td style={{ textAlign: "right" }}>{l.amount.toFixed(2)}</td>
+                      <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
+                      <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1317,7 +1321,7 @@ export default function App() {
                     <td colSpan={3} style={{ textAlign: "right" }}>
                       Total:
                     </td>
-                    <td style={{ textAlign: "right" }}>{selectedInv.total.toFixed(2)}</td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
                   </tr>
                 </tfoot>
               </table>
@@ -1330,7 +1334,7 @@ export default function App() {
               <div className="modalBody" onClick={(e) => e.stopPropagation()}>
                 <h3>Record Payment</h3>
                 <div className="formRow">
-                  <label>Amount (€):</label>
+                  <label>Amount (EUR):</label>
                   <input
                     type="number"
                     step="0.01"
@@ -1394,10 +1398,10 @@ export default function App() {
                   <tr key={d.studentId}>
                     <td>{d.studentName}</td>
                     <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
-                      €{d.debt.toFixed(2)}
+                      {formatEUR(d.debt)}
                     </td>
-                    <td style={{ textAlign: "right" }}>€{d.totalInvoiced.toFixed(2)}</td>
-                    <td style={{ textAlign: "right" }}>€{d.totalPaid.toFixed(2)}</td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(d.totalInvoiced)}</td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(d.totalPaid)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1405,7 +1409,7 @@ export default function App() {
                 <tr>
                   <td style={{ fontWeight: "bold" }}>Total Debt:</td>
                   <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
-                    €{debtors.reduce((sum, d) => sum + d.debt, 0).toFixed(2)}
+                    {formatEUR(debtors.reduce((sum, d) => sum + d.debt, 0))}
                   </td>
                   <td colSpan={2}></td>
                 </tr>
