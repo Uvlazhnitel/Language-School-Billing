@@ -58,6 +58,12 @@ function intOrUndef(s: string): number | undefined {
   return Number.isFinite(n) ? Math.trunc(n) : undefined;
 }
 
+function decimalOrZero(s: string): number {
+  if (s.trim() === "") return 0;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function formatEUR(value: number): string {
   return `€${value.toFixed(2)}`;
 }
@@ -240,8 +246,8 @@ export default function App() {
   const [editingCourse, setEditingCourse] = useState<CourseDTO | null>(null);
   const [cfName, setCfName] = useState("");
   const [cfType, setCfType] = useState<"group" | "individual">("group");
-  const [cfLessonPrice, setCfLessonPrice] = useState(0);
-  const [cfSubscriptionPrice, setCfSubscriptionPrice] = useState(0);
+  const [cfLessonPrice, setCfLessonPrice] = useState("0.00");
+  const [cfSubscriptionPrice, setCfSubscriptionPrice] = useState("0.00");
 
   const loadCourses = useCallback(async () => {
     setCourseLoading(true);
@@ -261,8 +267,8 @@ export default function App() {
     setEditingCourse(null);
     setCfName("");
     setCfType("group");
-    setCfLessonPrice(0);
-    setCfSubscriptionPrice(0);
+    setCfLessonPrice("");
+    setCfSubscriptionPrice("");
     setCourseModalOpen(true);
   }
 
@@ -270,26 +276,29 @@ export default function App() {
     setEditingCourse(c);
     setCfName(c.name);
     setCfType(c.type);
-    setCfLessonPrice(c.lessonPrice);
-    setCfSubscriptionPrice(c.subscriptionPrice);
+    setCfLessonPrice(c.lessonPrice.toFixed(2));
+    setCfSubscriptionPrice(c.subscriptionPrice.toFixed(2));
     setCourseModalOpen(true);
   }
 
   async function saveCourse() {
+    const lessonPrice = decimalOrZero(cfLessonPrice);
+    const subscriptionPrice = decimalOrZero(cfSubscriptionPrice);
+
     if (!cfName.trim()) {
       showMessage("Course name is required", "error");
       return;
     }
-    if (cfLessonPrice < 0 || cfSubscriptionPrice < 0) {
+    if (lessonPrice < 0 || subscriptionPrice < 0) {
       showMessage("Prices must be >= 0", "error");
       return;
     }
 
     try {
       if (editingCourse) {
-        await updateCourse(editingCourse.id, cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
+        await updateCourse(editingCourse.id, cfName, cfType, lessonPrice, subscriptionPrice);
       } else {
-        await createCourse(cfName, cfType, cfLessonPrice, cfSubscriptionPrice);
+        await createCourse(cfName, cfType, lessonPrice, subscriptionPrice);
       }
 
       setCourseModalOpen(false);
@@ -994,7 +1003,7 @@ export default function App() {
                     min={0}
                     step="0.01"
                     value={cfLessonPrice}
-                    onChange={(e) => setCfLessonPrice(numOrZero(e.target.value))}
+                    onChange={(e) => setCfLessonPrice(e.target.value)}
                   />
                 </div>
 
@@ -1005,7 +1014,7 @@ export default function App() {
                     min={0}
                     step="0.01"
                     value={cfSubscriptionPrice}
-                    onChange={(e) => setCfSubscriptionPrice(numOrZero(e.target.value))}
+                    onChange={(e) => setCfSubscriptionPrice(e.target.value)}
                   />
                 </div>
 
