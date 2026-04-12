@@ -902,36 +902,30 @@ export default function App() {
       )}
 
       <div className="appShell">
-        <header className="hero">
-          <div className="heroMain">
-            <div className="heroIntro">
-              <div className="heroEyebrow">{currentMeta.eyebrow}</div>
-              <div className="heroTitleRow">
-                <h1>{currentMeta.title}</h1>
-                <span className="heroBadge">Light workspace</span>
-              </div>
+        <section className="workspaceCard">
+          <div className="workspaceTopbar">
+            <div className="workspaceHeading">
+              <div className="workspaceEyebrow">{currentMeta.eyebrow}</div>
+              <h1>{currentMeta.title}</h1>
               <p>{currentMeta.description}</p>
             </div>
 
-            <div className="heroMeta">
-              <div className="heroMetaLabel">Current focus</div>
-              <div className="heroMetaValue">
-                {tab === "attendance" || tab === "invoice" ? `${months[month - 1]} ${year}` : "Management"}
-              </div>
+            <div className="workspaceStats" aria-label="Application overview">
+              {(tab === "attendance" || tab === "invoice") && (
+                <div className="workspaceStat workspaceStatFocus">
+                  <span>Focus</span>
+                  <strong>{months[month - 1]} {year}</strong>
+                </div>
+              )}
+              {dashboardStats.map((stat) => (
+                <div key={stat.label} className="workspaceStat">
+                  <span>{stat.label}</span>
+                  <strong>{stat.value}</strong>
+                </div>
+              ))}
             </div>
           </div>
 
-          <div className="heroStats" aria-label="Application overview">
-            {dashboardStats.map((stat) => (
-              <div key={stat.label} className="heroStat">
-                <span>{stat.label}</span>
-                <strong>{stat.value}</strong>
-              </div>
-            ))}
-          </div>
-        </header>
-
-        <section className="workspaceCard">
           <nav className="tabs">
             <button className={tab === "students" ? "active" : ""} onClick={() => setTab("students")}>
               Students

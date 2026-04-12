@@ -66,85 +66,21 @@ a {
   position: relative;
 }
 
-.hero {
-  position: relative;
-  display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(340px, 0.9fr);
-  gap: 18px;
-  padding: 20px 22px;
-  border: 1px solid rgba(255, 255, 255, 0.75);
-  border-radius: 24px;
-  background:
-    linear-gradient(135deg, rgba(255, 252, 246, 0.98), rgba(255, 255, 255, 0.88)),
-    radial-gradient(circle at top left, rgba(255, 226, 203, 0.42), transparent 38%);
-  box-shadow: var(--shadow-xl);
-  overflow: hidden;
-}
-
-.hero::before {
-  content: "";
-  position: absolute;
-  inset: auto -34px -84px auto;
-  width: 180px;
-  height: 180px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(212, 109, 53, 0.12), transparent 68%);
-}
-
-.hero::after {
-  content: "";
-  position: absolute;
-  top: 18px;
-  right: 18px;
-  width: 74px;
-  height: 74px;
-  border-radius: 20px;
-  background:
-    linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(255, 240, 224, 0.18));
-  border: 1px solid rgba(212, 109, 53, 0.08);
-  transform: rotate(14deg);
-}
-
-.heroMain,
-.heroStats {
-  position: relative;
-  z-index: 1;
-}
-
-.heroMain {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 16px;
-  min-width: 0;
-}
-
-.heroIntro {
-  min-width: 0;
-}
-
-.heroTitleRow {
+.workspaceTopbar {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 16px;
+  padding: 6px 2px 2px;
 }
 
-.heroBadge {
-  display: inline-flex;
-  align-items: center;
-  min-height: 30px;
-  padding: 0 12px;
-  border-radius: 999px;
-  background: var(--accent-pale);
-  color: var(--accent-strong);
-  font-size: 12px;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+.workspaceHeading {
+  min-width: 0;
+  flex: 1 1 420px;
 }
 
-.heroEyebrow {
+.workspaceEyebrow {
   margin-bottom: 6px;
   color: var(--accent-strong);
   font-size: 11px;
@@ -153,65 +89,38 @@ a {
   text-transform: uppercase;
 }
 
-.hero h1 {
+.workspaceHeading h1 {
   margin: 0;
-  max-width: none;
-  font-size: clamp(1.55rem, 2.2vw, 2.4rem);
+  font-size: clamp(1.35rem, 1.9vw, 1.9rem);
   line-height: 1;
   letter-spacing: -0.05em;
 }
 
-.hero p {
+.workspaceHeading p {
   margin: 8px 0 0;
-  max-width: 56ch;
+  max-width: 62ch;
   color: var(--muted-strong);
-  font-size: 0.93rem;
+  font-size: 0.92rem;
   line-height: 1.5;
 }
 
-.heroMeta {
-  display: inline-flex;
-  flex-direction: column;
-  gap: 4px;
-  width: fit-content;
+.workspaceStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 10px;
+  flex: 1 1 540px;
+}
+
+.workspaceStat {
+  min-height: 100%;
   padding: 12px 14px;
   border-radius: 18px;
   background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(212, 109, 53, 0.1);
-  box-shadow: var(--shadow-md);
+  border: 1px solid rgba(133, 102, 69, 0.12);
+  box-shadow: 0 10px 20px rgba(94, 72, 47, 0.05);
 }
 
-.heroMetaLabel {
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.heroMetaValue {
-  font-size: 1rem;
-  font-weight: 900;
-  letter-spacing: -0.03em;
-}
-
-.heroStats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  align-content: center;
-}
-
-.heroStat {
-  min-height: 100%;
-  padding: 14px 14px 13px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.78);
-  border: 1px solid rgba(212, 109, 53, 0.1);
-  box-shadow: var(--shadow-md);
-}
-
-.heroStat span {
+.workspaceStat span {
   display: block;
   margin-bottom: 6px;
   color: var(--muted);
@@ -221,15 +130,19 @@ a {
   text-transform: uppercase;
 }
 
-.heroStat strong {
+.workspaceStat strong {
   display: block;
-  font-size: 1.45rem;
+  font-size: 1.25rem;
   line-height: 1;
   letter-spacing: -0.05em;
 }
 
+.workspaceStatFocus {
+  background: linear-gradient(135deg, #fff4e6, #fffdfa);
+  border-color: rgba(212, 109, 53, 0.16);
+}
+
 .workspaceCard {
-  margin-top: 16px;
   padding: 22px;
   border-radius: var(--radius-xl);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(255, 251, 245, 0.92));
@@ -656,46 +569,23 @@ tfoot td {
   border-top: 1px solid rgba(133, 102, 69, 0.1);
 }
 
-@media (max-width: 1100px) {
-  .hero {
-    grid-template-columns: 1fr;
-  }
-
-  .heroStats {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 760px) {
   .container {
     width: calc(100% - 20px);
     margin: 14px auto 26px;
   }
 
-  .hero,
   .workspaceCard,
   .panel,
   .modalBody {
     border-radius: 24px;
   }
 
-  .hero {
-    padding: 20px;
-  }
-
-  .heroMain {
-    gap: 14px;
-  }
-
   .tabs {
     top: 8px;
   }
 
-  .heroTitleRow {
-    align-items: flex-start;
-  }
-
-  .heroStats {
+  .workspaceStats {
     grid-template-columns: 1fr;
   }
 
