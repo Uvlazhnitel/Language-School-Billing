@@ -4,10 +4,13 @@ package attendance
 
 import (
 	"context"
+	"errors"
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
 	"langschool/ent/enrollment"
+	"langschool/ent/invoiceline"
+	"langschool/ent/priceoverride"
 	"langschool/internal/app"
 	"langschool/internal/app/utils"
 )
@@ -32,6 +35,7 @@ type Row struct {
 	CourseType   string  `json:"courseType"`    // Course type: "group" or "individual"
 	LessonPrice  float64 `json:"lessonPrice"`  // Price per lesson for this enrollment
 	Count        int     `json:"count"`         // Number of lessons attended in the month
+	CanDelete    bool    `json:"canDelete"`     // Whether enrollment can be safely deleted
 }
 
 // ListPerLesson retrieves attendance records for all enrollments with per-lesson billing
@@ -74,11 +78,18 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			cnt = am.LessonsCount
 		}
 
+		hasInvoiceHistory, err := s.db.InvoiceLine.Query().
+			Where(invoiceline.EnrollmentIDEQ(e.ID)).
+			Exist(ctx)
+		if err != nil {
+			return nil, err
+		}
+
 		rows = append(rows, Row{
 			EnrollmentID: e.ID,
 			StudentID:    e.StudentID, StudentName: sname,
 			CourseID: e.CourseID, CourseName: c.Name, CourseType: string(c.Type),
-			LessonPrice: utils.Round2(c.LessonPrice), Count: cnt,
+			LessonPrice: utils.Round2(c.LessonPrice), Count: cnt, CanDelete: !hasInvoiceHistory,
 		})
 	}
 	return rows, nil
@@ -135,12 +146,27 @@ func (s *Service) DeleteEnrollment(ctx context.Context, enrollmentID int) error 
 	if err != nil {
 		return err
 	}
+	hasInvoiceHistory, err := s.db.InvoiceLine.Query().
+		Where(invoiceline.EnrollmentIDEQ(enrollmentID)).
+		Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if hasInvoiceHistory {
+		return errors.New("cannot delete enrollment: it is already used in invoice history")
+	}
 	if _, err := s.db.AttendanceMonth.
 		Delete().
 		Where(
 			attendancemonth.StudentIDEQ(en.StudentID),
 			attendancemonth.CourseIDEQ(en.CourseID),
 		).Exec(ctx); err != nil {
+		return err
+	}
+	if _, err := s.db.PriceOverride.
+		Delete().
+		Where(priceoverride.EnrollmentIDEQ(enrollmentID)).
+		Exec(ctx); err != nil {
 		return err
 	}
 	return s.db.Enrollment.DeleteOneID(enrollmentID).Exec(ctx)

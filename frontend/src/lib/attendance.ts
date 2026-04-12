@@ -15,6 +15,7 @@ export type Row = {
   courseType: CourseType;
   lessonPrice: number;
   count: number;
+  canDelete: boolean;
 };
 
 function normalizeCourseId(courseId?: number): number | undefined {

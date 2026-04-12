@@ -9,6 +9,7 @@ export namespace attendance {
 	    courseType: string;
 	    lessonPrice: number;
 	    count: number;
+	    canDelete: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new Row(source);
@@ -24,6 +25,7 @@ export namespace attendance {
 	        this.courseType = source["courseType"];
 	        this.lessonPrice = source["lessonPrice"];
 	        this.count = source["count"];
+	        this.canDelete = source["canDelete"];
 	    }
 	}
 

@@ -361,6 +361,12 @@
   .money.bad {
     color: var(--bad);
   }
+
+  .mutedInline {
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+  }
   
   /* ---------- Toast (top-right) ---------- */
   .toast {

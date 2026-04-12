@@ -455,17 +455,24 @@ func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscri
 func (a *App) CourseDelete(id int) error {
 	ctx := a.ctx
 
-	used, err := a.db.Ent.Enrollment.Query().
+	enrollmentCount, err := a.db.Ent.Enrollment.Query().
 		Where(enrollment.CourseIDEQ(id)).
-		Exist(ctx)
+		Count(ctx)
 	if err != nil {
 		return err
 	}
-	if used {
+	if enrollmentCount > 0 {
 		return errors.New("cannot delete course: it has enrollments; remove enrollments first or keep course")
 	}
 
-	return a.db.Ent.Course.DeleteOneID(id).Exec(ctx)
+	err = a.db.Ent.Course.DeleteOneID(id).Exec(ctx)
+	if err != nil {
+		if ent.IsConstraintError(err) {
+			return errors.New("cannot delete course: it is still referenced by existing records")
+		}
+		return err
+	}
+	return nil
 }
 
 // -------------------- Enrollments CRUD --------------------

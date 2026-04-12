@@ -1285,7 +1285,11 @@ export default function App() {
                     </td>
                     <td style={{ textAlign: "right" }}>{formatEUR(r.count * r.lessonPrice)}</td>
                     <td>
-                      <button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>Delete enrollment</button>
+                      {r.canDelete ? (
+                        <button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>Delete enrollment</button>
+                      ) : (
+                        <span className="mutedInline">Used in invoice history</span>
+                      )}
                     </td>
                   </tr>
                 ))}
