@@ -310,10 +310,26 @@ export default function App() {
   const [enrModalOpen, setEnrModalOpen] = useState(false);
   const [editingEnr, setEditingEnr] = useState<EnrollmentDTO | null>(null);
   const [efStudentId, setEfStudentId] = useState<number>(0);
+  const [efStudentSearch, setEfStudentSearch] = useState("");
+  const [efStudentPickerOpen, setEfStudentPickerOpen] = useState(false);
   const [efCourseId, setEfCourseId] = useState<number>(0);
   const [efMode, setEfMode] = useState<"subscription" | "per_lesson">("per_lesson");
   const [efDiscount, setEfDiscount] = useState(0);
   const [efNote, setEfNote] = useState("");
+
+  const activeStudents = useMemo(() => students.filter((s) => s.isActive), [students]);
+  const selectedEnrollmentStudent = useMemo(
+    () => students.find((s) => s.id === efStudentId) ?? null,
+    [students, efStudentId]
+  );
+  const filteredEnrollmentStudents = useMemo(() => {
+    const q = efStudentSearch.trim().toLowerCase();
+    if (!q) return activeStudents;
+    return activeStudents.filter((s) => {
+      const haystack = `${s.fullName} ${s.phone} ${s.email}`.toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [activeStudents, efStudentSearch]);
 
   const loadEnrollments = useCallback(async () => {
     setEnrLoading(true);
@@ -335,7 +351,6 @@ export default function App() {
   }, [tab, loadEnrollments]);
 
   function openAddEnrollment() {
-    const activeStudents = students.filter((s) => s.isActive);
     if (activeStudents.length === 0) {
       showMessage("No active students available. Please add or activate students first.", "error");
       setTab("students");
@@ -352,6 +367,8 @@ export default function App() {
 
     setEditingEnr(null);
     setEfStudentId(initialStudentId);
+    setEfStudentSearch(activeStudents[0]?.fullName ?? "");
+    setEfStudentPickerOpen(false);
     setEfCourseId(initialCourseId);
     setEfMode("per_lesson");
     setEfDiscount(0);
@@ -362,6 +379,8 @@ export default function App() {
   function openEditEnrollment(e: EnrollmentDTO) {
     setEditingEnr(e);
     setEfStudentId(e.studentId);
+    setEfStudentSearch(e.studentName);
+    setEfStudentPickerOpen(false);
     setEfCourseId(e.courseId);
     setEfMode(e.billingMode);
     setEfDiscount(e.discountPct);
@@ -1055,19 +1074,44 @@ export default function App() {
 
                 <div className="formRow">
                   <label>Student</label>
-                  <select
-                    value={efStudentId}
-                    disabled={!!editingEnr}
-                    onChange={(e) => setEfStudentId(parseInt(e.target.value))}
-                  >
-                    {students
-                      .filter((s) => s.isActive)
-                      .map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.fullName}
-                        </option>
-                      ))}
-                  </select>
+                  {editingEnr ? (
+                    <input value={selectedEnrollmentStudent?.fullName ?? efStudentSearch} disabled />
+                  ) : (
+                    <div className="comboBox">
+                      <input
+                        value={efStudentSearch}
+                        onChange={(e) => {
+                          setEfStudentSearch(e.target.value);
+                          setEfStudentPickerOpen(true);
+                        }}
+                        onFocus={() => setEfStudentPickerOpen(true)}
+                        placeholder="Search student by name, phone, or email…"
+                      />
+                      {efStudentPickerOpen && (
+                        <div className="comboBoxMenu">
+                          {filteredEnrollmentStudents.length === 0 ? (
+                            <div className="comboBoxEmpty">No students found.</div>
+                          ) : (
+                            filteredEnrollmentStudents.map((s) => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                className={`comboBoxOption ${s.id === efStudentId ? "active" : ""}`}
+                                onClick={() => {
+                                  setEfStudentId(s.id);
+                                  setEfStudentSearch(s.fullName);
+                                  setEfStudentPickerOpen(false);
+                                }}
+                              >
+                                <span className="comboBoxPrimary">{s.fullName}</span>
+                                <span className="comboBoxMeta">{[s.phone, s.email].filter(Boolean).join(" · ")}</span>
+                              </button>
+                            ))
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <div className="formRow">
