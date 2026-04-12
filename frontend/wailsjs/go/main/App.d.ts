@@ -27,8 +27,6 @@ export function CourseUpdate(arg1:number,arg2:string,arg3:string,arg4:number,arg
 
 export function DebtorsList():Promise<Array<payment.DebtorDTO>>;
 
-export function DevClearInvoices(arg1:number,arg2:number):Promise<number>;
-
 export function EnrollmentCreate(arg1:number,arg2:number,arg3:string,arg4:number,arg5:string):Promise<main.EnrollmentDTO>;
 
 export function EnrollmentDelete(arg1:number):Promise<void>;
@@ -36,8 +34,6 @@ export function EnrollmentDelete(arg1:number):Promise<void>;
 export function EnrollmentList(arg1:any,arg2:any):Promise<Array<main.EnrollmentDTO>>;
 
 export function EnrollmentUpdate(arg1:number,arg2:string,arg3:number,arg4:string):Promise<main.EnrollmentDTO>;
-
-export function Greet(arg1:string):Promise<string>;
 
 export function InvoiceDeleteDraft(arg1:number):Promise<void>;
 
@@ -53,8 +49,6 @@ export function InvoiceIssueAll(arg1:number,arg2:number):Promise<main.IssueAllRe
 
 export function InvoiceList(arg1:number,arg2:number,arg3:string):Promise<Array<invoice.ListItem>>;
 
-export function InvoiceListDrafts(arg1:number,arg2:number):Promise<Array<invoice.ListItem>>;
-
 export function InvoicePaymentSummary(arg1:number):Promise<payment.InvoiceSummaryDTO>;
 
 export function OpenFile(arg1:string):Promise<void>;
@@ -66,8 +60,6 @@ export function PaymentDelete(arg1:number):Promise<void>;
 export function PaymentListForStudent(arg1:number):Promise<Array<payment.PaymentDTO>>;
 
 export function PaymentQuickCash(arg1:number,arg2:number,arg3:string):Promise<payment.PaymentDTO>;
-
-export function Ping():Promise<string>;
 
 export function SettingsSetLocale(arg1:string):Promise<void>;
 

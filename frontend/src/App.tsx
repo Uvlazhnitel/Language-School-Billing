@@ -589,6 +589,9 @@ export default function App() {
   const [paymentAmount, setPaymentAmount] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank">("cash");
   const [paymentNote, setPaymentNote] = useState("");
+  const [paymentStudentId, setPaymentStudentId] = useState<number>(0);
+  const [paymentStudentName, setPaymentStudentName] = useState("");
+  const [paymentInvoiceId, setPaymentInvoiceId] = useState<number | undefined>(undefined);
 
   const loadInvoices = useCallback(async () => {
     setLoadingInv(true);
@@ -663,16 +666,31 @@ export default function App() {
     const currentSummary = summary !== undefined ? summary : invSummary;
     if (!currentInv) return;
     const remaining = currentSummary ? currentSummary.remaining : currentInv.total;
+    setPaymentStudentId(currentInv.studentId);
+    setPaymentStudentName(currentInv.studentName);
+    setPaymentInvoiceId(currentInv.id);
     setPaymentAmount(remaining.toFixed(2));
     setPaymentMethod("cash");
     setPaymentNote("");
     setPaymentModalOpen(true);
   };
 
+  const openDebtorPaymentModal = (debtor: DebtorDTO) => {
+    setPaymentStudentId(debtor.studentId);
+    setPaymentStudentName(debtor.studentName);
+    setPaymentInvoiceId(undefined);
+    setPaymentAmount(debtor.debt.toFixed(2));
+    setPaymentMethod("cash");
+    setPaymentNote("");
+    setPaymentModalOpen(true);
+  };
+
   const handleCreatePayment = async () => {
-    if (!selectedInv) return;
-    
     const amount = parseFloat(paymentAmount);
+    if (paymentStudentId <= 0) {
+      showMessage("No student selected for payment", "error");
+      return;
+    }
     if (isNaN(amount) || amount <= 0) {
       showMessage("Please enter a valid amount", "error");
       return;
@@ -681,8 +699,8 @@ export default function App() {
     try {
       const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
       await createPayment(
-        selectedInv.studentId,
-        selectedInv.id,
+        paymentStudentId,
+        paymentInvoiceId,
         amount,
         paymentMethod,
         today,
@@ -692,9 +710,11 @@ export default function App() {
       setPaymentModalOpen(false);
       showMessage("Payment recorded successfully!");
       
-      // Reload invoice and summary
-      await onOpenInvoice(selectedInv.id);
-      await loadInvoices();
+      if (paymentInvoiceId) {
+        await onOpenInvoice(paymentInvoiceId);
+        await loadInvoices();
+      }
+      await loadDebtors();
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
@@ -1454,47 +1474,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Payment Modal */}
-          {paymentModalOpen && selectedInv && (
-            <div className="modal" onClick={() => setPaymentModalOpen(false)}>
-              <div className="modalBody" onClick={(e) => e.stopPropagation()}>
-                <h3>Record Payment</h3>
-                <div className="formRow">
-                  <label>Amount (EUR):</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                    autoFocus
-                  />
-                </div>
-                <div className="formRow">
-                  <label>Method:</label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value as "cash" | "bank")}
-                  >
-                    <option value="cash">Cash</option>
-                    <option value="bank">Bank</option>
-                  </select>
-                </div>
-                <div className="formRow">
-                  <label>Note (optional):</label>
-                  <input
-                    type="text"
-                    value={paymentNote}
-                    onChange={(e) => setPaymentNote(e.target.value)}
-                    placeholder="Payment note..."
-                  />
-                </div>
-                <div className="modalActions">
-                  <button onClick={() => setPaymentModalOpen(false)}>Cancel</button>
-                  <button onClick={handleCreatePayment}>Record Payment</button>
-                </div>
-              </div>
-            </div>
-          )}
         </>
       )}
 
@@ -1517,6 +1496,7 @@ export default function App() {
                   <th style={{ textAlign: "right" }}>Debt (EUR)</th>
                   <th style={{ textAlign: "right" }}>Total Invoiced (EUR)</th>
                   <th style={{ textAlign: "right" }}>Total Paid (EUR)</th>
+                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -1528,6 +1508,9 @@ export default function App() {
                     </td>
                     <td style={{ textAlign: "right" }}>{formatEUR(d.totalInvoiced)}</td>
                     <td style={{ textAlign: "right" }}>{formatEUR(d.totalPaid)}</td>
+                    <td>
+                      <button onClick={() => openDebtorPaymentModal(d)}>Record Payment</button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -1537,12 +1520,64 @@ export default function App() {
                   <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
                     {formatEUR(debtors.reduce((sum, d) => sum + d.debt, 0))}
                   </td>
-                  <td colSpan={2}></td>
+                  <td colSpan={3}></td>
                 </tr>
               </tfoot>
             </table>
           )}
         </>
+      )}
+
+      {/* Global Payment Modal */}
+      {paymentModalOpen && paymentStudentId > 0 && (
+        <div className="modal" onClick={() => setPaymentModalOpen(false)}>
+          <div className="modalBody" onClick={(e) => e.stopPropagation()}>
+            <h3>Record Payment</h3>
+            <div className="formRow">
+              <label>Student</label>
+              <input value={paymentStudentName} disabled />
+            </div>
+            {paymentInvoiceId && (
+              <div className="formRow">
+                <label>Applied to</label>
+                <input value={`Invoice #${paymentInvoiceId}`} disabled />
+              </div>
+            )}
+            <div className="formRow">
+              <label>Amount (EUR):</label>
+              <input
+                type="number"
+                step="0.01"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <div className="formRow">
+              <label>Method:</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value as "cash" | "bank")}
+              >
+                <option value="cash">Cash</option>
+                <option value="bank">Bank</option>
+              </select>
+            </div>
+            <div className="formRow">
+              <label>Note (optional):</label>
+              <input
+                type="text"
+                value={paymentNote}
+                onChange={(e) => setPaymentNote(e.target.value)}
+                placeholder="Payment note..."
+              />
+            </div>
+            <div className="modalActions">
+              <button onClick={() => setPaymentModalOpen(false)}>Cancel</button>
+              <button onClick={handleCreatePayment}>Record Payment</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
