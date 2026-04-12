@@ -46,6 +46,39 @@ const months = [
 
 type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
 
+const TAB_META: Record<Tab, { eyebrow: string; title: string; description: string }> = {
+  students: {
+    eyebrow: "People",
+    title: "Students workspace",
+    description: "Manage your student base, contacts, and active roster in one clean place.",
+  },
+  courses: {
+    eyebrow: "Programs",
+    title: "Courses and pricing",
+    description: "Shape your offers, keep prices consistent, and edit the catalog without friction.",
+  },
+  enrollments: {
+    eyebrow: "Links",
+    title: "Enrollment flow",
+    description: "Connect students to courses, apply discounts, and keep billing modes clear.",
+  },
+  attendance: {
+    eyebrow: "Operations",
+    title: "Attendance overview",
+    description: "Track lesson counts fast and prepare accurate monthly billing with less clutter.",
+  },
+  invoice: {
+    eyebrow: "Billing",
+    title: "Invoices and summaries",
+    description: "Generate, issue, review, and pay invoices with a clearer month-by-month workflow.",
+  },
+  debtors: {
+    eyebrow: "Follow-up",
+    title: "Debtors snapshot",
+    description: "See who still owes money and record payments without losing the historical trail.",
+  },
+};
+
 function numOrZero(s: string): number {
   if (s.trim() === "") return 0;
   const n = Number(s);
@@ -764,12 +797,19 @@ export default function App() {
 
   // ---------------- Render ----------------
   const showMonthPicker = tab === "attendance" || tab === "invoice";
+  const currentMeta = TAB_META[tab];
+  const dashboardStats = [
+    { label: "Students", value: studentList.length },
+    { label: "Courses", value: courseList.length },
+    { label: "Open debtors", value: debtors.length },
+  ];
 
   return (
     <div className="container">
       {/* Global message display */}
       {message && (
         <div
+          className={`messageToast ${message.type}`}
           style={{
             position: "fixed",
             top: "20px",
@@ -861,51 +901,82 @@ export default function App() {
         </div>
       )}
 
-      <nav className="tabs">
-        <button className={tab === "students" ? "active" : ""} onClick={() => setTab("students")}>
-          Students
-        </button>
-        <button className={tab === "courses" ? "active" : ""} onClick={() => setTab("courses")}>
-          Courses
-        </button>
-        <button className={tab === "enrollments" ? "active" : ""} onClick={() => setTab("enrollments")}>
-          Enrollments
-        </button>
-        <button className={tab === "attendance" ? "active" : ""} onClick={() => setTab("attendance")}>
-          Attendance
-        </button>
-        <button className={tab === "invoice" ? "active" : ""} onClick={() => setTab("invoice")}>
-          Invoices
-        </button>
-        <button className={tab === "debtors" ? "active" : ""} onClick={() => setTab("debtors")}>
-          Debtors
-        </button>
+      <div className="appShell">
+        <header className="hero">
+          <div className="heroMain">
+            <div className="heroIntro">
+              <div className="heroEyebrow">{currentMeta.eyebrow}</div>
+              <div className="heroTitleRow">
+                <h1>{currentMeta.title}</h1>
+                <span className="heroBadge">Light workspace</span>
+              </div>
+              <p>{currentMeta.description}</p>
+            </div>
 
-        <div className="spacer" />
-
-        {showMonthPicker && (
-          <div className="monthpickers">
-            <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))}>
-              {months.map((m, i) => (
-                <option key={m} value={i + 1}>
-                  {m}
-                </option>
-              ))}
-            </select>
-            <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
-              {[year - 1, year, year + 1].map((y) => (
-                <option key={y} value={y}>
-                  {y}
-                </option>
-              ))}
-            </select>
+            <div className="heroMeta">
+              <div className="heroMetaLabel">Current focus</div>
+              <div className="heroMetaValue">
+                {tab === "attendance" || tab === "invoice" ? `${months[month - 1]} ${year}` : "Management"}
+              </div>
+            </div>
           </div>
-        )}
-      </nav>
 
-      {/* ---------------- Students ---------------- */}
-      {tab === "students" && (
-        <>
+          <div className="heroStats" aria-label="Application overview">
+            {dashboardStats.map((stat) => (
+              <div key={stat.label} className="heroStat">
+                <span>{stat.label}</span>
+                <strong>{stat.value}</strong>
+              </div>
+            ))}
+          </div>
+        </header>
+
+        <section className="workspaceCard">
+          <nav className="tabs">
+            <button className={tab === "students" ? "active" : ""} onClick={() => setTab("students")}>
+              Students
+            </button>
+            <button className={tab === "courses" ? "active" : ""} onClick={() => setTab("courses")}>
+              Courses
+            </button>
+            <button className={tab === "enrollments" ? "active" : ""} onClick={() => setTab("enrollments")}>
+              Enrollments
+            </button>
+            <button className={tab === "attendance" ? "active" : ""} onClick={() => setTab("attendance")}>
+              Attendance
+            </button>
+            <button className={tab === "invoice" ? "active" : ""} onClick={() => setTab("invoice")}>
+              Invoices
+            </button>
+            <button className={tab === "debtors" ? "active" : ""} onClick={() => setTab("debtors")}>
+              Debtors
+            </button>
+
+            <div className="spacer" />
+
+            {showMonthPicker && (
+              <div className="monthpickers">
+                <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))}>
+                  {months.map((m, i) => (
+                    <option key={m} value={i + 1}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
+                  {[year - 1, year, year + 1].map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </nav>
+
+          {/* ---------------- Students ---------------- */}
+          {tab === "students" && (
+            <>
           <div className="controls">
             <button onClick={openAddStudent}>Add student</button>
             <input
@@ -987,12 +1058,12 @@ export default function App() {
               </div>
             </div>
           )}
-        </>
-      )}
+            </>
+          )}
 
       {/* ---------------- Courses ---------------- */}
-      {tab === "courses" && (
-        <>
+          {tab === "courses" && (
+            <>
           <div className="controls">
             <button onClick={openAddCourse}>Add course</button>
             <input
@@ -1085,12 +1156,12 @@ export default function App() {
               </div>
             </div>
           )}
-        </>
-      )}
+            </>
+          )}
 
       {/* ---------------- Enrollments ---------------- */}
-      {tab === "enrollments" && (
-        <>
+          {tab === "enrollments" && (
+            <>
           <div className="controls">
             <button onClick={openAddEnrollment}>Add enrollment</button>
 
@@ -1241,12 +1312,12 @@ export default function App() {
               </div>
             </div>
           )}
-        </>
-      )}
+            </>
+          )}
 
       {/* ---------------- Attendance ---------------- */}
-      {tab === "attendance" && (
-        <>
+          {tab === "attendance" && (
+            <>
           <div className="controls">
             <button onClick={onAddAll}>+1 all</button>
 
@@ -1326,12 +1397,12 @@ export default function App() {
               </tfoot>
             </table>
           )}
-        </>
-      )}
+            </>
+          )}
 
       {/* ---------------- Invoices ---------------- */}
-      {tab === "invoice" && (
-        <>
+          {tab === "invoice" && (
+            <>
           <div className="controls">
             <button onClick={onGenerateDrafts}>Generate drafts</button>
             <button onClick={onIssueAll}>Issue all</button>
@@ -1474,12 +1545,12 @@ export default function App() {
             </div>
           )}
 
-        </>
-      )}
+            </>
+          )}
 
       {/* ---------------- Debtors ---------------- */}
-      {tab === "debtors" && (
-        <>
+          {tab === "debtors" && (
+            <>
           <div className="controls">
             <button onClick={loadDebtors}>Refresh</button>
           </div>
@@ -1525,8 +1596,10 @@ export default function App() {
               </tfoot>
             </table>
           )}
-        </>
-      )}
+            </>
+          )}
+        </section>
+      </div>
 
       {/* Global Payment Modal */}
       {paymentModalOpen && paymentStudentId > 0 && (
