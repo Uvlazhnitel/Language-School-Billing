@@ -1543,12 +1543,6 @@ export default function App() {
                 <input value={`Invoice #${paymentInvoiceId}`} disabled />
               </div>
             )}
-            {!paymentInvoiceId && (
-              <div className="formRow">
-                <label>Applied to</label>
-                <input value="Oldest unpaid invoices first" disabled />
-              </div>
-            )}
             <div className="formRow">
               <label>Amount (EUR):</label>
               <input
