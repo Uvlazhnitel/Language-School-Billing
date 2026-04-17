@@ -10,7 +10,7 @@
 
 The testing strategy employs multiple testing levels:
 
-1. **Unit Testing**: Individual functions (validation, helpers)
+1. **Unit Testing**: Individual validation functions and service-layer business logic
 2. **Manual Testing**: End-to-end user workflows
 3. **Integration Testing**: Service-level operations
 4. **Regression Testing**: Verify no existing features broken
@@ -29,7 +29,10 @@ The testing strategy employs multiple testing levels:
 
 ### 2.1 Test Location
 
-All unit tests are in: `internal/validation/validate_test.go`
+Current unit tests are in:
+
+- `internal/validation/validate_test.go`
+- `internal/app/payment/service_test.go`
 
 ### 2.2 Running Unit Tests
 
@@ -42,6 +45,7 @@ go test ./...
 **Expected Output**:
 ```
 ?       langschool       [no test files]
+ok      langschool/internal/app/payment  0.5s
 ok      langschool/internal/validation  0.002s
 ```
 
@@ -59,8 +63,13 @@ go test -v ./...
 === RUN   TestSanitizeInput/special_characters
 === RUN   TestSanitizeInput/quotes
 --- PASS: TestSanitizeInput (0.00s)
+=== RUN   TestCreateDirectPaymentUpdatesInvoiceSummaryAndStatus
+=== RUN   TestCreateGlobalPaymentAllocatesToOldestInvoices
+=== RUN   TestCreateGlobalPaymentLeavesExtraAsCredit
+=== RUN   TestDeletePaymentRevertsPaidInvoiceBackToIssued
 ...
 PASS
+ok      langschool/internal/app/payment  0.5s
 ok      langschool/internal/validation  0.002s
 ```
 
@@ -71,6 +80,7 @@ go test -cover ./...
 
 **Expected Output**:
 ```
+ok      langschool/internal/app/payment  0.5s
 ok      langschool/internal/validation  0.002s  coverage: 100.0% of statements
 ```
 
@@ -94,9 +104,19 @@ Checks for data races in concurrent code.
 go test -v ./internal/validation/... -run TestSanitizeInput
 ```
 
+#### Run Payment Service Tests
+```bash
+go test -v ./internal/app/payment/...
+```
+
 #### Run Specific Test Case
 ```bash
 go test -v ./internal/validation/... -run TestSanitizeInput/HTML_tags
+```
+
+#### Run Specific Payment Test
+```bash
+go test -v ./internal/app/payment/... -run TestCreateGlobalPaymentAllocatesToOldestInvoices
 ```
 
 ### 2.3 Test Cases
@@ -198,6 +218,38 @@ go test -v ./internal/validation/... -run TestSanitizeInput/HTML_tags
 - Input: 110.0
 - Expected: Error
 - Purpose: Verify over 100% rejected
+
+#### Payment Service Tests (6 cases)
+
+**TC-19: Partial Linked Payment**
+- Input: issued invoice total = 100.00, linked payment = 30.00
+- Expected: invoice summary shows paid = 30.00, remaining = 70.00, status = "issued"
+- Purpose: Verify partial payment updates invoice summary without closing invoice
+
+**TC-20: Full Linked Payment**
+- Input: issued invoice total = 100.00, linked payments = 30.00 + 70.00
+- Expected: invoice summary shows paid = 100.00, remaining = 0.00, status = "paid"
+- Purpose: Verify full payment automatically changes invoice status to paid
+
+**TC-21: Allocate Global Payment to Oldest Invoice**
+- Input: global payment = 60.00; oldest invoice = 50.00; newer invoice = 30.00
+- Expected: 50.00 allocated to oldest invoice, 10.00 allocated to newer invoice
+- Purpose: Verify debtor payment distribution follows chronological order
+
+**TC-22: Student Balance After Allocation**
+- Input: same data as TC-21
+- Expected: total invoiced = 80.00, total paid = 60.00, debt = 20.00
+- Purpose: Verify debt and balance calculations after distributed payment
+
+**TC-23: Overpayment Stored as Credit**
+- Input: global payment = 80.00, open invoice total = 50.00
+- Expected: invoice fully paid, extra 30.00 stored as unlinked student credit
+- Purpose: Verify overpayment handling after all open debt is covered
+
+**TC-24: Delete Linked Payment Reverts Invoice Status**
+- Input: delete a linked full payment for invoice total = 40.00
+- Expected: invoice summary becomes paid = 0.00, remaining = 40.00, status = "issued"
+- Purpose: Verify payment deletion recalculates invoice status correctly
 
 ---
 
@@ -496,24 +548,24 @@ wails dev
 #### MT-24: Record Cash Payment
 
 **Steps**:
-1. Click "Payments" tab
-2. Click "Add Payment"
-3. Select student
-4. Enter amount: 36.00
-5. Select method: "Cash"
-6. Select date
-7. Link to invoice (optional)
-8. Click "Save"
+1. Click "Invoices" tab
+2. Open an issued invoice
+3. Click "Record Payment"
+4. Verify correct student is preselected
+5. Enter amount: 36.00
+6. Select method: "Cash"
+7. Click "Record Payment"
 
 **Expected**:
 - Payment recorded
-- Shows in payment list
+- Invoice summary reflects new paid amount
 
 #### MT-25: Auto-mark Invoice Paid
 
 **Steps**:
 1. Have issued invoice for 36.00
-2. Record payment for 36.00 linked to invoice
+2. Open invoice
+3. Record payment for 36.00
 
 **Expected**:
 - Invoice status automatically changes to "Paid"
@@ -522,17 +574,18 @@ wails dev
 
 **Steps**:
 1. Invoice total: 50.00
-2. Record payment: 30.00 linked to invoice
+2. Open invoice
+3. Record payment: 30.00
 
 **Expected**:
 - Invoice remains "Issued" (not fully paid)
-- Balance shows 20.00 owed
+- Invoice summary shows 20.00 remaining
 
 #### MT-27: Check Balance
 
 **Steps**:
-1. View student details or balance section
-2. Check balance amount
+1. Open "Debtors" tab
+2. Check student debt amount after issuing invoices and after recording a payment
 
 **Expected**:
 - Balance = Total invoiced - Total paid
@@ -548,9 +601,24 @@ wails dev
 - List shows students with negative balance
 - Amounts are correct
 
+#### MT-29: Record Payment From Debtors
+
+**Steps**:
+1. Have one student with two unpaid invoices
+2. Open "Debtors" tab
+3. Click "Record Payment"
+4. Enter amount that covers the oldest invoice and part of the next one
+5. Save payment
+6. Open both invoices
+
+**Expected**:
+- Oldest invoice is fully paid
+- Next invoice is partially paid
+- Debtor amount is reduced correctly
+
 ### 3.8 Settings Tests
 
-#### MT-29: Configure Organization
+#### MT-30: Configure Organization
 
 **Steps**:
 1. Open settings
@@ -562,7 +630,7 @@ wails dev
 - Settings saved
 - Appears on next generated invoices
 
-#### MT-30: Change Invoice Prefix
+#### MT-31: Change Invoice Prefix
 
 **Steps**:
 1. Change prefix from "LS" to "MLS"
@@ -638,7 +706,8 @@ wails dev
 2. Sequential numbering
 3. PDF generation
 4. Payment recording and status updates
-5. Balance calculations
+5. Global debtor payment allocation
+6. Balance calculations
 
 ---
 
@@ -722,7 +791,7 @@ Tester: [Name]
 Version: [Version]
 
 Unit Tests:
-- Total: 19
+- Total: 24
 - Passed: __
 - Failed: __
 - Coverage: __%
@@ -836,6 +905,6 @@ Before releasing:
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: December 2024  
+**Document Version**: 1.1  
+**Last Updated**: April 2026  
 **Status**: Complete
