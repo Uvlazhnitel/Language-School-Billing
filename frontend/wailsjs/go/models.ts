@@ -342,6 +342,46 @@ export namespace payment {
 	        this.number = source["number"];
 	    }
 	}
+	export class MonthOverviewDTO {
+	    year: number;
+	    month: number;
+	    activeStudents: number;
+	    activeCourses: number;
+	    enrollments: number;
+	    perLessonEnrollments: number;
+	    attendanceFilled: number;
+	    attendanceMissing: number;
+	    draftInvoices: number;
+	    issuedInvoices: number;
+	    paidInvoices: number;
+	    totalIssued: number;
+	    totalPaid: number;
+	    debtorsCount: number;
+	    totalDebt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MonthOverviewDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.year = source["year"];
+	        this.month = source["month"];
+	        this.activeStudents = source["activeStudents"];
+	        this.activeCourses = source["activeCourses"];
+	        this.enrollments = source["enrollments"];
+	        this.perLessonEnrollments = source["perLessonEnrollments"];
+	        this.attendanceFilled = source["attendanceFilled"];
+	        this.attendanceMissing = source["attendanceMissing"];
+	        this.draftInvoices = source["draftInvoices"];
+	        this.issuedInvoices = source["issuedInvoices"];
+	        this.paidInvoices = source["paidInvoices"];
+	        this.totalIssued = source["totalIssued"];
+	        this.totalPaid = source["totalPaid"];
+	        this.debtorsCount = source["debtorsCount"];
+	        this.totalDebt = source["totalDebt"];
+	    }
+	}
 	export class PaymentDTO {
 	    id: number;
 	    studentId: number;

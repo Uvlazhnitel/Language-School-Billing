@@ -412,6 +412,7 @@ type BalanceDTO = paysvc.BalanceDTO
 type DebtorDTO = paysvc.DebtorDTO
 type InvoiceSummaryDTO = paysvc.InvoiceSummaryDTO
 type DebtInvoiceDTO = paysvc.DebtInvoiceDTO
+type MonthOverviewDTO = paysvc.MonthOverviewDTO
 
 // PaymentCreate creates a new payment record. The paidAt parameter accepts
 // either "YYYY-MM-DD" format or RFC3339. If invoiceID is provided, the payment
@@ -442,6 +443,11 @@ func (a *App) StudentBalance(studentID int) (*BalanceDTO, error) {
 // sorted by debt amount (highest first).
 func (a *App) DebtorsList() ([]DebtorDTO, error) {
 	return a.pay.ListDebtors(a.ctx)
+}
+
+// MonthOverview returns a read-only monthly dashboard snapshot.
+func (a *App) MonthOverview(year, month int) (*MonthOverviewDTO, error) {
+	return a.pay.MonthOverview(a.ctx, year, month)
 }
 
 // StudentDebtDetails returns open invoice debt details for one student.

@@ -51,6 +51,8 @@ export function InvoiceList(arg1:number,arg2:number,arg3:string):Promise<Array<i
 
 export function InvoicePaymentSummary(arg1:number):Promise<payment.InvoiceSummaryDTO>;
 
+export function MonthOverview(arg1:number,arg2:number):Promise<payment.MonthOverviewDTO>;
+
 export function OpenFile(arg1:string):Promise<void>;
 
 export function PaymentCreate(arg1:number,arg2:any,arg3:number,arg4:string,arg5:string,arg6:string):Promise<payment.PaymentDTO>;

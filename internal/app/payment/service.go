@@ -11,6 +11,9 @@ import (
 	"time"
 
 	"langschool/ent"
+	"langschool/ent/attendancemonth"
+	"langschool/ent/course"
+	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
 	"langschool/ent/student"
@@ -75,6 +78,30 @@ type DebtInvoiceDTO struct {
 	Paid      float64 `json:"paid"`
 	Remaining float64 `json:"remaining"`
 	Status    string  `json:"status"`
+}
+
+// MonthOverviewDTO represents a read-only monthly dashboard snapshot.
+type MonthOverviewDTO struct {
+	Year  int `json:"year"`
+	Month int `json:"month"`
+
+	ActiveStudents int `json:"activeStudents"`
+	ActiveCourses  int `json:"activeCourses"`
+	Enrollments    int `json:"enrollments"`
+
+	PerLessonEnrollments int `json:"perLessonEnrollments"`
+	AttendanceFilled     int `json:"attendanceFilled"`
+	AttendanceMissing    int `json:"attendanceMissing"`
+
+	DraftInvoices  int `json:"draftInvoices"`
+	IssuedInvoices int `json:"issuedInvoices"`
+	PaidInvoices   int `json:"paidInvoices"`
+
+	TotalIssued float64 `json:"totalIssued"`
+	TotalPaid   float64 `json:"totalPaid"`
+
+	DebtorsCount int     `json:"debtorsCount"`
+	TotalDebt    float64 `json:"totalDebt"`
 }
 
 // eps returns the epsilon value used for floating-point comparisons.
@@ -354,6 +381,146 @@ func (s *Service) StudentDebtDetails(ctx context.Context, studentID int) ([]Debt
 	return out, nil
 }
 
+// MonthOverview returns a read-only monthly dashboard snapshot.
+func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOverviewDTO, error) {
+	activeStudents, err := s.db.Student.Query().
+		Where(student.IsActiveEQ(true)).
+		Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	activeCourses, err := s.db.Course.Query().
+		Where(course.IsActiveEQ(true)).
+		Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	totalEnrollments, err := s.db.Enrollment.Query().Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	perLessonEnrollments, err := s.db.Enrollment.Query().
+		Where(enrollment.BillingModeEQ(enrollment.BillingModePerLesson)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	perLessonKeys := make(map[string]struct{}, len(perLessonEnrollments))
+	for _, enr := range perLessonEnrollments {
+		perLessonKeys[overviewEnrollmentKey(enr.StudentID, enr.CourseID)] = struct{}{}
+	}
+
+	filledRows, err := s.db.AttendanceMonth.Query().
+		Where(
+			attendancemonth.YearEQ(year),
+			attendancemonth.MonthEQ(month),
+			attendancemonth.LessonsCountGT(0),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	attendanceFilled := 0
+	seenAttendance := make(map[string]struct{}, len(filledRows))
+	for _, row := range filledRows {
+		key := overviewEnrollmentKey(row.StudentID, row.CourseID)
+		if _, ok := perLessonKeys[key]; !ok {
+			continue
+		}
+		if _, ok := seenAttendance[key]; ok {
+			continue
+		}
+		seenAttendance[key] = struct{}{}
+		attendanceFilled++
+	}
+
+	attendanceMissing := len(perLessonEnrollments) - attendanceFilled
+	if attendanceMissing < 0 {
+		attendanceMissing = 0
+	}
+
+	monthInvoices, err := s.db.Invoice.Query().
+		Where(
+			invoice.PeriodYearEQ(year),
+			invoice.PeriodMonthEQ(month),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	monthInvoiceIDs := make([]int, 0, len(monthInvoices))
+	draftInvoices := 0
+	issuedInvoices := 0
+	paidInvoices := 0
+	totalIssued := 0.0
+
+	for _, iv := range monthInvoices {
+		monthInvoiceIDs = append(monthInvoiceIDs, iv.ID)
+		switch iv.Status {
+		case app.InvoiceStatusDraft:
+			draftInvoices++
+		case app.InvoiceStatusIssued:
+			issuedInvoices++
+			totalIssued += iv.TotalAmount
+		case app.InvoiceStatusPaid:
+			paidInvoices++
+			totalIssued += iv.TotalAmount
+		}
+	}
+
+	totalPaid := 0.0
+	if len(monthInvoiceIDs) > 0 {
+		linkedPayments, err := s.db.Payment.Query().
+			Where(payment.InvoiceIDIn(monthInvoiceIDs...)).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, p := range linkedPayments {
+			totalPaid += p.Amount
+		}
+	}
+
+	debtors, err := s.ListDebtors(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	totalDebt := 0.0
+	for _, debtor := range debtors {
+		totalDebt += debtor.Debt
+	}
+
+	return &MonthOverviewDTO{
+		Year:  year,
+		Month: month,
+
+		ActiveStudents: activeStudents,
+		ActiveCourses:  activeCourses,
+		Enrollments:    totalEnrollments,
+
+		PerLessonEnrollments: len(perLessonEnrollments),
+		AttendanceFilled:     attendanceFilled,
+		AttendanceMissing:    attendanceMissing,
+
+		DraftInvoices:  draftInvoices,
+		IssuedInvoices: issuedInvoices,
+		PaidInvoices:   paidInvoices,
+
+		TotalIssued: utils.Round2(totalIssued),
+		TotalPaid:   utils.Round2(totalPaid),
+
+		DebtorsCount: len(debtors),
+		TotalDebt:    utils.Round2(totalDebt),
+	}, nil
+}
+
 // StudentBalance calculates the financial balance for a student, including
 // total invoiced amount (from issued and paid invoices), total paid amount
 // (all payments), current balance, and debt (if any). The balance is calculated
@@ -567,4 +734,8 @@ func toDTO(p *ent.Payment) *PaymentDTO {
 		Note:      p.Note,
 		CreatedAt: p.CreatedAt.Format(time.RFC3339),
 	}
+}
+
+func overviewEnrollmentKey(studentID, courseID int) string {
+	return fmt.Sprintf("%d:%d", studentID, courseID)
 }
