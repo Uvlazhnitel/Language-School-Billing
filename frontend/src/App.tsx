@@ -42,6 +42,8 @@ import {
   DebtInvoiceDTO,
 } from "./lib/payments";
 
+import { getMonthOverview, MonthOverviewDTO } from "./lib/overview";
+
 const months = [
   "January",
   "February",
@@ -87,9 +89,14 @@ const monthsLv = [
   "Decembris",
 ];
 
-type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
+type Tab = "overview" | "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
 
 const TAB_META: Record<Tab, { eyebrow: string; title: string; description: string }> = {
+  overview: {
+    eyebrow: "Dashboard",
+    title: "Monthly overview",
+    description: "See what is done for the selected month and what needs attention next.",
+  },
   students: {
     eyebrow: "People",
     title: "Students workspace",
@@ -185,7 +192,7 @@ function buildDebtReminderMessage(
 
 export default function App() {
   const now = new Date();
-  const [tab, setTab] = useState<Tab>("students");
+  const [tab, setTab] = useState<Tab>("overview");
 
   // Global message display
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -762,6 +769,26 @@ export default function App() {
     if (tab === "debtors") loadDebtors();
   }, [tab, loadDebtors]);
 
+  // ---------------- Overview ----------------
+  const [overview, setOverview] = useState<MonthOverviewDTO | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+
+  const loadOverview = useCallback(async () => {
+    setOverviewLoading(true);
+    try {
+      const data = await getMonthOverview(year, month);
+      setOverview(data);
+    } catch (e: any) {
+      showMessage(`Error loading overview: ${String(e?.message ?? e)}`, "error");
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, [year, month, showMessage]);
+
+  useEffect(() => {
+    if (tab === "overview") loadOverview();
+  }, [tab, loadOverview]);
+
   async function openDebtDetails(debtor: DebtorDTO) {
     setSelectedDebtor(debtor);
     setDebtDetailsOpen(true);
@@ -952,7 +979,7 @@ export default function App() {
   };
 
   // ---------------- Render ----------------
-  const showMonthPicker = tab === "attendance" || tab === "invoice";
+  const showMonthPicker = tab === "overview" || tab === "attendance" || tab === "invoice";
   const currentMeta = TAB_META[tab];
   const dashboardStats = [
     { label: "Students", value: studentList.length },
@@ -1074,7 +1101,7 @@ export default function App() {
             </div>
 
             <div className="workspaceStats" aria-label="Application overview">
-              {(tab === "attendance" || tab === "invoice") && (
+              {(tab === "overview" || tab === "attendance" || tab === "invoice") && (
                 <div className="workspaceStat workspaceStatFocus">
                   <span>Focus</span>
                   <strong>
@@ -1092,6 +1119,12 @@ export default function App() {
           </div>
 
           <nav className="tabs">
+            <button
+              className={tab === "overview" ? "active" : ""}
+              onClick={() => setTab("overview")}
+            >
+              Overview
+            </button>
             <button
               className={tab === "students" ? "active" : ""}
               onClick={() => setTab("students")}
@@ -1141,6 +1174,104 @@ export default function App() {
               </div>
             )}
           </nav>
+
+          {/* ---------------- Overview ---------------- */}
+          {tab === "overview" && (
+            <>
+              <div className="controls">
+                <button onClick={loadOverview}>Refresh</button>
+              </div>
+
+              {overviewLoading ? (
+                <div>Loading…</div>
+              ) : overview === null ? (
+                <div className="empty">No data yet. Click Refresh to load.</div>
+              ) : (
+                <>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginBottom: "24px" }}>
+                    {/* Students & courses */}
+                    <div style={{ flex: "1 1 200px", border: "1px solid #ddd", borderRadius: "6px", padding: "16px" }}>
+                      <div style={{ fontWeight: 600, marginBottom: "8px" }}>Students &amp; courses</div>
+                      <div>Active students: <strong>{overview.activeStudents}</strong></div>
+                      <div>Active courses: <strong>{overview.activeCourses}</strong></div>
+                      <div>Enrollments: <strong>{overview.enrollments}</strong></div>
+                    </div>
+
+                    {/* Attendance */}
+                    <div style={{ flex: "1 1 200px", border: "1px solid #ddd", borderRadius: "6px", padding: "16px" }}>
+                      <div style={{ fontWeight: 600, marginBottom: "8px" }}>Attendance</div>
+                      <div>Per-lesson enrollments: <strong>{overview.perLessonEnrollments}</strong></div>
+                      <div>Filled: <strong>{overview.attendanceFilled}</strong></div>
+                      <div>
+                        Missing:{" "}
+                        <strong className={overview.attendanceMissing > 0 ? "money bad" : ""}>
+                          {overview.attendanceMissing}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Invoices */}
+                    <div style={{ flex: "1 1 200px", border: "1px solid #ddd", borderRadius: "6px", padding: "16px" }}>
+                      <div style={{ fontWeight: 600, marginBottom: "8px" }}>Invoices</div>
+                      <div>Drafts: <strong>{overview.draftInvoices}</strong></div>
+                      <div>Issued: <strong>{overview.issuedInvoices}</strong></div>
+                      <div>Paid: <strong>{overview.paidInvoices}</strong></div>
+                      <div>Total issued: <strong>{formatEUR(overview.totalIssued)}</strong></div>
+                    </div>
+
+                    {/* Payments */}
+                    <div style={{ flex: "1 1 200px", border: "1px solid #ddd", borderRadius: "6px", padding: "16px" }}>
+                      <div style={{ fontWeight: 600, marginBottom: "8px" }}>Payments</div>
+                      <div>
+                        Total paid:{" "}
+                        <strong className="money good">{formatEUR(overview.totalPaid)}</strong>
+                      </div>
+                    </div>
+
+                    {/* Debts */}
+                    <div style={{ flex: "1 1 200px", border: "1px solid #ddd", borderRadius: "6px", padding: "16px" }}>
+                      <div style={{ fontWeight: 600, marginBottom: "8px" }}>Debts</div>
+                      <div>Debtors: <strong>{overview.debtorsCount}</strong></div>
+                      <div>
+                        Total debt:{" "}
+                        <strong className={overview.totalDebt > 0 ? "money bad" : ""}>
+                          {formatEUR(overview.totalDebt)}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Next step */}
+                  <div style={{ border: "1px solid #ddd", borderRadius: "6px", padding: "16px", maxWidth: "480px" }}>
+                    <div style={{ fontWeight: 600, marginBottom: "8px" }}>Next step</div>
+                    {overview.attendanceMissing > 0 ? (
+                      <>
+                        <div style={{ marginBottom: "8px" }}>Fill attendance ({overview.attendanceMissing} missing)</div>
+                        <button onClick={() => setTab("attendance")}>Go to Attendance</button>
+                      </>
+                    ) : overview.draftInvoices === 0 && overview.issuedInvoices === 0 && overview.paidInvoices === 0 ? (
+                      <>
+                        <div style={{ marginBottom: "8px" }}>Generate invoice drafts</div>
+                        <button onClick={() => setTab("invoice")}>Go to Invoices</button>
+                      </>
+                    ) : overview.draftInvoices > 0 ? (
+                      <>
+                        <div style={{ marginBottom: "8px" }}>Issue {overview.draftInvoices} draft invoice{overview.draftInvoices !== 1 ? "s" : ""}</div>
+                        <button onClick={() => setTab("invoice")}>Go to Invoices</button>
+                      </>
+                    ) : overview.debtorsCount > 0 ? (
+                      <>
+                        <div style={{ marginBottom: "8px" }}>Review debts ({overview.debtorsCount} debtor{overview.debtorsCount !== 1 ? "s" : ""})</div>
+                        <button onClick={() => setTab("debtors")}>Go to Debtors</button>
+                      </>
+                    ) : (
+                      <div>✓ Month looks complete</div>
+                    )}
+                  </div>
+                </>
+              )}
+            </>
+          )}
 
           {/* ---------------- Students ---------------- */}
           {tab === "students" && (
