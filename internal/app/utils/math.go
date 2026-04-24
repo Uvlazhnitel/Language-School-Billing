@@ -7,8 +7,9 @@ import "math"
 // to ensure consistent rounding behavior.
 //
 // Example:
-//   Round2(10.456) // returns 10.46
-//   Round2(10.454) // returns 10.45
+//
+//	Round2(10.456) // returns 10.46
+//	Round2(10.454) // returns 10.45
 func Round2(v float64) float64 {
-return math.Round(v*100) / 100
+	return math.Round(v*100) / 100
 }

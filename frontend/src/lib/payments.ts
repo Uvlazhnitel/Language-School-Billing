@@ -1,56 +1,50 @@
-import {
-    PaymentCreate,
-    DebtorsList,
-    InvoicePaymentSummary,
-    } from "../../wailsjs/go/main/App";
+import { PaymentCreate, DebtorsList, InvoicePaymentSummary } from "../../wailsjs/go/main/App";
 import { PaymentMethod } from "./constants";
-  
-  export type PaymentDTO = {
-    id: number;
-    studentId: number;
-    invoiceId?: number;
-    paidAt: string;     // RFC3339
-    amount: number;
-    method: PaymentMethod;
-    note: string;
-    createdAt: string;  // RFC3339
-  };
-  
-  export type DebtorDTO = {
-    studentId: number;
-    studentName: string;
-    debt: number;
-    totalInvoiced: number;
-    totalPaid: number;
-  };
-  
-  export type InvoiceSummaryDTO = {
-    invoiceId: number;
-    total: number;
-    paid: number;
-    remaining: number;
-    status: string;
-    number?: string;
-  };
-  
-  export async function createPayment(
-    studentId: number,
-    invoiceId: number | undefined,
-    amount: number,
-    method: PaymentMethod,
-    paidAt: string, // "YYYY-MM-DD"
-    note: string
-  ) {
-    const inv = invoiceId ? invoiceId : undefined;
-    return (await PaymentCreate(studentId, inv, amount, method, paidAt, note)) as PaymentDTO;
-  }
-  
-  export async function listDebtors() {
-    return (await DebtorsList()) as DebtorDTO[];
-  }
-  
-  export async function invoiceSummary(invoiceId: number) {
-    return (await InvoicePaymentSummary(invoiceId)) as InvoiceSummaryDTO;
-  }
-  
-  
+
+export type PaymentDTO = {
+  id: number;
+  studentId: number;
+  invoiceId?: number;
+  paidAt: string; // RFC3339
+  amount: number;
+  method: PaymentMethod;
+  note: string;
+  createdAt: string; // RFC3339
+};
+
+export type DebtorDTO = {
+  studentId: number;
+  studentName: string;
+  debt: number;
+  totalInvoiced: number;
+  totalPaid: number;
+};
+
+export type InvoiceSummaryDTO = {
+  invoiceId: number;
+  total: number;
+  paid: number;
+  remaining: number;
+  status: string;
+  number?: string;
+};
+
+export async function createPayment(
+  studentId: number,
+  invoiceId: number | undefined,
+  amount: number,
+  method: PaymentMethod,
+  paidAt: string, // "YYYY-MM-DD"
+  note: string
+) {
+  const inv = invoiceId ? invoiceId : undefined;
+  return (await PaymentCreate(studentId, inv, amount, method, paidAt, note)) as PaymentDTO;
+}
+
+export async function listDebtors() {
+  return (await DebtorsList()) as DebtorDTO[];
+}
+
+export async function invoiceSummary(invoiceId: number) {
+  return (await InvoicePaymentSummary(invoiceId)) as InvoiceSummaryDTO;
+}

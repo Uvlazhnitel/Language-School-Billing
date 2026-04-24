@@ -22,7 +22,7 @@ import (
 // Constants for invoice statuses and billing modes (aliased from shared package)
 const (
 	StatusDraft    = app.InvoiceStatusDraft    // Draft invoice status
-	StatusIssued   = app.InvoiceStatusIssued  // Issued invoice status
+	StatusIssued   = app.InvoiceStatusIssued   // Issued invoice status
 	StatusPaid     = app.InvoiceStatusPaid     // Paid invoice status
 	StatusCanceled = app.InvoiceStatusCanceled // Canceled invoice status
 
@@ -40,37 +40,37 @@ func New(db *ent.Client) *Service { return &Service{db: db} }
 
 // ListItem represents a summary of an invoice for list views.
 type ListItem struct {
-	ID          int     `json:"id"`          // Invoice ID
-	StudentID   int     `json:"studentId"`   // Student ID
-	StudentName string  `json:"studentName"`  // Student's full name
-	Year        int     `json:"year"`         // Invoice period year
-	Month       int     `json:"month"`        // Invoice period month
-	Total       float64 `json:"total"`        // Total invoice amount
-	Status      string  `json:"status"`       // Invoice status
-	LinesCount  int     `json:"linesCount"`   // Number of line items
+	ID          int     `json:"id"`               // Invoice ID
+	StudentID   int     `json:"studentId"`        // Student ID
+	StudentName string  `json:"studentName"`      // Student's full name
+	Year        int     `json:"year"`             // Invoice period year
+	Month       int     `json:"month"`            // Invoice period month
+	Total       float64 `json:"total"`            // Total invoice amount
+	Status      string  `json:"status"`           // Invoice status
+	LinesCount  int     `json:"linesCount"`       // Number of line items
 	Number      *string `json:"number,omitempty"` // Invoice number (nil for drafts)
 }
 
 // LineDTO represents a single line item in an invoice.
 type LineDTO struct {
 	EnrollmentID int     `json:"enrollmentId"` // ID of the enrollment this line is for
-	Description  string  `json:"description"`   // Line item description
-	Qty          int     `json:"qty"`            // Quantity (e.g., number of lessons)
-	UnitPrice    float64 `json:"unitPrice"`      // Price per unit
-	Amount       float64 `json:"amount"`         // Total amount for this line (qty * unitPrice)
+	Description  string  `json:"description"`  // Line item description
+	Qty          int     `json:"qty"`          // Quantity (e.g., number of lessons)
+	UnitPrice    float64 `json:"unitPrice"`    // Price per unit
+	Amount       float64 `json:"amount"`       // Total amount for this line (qty * unitPrice)
 }
 
 // InvoiceDTO represents a complete invoice with all line items.
 type InvoiceDTO struct {
-	ID          int       `json:"id"`          // Invoice ID
-	StudentID   int       `json:"studentId"`   // Student ID
-	StudentName string    `json:"studentName"`  // Student's full name
-	Year        int       `json:"year"`         // Invoice period year
-	Month       int       `json:"month"`        // Invoice period month
-	Total       float64   `json:"total"`        // Total invoice amount
-	Status      string    `json:"status"`       // Invoice status
+	ID          int       `json:"id"`               // Invoice ID
+	StudentID   int       `json:"studentId"`        // Student ID
+	StudentName string    `json:"studentName"`      // Student's full name
+	Year        int       `json:"year"`             // Invoice period year
+	Month       int       `json:"month"`            // Invoice period month
+	Total       float64   `json:"total"`            // Total invoice amount
+	Status      string    `json:"status"`           // Invoice status
 	Number      *string   `json:"number,omitempty"` // Invoice number (nil for drafts)
-	Lines       []LineDTO `json:"lines"`        // All line items in the invoice
+	Lines       []LineDTO `json:"lines"`            // All line items in the invoice
 }
 
 // GenerateResult contains statistics about invoice generation.
@@ -374,7 +374,7 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	
+
 	// Proper defer pattern: only rollback if commit hasn't been called
 	committed := false
 	defer func() {
@@ -529,7 +529,7 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 		InvoiceID int `json:"invoice_id"`
 		Count     int `json:"count"`
 	}
-	
+
 	var counts []countResult
 	if len(invoiceIDs) > 0 {
 		err = s.db.InvoiceLine.Query().

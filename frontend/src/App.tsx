@@ -25,9 +25,20 @@ import {
 
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 
-import { listEnrollments, createEnrollment, updateEnrollment, EnrollmentDTO } from "./lib/enrollments";
+import {
+  listEnrollments,
+  createEnrollment,
+  updateEnrollment,
+  EnrollmentDTO,
+} from "./lib/enrollments";
 
-import { listDebtors, DebtorDTO, createPayment, invoiceSummary, InvoiceSummaryDTO } from "./lib/payments";
+import {
+  listDebtors,
+  DebtorDTO,
+  createPayment,
+  invoiceSummary,
+  InvoiceSummaryDTO,
+} from "./lib/payments";
 
 const months = [
   "January",
@@ -55,7 +66,8 @@ const TAB_META: Record<Tab, { eyebrow: string; title: string; description: strin
   courses: {
     eyebrow: "Programs",
     title: "Courses and pricing",
-    description: "Shape your offers, keep prices consistent, and edit the catalog without friction.",
+    description:
+      "Shape your offers, keep prices consistent, and edit the catalog without friction.",
   },
   enrollments: {
     eyebrow: "Links",
@@ -70,12 +82,14 @@ const TAB_META: Record<Tab, { eyebrow: string; title: string; description: strin
   invoice: {
     eyebrow: "Billing",
     title: "Invoices and summaries",
-    description: "Generate, issue, review, and pay invoices with a clearer month-by-month workflow.",
+    description:
+      "Generate, issue, review, and pay invoices with a clearer month-by-month workflow.",
   },
   debtors: {
     eyebrow: "Follow-up",
     title: "Debtors snapshot",
-    description: "See who still owes money and record payments without losing the historical trail.",
+    description:
+      "See who still owes money and record payments without losing the historical trail.",
   },
 };
 
@@ -124,7 +138,11 @@ export default function App() {
     confirmButtonLabel?: string;
   } | null>(null);
 
-  const showConfirm = (messageText: string, onConfirm: () => void | Promise<void>, confirmButtonLabel?: string) => {
+  const showConfirm = (
+    messageText: string,
+    onConfirm: () => void | Promise<void>,
+    confirmButtonLabel?: string
+  ) => {
     setConfirmDialog({ isOpen: true, message: messageText, onConfirm, confirmButtonLabel });
   };
 
@@ -246,7 +264,9 @@ export default function App() {
       }
       setStudentModalOpen(false);
       await Promise.all([loadStudents(), loadAllStudents()]);
-      showMessage(editingStudent ? "Student updated successfully!" : "Student created successfully!");
+      showMessage(
+        editingStudent ? "Student updated successfully!" : "Student created successfully!"
+      );
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
@@ -435,7 +455,14 @@ export default function App() {
     } finally {
       setEnrLoading(false);
     }
-  }, [enrStudentFilter, enrCourseFilter, allStudents.length, allCourses.length, loadAllStudents, loadAllCourses]);
+  }, [
+    enrStudentFilter,
+    enrCourseFilter,
+    allStudents.length,
+    allCourses.length,
+    loadAllStudents,
+    loadAllCourses,
+  ]);
 
   useEffect(() => {
     if (tab === "enrollments") loadEnrollments();
@@ -555,7 +582,10 @@ export default function App() {
     if (tab === "attendance") loadAttendance();
   }, [tab, loadAttendance]);
 
-  const perLessonTotal = useMemo(() => rows.reduce((s, r) => s + r.count * r.lessonPrice, 0), [rows]);
+  const perLessonTotal = useMemo(
+    () => rows.reduce((s, r) => s + r.count * r.lessonPrice, 0),
+    [rows]
+  );
 
   const filteredAttendanceRows = useMemo(() => {
     const q = attQ.trim().toLowerCase();
@@ -616,7 +646,7 @@ export default function App() {
   const [loadingInv, setLoadingInv] = useState(false);
   const [invQ, setInvQ] = useState("");
   const [invSummary, setInvSummary] = useState<InvoiceSummaryDTO | null>(null);
-  
+
   // Payment modal state
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -739,10 +769,10 @@ export default function App() {
         today,
         paymentNote
       );
-      
+
       setPaymentModalOpen(false);
       showMessage("Payment recorded successfully!");
-      
+
       if (paymentInvoiceId) {
         await onOpenInvoice(paymentInvoiceId);
         await loadInvoices();
@@ -828,7 +858,14 @@ export default function App() {
           aria-live={message.type === "error" ? "assertive" : "polite"}
           onClick={() => setMessage(null)}
         >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: "12px",
+            }}
+          >
             <span>{message.text}</span>
             <button
               onClick={(e) => {
@@ -914,7 +951,9 @@ export default function App() {
               {(tab === "attendance" || tab === "invoice") && (
                 <div className="workspaceStat workspaceStatFocus">
                   <span>Focus</span>
-                  <strong>{months[month - 1]} {year}</strong>
+                  <strong>
+                    {months[month - 1]} {year}
+                  </strong>
                 </div>
               )}
               {dashboardStats.map((stat) => (
@@ -927,16 +966,25 @@ export default function App() {
           </div>
 
           <nav className="tabs">
-            <button className={tab === "students" ? "active" : ""} onClick={() => setTab("students")}>
+            <button
+              className={tab === "students" ? "active" : ""}
+              onClick={() => setTab("students")}
+            >
               Students
             </button>
             <button className={tab === "courses" ? "active" : ""} onClick={() => setTab("courses")}>
               Courses
             </button>
-            <button className={tab === "enrollments" ? "active" : ""} onClick={() => setTab("enrollments")}>
+            <button
+              className={tab === "enrollments" ? "active" : ""}
+              onClick={() => setTab("enrollments")}
+            >
               Enrollments
             </button>
-            <button className={tab === "attendance" ? "active" : ""} onClick={() => setTab("attendance")}>
+            <button
+              className={tab === "attendance" ? "active" : ""}
+              onClick={() => setTab("attendance")}
+            >
               Attendance
             </button>
             <button className={tab === "invoice" ? "active" : ""} onClick={() => setTab("invoice")}>
@@ -971,625 +1019,657 @@ export default function App() {
           {/* ---------------- Students ---------------- */}
           {tab === "students" && (
             <>
-          <div className="controls">
-            <button onClick={openAddStudent}>Add student</button>
-            <input
-              placeholder="Search name/phone/email…"
-              value={studentQ}
-              onChange={(e) => setStudentQ(e.target.value)}
-              style={{ width: 260 }}
-            />
-            <label className="inline">
-              <input
-                type="checkbox"
-                checked={includeInactive}
-                onChange={(e) => setIncludeInactive(e.target.checked)}
-              />
-              Include inactive
-            </label>
-            <button onClick={loadStudents}>Refresh</button>
-          </div>
-
-          {studentLoading ? (
-            <div>Loading…</div>
-          ) : studentList.length === 0 ? (
-            <div className="empty">No students yet.</div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Phone</th>
-                  <th>Email</th>
-                  <th>Active</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {studentList.map((s) => (
-                  <tr key={s.id}>
-                    <td>{s.fullName}</td>
-                    <td>{s.phone}</td>
-                    <td>{s.email}</td>
-                    <td>{s.isActive ? "yes" : "no"}</td>
-                    <td>
-                      <button onClick={() => openEditStudent(s)}>Edit</button>
-                      <button onClick={() => toggleStudentActive(s)}>{s.isActive ? "Deactivate" : "Activate"}</button>
-                      {!s.isActive && <button onClick={() => removeStudent(s.id)}>Delete</button>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          {studentModalOpen && (
-            <div className="modal">
-              <div className="modalBody">
-                <h3>{editingStudent ? "Edit student" : "Add student"}</h3>
-
-                <div className="formRow">
-                  <label>Full name</label>
-                  <input value={sfName} onChange={(e) => setSfName(e.target.value)} />
-                </div>
-                <div className="formRow">
-                  <label>Phone</label>
-                  <input value={sfPhone} onChange={(e) => setSfPhone(e.target.value)} />
-                </div>
-                <div className="formRow">
-                  <label>Email</label>
-                  <input value={sfEmail} onChange={(e) => setSfEmail(e.target.value)} />
-                </div>
-                <div className="formRow">
-                  <label>Note</label>
-                  <input value={sfNote} onChange={(e) => setSfNote(e.target.value)} />
-                </div>
-
-                <div className="modalActions">
-                  <button onClick={saveStudent}>Save</button>
-                  <button onClick={() => setStudentModalOpen(false)}>Cancel</button>
-                </div>
+              <div className="controls">
+                <button onClick={openAddStudent}>Add student</button>
+                <input
+                  placeholder="Search name/phone/email…"
+                  value={studentQ}
+                  onChange={(e) => setStudentQ(e.target.value)}
+                  style={{ width: 260 }}
+                />
+                <label className="inline">
+                  <input
+                    type="checkbox"
+                    checked={includeInactive}
+                    onChange={(e) => setIncludeInactive(e.target.checked)}
+                  />
+                  Include inactive
+                </label>
+                <button onClick={loadStudents}>Refresh</button>
               </div>
-            </div>
-          )}
+
+              {studentLoading ? (
+                <div>Loading…</div>
+              ) : studentList.length === 0 ? (
+                <div className="empty">No students yet.</div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Phone</th>
+                      <th>Email</th>
+                      <th>Active</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {studentList.map((s) => (
+                      <tr key={s.id}>
+                        <td>{s.fullName}</td>
+                        <td>{s.phone}</td>
+                        <td>{s.email}</td>
+                        <td>{s.isActive ? "yes" : "no"}</td>
+                        <td>
+                          <button onClick={() => openEditStudent(s)}>Edit</button>
+                          <button onClick={() => toggleStudentActive(s)}>
+                            {s.isActive ? "Deactivate" : "Activate"}
+                          </button>
+                          {!s.isActive && (
+                            <button onClick={() => removeStudent(s.id)}>Delete</button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {studentModalOpen && (
+                <div className="modal">
+                  <div className="modalBody">
+                    <h3>{editingStudent ? "Edit student" : "Add student"}</h3>
+
+                    <div className="formRow">
+                      <label>Full name</label>
+                      <input value={sfName} onChange={(e) => setSfName(e.target.value)} />
+                    </div>
+                    <div className="formRow">
+                      <label>Phone</label>
+                      <input value={sfPhone} onChange={(e) => setSfPhone(e.target.value)} />
+                    </div>
+                    <div className="formRow">
+                      <label>Email</label>
+                      <input value={sfEmail} onChange={(e) => setSfEmail(e.target.value)} />
+                    </div>
+                    <div className="formRow">
+                      <label>Note</label>
+                      <input value={sfNote} onChange={(e) => setSfNote(e.target.value)} />
+                    </div>
+
+                    <div className="modalActions">
+                      <button onClick={saveStudent}>Save</button>
+                      <button onClick={() => setStudentModalOpen(false)}>Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
-      {/* ---------------- Courses ---------------- */}
+          {/* ---------------- Courses ---------------- */}
           {tab === "courses" && (
             <>
-          <div className="controls">
-            <button onClick={openAddCourse}>Add course</button>
-            <input
-              placeholder="Search course name…"
-              value={courseQ}
-              onChange={(e) => setCourseQ(e.target.value)}
-              style={{ width: 260 }}
-            />
-            <button onClick={loadCourses}>Refresh</button>
-          </div>
-
-          {courseLoading ? (
-            <div>Loading…</div>
-          ) : courseList.length === 0 ? (
-            <div className="empty">No courses yet.</div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Type</th>
-                  <th style={{ textAlign: "right" }}>Lesson (EUR)</th>
-                  <th style={{ textAlign: "right" }}>Subscription (EUR)</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {courseList.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.name}</td>
-                    <td>{c.type}</td>
-                    <td style={{ textAlign: "right" }}>{formatEUR(c.lessonPrice)}</td>
-                    <td style={{ textAlign: "right" }}>{formatEUR(c.subscriptionPrice)}</td>
-                    <td>
-                      <button onClick={() => openEditCourse(c)}>Edit</button>
-                      <button onClick={() => removeCourse(c.id)}>Delete</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          {courseModalOpen && (
-            <div className="modal">
-              <div className="modalBody">
-                <h3>{editingCourse ? "Edit course" : "Add course"}</h3>
-
-                <div className="formRow">
-                  <label>Name</label>
-                  <input value={cfName} onChange={(e) => setCfName(e.target.value)} />
-                </div>
-
-                <div className="formRow">
-                  <label>Type</label>
-                  <select value={cfType} onChange={(e) => setCfType(e.target.value as any)}>
-                    <option value="group">group</option>
-                    <option value="individual">individual</option>
-                  </select>
-                </div>
-
-                <div className="formRow">
-                  <label>Lesson price (EUR)</label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    min={0}
-                    step="0.01"
-                    value={cfLessonPrice}
-                    onChange={(e) => handleCoursePriceChange(e.target.value, setCfLessonPrice)}
-                  />
-                </div>
-
-                <div className="formRow">
-                  <label>Subscription price (EUR)</label>
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    min={0}
-                    step="0.01"
-                    value={cfSubscriptionPrice}
-                    onChange={(e) => handleCoursePriceChange(e.target.value, setCfSubscriptionPrice)}
-                  />
-                </div>
-
-                <div className="modalActions">
-                  <button onClick={saveCourse}>Save</button>
-                  <button onClick={() => setCourseModalOpen(false)}>Cancel</button>
-                </div>
+              <div className="controls">
+                <button onClick={openAddCourse}>Add course</button>
+                <input
+                  placeholder="Search course name…"
+                  value={courseQ}
+                  onChange={(e) => setCourseQ(e.target.value)}
+                  style={{ width: 260 }}
+                />
+                <button onClick={loadCourses}>Refresh</button>
               </div>
-            </div>
-          )}
+
+              {courseLoading ? (
+                <div>Loading…</div>
+              ) : courseList.length === 0 ? (
+                <div className="empty">No courses yet.</div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Type</th>
+                      <th style={{ textAlign: "right" }}>Lesson (EUR)</th>
+                      <th style={{ textAlign: "right" }}>Subscription (EUR)</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {courseList.map((c) => (
+                      <tr key={c.id}>
+                        <td>{c.name}</td>
+                        <td>{c.type}</td>
+                        <td style={{ textAlign: "right" }}>{formatEUR(c.lessonPrice)}</td>
+                        <td style={{ textAlign: "right" }}>{formatEUR(c.subscriptionPrice)}</td>
+                        <td>
+                          <button onClick={() => openEditCourse(c)}>Edit</button>
+                          <button onClick={() => removeCourse(c.id)}>Delete</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {courseModalOpen && (
+                <div className="modal">
+                  <div className="modalBody">
+                    <h3>{editingCourse ? "Edit course" : "Add course"}</h3>
+
+                    <div className="formRow">
+                      <label>Name</label>
+                      <input value={cfName} onChange={(e) => setCfName(e.target.value)} />
+                    </div>
+
+                    <div className="formRow">
+                      <label>Type</label>
+                      <select value={cfType} onChange={(e) => setCfType(e.target.value as any)}>
+                        <option value="group">group</option>
+                        <option value="individual">individual</option>
+                      </select>
+                    </div>
+
+                    <div className="formRow">
+                      <label>Lesson price (EUR)</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        min={0}
+                        step="0.01"
+                        value={cfLessonPrice}
+                        onChange={(e) => handleCoursePriceChange(e.target.value, setCfLessonPrice)}
+                      />
+                    </div>
+
+                    <div className="formRow">
+                      <label>Subscription price (EUR)</label>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        min={0}
+                        step="0.01"
+                        value={cfSubscriptionPrice}
+                        onChange={(e) =>
+                          handleCoursePriceChange(e.target.value, setCfSubscriptionPrice)
+                        }
+                      />
+                    </div>
+
+                    <div className="modalActions">
+                      <button onClick={saveCourse}>Save</button>
+                      <button onClick={() => setCourseModalOpen(false)}>Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
-      {/* ---------------- Enrollments ---------------- */}
+          {/* ---------------- Enrollments ---------------- */}
           {tab === "enrollments" && (
             <>
-          <div className="controls">
-            <button onClick={openAddEnrollment}>Add enrollment</button>
+              <div className="controls">
+                <button onClick={openAddEnrollment}>Add enrollment</button>
 
-            <select value={enrStudentFilter ?? ""} onChange={(e) => setEnrStudentFilter(intOrUndef(e.target.value))}>
-              <option value="">All students</option>
-              {allStudents.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.fullName}
-                </option>
-              ))}
-            </select>
+                <select
+                  value={enrStudentFilter ?? ""}
+                  onChange={(e) => setEnrStudentFilter(intOrUndef(e.target.value))}
+                >
+                  <option value="">All students</option>
+                  {allStudents.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.fullName}
+                    </option>
+                  ))}
+                </select>
 
-            <select value={enrCourseFilter ?? ""} onChange={(e) => setEnrCourseFilter(intOrUndef(e.target.value))}>
-              <option value="">All courses</option>
-              {allCourses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+                <select
+                  value={enrCourseFilter ?? ""}
+                  onChange={(e) => setEnrCourseFilter(intOrUndef(e.target.value))}
+                >
+                  <option value="">All courses</option>
+                  {allCourses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
 
-            <button onClick={loadEnrollments}>Refresh</button>
-          </div>
+                <button onClick={loadEnrollments}>Refresh</button>
+              </div>
 
-          {enrLoading ? (
-            <div>Loading…</div>
-          ) : enrollments.length === 0 ? (
-            <div className="empty">No enrollments yet.</div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Course</th>
-                  <th>Billing</th>
-                  <th style={{ textAlign: "right" }}>Discount</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {enrollments.map((e) => (
-                  <tr key={e.id}>
-                    <td>{e.studentName}</td>
-                    <td>{e.courseName}</td>
-                    <td>{e.billingMode}</td>
-                    <td style={{ textAlign: "right" }}>{e.discountPct.toFixed(1)}%</td>
-                    <td>
-                      <button onClick={() => openEditEnrollment(e)}>Edit</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
+              {enrLoading ? (
+                <div>Loading…</div>
+              ) : enrollments.length === 0 ? (
+                <div className="empty">No enrollments yet.</div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Course</th>
+                      <th>Billing</th>
+                      <th style={{ textAlign: "right" }}>Discount</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {enrollments.map((e) => (
+                      <tr key={e.id}>
+                        <td>{e.studentName}</td>
+                        <td>{e.courseName}</td>
+                        <td>{e.billingMode}</td>
+                        <td style={{ textAlign: "right" }}>{e.discountPct.toFixed(1)}%</td>
+                        <td>
+                          <button onClick={() => openEditEnrollment(e)}>Edit</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
 
-          {enrModalOpen && (
-            <div className="modal">
-              <div className="modalBody">
-                <h3>{editingEnr ? "Edit enrollment" : "Add enrollment"}</h3>
+              {enrModalOpen && (
+                <div className="modal">
+                  <div className="modalBody">
+                    <h3>{editingEnr ? "Edit enrollment" : "Add enrollment"}</h3>
 
-                <div className="formRow">
-                  <label>Student</label>
-                  {editingEnr ? (
-                    <input value={selectedEnrollmentStudent?.fullName ?? efStudentSearch} disabled />
-                  ) : (
-                    <div className="comboBox" ref={efStudentComboRef}>
-                      <input
-                        value={efStudentSearch}
-                        onChange={(e) => {
-                          setEfStudentSearch(e.target.value);
-                          setEfStudentPickerOpen(true);
-                        }}
-                        onFocus={() => setEfStudentPickerOpen(true)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape") {
-                            setEfStudentPickerOpen(false);
-                          }
-                        }}
-                        placeholder="Search student by name, phone, or email…"
-                      />
-                      {efStudentPickerOpen && (
-                        <div className="comboBoxMenu">
-                          {filteredEnrollmentStudents.length === 0 ? (
-                            <div className="comboBoxEmpty">No students found.</div>
-                          ) : (
-                            filteredEnrollmentStudents.map((s) => (
-                              <button
-                                key={s.id}
-                                type="button"
-                                className={`comboBoxOption ${s.id === efStudentId ? "active" : ""}`}
-                                onClick={() => {
-                                  setEfStudentId(s.id);
-                                  setEfStudentSearch(s.fullName);
-                                  setEfStudentPickerOpen(false);
-                                }}
-                              >
-                                <span className="comboBoxPrimary">{s.fullName}</span>
-                                <span className="comboBoxMeta">{[s.phone, s.email].filter(Boolean).join(" · ")}</span>
-                              </button>
-                            ))
+                    <div className="formRow">
+                      <label>Student</label>
+                      {editingEnr ? (
+                        <input
+                          value={selectedEnrollmentStudent?.fullName ?? efStudentSearch}
+                          disabled
+                        />
+                      ) : (
+                        <div className="comboBox" ref={efStudentComboRef}>
+                          <input
+                            value={efStudentSearch}
+                            onChange={(e) => {
+                              setEfStudentSearch(e.target.value);
+                              setEfStudentPickerOpen(true);
+                            }}
+                            onFocus={() => setEfStudentPickerOpen(true)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Escape") {
+                                setEfStudentPickerOpen(false);
+                              }
+                            }}
+                            placeholder="Search student by name, phone, or email…"
+                          />
+                          {efStudentPickerOpen && (
+                            <div className="comboBoxMenu">
+                              {filteredEnrollmentStudents.length === 0 ? (
+                                <div className="comboBoxEmpty">No students found.</div>
+                              ) : (
+                                filteredEnrollmentStudents.map((s) => (
+                                  <button
+                                    key={s.id}
+                                    type="button"
+                                    className={`comboBoxOption ${s.id === efStudentId ? "active" : ""}`}
+                                    onClick={() => {
+                                      setEfStudentId(s.id);
+                                      setEfStudentSearch(s.fullName);
+                                      setEfStudentPickerOpen(false);
+                                    }}
+                                  >
+                                    <span className="comboBoxPrimary">{s.fullName}</span>
+                                    <span className="comboBoxMeta">
+                                      {[s.phone, s.email].filter(Boolean).join(" · ")}
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
                     </div>
-                  )}
-                </div>
 
-                <div className="formRow">
-                  <label>Course</label>
-                  <select value={efCourseId} disabled={!!editingEnr} onChange={(e) => setEfCourseId(parseInt(e.target.value))}>
-                    {allCourses.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <div className="formRow">
+                      <label>Course</label>
+                      <select
+                        value={efCourseId}
+                        disabled={!!editingEnr}
+                        onChange={(e) => setEfCourseId(parseInt(e.target.value))}
+                      >
+                        {allCourses.map((c) => (
+                          <option key={c.id} value={c.id}>
+                            {c.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="formRow">
-                  <label>Billing</label>
-                  <select value={efMode} onChange={(e) => setEfMode(e.target.value as any)}>
-                    <option value="per_lesson">per_lesson</option>
-                    <option value="subscription">subscription</option>
-                  </select>
-                </div>
+                    <div className="formRow">
+                      <label>Billing</label>
+                      <select value={efMode} onChange={(e) => setEfMode(e.target.value as any)}>
+                        <option value="per_lesson">per_lesson</option>
+                        <option value="subscription">subscription</option>
+                      </select>
+                    </div>
 
-                <div className="formRow">
-                  <label>Discount %</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step="0.1"
-                    value={efDiscount}
-                    onChange={(e) => setEfDiscount(numOrZero(e.target.value))}
-                  />
-                </div>
-
-                <div className="formRow">
-                  <label>Note</label>
-                  <input value={efNote} onChange={(e) => setEfNote(e.target.value)} />
-                </div>
-
-                <div className="modalActions">
-                  <button onClick={saveEnrollment}>Save</button>
-                  <button onClick={() => setEnrModalOpen(false)}>Cancel</button>
-                </div>
-              </div>
-            </div>
-          )}
-            </>
-          )}
-
-      {/* ---------------- Attendance ---------------- */}
-          {tab === "attendance" && (
-            <>
-          <div className="controls">
-            <button onClick={onAddAll}>+1 all</button>
-
-            <select value={courseFilter ?? ""} onChange={(e) => setCourseFilter(intOrUndef(e.target.value))}>
-              <option value="">All groups</option>
-              {allCourses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              placeholder="Search student / phone / group…"
-              value={attQ}
-              onChange={(e) => setAttQ(e.target.value)}
-              style={{ width: 260 }}
-            />
-
-            <button onClick={loadAttendance}>Refresh</button>
-          </div>
-
-          {loadingAtt ? (
-            <div>Loading…</div>
-          ) : filteredAttendanceRows.length === 0 ? (
-            <div className="empty">
-              {attQ.trim() ? "No matches found for your search." : "No per-lesson rows. Create enrollments first."}
-            </div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Course</th>
-                  <th style={{ textAlign: "right" }}>Lesson price (EUR)</th>
-                  <th style={{ textAlign: "right" }}>Count</th>
-                  <th style={{ textAlign: "right" }}>Total (EUR)</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredAttendanceRows.map((r) => (
-                  <tr key={r.enrollmentId}>
-                    <td>{r.studentName}</td>
-                    <td>
-                      {r.courseName} ({r.courseType})
-                    </td>
-                    <td style={{ textAlign: "right" }}>{formatEUR(r.lessonPrice)}</td>
-                    <td style={{ textAlign: "right" }}>
+                    <div className="formRow">
+                      <label>Discount %</label>
                       <input
                         type="number"
                         min={0}
-                        value={r.count}
-                        onChange={(e) => onChangeCount(r, Number(e.target.value))}
-                        style={{ width: "5rem", textAlign: "right" }}
+                        max={100}
+                        step="0.1"
+                        value={efDiscount}
+                        onChange={(e) => setEfDiscount(numOrZero(e.target.value))}
                       />
-                    </td>
-                    <td style={{ textAlign: "right" }}>{formatEUR(r.count * r.lessonPrice)}</td>
-                    <td>
-                      {r.canDelete ? (
-                        <button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>Delete enrollment</button>
-                      ) : (
-                        <span className="mutedInline">Used in invoice history</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan={4} style={{ textAlign: "right" }}>
-                    Per-lesson total (EUR):
-                  </td>
-                  <td style={{ textAlign: "right" }}>{formatEUR(perLessonTotal)}</td>
-                  <td></td>
-                </tr>
-              </tfoot>
-            </table>
-          )}
+                    </div>
+
+                    <div className="formRow">
+                      <label>Note</label>
+                      <input value={efNote} onChange={(e) => setEfNote(e.target.value)} />
+                    </div>
+
+                    <div className="modalActions">
+                      <button onClick={saveEnrollment}>Save</button>
+                      <button onClick={() => setEnrModalOpen(false)}>Cancel</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
 
-      {/* ---------------- Invoices ---------------- */}
-          {tab === "invoice" && (
+          {/* ---------------- Attendance ---------------- */}
+          {tab === "attendance" && (
             <>
-          <div className="controls">
-            <button onClick={onGenerateDrafts}>Generate drafts</button>
-            <button onClick={onIssueAll}>Issue all</button>
+              <div className="controls">
+                <button onClick={onAddAll}>+1 all</button>
 
-            <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
-              <option value="draft">draft</option>
-              <option value="issued">issued</option>
-              <option value="paid">paid</option>
-              <option value="all">all</option>
-            </select>
+                <select
+                  value={courseFilter ?? ""}
+                  onChange={(e) => setCourseFilter(intOrUndef(e.target.value))}
+                >
+                  <option value="">All groups</option>
+                  {allCourses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
 
-            <input
-              placeholder="Search student / phone / email / invoice number"
-              value={invQ}
-              onChange={(e) => setInvQ(e.target.value)}
-              style={{ width: "320px" }}
-            />
+                <input
+                  placeholder="Search student / phone / group…"
+                  value={attQ}
+                  onChange={(e) => setAttQ(e.target.value)}
+                  style={{ width: 260 }}
+                />
 
-            <button onClick={loadInvoices}>Refresh</button>
-          </div>
-
-          {loadingInv ? (
-            <div>Loading…</div>
-          ) : filteredInvItems.length === 0 ? (
-            <div className="empty">No invoices found for this period/status/search.</div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Student</th>
-                  <th>Period</th>
-                  <th style={{ textAlign: "right" }}>Total (EUR)</th>
-                  <th>Status</th>
-                  <th>Number</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInvItems.map((it) => (
-                  <tr key={it.id}>
-                    <td>{it.studentName}</td>
-                    <td>
-                      {months[it.month - 1]} {it.year}
-                    </td>
-                    <td style={{ textAlign: "right" }}>{formatEUR(it.total)}</td>
-                    <td>{it.status}</td>
-                    <td>{it.number ?? ""}</td>
-                    <td>
-                      <button onClick={() => onOpenInvoice(it.id)}>Open</button>
-                      {it.status === "draft" && <button onClick={() => onIssueOne(it.id)}>Issue</button>}
-                      {it.status !== "draft" && <button onClick={() => onOpenPdf(it.id)}>PDF</button>}
-                      {it.status !== "draft" && (
-                        <button
-                          onClick={async () => {
-                            try {
-                              const iv = await getInvoice(it.id);
-                              setSelectedInv(iv);
-                              const summary = await invoiceSummary(it.id);
-                              setInvSummary(summary);
-                              openPaymentModal(iv, summary);
-                            } catch (e: any) {
-                              showMessage(`Error: ${String(e?.message ?? e)}`, "error");
-                            }
-                          }}
-                        >
-                          Record Payment
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-
-          {selectedInv && (
-            <div className="panel">
-              <div style={{ marginBottom: "1rem" }}>
-                <h3>
-                  Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} — {selectedInv.studentName} —{" "}
-                  {months[selectedInv.month - 1]} {selectedInv.year}
-                </h3>
+                <button onClick={loadAttendance}>Refresh</button>
               </div>
 
-              {invSummary && selectedInv.status !== "draft" && (
-  <div className="invSummary">
-    <div className="invSummaryRow">
-      <span>Total:</span>
-      <span className="money">{formatEUR(invSummary.total)}</span>
-    </div>
-
-    <div className="invSummaryRow">
-      <span>Paid:</span>
-      <span className="money good">{formatEUR(invSummary.paid)}</span>
-    </div>
-
-    <div className="invSummaryRow">
-      <span>Remaining:</span>
-      <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
-        {formatEUR(invSummary.remaining)}
-      </span>
-    </div>
-
-    <div className="invSummaryRow">
-      <span>Status:</span>
-      <span className="money">{invSummary.status}</span>
-    </div>
-  </div>
-)}
-
-
-              <table>
-                <thead>
-                  <tr>
-                    <th>Description</th>
-                    <th style={{ textAlign: "right" }}>Qty</th>
-                    <th style={{ textAlign: "right" }}>Unit (EUR)</th>
-                    <th style={{ textAlign: "right" }}>Amount (EUR)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedInv.lines.map((l, idx) => (
-                    <tr key={idx}>
-                      <td>{l.description}</td>
-                      <td style={{ textAlign: "right" }}>{l.qty}</td>
-                      <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
-                      <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
+              {loadingAtt ? (
+                <div>Loading…</div>
+              ) : filteredAttendanceRows.length === 0 ? (
+                <div className="empty">
+                  {attQ.trim()
+                    ? "No matches found for your search."
+                    : "No per-lesson rows. Create enrollments first."}
+                </div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Course</th>
+                      <th style={{ textAlign: "right" }}>Lesson price (EUR)</th>
+                      <th style={{ textAlign: "right" }}>Count</th>
+                      <th style={{ textAlign: "right" }}>Total (EUR)</th>
+                      <th></th>
                     </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={3} style={{ textAlign: "right" }}>
-                      Total (EUR):
-                    </td>
-                    <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
-
+                  </thead>
+                  <tbody>
+                    {filteredAttendanceRows.map((r) => (
+                      <tr key={r.enrollmentId}>
+                        <td>{r.studentName}</td>
+                        <td>
+                          {r.courseName} ({r.courseType})
+                        </td>
+                        <td style={{ textAlign: "right" }}>{formatEUR(r.lessonPrice)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          <input
+                            type="number"
+                            min={0}
+                            value={r.count}
+                            onChange={(e) => onChangeCount(r, Number(e.target.value))}
+                            style={{ width: "5rem", textAlign: "right" }}
+                          />
+                        </td>
+                        <td style={{ textAlign: "right" }}>{formatEUR(r.count * r.lessonPrice)}</td>
+                        <td>
+                          {r.canDelete ? (
+                            <button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>
+                              Delete enrollment
+                            </button>
+                          ) : (
+                            <span className="mutedInline">Used in invoice history</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan={4} style={{ textAlign: "right" }}>
+                        Per-lesson total (EUR):
+                      </td>
+                      <td style={{ textAlign: "right" }}>{formatEUR(perLessonTotal)}</td>
+                      <td></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
             </>
           )}
 
-      {/* ---------------- Debtors ---------------- */}
+          {/* ---------------- Invoices ---------------- */}
+          {tab === "invoice" && (
+            <>
+              <div className="controls">
+                <button onClick={onGenerateDrafts}>Generate drafts</button>
+                <button onClick={onIssueAll}>Issue all</button>
+
+                <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
+                  <option value="draft">draft</option>
+                  <option value="issued">issued</option>
+                  <option value="paid">paid</option>
+                  <option value="all">all</option>
+                </select>
+
+                <input
+                  placeholder="Search student / phone / email / invoice number"
+                  value={invQ}
+                  onChange={(e) => setInvQ(e.target.value)}
+                  style={{ width: "320px" }}
+                />
+
+                <button onClick={loadInvoices}>Refresh</button>
+              </div>
+
+              {loadingInv ? (
+                <div>Loading…</div>
+              ) : filteredInvItems.length === 0 ? (
+                <div className="empty">No invoices found for this period/status/search.</div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Student</th>
+                      <th>Period</th>
+                      <th style={{ textAlign: "right" }}>Total (EUR)</th>
+                      <th>Status</th>
+                      <th>Number</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInvItems.map((it) => (
+                      <tr key={it.id}>
+                        <td>{it.studentName}</td>
+                        <td>
+                          {months[it.month - 1]} {it.year}
+                        </td>
+                        <td style={{ textAlign: "right" }}>{formatEUR(it.total)}</td>
+                        <td>{it.status}</td>
+                        <td>{it.number ?? ""}</td>
+                        <td>
+                          <button onClick={() => onOpenInvoice(it.id)}>Open</button>
+                          {it.status === "draft" && (
+                            <button onClick={() => onIssueOne(it.id)}>Issue</button>
+                          )}
+                          {it.status !== "draft" && (
+                            <button onClick={() => onOpenPdf(it.id)}>PDF</button>
+                          )}
+                          {it.status !== "draft" && (
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const iv = await getInvoice(it.id);
+                                  setSelectedInv(iv);
+                                  const summary = await invoiceSummary(it.id);
+                                  setInvSummary(summary);
+                                  openPaymentModal(iv, summary);
+                                } catch (e: any) {
+                                  showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+                                }
+                              }}
+                            >
+                              Record Payment
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+
+              {selectedInv && (
+                <div className="panel">
+                  <div style={{ marginBottom: "1rem" }}>
+                    <h3>
+                      Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
+                      {selectedInv.studentName} — {months[selectedInv.month - 1]} {selectedInv.year}
+                    </h3>
+                  </div>
+
+                  {invSummary && selectedInv.status !== "draft" && (
+                    <div className="invSummary">
+                      <div className="invSummaryRow">
+                        <span>Total:</span>
+                        <span className="money">{formatEUR(invSummary.total)}</span>
+                      </div>
+
+                      <div className="invSummaryRow">
+                        <span>Paid:</span>
+                        <span className="money good">{formatEUR(invSummary.paid)}</span>
+                      </div>
+
+                      <div className="invSummaryRow">
+                        <span>Remaining:</span>
+                        <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
+                          {formatEUR(invSummary.remaining)}
+                        </span>
+                      </div>
+
+                      <div className="invSummaryRow">
+                        <span>Status:</span>
+                        <span className="money">{invSummary.status}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Description</th>
+                        <th style={{ textAlign: "right" }}>Qty</th>
+                        <th style={{ textAlign: "right" }}>Unit (EUR)</th>
+                        <th style={{ textAlign: "right" }}>Amount (EUR)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedInv.lines.map((l, idx) => (
+                        <tr key={idx}>
+                          <td>{l.description}</td>
+                          <td style={{ textAlign: "right" }}>{l.qty}</td>
+                          <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
+                          <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={3} style={{ textAlign: "right" }}>
+                          Total (EUR):
+                        </td>
+                        <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ---------------- Debtors ---------------- */}
           {tab === "debtors" && (
             <>
-          <div className="controls">
-            <button onClick={loadDebtors}>Refresh</button>
-          </div>
+              <div className="controls">
+                <button onClick={loadDebtors}>Refresh</button>
+              </div>
 
-          {debtorsLoading ? (
-            <div>Loading…</div>
-          ) : debtors.length === 0 ? (
-            <div className="empty">No debtors found. All students are up to date with payments.</div>
-          ) : (
-            <table>
-              <thead>
-                <tr>
-                  <th>Student Name</th>
-                  <th style={{ textAlign: "right" }}>Debt (EUR)</th>
-                  <th style={{ textAlign: "right" }}>Total Invoiced (EUR)</th>
-                  <th style={{ textAlign: "right" }}>Total Paid (EUR)</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {debtors.map((d) => (
-                  <tr key={d.studentId}>
-                    <td>{d.studentName}</td>
-                    <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
-                      {formatEUR(d.debt)}
-                    </td>
-                    <td style={{ textAlign: "right" }}>{formatEUR(d.totalInvoiced)}</td>
-                    <td style={{ textAlign: "right" }}>{formatEUR(d.totalPaid)}</td>
-                    <td>
-                      <button onClick={() => openDebtorPaymentModal(d)}>Record Payment</button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td style={{ fontWeight: "bold" }}>Total Debt (EUR):</td>
-                  <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
-                    {formatEUR(debtors.reduce((sum, d) => sum + d.debt, 0))}
-                  </td>
-                  <td colSpan={3}></td>
-                </tr>
-              </tfoot>
-            </table>
-          )}
+              {debtorsLoading ? (
+                <div>Loading…</div>
+              ) : debtors.length === 0 ? (
+                <div className="empty">
+                  No debtors found. All students are up to date with payments.
+                </div>
+              ) : (
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Student Name</th>
+                      <th style={{ textAlign: "right" }}>Debt (EUR)</th>
+                      <th style={{ textAlign: "right" }}>Total Invoiced (EUR)</th>
+                      <th style={{ textAlign: "right" }}>Total Paid (EUR)</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {debtors.map((d) => (
+                      <tr key={d.studentId}>
+                        <td>{d.studentName}</td>
+                        <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
+                          {formatEUR(d.debt)}
+                        </td>
+                        <td style={{ textAlign: "right" }}>{formatEUR(d.totalInvoiced)}</td>
+                        <td style={{ textAlign: "right" }}>{formatEUR(d.totalPaid)}</td>
+                        <td>
+                          <button onClick={() => openDebtorPaymentModal(d)}>Record Payment</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td style={{ fontWeight: "bold" }}>Total Debt (EUR):</td>
+                      <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
+                        {formatEUR(debtors.reduce((sum, d) => sum + d.debt, 0))}
+                      </td>
+                      <td colSpan={3}></td>
+                    </tr>
+                  </tfoot>
+                </table>
+              )}
             </>
           )}
         </section>

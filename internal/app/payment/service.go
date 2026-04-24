@@ -26,14 +26,14 @@ func New(db *ent.Client) *Service { return &Service{db: db} }
 
 // PaymentDTO represents a payment record in the frontend.
 type PaymentDTO struct {
-	ID        int     `json:"id"`        // Payment ID
-	StudentID int     `json:"studentId"` // ID of the student who made the payment
+	ID        int     `json:"id"`                  // Payment ID
+	StudentID int     `json:"studentId"`           // ID of the student who made the payment
 	InvoiceID *int    `json:"invoiceId,omitempty"` // Optional: ID of invoice this payment is for
-	PaidAt    string  `json:"paidAt"`    // Payment date in RFC3339 format
-	Amount    float64 `json:"amount"`    // Payment amount
-	Method    string  `json:"method"`    // Payment method: "cash" or "bank"
-	Note      string  `json:"note"`      // Optional notes about the payment
-	CreatedAt string  `json:"createdAt"` // Record creation date in RFC3339 format
+	PaidAt    string  `json:"paidAt"`              // Payment date in RFC3339 format
+	Amount    float64 `json:"amount"`              // Payment amount
+	Method    string  `json:"method"`              // Payment method: "cash" or "bank"
+	Note      string  `json:"note"`                // Optional notes about the payment
+	CreatedAt string  `json:"createdAt"`           // Record creation date in RFC3339 format
 }
 
 // BalanceDTO represents a student's financial balance.
@@ -43,7 +43,7 @@ type BalanceDTO struct {
 	TotalInvoiced float64 `json:"totalInvoiced"` // Total amount invoiced (issued + paid invoices)
 	TotalPaid     float64 `json:"totalPaid"`     // Total amount paid (all payments)
 	Balance       float64 `json:"balance"`       // Balance: paid - invoiced (negative => student owes)
-	Debt          float64 `json:"debt"`           // Debt: max(0, -balance), amount student owes
+	Debt          float64 `json:"debt"`          // Debt: max(0, -balance), amount student owes
 }
 
 // DebtorDTO represents a student with outstanding debt.
@@ -57,14 +57,13 @@ type DebtorDTO struct {
 
 // InvoiceSummaryDTO represents payment summary for a specific invoice.
 type InvoiceSummaryDTO struct {
-	InvoiceID int     `json:"invoiceId"` // Invoice ID
-	Total     float64 `json:"total"`      // Total invoice amount
-	Paid      float64 `json:"paid"`       // Amount paid so far
-	Remaining float64 `json:"remaining"`  // Remaining amount to pay
-	Status    string  `json:"status"`     // Invoice status
+	InvoiceID int     `json:"invoiceId"`        // Invoice ID
+	Total     float64 `json:"total"`            // Total invoice amount
+	Paid      float64 `json:"paid"`             // Amount paid so far
+	Remaining float64 `json:"remaining"`        // Remaining amount to pay
+	Status    string  `json:"status"`           // Invoice status
 	Number    *string `json:"number,omitempty"` // Invoice number
 }
-
 
 // eps returns the epsilon value used for floating-point comparisons.
 // The value 0.009 is chosen to account for rounding errors in currency calculations

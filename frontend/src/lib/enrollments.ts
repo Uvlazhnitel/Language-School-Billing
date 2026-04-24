@@ -1,8 +1,4 @@
-import {
-  EnrollmentList,
-  EnrollmentCreate,
-  EnrollmentUpdate,
-} from "../../wailsjs/go/main/App";
+import { EnrollmentList, EnrollmentCreate, EnrollmentUpdate } from "../../wailsjs/go/main/App";
 import { BillingMode } from "./constants";
 
 export type EnrollmentDTO = {
@@ -34,7 +30,13 @@ export function createEnrollment(
   discountPct: number,
   note: string
 ): Promise<EnrollmentDTO> {
-  return EnrollmentCreate(studentId, courseId, billingMode, discountPct, note) as Promise<EnrollmentDTO>;
+  return EnrollmentCreate(
+    studentId,
+    courseId,
+    billingMode,
+    discountPct,
+    note
+  ) as Promise<EnrollmentDTO>;
 }
 
 export function updateEnrollment(

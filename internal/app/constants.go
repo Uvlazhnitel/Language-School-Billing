@@ -17,7 +17,7 @@ const (
 const (
 	InvoiceStatusDraft    = "draft"    // Draft: not yet issued, can be modified or deleted
 	InvoiceStatusIssued   = "issued"   // Issued: has been assigned a number and sent to student
-	InvoiceStatusPaid     = "paid"      // Paid: fully paid by the student
+	InvoiceStatusPaid     = "paid"     // Paid: fully paid by the student
 	InvoiceStatusCanceled = "canceled" // Canceled: voided invoice, cannot be paid
 )
 
