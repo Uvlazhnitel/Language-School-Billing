@@ -38,6 +38,8 @@ import {
   createPayment,
   invoiceSummary,
   InvoiceSummaryDTO,
+  studentDebtDetails,
+  DebtInvoiceDTO,
 } from "./lib/payments";
 
 const months = [
@@ -677,6 +679,10 @@ export default function App() {
   // ---------------- Debtors ----------------
   const [debtors, setDebtors] = useState<DebtorDTO[]>([]);
   const [debtorsLoading, setDebtorsLoading] = useState(false);
+  const [debtDetailsOpen, setDebtDetailsOpen] = useState(false);
+  const [selectedDebtor, setSelectedDebtor] = useState<DebtorDTO | null>(null);
+  const [debtDetails, setDebtDetails] = useState<DebtInvoiceDTO[]>([]);
+  const [debtDetailsLoading, setDebtDetailsLoading] = useState(false);
 
   const loadDebtors = useCallback(async () => {
     setDebtorsLoading(true);
@@ -693,6 +699,22 @@ export default function App() {
   useEffect(() => {
     if (tab === "debtors") loadDebtors();
   }, [tab, loadDebtors]);
+
+  async function openDebtDetails(debtor: DebtorDTO) {
+    setSelectedDebtor(debtor);
+    setDebtDetailsOpen(true);
+    setDebtDetails([]);
+    setDebtDetailsLoading(true);
+
+    try {
+      const details = await studentDebtDetails(debtor.studentId);
+      setDebtDetails(details);
+    } catch (e: any) {
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+    } finally {
+      setDebtDetailsLoading(false);
+    }
+  }
 
   const filteredInvItems = useMemo(() => {
     const q = invQ.trim().toLowerCase();
@@ -1655,6 +1677,7 @@ export default function App() {
                         <td style={{ textAlign: "right" }}>{formatEUR(d.totalPaid)}</td>
                         <td>
                           <button onClick={() => openDebtorPaymentModal(d)}>Record Payment</button>
+                          <button onClick={() => openDebtDetails(d)}>Debt details</button>
                         </td>
                       </tr>
                     ))}
@@ -1722,6 +1745,66 @@ export default function App() {
             <div className="modalActions">
               <button onClick={() => setPaymentModalOpen(false)}>Cancel</button>
               <button onClick={handleCreatePayment}>Record Payment</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {debtDetailsOpen && selectedDebtor && (
+        <div className="modal" onClick={() => setDebtDetailsOpen(false)}>
+          <div className="modalBody" onClick={(e) => e.stopPropagation()}>
+            <h3>Debt details</h3>
+
+            <div className="invSummary">
+              <div className="invSummaryRow">
+                <span>Student</span>
+                <span>{selectedDebtor.studentName}</span>
+              </div>
+              <div className="invSummaryRow">
+                <span>Total debt</span>
+                <strong className="money bad">{formatEUR(selectedDebtor.debt)}</strong>
+              </div>
+            </div>
+
+            {debtDetailsLoading ? (
+              <div>Loading...</div>
+            ) : debtDetails.length === 0 ? (
+              <div className="empty">No open invoices with remaining balance.</div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Month</th>
+                      <th>Invoice</th>
+                      <th style={{ textAlign: "right" }}>Total</th>
+                      <th style={{ textAlign: "right" }}>Paid</th>
+                      <th style={{ textAlign: "right" }}>Remaining</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {debtDetails.map((x) => (
+                      <tr key={x.invoiceId}>
+                        <td>
+                          {months[x.month - 1]} {x.year}
+                        </td>
+                        <td>{x.number ?? "No number"}</td>
+                        <td style={{ textAlign: "right" }}>{formatEUR(x.total)}</td>
+                        <td style={{ textAlign: "right" }}>{formatEUR(x.paid)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          <strong className="money bad">{formatEUR(x.remaining)}</strong>
+                        </td>
+                        <td>{x.status}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="modalActions">
+              <button onClick={() => setDebtDetailsOpen(false)}>Close</button>
             </div>
           </div>
         </div>

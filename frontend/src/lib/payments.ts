@@ -1,4 +1,4 @@
-import { PaymentCreate, DebtorsList, InvoicePaymentSummary } from "../../wailsjs/go/main/App";
+import { PaymentCreate, DebtorsList, InvoicePaymentSummary, StudentDebtDetails } from "../../wailsjs/go/main/App";
 import { PaymentMethod } from "./constants";
 
 export type PaymentDTO = {
@@ -29,6 +29,17 @@ export type InvoiceSummaryDTO = {
   number?: string;
 };
 
+export type DebtInvoiceDTO = {
+  invoiceId: number;
+  year: number;
+  month: number;
+  number?: string;
+  total: number;
+  paid: number;
+  remaining: number;
+  status: string;
+};
+
 export async function createPayment(
   studentId: number,
   invoiceId: number | undefined,
@@ -47,4 +58,8 @@ export async function listDebtors() {
 
 export async function invoiceSummary(invoiceId: number) {
   return (await InvoicePaymentSummary(invoiceId)) as InvoiceSummaryDTO;
+}
+
+export async function studentDebtDetails(studentId: number) {
+  return (await StudentDebtDetails(studentId)) as DebtInvoiceDTO[];
 }
