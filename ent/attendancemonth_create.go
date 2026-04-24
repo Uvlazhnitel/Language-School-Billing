@@ -57,20 +57,6 @@ func (_c *AttendanceMonthCreate) SetNillableLessonsCount(v *int) *AttendanceMont
 	return _c
 }
 
-// SetSource sets the "source" field.
-func (_c *AttendanceMonthCreate) SetSource(v attendancemonth.Source) *AttendanceMonthCreate {
-	_c.mutation.SetSource(v)
-	return _c
-}
-
-// SetNillableSource sets the "source" field if the given value is not nil.
-func (_c *AttendanceMonthCreate) SetNillableSource(v *attendancemonth.Source) *AttendanceMonthCreate {
-	if v != nil {
-		_c.SetSource(*v)
-	}
-	return _c
-}
-
 // Mutation returns the AttendanceMonthMutation object of the builder.
 func (_c *AttendanceMonthCreate) Mutation() *AttendanceMonthMutation {
 	return _c.mutation
@@ -110,10 +96,6 @@ func (_c *AttendanceMonthCreate) defaults() {
 		v := attendancemonth.DefaultLessonsCount
 		_c.mutation.SetLessonsCount(v)
 	}
-	if _, ok := _c.mutation.Source(); !ok {
-		v := attendancemonth.DefaultSource
-		_c.mutation.SetSource(v)
-	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -132,14 +114,6 @@ func (_c *AttendanceMonthCreate) check() error {
 	}
 	if _, ok := _c.mutation.LessonsCount(); !ok {
 		return &ValidationError{Name: "lessons_count", err: errors.New(`ent: missing required field "AttendanceMonth.lessons_count"`)}
-	}
-	if _, ok := _c.mutation.Source(); !ok {
-		return &ValidationError{Name: "source", err: errors.New(`ent: missing required field "AttendanceMonth.source"`)}
-	}
-	if v, ok := _c.mutation.Source(); ok {
-		if err := attendancemonth.SourceValidator(v); err != nil {
-			return &ValidationError{Name: "source", err: fmt.Errorf(`ent: validator failed for field "AttendanceMonth.source": %w`, err)}
-		}
 	}
 	return nil
 }
@@ -186,10 +160,6 @@ func (_c *AttendanceMonthCreate) createSpec() (*AttendanceMonth, *sqlgraph.Creat
 	if value, ok := _c.mutation.LessonsCount(); ok {
 		_spec.SetField(attendancemonth.FieldLessonsCount, field.TypeInt, value)
 		_node.LessonsCount = value
-	}
-	if value, ok := _c.mutation.Source(); ok {
-		_spec.SetField(attendancemonth.FieldSource, field.TypeEnum, value)
-		_node.Source = value
 	}
 	return _node, _spec
 }

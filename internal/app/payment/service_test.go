@@ -3,6 +3,7 @@ package payment
 import (
 	"context"
 	"testing"
+	"time"
 
 	_ "github.com/mattn/go-sqlite3"
 
@@ -187,6 +188,139 @@ func TestDeletePaymentRevertsPaidInvoiceBackToIssued(t *testing.T) {
 	assertEqual(t, summary.Status, app.InvoiceStatusIssued)
 }
 
+func TestInvoiceBalance(t *testing.T) {
+	ctx := context.Background()
+
+	tests := []struct {
+		name          string
+		payments      []float64
+		wantTotal     float64
+		wantPaid      float64
+		wantRemaining float64
+	}{
+		{
+			name:          "no payments",
+			payments:      nil,
+			wantTotal:     100,
+			wantPaid:      0,
+			wantRemaining: 100,
+		},
+		{
+			name:          "partial payment",
+			payments:      []float64{40},
+			wantTotal:     100,
+			wantPaid:      40,
+			wantRemaining: 60,
+		},
+		{
+			name:          "fully paid",
+			payments:      []float64{40, 60},
+			wantTotal:     100,
+			wantPaid:      100,
+			wantRemaining: 0,
+		},
+		{
+			name:          "overpaid",
+			payments:      []float64{120},
+			wantTotal:     100,
+			wantPaid:      120,
+			wantRemaining: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := newTestClient(t)
+			defer client.Close()
+
+			svc := New(client)
+			st := createTestStudent(t, ctx, client, "Balance Test")
+			inv := createTestInvoice(t, ctx, client, st.ID, 2026, 6, 100, app.InvoiceStatusIssued)
+
+			for i, amount := range tt.payments {
+				createLinkedPayment(t, ctx, client, st.ID, inv.ID, amount, time.Date(2026, 6, i+1, 0, 0, 0, 0, time.UTC))
+			}
+
+			total, paid, remaining, err := svc.invoiceBalance(ctx, inv)
+			if err != nil {
+				t.Fatalf("invoiceBalance returned error: %v", err)
+			}
+
+			assertFloatEqual(t, total, tt.wantTotal)
+			assertFloatEqual(t, paid, tt.wantPaid)
+			assertFloatEqual(t, remaining, tt.wantRemaining)
+		})
+	}
+}
+
+func TestStudentDebtDetails(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+	st := createTestStudent(t, ctx, client, "Debt Details")
+
+	issuedUnpaid := createTestInvoiceWithNumber(t, ctx, client, st.ID, 2025, 12, 80, app.InvoiceStatusIssued, "LS-202512-001")
+	draft := createTestInvoiceWithNumber(t, ctx, client, st.ID, 2026, 1, 30, app.InvoiceStatusDraft, nil)
+	canceled := createTestInvoiceWithNumber(t, ctx, client, st.ID, 2026, 2, 40, app.InvoiceStatusCanceled, "LS-202602-099")
+	paidPartial := createTestInvoiceWithNumber(t, ctx, client, st.ID, 2026, 3, 50, app.InvoiceStatusPaid, "LS-202603-001")
+	issuedPartial := createTestInvoiceWithNumber(t, ctx, client, st.ID, 2026, 4, 70, app.InvoiceStatusIssued, "LS-202604-002")
+	fullyPaid := createTestInvoiceWithNumber(t, ctx, client, st.ID, 2026, 5, 60, app.InvoiceStatusPaid, "LS-202605-001")
+
+	createLinkedPayment(t, ctx, client, st.ID, paidPartial.ID, 20, time.Date(2026, 3, 5, 0, 0, 0, 0, time.UTC))
+	createLinkedPayment(t, ctx, client, st.ID, issuedPartial.ID, 25, time.Date(2026, 4, 7, 0, 0, 0, 0, time.UTC))
+	createLinkedPayment(t, ctx, client, st.ID, fullyPaid.ID, 60, time.Date(2026, 5, 5, 0, 0, 0, 0, time.UTC))
+
+	got, err := svc.StudentDebtDetails(ctx, st.ID)
+	if err != nil {
+		t.Fatalf("StudentDebtDetails returned error: %v", err)
+	}
+
+	if len(got) != 3 {
+		t.Fatalf("expected 3 debt rows, got %d", len(got))
+	}
+
+	assertEqual(t, got[0].InvoiceID, issuedUnpaid.ID)
+	assertEqual(t, got[0].Year, 2025)
+	assertEqual(t, got[0].Month, 12)
+	assertStringPtrEqual(t, got[0].Number, "LS-202512-001")
+	assertFloatEqual(t, got[0].Total, 80)
+	assertFloatEqual(t, got[0].Paid, 0)
+	assertFloatEqual(t, got[0].Remaining, 80)
+	assertEqual(t, got[0].Status, app.InvoiceStatusIssued)
+
+	assertEqual(t, got[1].InvoiceID, paidPartial.ID)
+	assertEqual(t, got[1].Year, 2026)
+	assertEqual(t, got[1].Month, 3)
+	assertStringPtrEqual(t, got[1].Number, "LS-202603-001")
+	assertFloatEqual(t, got[1].Total, 50)
+	assertFloatEqual(t, got[1].Paid, 20)
+	assertFloatEqual(t, got[1].Remaining, 30)
+	assertEqual(t, got[1].Status, app.InvoiceStatusPaid)
+
+	assertEqual(t, got[2].InvoiceID, issuedPartial.ID)
+	assertEqual(t, got[2].Year, 2026)
+	assertEqual(t, got[2].Month, 4)
+	assertStringPtrEqual(t, got[2].Number, "LS-202604-002")
+	assertFloatEqual(t, got[2].Total, 70)
+	assertFloatEqual(t, got[2].Paid, 25)
+	assertFloatEqual(t, got[2].Remaining, 45)
+	assertEqual(t, got[2].Status, app.InvoiceStatusIssued)
+
+	for _, dto := range got {
+		if dto.InvoiceID == draft.ID {
+			t.Fatalf("draft invoice %d should be excluded", draft.ID)
+		}
+		if dto.InvoiceID == canceled.ID {
+			t.Fatalf("canceled invoice %d should be excluded", canceled.ID)
+		}
+		if dto.InvoiceID == fullyPaid.ID {
+			t.Fatalf("fully paid invoice %d should be excluded", fullyPaid.ID)
+		}
+	}
+}
+
 func newTestClient(t *testing.T) *ent.Client {
 	t.Helper()
 	return enttest.Open(t, "sqlite3", "file:ent?mode=memory&_fk=1")
@@ -205,17 +339,46 @@ func createTestStudent(t *testing.T, ctx context.Context, client *ent.Client, fu
 
 func createTestInvoice(t *testing.T, ctx context.Context, client *ent.Client, studentID, year, month int, total float64, status string) *ent.Invoice {
 	t.Helper()
-	inv, err := client.Invoice.Create().
+	return createTestInvoiceWithNumber(t, ctx, client, studentID, year, month, total, status, nil)
+}
+
+func createTestInvoiceWithNumber(t *testing.T, ctx context.Context, client *ent.Client, studentID, year, month int, total float64, status string, number any) *ent.Invoice {
+	t.Helper()
+	create := client.Invoice.Create().
 		SetStudentID(studentID).
 		SetPeriodYear(year).
 		SetPeriodMonth(month).
 		SetTotalAmount(total).
-		SetStatus(entinvoice.Status(status)).
-		Save(ctx)
+		SetStatus(entinvoice.Status(status))
+	switch n := number.(type) {
+	case nil:
+	case string:
+		create.SetNumber(n)
+	case *string:
+		create.SetNillableNumber(n)
+	default:
+		t.Fatalf("unsupported invoice number type %T", number)
+	}
+	inv, err := create.Save(ctx)
 	if err != nil {
 		t.Fatalf("create invoice: %v", err)
 	}
 	return inv
+}
+
+func createLinkedPayment(t *testing.T, ctx context.Context, client *ent.Client, studentID, invoiceID int, amount float64, paidAt time.Time) *ent.Payment {
+	t.Helper()
+	p, err := client.Payment.Create().
+		SetStudentID(studentID).
+		SetInvoiceID(invoiceID).
+		SetPaidAt(paidAt).
+		SetAmount(amount).
+		SetMethod(entpayment.Method(app.PaymentMethodCash)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create linked payment: %v", err)
+	}
+	return p
 }
 
 func assertLinkedPayment(t *testing.T, p *ent.Payment, invoiceID int, amount float64) {
@@ -244,5 +407,15 @@ func assertFloatEqual(t *testing.T, got, want float64) {
 	}
 	if diff > 0.0001 {
 		t.Fatalf("got %.4f, want %.4f", got, want)
+	}
+}
+
+func assertStringPtrEqual(t *testing.T, got *string, want string) {
+	t.Helper()
+	if got == nil {
+		t.Fatalf("got nil, want %q", want)
+	}
+	if *got != want {
+		t.Fatalf("got %q, want %q", *got, want)
 	}
 }

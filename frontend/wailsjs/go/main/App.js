@@ -126,6 +126,10 @@ export function StudentCreate(arg1, arg2, arg3, arg4) {
   return window['go']['main']['App']['StudentCreate'](arg1, arg2, arg3, arg4);
 }
 
+export function StudentDebtDetails(arg1) {
+  return window['go']['main']['App']['StudentDebtDetails'](arg1);
+}
+
 export function StudentDelete(arg1) {
   return window['go']['main']['App']['StudentDelete'](arg1);
 }

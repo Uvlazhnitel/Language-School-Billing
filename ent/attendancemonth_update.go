@@ -132,20 +132,6 @@ func (_u *AttendanceMonthUpdate) AddLessonsCount(v int) *AttendanceMonthUpdate {
 	return _u
 }
 
-// SetSource sets the "source" field.
-func (_u *AttendanceMonthUpdate) SetSource(v attendancemonth.Source) *AttendanceMonthUpdate {
-	_u.mutation.SetSource(v)
-	return _u
-}
-
-// SetNillableSource sets the "source" field if the given value is not nil.
-func (_u *AttendanceMonthUpdate) SetNillableSource(v *attendancemonth.Source) *AttendanceMonthUpdate {
-	if v != nil {
-		_u.SetSource(*v)
-	}
-	return _u
-}
-
 // Mutation returns the AttendanceMonthMutation object of the builder.
 func (_u *AttendanceMonthUpdate) Mutation() *AttendanceMonthMutation {
 	return _u.mutation
@@ -178,20 +164,7 @@ func (_u *AttendanceMonthUpdate) ExecX(ctx context.Context) {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (_u *AttendanceMonthUpdate) check() error {
-	if v, ok := _u.mutation.Source(); ok {
-		if err := attendancemonth.SourceValidator(v); err != nil {
-			return &ValidationError{Name: "source", err: fmt.Errorf(`ent: validator failed for field "AttendanceMonth.source": %w`, err)}
-		}
-	}
-	return nil
-}
-
 func (_u *AttendanceMonthUpdate) sqlSave(ctx context.Context) (_node int, err error) {
-	if err := _u.check(); err != nil {
-		return _node, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(attendancemonth.Table, attendancemonth.Columns, sqlgraph.NewFieldSpec(attendancemonth.FieldID, field.TypeInt))
 	if ps := _u.mutation.predicates; len(ps) > 0 {
 		_spec.Predicate = func(selector *sql.Selector) {
@@ -229,9 +202,6 @@ func (_u *AttendanceMonthUpdate) sqlSave(ctx context.Context) (_node int, err er
 	}
 	if value, ok := _u.mutation.AddedLessonsCount(); ok {
 		_spec.AddField(attendancemonth.FieldLessonsCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.Source(); ok {
-		_spec.SetField(attendancemonth.FieldSource, field.TypeEnum, value)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -358,20 +328,6 @@ func (_u *AttendanceMonthUpdateOne) AddLessonsCount(v int) *AttendanceMonthUpdat
 	return _u
 }
 
-// SetSource sets the "source" field.
-func (_u *AttendanceMonthUpdateOne) SetSource(v attendancemonth.Source) *AttendanceMonthUpdateOne {
-	_u.mutation.SetSource(v)
-	return _u
-}
-
-// SetNillableSource sets the "source" field if the given value is not nil.
-func (_u *AttendanceMonthUpdateOne) SetNillableSource(v *attendancemonth.Source) *AttendanceMonthUpdateOne {
-	if v != nil {
-		_u.SetSource(*v)
-	}
-	return _u
-}
-
 // Mutation returns the AttendanceMonthMutation object of the builder.
 func (_u *AttendanceMonthUpdateOne) Mutation() *AttendanceMonthMutation {
 	return _u.mutation
@@ -417,20 +373,7 @@ func (_u *AttendanceMonthUpdateOne) ExecX(ctx context.Context) {
 	}
 }
 
-// check runs all checks and user-defined validators on the builder.
-func (_u *AttendanceMonthUpdateOne) check() error {
-	if v, ok := _u.mutation.Source(); ok {
-		if err := attendancemonth.SourceValidator(v); err != nil {
-			return &ValidationError{Name: "source", err: fmt.Errorf(`ent: validator failed for field "AttendanceMonth.source": %w`, err)}
-		}
-	}
-	return nil
-}
-
 func (_u *AttendanceMonthUpdateOne) sqlSave(ctx context.Context) (_node *AttendanceMonth, err error) {
-	if err := _u.check(); err != nil {
-		return _node, err
-	}
 	_spec := sqlgraph.NewUpdateSpec(attendancemonth.Table, attendancemonth.Columns, sqlgraph.NewFieldSpec(attendancemonth.FieldID, field.TypeInt))
 	id, ok := _u.mutation.ID()
 	if !ok {
@@ -485,9 +428,6 @@ func (_u *AttendanceMonthUpdateOne) sqlSave(ctx context.Context) (_node *Attenda
 	}
 	if value, ok := _u.mutation.AddedLessonsCount(); ok {
 		_spec.AddField(attendancemonth.FieldLessonsCount, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.Source(); ok {
-		_spec.SetField(attendancemonth.FieldSource, field.TypeEnum, value)
 	}
 	_node = &AttendanceMonth{config: _u.config}
 	_spec.Assign = _node.assignValues

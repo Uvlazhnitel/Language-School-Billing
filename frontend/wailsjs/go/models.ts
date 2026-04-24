@@ -274,6 +274,32 @@ export namespace payment {
 	        this.debt = source["debt"];
 	    }
 	}
+	export class DebtInvoiceDTO {
+	    invoiceId: number;
+	    year: number;
+	    month: number;
+	    number?: string;
+	    total: number;
+	    paid: number;
+	    remaining: number;
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DebtInvoiceDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.invoiceId = source["invoiceId"];
+	        this.year = source["year"];
+	        this.month = source["month"];
+	        this.number = source["number"];
+	        this.total = source["total"];
+	        this.paid = source["paid"];
+	        this.remaining = source["remaining"];
+	        this.status = source["status"];
+	    }
+	}
 	export class DebtorDTO {
 	    studentId: number;
 	    studentName: string;

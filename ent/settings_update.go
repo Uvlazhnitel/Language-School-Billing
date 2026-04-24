@@ -132,20 +132,6 @@ func (_u *SettingsUpdate) AddInvoiceDayOfMonth(v int) *SettingsUpdate {
 	return _u
 }
 
-// SetAutoIssue sets the "auto_issue" field.
-func (_u *SettingsUpdate) SetAutoIssue(v bool) *SettingsUpdate {
-	_u.mutation.SetAutoIssue(v)
-	return _u
-}
-
-// SetNillableAutoIssue sets the "auto_issue" field if the given value is not nil.
-func (_u *SettingsUpdate) SetNillableAutoIssue(v *bool) *SettingsUpdate {
-	if v != nil {
-		_u.SetAutoIssue(*v)
-	}
-	return _u
-}
-
 // SetCurrency sets the "currency" field.
 func (_u *SettingsUpdate) SetCurrency(v string) *SettingsUpdate {
 	_u.mutation.SetCurrency(v)
@@ -241,9 +227,6 @@ func (_u *SettingsUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.AddedInvoiceDayOfMonth(); ok {
 		_spec.AddField(settings.FieldInvoiceDayOfMonth, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AutoIssue(); ok {
-		_spec.SetField(settings.FieldAutoIssue, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Currency(); ok {
 		_spec.SetField(settings.FieldCurrency, field.TypeString, value)
@@ -376,20 +359,6 @@ func (_u *SettingsUpdateOne) AddInvoiceDayOfMonth(v int) *SettingsUpdateOne {
 	return _u
 }
 
-// SetAutoIssue sets the "auto_issue" field.
-func (_u *SettingsUpdateOne) SetAutoIssue(v bool) *SettingsUpdateOne {
-	_u.mutation.SetAutoIssue(v)
-	return _u
-}
-
-// SetNillableAutoIssue sets the "auto_issue" field if the given value is not nil.
-func (_u *SettingsUpdateOne) SetNillableAutoIssue(v *bool) *SettingsUpdateOne {
-	if v != nil {
-		_u.SetAutoIssue(*v)
-	}
-	return _u
-}
-
 // SetCurrency sets the "currency" field.
 func (_u *SettingsUpdateOne) SetCurrency(v string) *SettingsUpdateOne {
 	_u.mutation.SetCurrency(v)
@@ -515,9 +484,6 @@ func (_u *SettingsUpdateOne) sqlSave(ctx context.Context) (_node *Settings, err 
 	}
 	if value, ok := _u.mutation.AddedInvoiceDayOfMonth(); ok {
 		_spec.AddField(settings.FieldInvoiceDayOfMonth, field.TypeInt, value)
-	}
-	if value, ok := _u.mutation.AutoIssue(); ok {
-		_spec.SetField(settings.FieldAutoIssue, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Currency(); ok {
 		_spec.SetField(settings.FieldCurrency, field.TypeString, value)

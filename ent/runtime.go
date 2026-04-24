@@ -90,16 +90,12 @@ func init() {
 	settingsDescInvoiceDayOfMonth := settingsFields[5].Descriptor()
 	// settings.DefaultInvoiceDayOfMonth holds the default value on creation for the invoice_day_of_month field.
 	settings.DefaultInvoiceDayOfMonth = settingsDescInvoiceDayOfMonth.Default.(int)
-	// settingsDescAutoIssue is the schema descriptor for auto_issue field.
-	settingsDescAutoIssue := settingsFields[6].Descriptor()
-	// settings.DefaultAutoIssue holds the default value on creation for the auto_issue field.
-	settings.DefaultAutoIssue = settingsDescAutoIssue.Default.(bool)
 	// settingsDescCurrency is the schema descriptor for currency field.
-	settingsDescCurrency := settingsFields[7].Descriptor()
+	settingsDescCurrency := settingsFields[6].Descriptor()
 	// settings.DefaultCurrency holds the default value on creation for the currency field.
 	settings.DefaultCurrency = settingsDescCurrency.Default.(string)
 	// settingsDescLocale is the schema descriptor for locale field.
-	settingsDescLocale := settingsFields[8].Descriptor()
+	settingsDescLocale := settingsFields[7].Descriptor()
 	// settings.DefaultLocale holds the default value on creation for the locale field.
 	settings.DefaultLocale = settingsDescLocale.Default.(string)
 	studentFields := schema.Student{}.Fields()

@@ -3,8 +3,6 @@
 package attendancemonth
 
 import (
-	"fmt"
-
 	"entgo.io/ent/dialect/sql"
 )
 
@@ -23,8 +21,6 @@ const (
 	FieldMonth = "month"
 	// FieldLessonsCount holds the string denoting the lessons_count field in the database.
 	FieldLessonsCount = "lessons_count"
-	// FieldSource holds the string denoting the source field in the database.
-	FieldSource = "source"
 	// Table holds the table name of the attendancemonth in the database.
 	Table = "attendance_months"
 )
@@ -37,7 +33,6 @@ var Columns = []string{
 	FieldYear,
 	FieldMonth,
 	FieldLessonsCount,
-	FieldSource,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -54,32 +49,6 @@ var (
 	// DefaultLessonsCount holds the default value on creation for the "lessons_count" field.
 	DefaultLessonsCount int
 )
-
-// Source defines the type for the "source" enum field.
-type Source string
-
-// SourceMonthly is the default value of the Source enum.
-const DefaultSource = SourceMonthly
-
-// Source values.
-const (
-	SourceMonthly  Source = "monthly"
-	SourceDailyAgg Source = "daily_agg"
-)
-
-func (s Source) String() string {
-	return string(s)
-}
-
-// SourceValidator is a validator for the "source" field enum values. It is called by the builders before save.
-func SourceValidator(s Source) error {
-	switch s {
-	case SourceMonthly, SourceDailyAgg:
-		return nil
-	default:
-		return fmt.Errorf("attendancemonth: invalid enum value for source field: %q", s)
-	}
-}
 
 // OrderOption defines the ordering options for the AttendanceMonth queries.
 type OrderOption func(*sql.Selector)
@@ -112,9 +81,4 @@ func ByMonth(opts ...sql.OrderTermOption) OrderOption {
 // ByLessonsCount orders the results by the lessons_count field.
 func ByLessonsCount(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLessonsCount, opts...).ToFunc()
-}
-
-// BySource orders the results by the source field.
-func BySource(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSource, opts...).ToFunc()
 }

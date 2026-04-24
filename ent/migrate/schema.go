@@ -16,7 +16,6 @@ var (
 		{Name: "year", Type: field.TypeInt},
 		{Name: "month", Type: field.TypeInt},
 		{Name: "lessons_count", Type: field.TypeInt, Default: 0},
-		{Name: "source", Type: field.TypeEnum, Enums: []string{"monthly", "daily_agg"}, Default: "monthly"},
 	}
 	// AttendanceMonthsTable holds the schema information for the "attendance_months" table.
 	AttendanceMonthsTable = &schema.Table{
@@ -207,7 +206,6 @@ var (
 		{Name: "invoice_prefix", Type: field.TypeString, Default: "LS"},
 		{Name: "next_seq", Type: field.TypeInt, Default: 1},
 		{Name: "invoice_day_of_month", Type: field.TypeInt, Default: 1},
-		{Name: "auto_issue", Type: field.TypeBool, Default: false},
 		{Name: "currency", Type: field.TypeString, Default: "EUR"},
 		{Name: "locale", Type: field.TypeString, Default: "en-US"},
 	}

@@ -84,7 +84,6 @@ func (a *App) startup(ctx context.Context) {
 			SetInvoicePrefix("LS").
 			SetNextSeq(1).
 			SetInvoiceDayOfMonth(1).
-			SetAutoIssue(false).
 			SetCurrency("EUR").
 			SetLocale("lv-LV").
 			Save(ctx); err != nil {
@@ -412,6 +411,7 @@ type PaymentDTO = paysvc.PaymentDTO
 type BalanceDTO = paysvc.BalanceDTO
 type DebtorDTO = paysvc.DebtorDTO
 type InvoiceSummaryDTO = paysvc.InvoiceSummaryDTO
+type DebtInvoiceDTO = paysvc.DebtInvoiceDTO
 
 // PaymentCreate creates a new payment record. The paidAt parameter accepts
 // either "YYYY-MM-DD" format or RFC3339. If invoiceID is provided, the payment
@@ -442,6 +442,11 @@ func (a *App) StudentBalance(studentID int) (*BalanceDTO, error) {
 // sorted by debt amount (highest first).
 func (a *App) DebtorsList() ([]DebtorDTO, error) {
 	return a.pay.ListDebtors(a.ctx)
+}
+
+// StudentDebtDetails returns open invoice debt details for one student.
+func (a *App) StudentDebtDetails(studentID int) ([]DebtInvoiceDTO, error) {
+	return a.pay.StudentDebtDetails(a.ctx, studentID)
 }
 
 // InvoicePaymentSummary returns a summary of payment status for a specific invoice,

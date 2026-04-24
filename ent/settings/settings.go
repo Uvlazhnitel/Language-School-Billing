@@ -23,8 +23,6 @@ const (
 	FieldNextSeq = "next_seq"
 	// FieldInvoiceDayOfMonth holds the string denoting the invoice_day_of_month field in the database.
 	FieldInvoiceDayOfMonth = "invoice_day_of_month"
-	// FieldAutoIssue holds the string denoting the auto_issue field in the database.
-	FieldAutoIssue = "auto_issue"
 	// FieldCurrency holds the string denoting the currency field in the database.
 	FieldCurrency = "currency"
 	// FieldLocale holds the string denoting the locale field in the database.
@@ -42,7 +40,6 @@ var Columns = []string{
 	FieldInvoicePrefix,
 	FieldNextSeq,
 	FieldInvoiceDayOfMonth,
-	FieldAutoIssue,
 	FieldCurrency,
 	FieldLocale,
 }
@@ -68,8 +65,6 @@ var (
 	DefaultNextSeq int
 	// DefaultInvoiceDayOfMonth holds the default value on creation for the "invoice_day_of_month" field.
 	DefaultInvoiceDayOfMonth int
-	// DefaultAutoIssue holds the default value on creation for the "auto_issue" field.
-	DefaultAutoIssue bool
 	// DefaultCurrency holds the default value on creation for the "currency" field.
 	DefaultCurrency string
 	// DefaultLocale holds the default value on creation for the "locale" field.
@@ -112,11 +107,6 @@ func ByNextSeq(opts ...sql.OrderTermOption) OrderOption {
 // ByInvoiceDayOfMonth orders the results by the invoice_day_of_month field.
 func ByInvoiceDayOfMonth(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldInvoiceDayOfMonth, opts...).ToFunc()
-}
-
-// ByAutoIssue orders the results by the auto_issue field.
-func ByAutoIssue(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAutoIssue, opts...).ToFunc()
 }
 
 // ByCurrency orders the results by the currency field.

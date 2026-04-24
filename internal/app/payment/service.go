@@ -65,6 +65,18 @@ type InvoiceSummaryDTO struct {
 	Number    *string `json:"number,omitempty"` // Invoice number
 }
 
+// DebtInvoiceDTO represents one open invoice in a student's debt breakdown.
+type DebtInvoiceDTO struct {
+	InvoiceID int     `json:"invoiceId"`
+	Year      int     `json:"year"`
+	Month     int     `json:"month"`
+	Number    *string `json:"number,omitempty"`
+	Total     float64 `json:"total"`
+	Paid      float64 `json:"paid"`
+	Remaining float64 `json:"remaining"`
+	Status    string  `json:"status"`
+}
+
 // eps returns the epsilon value used for floating-point comparisons.
 // The value 0.009 is chosen to account for rounding errors in currency calculations
 // where amounts are rounded to 2 decimal places (0.01). This epsilon is slightly
@@ -178,12 +190,10 @@ func (s *Service) allocateToOldestInvoices(ctx context.Context, studentID int, a
 			break
 		}
 
-		paid, err := s.sumPaymentsForInvoice(ctx, iv.ID)
+		_, _, invoiceRemaining, err := s.invoiceBalance(ctx, iv)
 		if err != nil {
 			return nil, err
 		}
-
-		invoiceRemaining := utils.Round2(iv.TotalAmount - paid)
 		if invoiceRemaining <= eps() {
 			continue
 		}
@@ -287,24 +297,61 @@ func (s *Service) InvoiceSummary(ctx context.Context, invoiceID int) (*InvoiceSu
 	if err != nil {
 		return nil, err
 	}
-	paid, err := s.sumPaymentsForInvoice(ctx, invoiceID)
+	total, paid, remaining, err := s.invoiceBalance(ctx, iv)
 	if err != nil {
 		return nil, err
-	}
-	total := utils.Round2(iv.TotalAmount)
-	paid = utils.Round2(paid)
-	rem := utils.Round2(total - paid)
-	if rem < 0 {
-		rem = 0
 	}
 	return &InvoiceSummaryDTO{
 		InvoiceID: invoiceID,
 		Total:     total,
 		Paid:      paid,
-		Remaining: rem,
+		Remaining: remaining,
 		Status:    string(iv.Status),
 		Number:    iv.Number,
 	}, nil
+}
+
+// StudentDebtDetails returns open invoice balances for a student, oldest first.
+// It is read-only and includes only issued/paid invoices with remaining debt.
+func (s *Service) StudentDebtDetails(ctx context.Context, studentID int) ([]DebtInvoiceDTO, error) {
+	invs, err := s.db.Invoice.Query().
+		Where(
+			invoice.StudentIDEQ(studentID),
+			invoice.StatusIn(app.InvoiceStatusIssued, app.InvoiceStatusPaid),
+		).
+		Order(
+			ent.Asc(invoice.FieldPeriodYear),
+			ent.Asc(invoice.FieldPeriodMonth),
+			ent.Asc(invoice.FieldID),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]DebtInvoiceDTO, 0, len(invs))
+	for _, iv := range invs {
+		total, paid, remaining, err := s.invoiceBalance(ctx, iv)
+		if err != nil {
+			return nil, err
+		}
+		if remaining <= eps() {
+			continue
+		}
+
+		out = append(out, DebtInvoiceDTO{
+			InvoiceID: iv.ID,
+			Year:      iv.PeriodYear,
+			Month:     iv.PeriodMonth,
+			Number:    iv.Number,
+			Total:     total,
+			Paid:      paid,
+			Remaining: remaining,
+			Status:    string(iv.Status),
+		})
+	}
+
+	return out, nil
 }
 
 // StudentBalance calculates the financial balance for a student, including
@@ -414,13 +461,12 @@ func (s *Service) recomputeInvoiceStatus(ctx context.Context, invoiceID int) err
 		return nil
 	}
 
-	paid, err := s.sumPaymentsForInvoice(ctx, invoiceID)
+	total, paid, remaining, err := s.invoiceBalance(ctx, iv)
 	if err != nil {
 		return err
 	}
 
-	total := iv.TotalAmount
-	if paid+eps() >= total {
+	if paid+eps() >= total || remaining <= eps() {
 		if iv.Status != app.InvoiceStatusPaid {
 			_, err := iv.Update().SetStatus(app.InvoiceStatusPaid).Save(ctx)
 			return err
@@ -434,6 +480,22 @@ func (s *Service) recomputeInvoiceStatus(ctx context.Context, invoiceID int) err
 		return err
 	}
 	return nil
+}
+
+func (s *Service) invoiceBalance(ctx context.Context, iv *ent.Invoice) (total, paid, remaining float64, err error) {
+	paid, err = s.sumPaymentsForInvoice(ctx, iv.ID)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	total = utils.Round2(iv.TotalAmount)
+	paid = utils.Round2(paid)
+	remaining = utils.Round2(total - paid)
+	if remaining < 0 {
+		remaining = 0
+	}
+
+	return total, paid, remaining, nil
 }
 
 // sumPaymentsForInvoice calculates the total amount of all payments

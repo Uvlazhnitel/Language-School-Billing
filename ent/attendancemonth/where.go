@@ -278,26 +278,6 @@ func LessonsCountLTE(v int) predicate.AttendanceMonth {
 	return predicate.AttendanceMonth(sql.FieldLTE(FieldLessonsCount, v))
 }
 
-// SourceEQ applies the EQ predicate on the "source" field.
-func SourceEQ(v Source) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldEQ(FieldSource, v))
-}
-
-// SourceNEQ applies the NEQ predicate on the "source" field.
-func SourceNEQ(v Source) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldNEQ(FieldSource, v))
-}
-
-// SourceIn applies the In predicate on the "source" field.
-func SourceIn(vs ...Source) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldIn(FieldSource, vs...))
-}
-
-// SourceNotIn applies the NotIn predicate on the "source" field.
-func SourceNotIn(vs ...Source) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldNotIn(FieldSource, vs...))
-}
-
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.AttendanceMonth) predicate.AttendanceMonth {
 	return predicate.AttendanceMonth(sql.AndPredicates(predicates...))

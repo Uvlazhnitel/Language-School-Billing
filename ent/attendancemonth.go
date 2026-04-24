@@ -26,8 +26,6 @@ type AttendanceMonth struct {
 	Month int `json:"month,omitempty"`
 	// LessonsCount holds the value of the "lessons_count" field.
 	LessonsCount int `json:"lessons_count,omitempty"`
-	// Source holds the value of the "source" field.
-	Source       attendancemonth.Source `json:"source,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -38,8 +36,6 @@ func (*AttendanceMonth) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case attendancemonth.FieldID, attendancemonth.FieldStudentID, attendancemonth.FieldCourseID, attendancemonth.FieldYear, attendancemonth.FieldMonth, attendancemonth.FieldLessonsCount:
 			values[i] = new(sql.NullInt64)
-		case attendancemonth.FieldSource:
-			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -91,12 +87,6 @@ func (_m *AttendanceMonth) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.LessonsCount = int(value.Int64)
 			}
-		case attendancemonth.FieldSource:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field source", values[i])
-			} else if value.Valid {
-				_m.Source = attendancemonth.Source(value.String)
-			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -147,9 +137,6 @@ func (_m *AttendanceMonth) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("lessons_count=")
 	builder.WriteString(fmt.Sprintf("%v", _m.LessonsCount))
-	builder.WriteString(", ")
-	builder.WriteString("source=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Source))
 	builder.WriteByte(')')
 	return builder.String()
 }

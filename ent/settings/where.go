@@ -83,11 +83,6 @@ func InvoiceDayOfMonth(v int) predicate.Settings {
 	return predicate.Settings(sql.FieldEQ(FieldInvoiceDayOfMonth, v))
 }
 
-// AutoIssue applies equality check predicate on the "auto_issue" field. It's identical to AutoIssueEQ.
-func AutoIssue(v bool) predicate.Settings {
-	return predicate.Settings(sql.FieldEQ(FieldAutoIssue, v))
-}
-
 // Currency applies equality check predicate on the "currency" field. It's identical to CurrencyEQ.
 func Currency(v string) predicate.Settings {
 	return predicate.Settings(sql.FieldEQ(FieldCurrency, v))
@@ -411,16 +406,6 @@ func InvoiceDayOfMonthLT(v int) predicate.Settings {
 // InvoiceDayOfMonthLTE applies the LTE predicate on the "invoice_day_of_month" field.
 func InvoiceDayOfMonthLTE(v int) predicate.Settings {
 	return predicate.Settings(sql.FieldLTE(FieldInvoiceDayOfMonth, v))
-}
-
-// AutoIssueEQ applies the EQ predicate on the "auto_issue" field.
-func AutoIssueEQ(v bool) predicate.Settings {
-	return predicate.Settings(sql.FieldEQ(FieldAutoIssue, v))
-}
-
-// AutoIssueNEQ applies the NEQ predicate on the "auto_issue" field.
-func AutoIssueNEQ(v bool) predicate.Settings {
-	return predicate.Settings(sql.FieldNEQ(FieldAutoIssue, v))
 }
 
 // CurrencyEQ applies the EQ predicate on the "currency" field.

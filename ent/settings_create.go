@@ -95,20 +95,6 @@ func (_c *SettingsCreate) SetNillableInvoiceDayOfMonth(v *int) *SettingsCreate {
 	return _c
 }
 
-// SetAutoIssue sets the "auto_issue" field.
-func (_c *SettingsCreate) SetAutoIssue(v bool) *SettingsCreate {
-	_c.mutation.SetAutoIssue(v)
-	return _c
-}
-
-// SetNillableAutoIssue sets the "auto_issue" field if the given value is not nil.
-func (_c *SettingsCreate) SetNillableAutoIssue(v *bool) *SettingsCreate {
-	if v != nil {
-		_c.SetAutoIssue(*v)
-	}
-	return _c
-}
-
 // SetCurrency sets the "currency" field.
 func (_c *SettingsCreate) SetCurrency(v string) *SettingsCreate {
 	_c.mutation.SetCurrency(v)
@@ -192,10 +178,6 @@ func (_c *SettingsCreate) defaults() {
 		v := settings.DefaultInvoiceDayOfMonth
 		_c.mutation.SetInvoiceDayOfMonth(v)
 	}
-	if _, ok := _c.mutation.AutoIssue(); !ok {
-		v := settings.DefaultAutoIssue
-		_c.mutation.SetAutoIssue(v)
-	}
 	if _, ok := _c.mutation.Currency(); !ok {
 		v := settings.DefaultCurrency
 		_c.mutation.SetCurrency(v)
@@ -225,9 +207,6 @@ func (_c *SettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.InvoiceDayOfMonth(); !ok {
 		return &ValidationError{Name: "invoice_day_of_month", err: errors.New(`ent: missing required field "Settings.invoice_day_of_month"`)}
-	}
-	if _, ok := _c.mutation.AutoIssue(); !ok {
-		return &ValidationError{Name: "auto_issue", err: errors.New(`ent: missing required field "Settings.auto_issue"`)}
 	}
 	if _, ok := _c.mutation.Currency(); !ok {
 		return &ValidationError{Name: "currency", err: errors.New(`ent: missing required field "Settings.currency"`)}
@@ -284,10 +263,6 @@ func (_c *SettingsCreate) createSpec() (*Settings, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.InvoiceDayOfMonth(); ok {
 		_spec.SetField(settings.FieldInvoiceDayOfMonth, field.TypeInt, value)
 		_node.InvoiceDayOfMonth = value
-	}
-	if value, ok := _c.mutation.AutoIssue(); ok {
-		_spec.SetField(settings.FieldAutoIssue, field.TypeBool, value)
-		_node.AutoIssue = value
 	}
 	if value, ok := _c.mutation.Currency(); ok {
 		_spec.SetField(settings.FieldCurrency, field.TypeString, value)

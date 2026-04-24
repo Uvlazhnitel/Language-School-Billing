@@ -57,7 +57,6 @@ type AttendanceMonthMutation struct {
 	addmonth         *int
 	lessons_count    *int
 	addlessons_count *int
-	source           *attendancemonth.Source
 	clearedFields    map[string]struct{}
 	done             bool
 	oldValue         func(context.Context) (*AttendanceMonth, error)
@@ -442,42 +441,6 @@ func (m *AttendanceMonthMutation) ResetLessonsCount() {
 	m.addlessons_count = nil
 }
 
-// SetSource sets the "source" field.
-func (m *AttendanceMonthMutation) SetSource(a attendancemonth.Source) {
-	m.source = &a
-}
-
-// Source returns the value of the "source" field in the mutation.
-func (m *AttendanceMonthMutation) Source() (r attendancemonth.Source, exists bool) {
-	v := m.source
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSource returns the old "source" field's value of the AttendanceMonth entity.
-// If the AttendanceMonth object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AttendanceMonthMutation) OldSource(ctx context.Context) (v attendancemonth.Source, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSource is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSource requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSource: %w", err)
-	}
-	return oldValue.Source, nil
-}
-
-// ResetSource resets all changes to the "source" field.
-func (m *AttendanceMonthMutation) ResetSource() {
-	m.source = nil
-}
-
 // Where appends a list predicates to the AttendanceMonthMutation builder.
 func (m *AttendanceMonthMutation) Where(ps ...predicate.AttendanceMonth) {
 	m.predicates = append(m.predicates, ps...)
@@ -512,7 +475,7 @@ func (m *AttendanceMonthMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *AttendanceMonthMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 5)
 	if m.student_id != nil {
 		fields = append(fields, attendancemonth.FieldStudentID)
 	}
@@ -527,9 +490,6 @@ func (m *AttendanceMonthMutation) Fields() []string {
 	}
 	if m.lessons_count != nil {
 		fields = append(fields, attendancemonth.FieldLessonsCount)
-	}
-	if m.source != nil {
-		fields = append(fields, attendancemonth.FieldSource)
 	}
 	return fields
 }
@@ -549,8 +509,6 @@ func (m *AttendanceMonthMutation) Field(name string) (ent.Value, bool) {
 		return m.Month()
 	case attendancemonth.FieldLessonsCount:
 		return m.LessonsCount()
-	case attendancemonth.FieldSource:
-		return m.Source()
 	}
 	return nil, false
 }
@@ -570,8 +528,6 @@ func (m *AttendanceMonthMutation) OldField(ctx context.Context, name string) (en
 		return m.OldMonth(ctx)
 	case attendancemonth.FieldLessonsCount:
 		return m.OldLessonsCount(ctx)
-	case attendancemonth.FieldSource:
-		return m.OldSource(ctx)
 	}
 	return nil, fmt.Errorf("unknown AttendanceMonth field %s", name)
 }
@@ -615,13 +571,6 @@ func (m *AttendanceMonthMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLessonsCount(v)
-		return nil
-	case attendancemonth.FieldSource:
-		v, ok := value.(attendancemonth.Source)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSource(v)
 		return nil
 	}
 	return fmt.Errorf("unknown AttendanceMonth field %s", name)
@@ -749,9 +698,6 @@ func (m *AttendanceMonthMutation) ResetField(name string) error {
 		return nil
 	case attendancemonth.FieldLessonsCount:
 		m.ResetLessonsCount()
-		return nil
-	case attendancemonth.FieldSource:
-		m.ResetSource()
 		return nil
 	}
 	return fmt.Errorf("unknown AttendanceMonth field %s", name)
@@ -4835,7 +4781,6 @@ type SettingsMutation struct {
 	addnext_seq             *int
 	invoice_day_of_month    *int
 	addinvoice_day_of_month *int
-	auto_issue              *bool
 	currency                *string
 	locale                  *string
 	clearedFields           map[string]struct{}
@@ -5218,42 +5163,6 @@ func (m *SettingsMutation) ResetInvoiceDayOfMonth() {
 	m.addinvoice_day_of_month = nil
 }
 
-// SetAutoIssue sets the "auto_issue" field.
-func (m *SettingsMutation) SetAutoIssue(b bool) {
-	m.auto_issue = &b
-}
-
-// AutoIssue returns the value of the "auto_issue" field in the mutation.
-func (m *SettingsMutation) AutoIssue() (r bool, exists bool) {
-	v := m.auto_issue
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldAutoIssue returns the old "auto_issue" field's value of the Settings entity.
-// If the Settings object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SettingsMutation) OldAutoIssue(ctx context.Context) (v bool, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldAutoIssue is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldAutoIssue requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldAutoIssue: %w", err)
-	}
-	return oldValue.AutoIssue, nil
-}
-
-// ResetAutoIssue resets all changes to the "auto_issue" field.
-func (m *SettingsMutation) ResetAutoIssue() {
-	m.auto_issue = nil
-}
-
 // SetCurrency sets the "currency" field.
 func (m *SettingsMutation) SetCurrency(s string) {
 	m.currency = &s
@@ -5360,7 +5269,7 @@ func (m *SettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SettingsMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 8)
 	if m.singleton_id != nil {
 		fields = append(fields, settings.FieldSingletonID)
 	}
@@ -5378,9 +5287,6 @@ func (m *SettingsMutation) Fields() []string {
 	}
 	if m.invoice_day_of_month != nil {
 		fields = append(fields, settings.FieldInvoiceDayOfMonth)
-	}
-	if m.auto_issue != nil {
-		fields = append(fields, settings.FieldAutoIssue)
 	}
 	if m.currency != nil {
 		fields = append(fields, settings.FieldCurrency)
@@ -5408,8 +5314,6 @@ func (m *SettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.NextSeq()
 	case settings.FieldInvoiceDayOfMonth:
 		return m.InvoiceDayOfMonth()
-	case settings.FieldAutoIssue:
-		return m.AutoIssue()
 	case settings.FieldCurrency:
 		return m.Currency()
 	case settings.FieldLocale:
@@ -5435,8 +5339,6 @@ func (m *SettingsMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldNextSeq(ctx)
 	case settings.FieldInvoiceDayOfMonth:
 		return m.OldInvoiceDayOfMonth(ctx)
-	case settings.FieldAutoIssue:
-		return m.OldAutoIssue(ctx)
 	case settings.FieldCurrency:
 		return m.OldCurrency(ctx)
 	case settings.FieldLocale:
@@ -5491,13 +5393,6 @@ func (m *SettingsMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetInvoiceDayOfMonth(v)
-		return nil
-	case settings.FieldAutoIssue:
-		v, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetAutoIssue(v)
 		return nil
 	case settings.FieldCurrency:
 		v, ok := value.(string)
@@ -5618,9 +5513,6 @@ func (m *SettingsMutation) ResetField(name string) error {
 		return nil
 	case settings.FieldInvoiceDayOfMonth:
 		m.ResetInvoiceDayOfMonth()
-		return nil
-	case settings.FieldAutoIssue:
-		m.ResetAutoIssue()
 		return nil
 	case settings.FieldCurrency:
 		m.ResetCurrency()

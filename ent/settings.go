@@ -28,8 +28,6 @@ type Settings struct {
 	NextSeq int `json:"next_seq,omitempty"`
 	// InvoiceDayOfMonth holds the value of the "invoice_day_of_month" field.
 	InvoiceDayOfMonth int `json:"invoice_day_of_month,omitempty"`
-	// AutoIssue holds the value of the "auto_issue" field.
-	AutoIssue bool `json:"auto_issue,omitempty"`
 	// Currency holds the value of the "currency" field.
 	Currency string `json:"currency,omitempty"`
 	// Locale holds the value of the "locale" field.
@@ -42,8 +40,6 @@ func (*Settings) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case settings.FieldAutoIssue:
-			values[i] = new(sql.NullBool)
 		case settings.FieldID, settings.FieldSingletonID, settings.FieldNextSeq, settings.FieldInvoiceDayOfMonth:
 			values[i] = new(sql.NullInt64)
 		case settings.FieldOrgName, settings.FieldAddress, settings.FieldInvoicePrefix, settings.FieldCurrency, settings.FieldLocale:
@@ -104,12 +100,6 @@ func (_m *Settings) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field invoice_day_of_month", values[i])
 			} else if value.Valid {
 				_m.InvoiceDayOfMonth = int(value.Int64)
-			}
-		case settings.FieldAutoIssue:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field auto_issue", values[i])
-			} else if value.Valid {
-				_m.AutoIssue = value.Bool
 			}
 		case settings.FieldCurrency:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -176,9 +166,6 @@ func (_m *Settings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("invoice_day_of_month=")
 	builder.WriteString(fmt.Sprintf("%v", _m.InvoiceDayOfMonth))
-	builder.WriteString(", ")
-	builder.WriteString("auto_issue=")
-	builder.WriteString(fmt.Sprintf("%v", _m.AutoIssue))
 	builder.WriteString(", ")
 	builder.WriteString("currency=")
 	builder.WriteString(_m.Currency)

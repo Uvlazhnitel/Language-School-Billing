@@ -16,7 +16,6 @@ func (Settings) Fields() []ent.Field {
 		field.String("invoice_prefix").Default("LS"),
 		field.Int("next_seq").Default(1),
 		field.Int("invoice_day_of_month").Default(1),
-		field.Bool("auto_issue").Default(false),
 		field.String("currency").Default("EUR"),
 		field.String("locale").Default("en-US"),
 	}
