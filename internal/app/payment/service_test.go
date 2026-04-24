@@ -8,6 +8,8 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 
 	"langschool/ent"
+	entcourse "langschool/ent/course"
+	entenrollment "langschool/ent/enrollment"
 	"langschool/ent/enttest"
 	entinvoice "langschool/ent/invoice"
 	entpayment "langschool/ent/payment"
@@ -321,6 +323,67 @@ func TestStudentDebtDetails(t *testing.T) {
 	}
 }
 
+func TestMonthOverview(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+
+	st1 := createTestStudent(t, ctx, client, "Overview Debtor One")
+	st2 := createTestStudent(t, ctx, client, "Overview Debtor Two")
+	st3 := createTestStudent(t, ctx, client, "Overview Credit Student")
+	inactiveStudent := createTestStudentWithActive(t, ctx, client, "Overview Inactive Student", false)
+
+	c1 := createTestCourse(t, ctx, client, "Group A", "group", true)
+	c2 := createTestCourse(t, ctx, client, "Individual B", "individual", true)
+	createTestCourse(t, ctx, client, "Inactive Course", "group", false)
+
+	createTestEnrollment(t, ctx, client, st1.ID, c1.ID, "per_lesson")
+	createTestEnrollment(t, ctx, client, st2.ID, c1.ID, "per_lesson")
+	createTestEnrollment(t, ctx, client, st3.ID, c2.ID, "subscription")
+
+	createTestAttendanceMonth(t, ctx, client, st1.ID, c1.ID, 2026, 4, 3)
+	createTestAttendanceMonth(t, ctx, client, st2.ID, c1.ID, 2026, 4, 0)
+	createTestAttendanceMonth(t, ctx, client, st3.ID, c2.ID, 2026, 4, 5)
+
+	draftInvoice := createTestInvoice(t, ctx, client, st3.ID, 2026, 4, 10, app.InvoiceStatusDraft)
+	issuedInvoice := createTestInvoice(t, ctx, client, st1.ID, 2026, 4, 70, app.InvoiceStatusIssued)
+	paidInvoice := createTestInvoice(t, ctx, client, st2.ID, 2026, 4, 30, app.InvoiceStatusPaid)
+	createTestInvoice(t, ctx, client, inactiveStudent.ID, 2026, 4, 25, app.InvoiceStatusCanceled)
+	olderIssuedInvoice := createTestInvoice(t, ctx, client, st2.ID, 2026, 3, 40, app.InvoiceStatusIssued)
+
+	createLinkedPayment(t, ctx, client, st1.ID, issuedInvoice.ID, 20, time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC))
+	createLinkedPayment(t, ctx, client, st2.ID, paidInvoice.ID, 30, time.Date(2026, 4, 11, 0, 0, 0, 0, time.UTC))
+	createLinkedPayment(t, ctx, client, st2.ID, olderIssuedInvoice.ID, 5, time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC))
+	createUnlinkedPayment(t, ctx, client, st3.ID, 10, time.Date(2026, 4, 15, 0, 0, 0, 0, time.UTC))
+
+	got, err := svc.MonthOverview(ctx, 2026, 4)
+	if err != nil {
+		t.Fatalf("MonthOverview returned error: %v", err)
+	}
+
+	assertEqual(t, got.Year, 2026)
+	assertEqual(t, got.Month, 4)
+	assertEqual(t, got.ActiveStudents, 3)
+	assertEqual(t, got.ActiveCourses, 2)
+	assertEqual(t, got.Enrollments, 3)
+	assertEqual(t, got.PerLessonEnrollments, 2)
+	assertEqual(t, got.AttendanceFilled, 1)
+	assertEqual(t, got.AttendanceMissing, 1)
+	assertEqual(t, got.DraftInvoices, 1)
+	assertEqual(t, got.IssuedInvoices, 1)
+	assertEqual(t, got.PaidInvoices, 1)
+	assertFloatEqual(t, got.TotalIssued, 100)
+	assertFloatEqual(t, got.TotalPaid, 50)
+	assertEqual(t, got.DebtorsCount, 2)
+	assertFloatEqual(t, got.TotalDebt, 85)
+
+	if draftInvoice.Status != entinvoice.Status(app.InvoiceStatusDraft) {
+		t.Fatalf("draft invoice status unexpectedly changed")
+	}
+}
+
 func newTestClient(t *testing.T) *ent.Client {
 	t.Helper()
 	return enttest.Open(t, "sqlite3", "file:ent?mode=memory&_fk=1")
@@ -328,13 +391,62 @@ func newTestClient(t *testing.T) *ent.Client {
 
 func createTestStudent(t *testing.T, ctx context.Context, client *ent.Client, fullName string) *ent.Student {
 	t.Helper()
+	return createTestStudentWithActive(t, ctx, client, fullName, true)
+}
+
+func createTestStudentWithActive(t *testing.T, ctx context.Context, client *ent.Client, fullName string, isActive bool) *ent.Student {
+	t.Helper()
 	st, err := client.Student.Create().
 		SetFullName(fullName).
+		SetIsActive(isActive).
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("create student: %v", err)
 	}
 	return st
+}
+
+func createTestCourse(t *testing.T, ctx context.Context, client *ent.Client, name, courseType string, isActive bool) *ent.Course {
+	t.Helper()
+	c, err := client.Course.Create().
+		SetName(name).
+		SetType(entcourse.Type(courseType)).
+		SetLessonPrice(10).
+		SetSubscriptionPrice(25).
+		SetIsActive(isActive).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create course: %v", err)
+	}
+	return c
+}
+
+func createTestEnrollment(t *testing.T, ctx context.Context, client *ent.Client, studentID, courseID int, billingMode string) *ent.Enrollment {
+	t.Helper()
+	enr, err := client.Enrollment.Create().
+		SetStudentID(studentID).
+		SetCourseID(courseID).
+		SetBillingMode(entenrollment.BillingMode(billingMode)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create enrollment: %v", err)
+	}
+	return enr
+}
+
+func createTestAttendanceMonth(t *testing.T, ctx context.Context, client *ent.Client, studentID, courseID, year, month, lessonsCount int) *ent.AttendanceMonth {
+	t.Helper()
+	am, err := client.AttendanceMonth.Create().
+		SetStudentID(studentID).
+		SetCourseID(courseID).
+		SetYear(year).
+		SetMonth(month).
+		SetLessonsCount(lessonsCount).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create attendance month: %v", err)
+	}
+	return am
 }
 
 func createTestInvoice(t *testing.T, ctx context.Context, client *ent.Client, studentID, year, month int, total float64, status string) *ent.Invoice {
@@ -377,6 +489,20 @@ func createLinkedPayment(t *testing.T, ctx context.Context, client *ent.Client, 
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("create linked payment: %v", err)
+	}
+	return p
+}
+
+func createUnlinkedPayment(t *testing.T, ctx context.Context, client *ent.Client, studentID int, amount float64, paidAt time.Time) *ent.Payment {
+	t.Helper()
+	p, err := client.Payment.Create().
+		SetStudentID(studentID).
+		SetPaidAt(paidAt).
+		SetAmount(amount).
+		SetMethod(entpayment.Method(app.PaymentMethodCash)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("create unlinked payment: %v", err)
 	}
 	return p
 }

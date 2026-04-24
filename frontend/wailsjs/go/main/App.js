@@ -94,6 +94,10 @@ export function InvoicePaymentSummary(arg1) {
   return window['go']['main']['App']['InvoicePaymentSummary'](arg1);
 }
 
+export function MonthOverview(arg1, arg2) {
+  return window['go']['main']['App']['MonthOverview'](arg1, arg2);
+}
+
 export function OpenFile(arg1) {
   return window['go']['main']['App']['OpenFile'](arg1);
 }
