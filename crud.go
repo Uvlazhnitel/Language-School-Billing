@@ -255,7 +255,6 @@ func (a *App) StudentUpdate(id int, fullName, phone, email, note string) (*Stude
 		SetPhone(sanitizeInput(phone)).
 		SetEmail(sanitizeInput(email)).
 		SetNote(sanitizeInput(note)).
-		SetNote(strings.TrimSpace(note)).
 		Save(a.ctx)
 	if err != nil {
 		return nil, err

@@ -1,6 +1,7 @@
 package validation
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -34,6 +35,11 @@ func TestSanitizeInput(t *testing.T) {
 			name:     "quotes",
 			input:    `He said "Hello"`,
 			expected: "He said &#34;Hello&#34;",
+		},
+		{
+			name:     "bold HTML tag in note",
+			input:    "<b>Hello</b>",
+			expected: "&lt;b&gt;Hello&lt;/b&gt;",
 		},
 	}
 
@@ -111,6 +117,43 @@ func TestValidateDiscountPct(t *testing.T) {
 			err := ValidateDiscountPct(tt.discountPct)
 			if (err != nil) != tt.wantError {
 				t.Errorf("ValidateDiscountPct() error = %v, wantError %v", err, tt.wantError)
+			}
+		})
+	}
+}
+
+// TestSanitizeInputNotOverwrittenByTrimSpace verifies that SanitizeInput produces
+// a different result than strings.TrimSpace for HTML-containing input.
+// This documents the StudentUpdate bug where SetNote(sanitizeInput(note)) was
+// overwritten by SetNote(strings.TrimSpace(note)), losing HTML escaping.
+func TestSanitizeInputNotOverwrittenByTrimSpace(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+	}{
+		{
+			name:  "bold tag note",
+			input: "<b>Hello</b>",
+		},
+		{
+			name:  "script injection",
+			input: "<script>alert('xss')</script>",
+		},
+		{
+			name:  "ampersand",
+			input: "cats & dogs",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sanitized := SanitizeInput(tt.input)
+			trimmed := strings.TrimSpace(tt.input)
+			if sanitized == trimmed {
+				t.Errorf(
+					"SanitizeInput(%q) == TrimSpace(%q): sanitization had no effect; got %q",
+					tt.input, tt.input, sanitized,
+				)
 			}
 		})
 	}
