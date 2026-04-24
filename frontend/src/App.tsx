@@ -40,6 +40,10 @@ import {
   InvoiceSummaryDTO,
   studentDebtDetails,
   DebtInvoiceDTO,
+  studentBalance,
+  BalanceDTO,
+  paymentListForStudent,
+  PaymentDTO,
 } from "./lib/payments";
 
 const months = [
@@ -268,6 +272,15 @@ export default function App() {
   const [sfEmail, setSfEmail] = useState("");
   const [sfNote, setSfNote] = useState("");
 
+  // ---------------- Student Card ----------------
+  const [studentCardOpen, setStudentCardOpen] = useState(false);
+  const [selectedStudentCard, setSelectedStudentCard] = useState<StudentDTO | null>(null);
+  const [studentCardLoading, setStudentCardLoading] = useState(false);
+  const [studentCardEnrollments, setStudentCardEnrollments] = useState<EnrollmentDTO[]>([]);
+  const [studentCardBalance, setStudentCardBalance] = useState<BalanceDTO | null>(null);
+  const [studentCardDebts, setStudentCardDebts] = useState<DebtInvoiceDTO[]>([]);
+  const [studentCardPayments, setStudentCardPayments] = useState<PaymentDTO[]>([]);
+
   const loadStudents = useCallback(async () => {
     setStudentLoading(true);
     try {
@@ -356,6 +369,38 @@ export default function App() {
         }
       }
     );
+  }
+
+  async function refreshStudentCardData(studentId: number) {
+    try {
+      const [enr, bal, debts, payments] = await Promise.all([
+        listEnrollments(studentId, undefined),
+        studentBalance(studentId),
+        studentDebtDetails(studentId),
+        paymentListForStudent(studentId),
+      ]);
+      setStudentCardEnrollments(enr);
+      setStudentCardBalance(bal);
+      setStudentCardDebts(debts);
+      setStudentCardPayments(payments);
+    } catch (e: any) {
+      showMessage(`Error loading student card: ${String(e?.message ?? e)}`, "error");
+    }
+  }
+
+  async function openStudentCard(s: StudentDTO) {
+    setSelectedStudentCard(s);
+    setStudentCardOpen(true);
+    setStudentCardLoading(true);
+    setStudentCardEnrollments([]);
+    setStudentCardBalance(null);
+    setStudentCardDebts([]);
+    setStudentCardPayments([]);
+    try {
+      await refreshStudentCardData(s.id);
+    } finally {
+      setStudentCardLoading(false);
+    }
   }
 
   // ---------------- Courses ----------------
@@ -717,6 +762,7 @@ export default function App() {
   const [paymentStudentName, setPaymentStudentName] = useState("");
   const [paymentInvoiceId, setPaymentInvoiceId] = useState<number | undefined>(undefined);
   const [returnToDebtDetailsAfterPayment, setReturnToDebtDetailsAfterPayment] = useState(false);
+  const [returnToStudentCardAfterPayment, setReturnToStudentCardAfterPayment] = useState(false);
 
   const loadInvoices = useCallback(async () => {
     setLoadingInv(true);
@@ -848,6 +894,20 @@ export default function App() {
   const closePaymentModal = () => {
     setPaymentModalOpen(false);
     setReturnToDebtDetailsAfterPayment(false);
+    setReturnToStudentCardAfterPayment(false);
+  };
+
+  const openStudentCardPaymentModal = () => {
+    if (!selectedStudentCard) return;
+    const debt = studentCardBalance?.debt ?? 0;
+    setPaymentStudentId(selectedStudentCard.id);
+    setPaymentStudentName(selectedStudentCard.fullName);
+    setPaymentInvoiceId(undefined);
+    setPaymentAmount(debt > 0 ? debt.toFixed(2) : "");
+    setPaymentMethod("cash");
+    setPaymentNote("");
+    setReturnToStudentCardAfterPayment(true);
+    setPaymentModalOpen(true);
   };
 
   const openPaymentFromDebtDetails = () => {
@@ -903,7 +963,12 @@ export default function App() {
         setDebtDetailsOpen(true);
       }
 
+      if (returnToStudentCardAfterPayment && selectedStudentCard?.id === paymentStudentId) {
+        await refreshStudentCardData(paymentStudentId);
+      }
+
       setReturnToDebtDetailsAfterPayment(false);
+      setReturnToStudentCardAfterPayment(false);
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
@@ -1182,11 +1247,20 @@ export default function App() {
                   <tbody>
                     {studentList.map((s) => (
                       <tr key={s.id}>
-                        <td>{s.fullName}</td>
+                        <td>
+                          <button
+                            className="linkButton"
+                            onClick={() => openStudentCard(s)}
+                            title="Open student card"
+                          >
+                            {s.fullName}
+                          </button>
+                        </td>
                         <td>{s.phone}</td>
                         <td>{s.email}</td>
                         <td>{s.isActive ? "yes" : "no"}</td>
                         <td>
+                          <button onClick={() => openStudentCard(s)}>Student card</button>
                           <button onClick={() => openEditStudent(s)}>Edit</button>
                           <button onClick={() => toggleStudentActive(s)}>
                             {s.isActive ? "Deactivate" : "Activate"}
