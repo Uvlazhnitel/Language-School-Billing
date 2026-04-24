@@ -23,10 +23,10 @@ type Dirs struct {
 func Ensure(base string) (Dirs, error) {
 	d := Dirs{
 		Base:     base,
-		Data:     filepath.Join(base, "data"),
-		Backups:  filepath.Join(base, "backups"),
-		Invoices: filepath.Join(base, "invoices"),
-		Exports:  filepath.Join(base, "exports"),
+		Data:     filepath.Join(base, "Data"),
+		Backups:  filepath.Join(base, "Backups"),
+		Invoices: filepath.Join(base, "Invoices"),
+		Exports:  filepath.Join(base, "Exports"),
 	}
 	for _, p := range []string{d.Data, d.Backups, d.Invoices, d.Exports} {
 		if err := os.MkdirAll(p, 0o755); err != nil {
