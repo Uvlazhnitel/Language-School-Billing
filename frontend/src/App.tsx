@@ -57,6 +57,36 @@ const months = [
   "December",
 ];
 
+const monthsRu = [
+  "Январь",
+  "Февраль",
+  "Март",
+  "Апрель",
+  "Май",
+  "Июнь",
+  "Июль",
+  "Август",
+  "Сентябрь",
+  "Октябрь",
+  "Ноябрь",
+  "Декабрь",
+];
+
+const monthsLv = [
+  "Janvāris",
+  "Februāris",
+  "Marts",
+  "Aprīlis",
+  "Maijs",
+  "Jūnijs",
+  "Jūlijs",
+  "Augusts",
+  "Septembris",
+  "Oktobris",
+  "Novembris",
+  "Decembris",
+];
+
 type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
 
 const TAB_META: Record<Tab, { eyebrow: string; title: string; description: string }> = {
@@ -122,6 +152,35 @@ function normalizeMoneyInput(value: string): string | null {
 
 function formatEUR(value: number): string {
   return `€${value.toFixed(2)}`;
+}
+
+function debtMonthLabel(month: number, year: number, locale: "ru" | "lv"): string {
+  const labels = locale === "ru" ? monthsRu : monthsLv;
+  return `${labels[month - 1]} ${year}`;
+}
+
+function buildDebtReminderMessage(
+  locale: "ru" | "lv",
+  debtor: DebtorDTO,
+  details: DebtInvoiceDTO[]
+): string {
+  const intro =
+    locale === "ru"
+      ? "Здравствуйте! Напоминаю об оплате за занятия."
+      : "Sveiki! Atgādinu par apmaksu par nodarbībām.";
+
+  const lines = details.map(
+    (item) => `${debtMonthLabel(item.month, item.year, locale)}: ${formatEUR(item.remaining)}`
+  );
+
+  const totalLine =
+    locale === "ru"
+      ? `Итого к оплате: ${formatEUR(debtor.debt)}`
+      : `Kopā apmaksai: ${formatEUR(debtor.debt)}`;
+
+  const closing = locale === "ru" ? "Спасибо! ArtLab" : "Paldies! ArtLab";
+
+  return [intro, "", ...lines, "", totalLine, "", closing].join("\n");
 }
 
 export default function App() {
@@ -713,6 +772,18 @@ export default function App() {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     } finally {
       setDebtDetailsLoading(false);
+    }
+  }
+
+  async function copyDebtMessage(locale: "ru" | "lv") {
+    if (!selectedDebtor || debtDetailsLoading || debtDetails.length === 0) return;
+
+    try {
+      const text = buildDebtReminderMessage(locale, selectedDebtor, debtDetails);
+      await navigator.clipboard.writeText(text);
+      showMessage(locale === "ru" ? "Russian reminder copied" : "Latvian reminder copied");
+    } catch (e: any) {
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
   }
 
@@ -1804,6 +1875,12 @@ export default function App() {
             )}
 
             <div className="modalActions">
+              {!debtDetailsLoading && debtDetails.length > 0 && (
+                <>
+                  <button onClick={() => void copyDebtMessage("ru")}>Copy RU</button>
+                  <button onClick={() => void copyDebtMessage("lv")}>Copy LV</button>
+                </>
+              )}
               <button onClick={() => setDebtDetailsOpen(false)}>Close</button>
             </div>
           </div>
