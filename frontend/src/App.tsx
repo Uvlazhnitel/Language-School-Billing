@@ -161,6 +161,10 @@ function formatEUR(value: number): string {
   return `€${value.toFixed(2)}`;
 }
 
+function pluralize(count: number, singular: string, plural: string): string {
+  return count === 1 ? singular : plural;
+}
+
 function debtMonthLabel(month: number, year: number, locale: "ru" | "lv"): string {
   const labels = locale === "ru" ? monthsRu : monthsLv;
   return `${labels[month - 1]} ${year}`;
@@ -1256,12 +1260,12 @@ export default function App() {
                       </>
                     ) : overview.draftInvoices > 0 ? (
                       <>
-                        <div style={{ marginBottom: "8px" }}>Issue {overview.draftInvoices} draft invoice{overview.draftInvoices !== 1 ? "s" : ""}</div>
+                        <div style={{ marginBottom: "8px" }}>Issue {overview.draftInvoices} draft {pluralize(overview.draftInvoices, "invoice", "invoices")}</div>
                         <button onClick={() => setTab("invoice")}>Go to Invoices</button>
                       </>
                     ) : overview.debtorsCount > 0 ? (
                       <>
-                        <div style={{ marginBottom: "8px" }}>Review debts ({overview.debtorsCount} debtor{overview.debtorsCount !== 1 ? "s" : ""})</div>
+                        <div style={{ marginBottom: "8px" }}>Review debts ({overview.debtorsCount} {pluralize(overview.debtorsCount, "debtor", "debtors")})</div>
                         <button onClick={() => setTab("debtors")}>Go to Debtors</button>
                       </>
                     ) : (
