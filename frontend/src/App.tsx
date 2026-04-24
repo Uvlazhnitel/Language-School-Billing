@@ -716,6 +716,7 @@ export default function App() {
   const [paymentStudentId, setPaymentStudentId] = useState<number>(0);
   const [paymentStudentName, setPaymentStudentName] = useState("");
   const [paymentInvoiceId, setPaymentInvoiceId] = useState<number | undefined>(undefined);
+  const [returnToDebtDetailsAfterPayment, setReturnToDebtDetailsAfterPayment] = useState(false);
 
   const loadInvoices = useCallback(async () => {
     setLoadingInv(true);
@@ -748,8 +749,10 @@ export default function App() {
     try {
       const data = await listDebtors();
       setDebtors(data);
+      return data;
     } catch (e: any) {
       showMessage(`Error loading debtors: ${String(e?.message ?? e)}`, "error");
+      return [];
     } finally {
       setDebtorsLoading(false);
     }
@@ -831,14 +834,26 @@ export default function App() {
     setPaymentModalOpen(true);
   };
 
-  const openDebtorPaymentModal = (debtor: DebtorDTO) => {
+  const openDebtorPaymentModal = (debtor: DebtorDTO, returnToDebtDetails = false) => {
     setPaymentStudentId(debtor.studentId);
     setPaymentStudentName(debtor.studentName);
     setPaymentInvoiceId(undefined);
     setPaymentAmount(debtor.debt.toFixed(2));
     setPaymentMethod("cash");
     setPaymentNote("");
+    setReturnToDebtDetailsAfterPayment(returnToDebtDetails);
     setPaymentModalOpen(true);
+  };
+
+  const closePaymentModal = () => {
+    setPaymentModalOpen(false);
+    setReturnToDebtDetailsAfterPayment(false);
+  };
+
+  const openPaymentFromDebtDetails = () => {
+    if (!selectedDebtor) return;
+    setDebtDetailsOpen(false);
+    openDebtorPaymentModal(selectedDebtor, true);
   };
 
   const handleCreatePayment = async () => {
@@ -870,7 +885,25 @@ export default function App() {
         await onOpenInvoice(paymentInvoiceId);
         await loadInvoices();
       }
-      await loadDebtors();
+      const updatedDebtors = await loadDebtors();
+
+      if (returnToDebtDetailsAfterPayment && selectedDebtor?.studentId === paymentStudentId) {
+        const updatedDetails = await studentDebtDetails(paymentStudentId);
+        const matchedDebtor = updatedDebtors.find((d) => d.studentId === paymentStudentId);
+        const refreshedDebt = updatedDetails.reduce((sum, item) => sum + item.remaining, 0);
+
+        setSelectedDebtor(
+          matchedDebtor ?? {
+            ...selectedDebtor,
+            debt: refreshedDebt,
+          }
+        );
+        setDebtDetails(updatedDetails);
+        setDebtDetailsLoading(false);
+        setDebtDetailsOpen(true);
+      }
+
+      setReturnToDebtDetailsAfterPayment(false);
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
@@ -1814,7 +1847,7 @@ export default function App() {
               />
             </div>
             <div className="modalActions">
-              <button onClick={() => setPaymentModalOpen(false)}>Cancel</button>
+              <button onClick={closePaymentModal}>Cancel</button>
               <button onClick={handleCreatePayment}>Record Payment</button>
             </div>
           </div>
@@ -1877,6 +1910,7 @@ export default function App() {
             <div className="modalActions">
               {!debtDetailsLoading && debtDetails.length > 0 && (
                 <>
+                  <button onClick={openPaymentFromDebtDetails}>Record Payment</button>
                   <button onClick={() => void copyDebtMessage("ru")}>Copy RU</button>
                   <button onClick={() => void copyDebtMessage("lv")}>Copy LV</button>
                 </>
