@@ -31,10 +31,10 @@ type Row struct {
 	StudentName  string  `json:"studentName"`  // Student's full name
 	CourseID     int     `json:"courseId"`     // ID of the course
 	CourseName   string  `json:"courseName"`   // Course name
-	CourseType   string  `json:"courseType"`    // Course type: "group" or "individual"
+	CourseType   string  `json:"courseType"`   // Course type: "group" or "individual"
 	LessonPrice  float64 `json:"lessonPrice"`  // Price per lesson for this enrollment
-	Count        int     `json:"count"`         // Number of lessons attended in the month
-	CanDelete    bool    `json:"canDelete"`     // Whether enrollment can be safely deleted
+	Count        int     `json:"count"`        // Number of lessons attended in the month
+	CanDelete    bool    `json:"canDelete"`    // Whether enrollment can be safely deleted
 }
 
 // ListPerLesson retrieves attendance records for all enrollments with per-lesson billing
