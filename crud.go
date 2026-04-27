@@ -53,6 +53,7 @@ type StudentDTO struct {
 type CourseDTO struct {
 	ID                int     `json:"id"`                // Unique course identifier
 	Name              string  `json:"name"`              // Course name
+	TeacherName       string  `json:"teacherName"`       // Main teacher name
 	Type              string  `json:"type"`              // Course type: "group" or "individual"
 	LessonPrice       float64 `json:"lessonPrice"`       // Price per lesson
 	SubscriptionPrice float64 `json:"subscriptionPrice"` // Monthly subscription price
@@ -65,6 +66,7 @@ type EnrollmentDTO struct {
 	StudentName string  `json:"studentName"` // Student's full name (for display)
 	CourseID    int     `json:"courseId"`    // ID of the course
 	CourseName  string  `json:"courseName"`  // Course name (for display)
+	TeacherName string  `json:"teacherName"` // Teacher name from the linked course
 	BillingMode string  `json:"billingMode"` // Billing mode: "subscription" or "per_lesson"
 	DiscountPct float64 `json:"discountPct"` // Discount percentage (0-100)
 	Note        string  `json:"note"`        // Optional notes about the enrollment
@@ -138,6 +140,7 @@ func toCourseDTO(c *ent.Course) CourseDTO {
 	return CourseDTO{
 		ID:                c.ID,
 		Name:              c.Name,
+		TeacherName:       c.TeacherName,
 		Type:              string(c.Type),
 		LessonPrice:       utils.Round2(c.LessonPrice),
 		SubscriptionPrice: utils.Round2(c.SubscriptionPrice),
@@ -160,6 +163,7 @@ func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
 	}
 	if e.Edges.Course != nil {
 		dto.CourseName = e.Edges.Course.Name
+		dto.TeacherName = e.Edges.Course.TeacherName
 	}
 	return dto
 }
@@ -350,14 +354,17 @@ func (a *App) StudentDelete(id int) error {
 
 // -------------------- Courses CRUD --------------------
 
-// CourseList lists courses. Optional search by name.
+// CourseList lists courses. Optional search by name or teacher.
 func (a *App) CourseList(q string) ([]CourseDTO, error) {
 	ctx := a.ctx
 	q = strings.TrimSpace(q)
 
 	query := a.db.Ent.Course.Query()
 	if q != "" {
-		query = query.Where(course.NameContainsFold(q))
+		query = query.Where(course.Or(
+			course.NameContainsFold(q),
+			course.TeacherNameContainsFold(q),
+		))
 	}
 
 	cs, err := query.Order(ent.Asc(course.FieldName)).All(ctx)
@@ -386,8 +393,9 @@ func (a *App) CourseGet(id int) (*CourseDTO, error) {
 // CourseCreate creates a new course with the specified details.
 // The course name is sanitized to prevent XSS attacks.
 // Prices must be non-negative. Course type must be either "group" or "individual".
-func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
+func (a *App) CourseCreate(name, teacherName, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = sanitizeInput(name)
+	teacherName = sanitizeInput(teacherName)
 	courseType = strings.TrimSpace(courseType)
 	lessonPrice = utils.Round2(lessonPrice)
 	subscriptionPrice = utils.Round2(subscriptionPrice)
@@ -404,6 +412,7 @@ func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPri
 
 	c, err := a.db.Ent.Course.Create().
 		SetName(name).
+		SetTeacherName(teacherName).
 		SetType(course.Type(courseType)).
 		SetLessonPrice(lessonPrice).
 		SetSubscriptionPrice(subscriptionPrice).
@@ -419,8 +428,9 @@ func (a *App) CourseCreate(name, courseType string, lessonPrice, subscriptionPri
 // CourseUpdate updates an existing course's information.
 // The course name is sanitized to prevent XSS attacks.
 // Prices must be non-negative. Course type must be either "group" or "individual".
-func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
+func (a *App) CourseUpdate(id int, name, teacherName, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = sanitizeInput(name)
+	teacherName = sanitizeInput(teacherName)
 	courseType = strings.TrimSpace(courseType)
 	lessonPrice = utils.Round2(lessonPrice)
 	subscriptionPrice = utils.Round2(subscriptionPrice)
@@ -437,6 +447,7 @@ func (a *App) CourseUpdate(id int, name, courseType string, lessonPrice, subscri
 
 	c, err := a.db.Ent.Course.UpdateOneID(id).
 		SetName(name).
+		SetTeacherName(teacherName).
 		SetType(course.Type(courseType)).
 		SetLessonPrice(lessonPrice).
 		SetSubscriptionPrice(subscriptionPrice).

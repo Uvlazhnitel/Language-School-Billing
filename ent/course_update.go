@@ -42,6 +42,20 @@ func (_u *CourseUpdate) SetNillableName(v *string) *CourseUpdate {
 	return _u
 }
 
+// SetTeacherName sets the "teacher_name" field.
+func (_u *CourseUpdate) SetTeacherName(v string) *CourseUpdate {
+	_u.mutation.SetTeacherName(v)
+	return _u
+}
+
+// SetNillableTeacherName sets the "teacher_name" field if the given value is not nil.
+func (_u *CourseUpdate) SetNillableTeacherName(v *string) *CourseUpdate {
+	if v != nil {
+		_u.SetTeacherName(*v)
+	}
+	return _u
+}
+
 // SetType sets the "type" field.
 func (_u *CourseUpdate) SetType(v course.Type) *CourseUpdate {
 	_u.mutation.SetType(v)
@@ -205,6 +219,9 @@ func (_u *CourseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(course.FieldName, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.TeacherName(); ok {
+		_spec.SetField(course.FieldTeacherName, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(course.FieldType, field.TypeEnum, value)
 	}
@@ -298,6 +315,20 @@ func (_u *CourseUpdateOne) SetName(v string) *CourseUpdateOne {
 func (_u *CourseUpdateOne) SetNillableName(v *string) *CourseUpdateOne {
 	if v != nil {
 		_u.SetName(*v)
+	}
+	return _u
+}
+
+// SetTeacherName sets the "teacher_name" field.
+func (_u *CourseUpdateOne) SetTeacherName(v string) *CourseUpdateOne {
+	_u.mutation.SetTeacherName(v)
+	return _u
+}
+
+// SetNillableTeacherName sets the "teacher_name" field if the given value is not nil.
+func (_u *CourseUpdateOne) SetNillableTeacherName(v *string) *CourseUpdateOne {
+	if v != nil {
+		_u.SetTeacherName(*v)
 	}
 	return _u
 }
@@ -494,6 +525,9 @@ func (_u *CourseUpdateOne) sqlSave(ctx context.Context) (_node *Course, err erro
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(course.FieldName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.TeacherName(); ok {
+		_spec.SetField(course.FieldTeacherName, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(course.FieldType, field.TypeEnum, value)

@@ -22,8 +22,8 @@ export function BackupNow() {
   return window['go']['main']['App']['BackupNow']();
 }
 
-export function CourseCreate(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['CourseCreate'](arg1, arg2, arg3, arg4);
+export function CourseCreate(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['CourseCreate'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function CourseDelete(arg1) {
@@ -38,8 +38,8 @@ export function CourseList(arg1) {
   return window['go']['main']['App']['CourseList'](arg1);
 }
 
-export function CourseUpdate(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['CourseUpdate'](arg1, arg2, arg3, arg4, arg5);
+export function CourseUpdate(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['CourseUpdate'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function DebtorsList() {

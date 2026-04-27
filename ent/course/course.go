@@ -16,6 +16,8 @@ const (
 	FieldID = "id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
+	// FieldTeacherName holds the string denoting the teacher_name field in the database.
+	FieldTeacherName = "teacher_name"
 	// FieldType holds the string denoting the type field in the database.
 	FieldType = "type"
 	// FieldLessonPrice holds the string denoting the lesson_price field in the database.
@@ -41,6 +43,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldName,
+	FieldTeacherName,
 	FieldType,
 	FieldLessonPrice,
 	FieldSubscriptionPrice,
@@ -58,6 +61,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultTeacherName holds the default value on creation for the "teacher_name" field.
+	DefaultTeacherName string
 	// DefaultLessonPrice holds the default value on creation for the "lesson_price" field.
 	DefaultLessonPrice float64
 	// DefaultSubscriptionPrice holds the default value on creation for the "subscription_price" field.
@@ -100,6 +105,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByName orders the results by the name field.
 func ByName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldName, opts...).ToFunc()
+}
+
+// ByTeacherName orders the results by the teacher_name field.
+func ByTeacherName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTeacherName, opts...).ToFunc()
 }
 
 // ByType orders the results by the type field.

@@ -34,6 +34,7 @@ var (
 	CoursesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "name", Type: field.TypeString},
+		{Name: "teacher_name", Type: field.TypeString, Default: ""},
 		{Name: "type", Type: field.TypeEnum, Enums: []string{"group", "individual"}},
 		{Name: "lesson_price", Type: field.TypeFloat64, Default: 0},
 		{Name: "subscription_price", Type: field.TypeFloat64, Default: 0},

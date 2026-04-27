@@ -154,6 +154,7 @@ export namespace main {
 	export class CourseDTO {
 	    id: number;
 	    name: string;
+	    teacherName: string;
 	    type: string;
 	    lessonPrice: number;
 	    subscriptionPrice: number;
@@ -166,6 +167,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
+	        this.teacherName = source["teacherName"];
 	        this.type = source["type"];
 	        this.lessonPrice = source["lessonPrice"];
 	        this.subscriptionPrice = source["subscriptionPrice"];
@@ -177,6 +179,7 @@ export namespace main {
 	    studentName: string;
 	    courseId: number;
 	    courseName: string;
+	    teacherName: string;
 	    billingMode: string;
 	    discountPct: number;
 	    note: string;
@@ -192,6 +195,7 @@ export namespace main {
 	        this.studentName = source["studentName"];
 	        this.courseId = source["courseId"];
 	        this.courseName = source["courseName"];
+	        this.teacherName = source["teacherName"];
 	        this.billingMode = source["billingMode"];
 	        this.discountPct = source["discountPct"];
 	        this.note = source["note"];

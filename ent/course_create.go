@@ -26,6 +26,20 @@ func (_c *CourseCreate) SetName(v string) *CourseCreate {
 	return _c
 }
 
+// SetTeacherName sets the "teacher_name" field.
+func (_c *CourseCreate) SetTeacherName(v string) *CourseCreate {
+	_c.mutation.SetTeacherName(v)
+	return _c
+}
+
+// SetNillableTeacherName sets the "teacher_name" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableTeacherName(v *string) *CourseCreate {
+	if v != nil {
+		_c.SetTeacherName(*v)
+	}
+	return _c
+}
+
 // SetType sets the "type" field.
 func (_c *CourseCreate) SetType(v course.Type) *CourseCreate {
 	_c.mutation.SetType(v)
@@ -124,6 +138,10 @@ func (_c *CourseCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *CourseCreate) defaults() {
+	if _, ok := _c.mutation.TeacherName(); !ok {
+		v := course.DefaultTeacherName
+		_c.mutation.SetTeacherName(v)
+	}
 	if _, ok := _c.mutation.LessonPrice(); !ok {
 		v := course.DefaultLessonPrice
 		_c.mutation.SetLessonPrice(v)
@@ -142,6 +160,9 @@ func (_c *CourseCreate) defaults() {
 func (_c *CourseCreate) check() error {
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Course.name"`)}
+	}
+	if _, ok := _c.mutation.TeacherName(); !ok {
+		return &ValidationError{Name: "teacher_name", err: errors.New(`ent: missing required field "Course.teacher_name"`)}
 	}
 	if _, ok := _c.mutation.GetType(); !ok {
 		return &ValidationError{Name: "type", err: errors.New(`ent: missing required field "Course.type"`)}
@@ -189,6 +210,10 @@ func (_c *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(course.FieldName, field.TypeString, value)
 		_node.Name = value
+	}
+	if value, ok := _c.mutation.TeacherName(); ok {
+		_spec.SetField(course.FieldTeacherName, field.TypeString, value)
+		_node.TeacherName = value
 	}
 	if value, ok := _c.mutation.GetType(); ok {
 		_spec.SetField(course.FieldType, field.TypeEnum, value)

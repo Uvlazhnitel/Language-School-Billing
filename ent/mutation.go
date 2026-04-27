@@ -758,6 +758,7 @@ type CourseMutation struct {
 	typ                   string
 	id                    *int
 	name                  *string
+	teacher_name          *string
 	_type                 *course.Type
 	lesson_price          *float64
 	addlesson_price       *float64
@@ -905,6 +906,42 @@ func (m *CourseMutation) OldName(ctx context.Context) (v string, err error) {
 // ResetName resets all changes to the "name" field.
 func (m *CourseMutation) ResetName() {
 	m.name = nil
+}
+
+// SetTeacherName sets the "teacher_name" field.
+func (m *CourseMutation) SetTeacherName(s string) {
+	m.teacher_name = &s
+}
+
+// TeacherName returns the value of the "teacher_name" field in the mutation.
+func (m *CourseMutation) TeacherName() (r string, exists bool) {
+	v := m.teacher_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTeacherName returns the old "teacher_name" field's value of the Course entity.
+// If the Course object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMutation) OldTeacherName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTeacherName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTeacherName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTeacherName: %w", err)
+	}
+	return oldValue.TeacherName, nil
+}
+
+// ResetTeacherName resets all changes to the "teacher_name" field.
+func (m *CourseMutation) ResetTeacherName() {
+	m.teacher_name = nil
 }
 
 // SetType sets the "type" field.
@@ -1179,9 +1216,12 @@ func (m *CourseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 6)
 	if m.name != nil {
 		fields = append(fields, course.FieldName)
+	}
+	if m.teacher_name != nil {
+		fields = append(fields, course.FieldTeacherName)
 	}
 	if m._type != nil {
 		fields = append(fields, course.FieldType)
@@ -1205,6 +1245,8 @@ func (m *CourseMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case course.FieldName:
 		return m.Name()
+	case course.FieldTeacherName:
+		return m.TeacherName()
 	case course.FieldType:
 		return m.GetType()
 	case course.FieldLessonPrice:
@@ -1224,6 +1266,8 @@ func (m *CourseMutation) OldField(ctx context.Context, name string) (ent.Value, 
 	switch name {
 	case course.FieldName:
 		return m.OldName(ctx)
+	case course.FieldTeacherName:
+		return m.OldTeacherName(ctx)
 	case course.FieldType:
 		return m.OldType(ctx)
 	case course.FieldLessonPrice:
@@ -1247,6 +1291,13 @@ func (m *CourseMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetName(v)
+		return nil
+	case course.FieldTeacherName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTeacherName(v)
 		return nil
 	case course.FieldType:
 		v, ok := value.(course.Type)
@@ -1354,6 +1405,9 @@ func (m *CourseMutation) ResetField(name string) error {
 	switch name {
 	case course.FieldName:
 		m.ResetName()
+		return nil
+	case course.FieldTeacherName:
+		m.ResetTeacherName()
 		return nil
 	case course.FieldType:
 		m.ResetType()

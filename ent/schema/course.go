@@ -11,6 +11,7 @@ type Course struct{ ent.Schema }
 func (Course) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name"),
+		field.String("teacher_name").Default(""),
 		field.Enum("type").Values("group", "individual"),
 		field.Float("lesson_price").Default(0),
 		field.Float("subscription_price").Default(0),

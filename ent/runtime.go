@@ -26,16 +26,20 @@ func init() {
 	attendancemonth.DefaultLessonsCount = attendancemonthDescLessonsCount.Default.(int)
 	courseFields := schema.Course{}.Fields()
 	_ = courseFields
+	// courseDescTeacherName is the schema descriptor for teacher_name field.
+	courseDescTeacherName := courseFields[1].Descriptor()
+	// course.DefaultTeacherName holds the default value on creation for the teacher_name field.
+	course.DefaultTeacherName = courseDescTeacherName.Default.(string)
 	// courseDescLessonPrice is the schema descriptor for lesson_price field.
-	courseDescLessonPrice := courseFields[2].Descriptor()
+	courseDescLessonPrice := courseFields[3].Descriptor()
 	// course.DefaultLessonPrice holds the default value on creation for the lesson_price field.
 	course.DefaultLessonPrice = courseDescLessonPrice.Default.(float64)
 	// courseDescSubscriptionPrice is the schema descriptor for subscription_price field.
-	courseDescSubscriptionPrice := courseFields[3].Descriptor()
+	courseDescSubscriptionPrice := courseFields[4].Descriptor()
 	// course.DefaultSubscriptionPrice holds the default value on creation for the subscription_price field.
 	course.DefaultSubscriptionPrice = courseDescSubscriptionPrice.Default.(float64)
 	// courseDescIsActive is the schema descriptor for is_active field.
-	courseDescIsActive := courseFields[4].Descriptor()
+	courseDescIsActive := courseFields[5].Descriptor()
 	// course.DefaultIsActive holds the default value on creation for the is_active field.
 	course.DefaultIsActive = courseDescIsActive.Default.(bool)
 	enrollmentFields := schema.Enrollment{}.Fields()

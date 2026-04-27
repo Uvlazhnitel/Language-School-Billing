@@ -455,6 +455,7 @@ export default function App() {
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseDTO | null>(null);
   const [cfName, setCfName] = useState("");
+  const [cfTeacherName, setCfTeacherName] = useState("");
   const [cfType, setCfType] = useState<"group" | "individual">("group");
   const [cfLessonPrice, setCfLessonPrice] = useState("0.00");
   const [cfSubscriptionPrice, setCfSubscriptionPrice] = useState("0.00");
@@ -491,6 +492,7 @@ export default function App() {
   function openAddCourse() {
     setEditingCourse(null);
     setCfName("");
+    setCfTeacherName("");
     setCfType("group");
     setCfLessonPrice("");
     setCfSubscriptionPrice("");
@@ -500,6 +502,7 @@ export default function App() {
   function openEditCourse(c: CourseDTO) {
     setEditingCourse(c);
     setCfName(c.name);
+    setCfTeacherName(c.teacherName);
     setCfType(c.type);
     setCfLessonPrice(c.lessonPrice.toFixed(2));
     setCfSubscriptionPrice(c.subscriptionPrice.toFixed(2));
@@ -521,9 +524,16 @@ export default function App() {
 
     try {
       if (editingCourse) {
-        await updateCourse(editingCourse.id, cfName, cfType, lessonPrice, subscriptionPrice);
+        await updateCourse(
+          editingCourse.id,
+          cfName,
+          cfTeacherName,
+          cfType,
+          lessonPrice,
+          subscriptionPrice
+        );
       } else {
-        await createCourse(cfName, cfType, lessonPrice, subscriptionPrice);
+        await createCourse(cfName, cfTeacherName, cfType, lessonPrice, subscriptionPrice);
       }
 
       setCourseModalOpen(false);
@@ -1360,7 +1370,7 @@ export default function App() {
               <div className="controls">
                 <button onClick={openAddCourse}>Add course</button>
                 <input
-                  placeholder="Search course name…"
+                  placeholder="Search course or teacher…"
                   value={courseQ}
                   onChange={(e) => setCourseQ(e.target.value)}
                   style={{ width: 260 }}
@@ -1377,6 +1387,7 @@ export default function App() {
                   <thead>
                     <tr>
                       <th>Name</th>
+                      <th>Teacher</th>
                       <th>Type</th>
                       <th style={{ textAlign: "right" }}>Lesson (EUR)</th>
                       <th style={{ textAlign: "right" }}>Subscription (EUR)</th>
@@ -1387,6 +1398,7 @@ export default function App() {
                     {courseList.map((c) => (
                       <tr key={c.id}>
                         <td>{c.name}</td>
+                        <td>{c.teacherName || "—"}</td>
                         <td>{c.type}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(c.lessonPrice)}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(c.subscriptionPrice)}</td>
@@ -1408,6 +1420,15 @@ export default function App() {
                     <div className="formRow">
                       <label>Name</label>
                       <input value={cfName} onChange={(e) => setCfName(e.target.value)} />
+                    </div>
+
+                    <div className="formRow">
+                      <label>Teacher</label>
+                      <input
+                        value={cfTeacherName}
+                        onChange={(e) => setCfTeacherName(e.target.value)}
+                        placeholder="Teacher name"
+                      />
                     </div>
 
                     <div className="formRow">
@@ -1497,6 +1518,7 @@ export default function App() {
                     <tr>
                       <th>Student</th>
                       <th>Course</th>
+                      <th>Teacher</th>
                       <th>Billing</th>
                       <th style={{ textAlign: "right" }}>Discount</th>
                       <th></th>
@@ -1507,6 +1529,7 @@ export default function App() {
                       <tr key={e.id}>
                         <td>{e.studentName}</td>
                         <td>{e.courseName}</td>
+                        <td>{e.teacherName || "—"}</td>
                         <td>{e.billingMode}</td>
                         <td style={{ textAlign: "right" }}>{e.discountPct.toFixed(1)}%</td>
                         <td>
@@ -1584,7 +1607,7 @@ export default function App() {
                       >
                         {allCourses.map((c) => (
                           <option key={c.id} value={c.id}>
-                            {c.name}
+                            {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
                           </option>
                         ))}
                       </select>
@@ -2108,6 +2131,7 @@ export default function App() {
                       <thead>
                         <tr>
                           <th>Course</th>
+                          <th>Teacher</th>
                           <th>Billing</th>
                           <th style={{ textAlign: "right" }}>Discount</th>
                           <th>Note</th>
@@ -2117,6 +2141,7 @@ export default function App() {
                         {studentCardEnrollments.map((e) => (
                           <tr key={e.id}>
                             <td>{e.courseName}</td>
+                            <td>{e.teacherName || "—"}</td>
                             <td>{e.billingMode}</td>
                             <td style={{ textAlign: "right" }}>{e.discountPct.toFixed(1)}%</td>
                             <td>{e.note}</td>

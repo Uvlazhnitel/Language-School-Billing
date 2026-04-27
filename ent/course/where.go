@@ -59,6 +59,11 @@ func Name(v string) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldName, v))
 }
 
+// TeacherName applies equality check predicate on the "teacher_name" field. It's identical to TeacherNameEQ.
+func TeacherName(v string) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldTeacherName, v))
+}
+
 // LessonPrice applies equality check predicate on the "lesson_price" field. It's identical to LessonPriceEQ.
 func LessonPrice(v float64) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldLessonPrice, v))
@@ -137,6 +142,71 @@ func NameEqualFold(v string) predicate.Course {
 // NameContainsFold applies the ContainsFold predicate on the "name" field.
 func NameContainsFold(v string) predicate.Course {
 	return predicate.Course(sql.FieldContainsFold(FieldName, v))
+}
+
+// TeacherNameEQ applies the EQ predicate on the "teacher_name" field.
+func TeacherNameEQ(v string) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldTeacherName, v))
+}
+
+// TeacherNameNEQ applies the NEQ predicate on the "teacher_name" field.
+func TeacherNameNEQ(v string) predicate.Course {
+	return predicate.Course(sql.FieldNEQ(FieldTeacherName, v))
+}
+
+// TeacherNameIn applies the In predicate on the "teacher_name" field.
+func TeacherNameIn(vs ...string) predicate.Course {
+	return predicate.Course(sql.FieldIn(FieldTeacherName, vs...))
+}
+
+// TeacherNameNotIn applies the NotIn predicate on the "teacher_name" field.
+func TeacherNameNotIn(vs ...string) predicate.Course {
+	return predicate.Course(sql.FieldNotIn(FieldTeacherName, vs...))
+}
+
+// TeacherNameGT applies the GT predicate on the "teacher_name" field.
+func TeacherNameGT(v string) predicate.Course {
+	return predicate.Course(sql.FieldGT(FieldTeacherName, v))
+}
+
+// TeacherNameGTE applies the GTE predicate on the "teacher_name" field.
+func TeacherNameGTE(v string) predicate.Course {
+	return predicate.Course(sql.FieldGTE(FieldTeacherName, v))
+}
+
+// TeacherNameLT applies the LT predicate on the "teacher_name" field.
+func TeacherNameLT(v string) predicate.Course {
+	return predicate.Course(sql.FieldLT(FieldTeacherName, v))
+}
+
+// TeacherNameLTE applies the LTE predicate on the "teacher_name" field.
+func TeacherNameLTE(v string) predicate.Course {
+	return predicate.Course(sql.FieldLTE(FieldTeacherName, v))
+}
+
+// TeacherNameContains applies the Contains predicate on the "teacher_name" field.
+func TeacherNameContains(v string) predicate.Course {
+	return predicate.Course(sql.FieldContains(FieldTeacherName, v))
+}
+
+// TeacherNameHasPrefix applies the HasPrefix predicate on the "teacher_name" field.
+func TeacherNameHasPrefix(v string) predicate.Course {
+	return predicate.Course(sql.FieldHasPrefix(FieldTeacherName, v))
+}
+
+// TeacherNameHasSuffix applies the HasSuffix predicate on the "teacher_name" field.
+func TeacherNameHasSuffix(v string) predicate.Course {
+	return predicate.Course(sql.FieldHasSuffix(FieldTeacherName, v))
+}
+
+// TeacherNameEqualFold applies the EqualFold predicate on the "teacher_name" field.
+func TeacherNameEqualFold(v string) predicate.Course {
+	return predicate.Course(sql.FieldEqualFold(FieldTeacherName, v))
+}
+
+// TeacherNameContainsFold applies the ContainsFold predicate on the "teacher_name" field.
+func TeacherNameContainsFold(v string) predicate.Course {
+	return predicate.Course(sql.FieldContainsFold(FieldTeacherName, v))
 }
 
 // TypeEQ applies the EQ predicate on the "type" field.

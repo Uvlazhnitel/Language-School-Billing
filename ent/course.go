@@ -18,6 +18,8 @@ type Course struct {
 	ID int `json:"id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
+	// TeacherName holds the value of the "teacher_name" field.
+	TeacherName string `json:"teacher_name,omitempty"`
 	// Type holds the value of the "type" field.
 	Type course.Type `json:"type,omitempty"`
 	// LessonPrice holds the value of the "lesson_price" field.
@@ -61,7 +63,7 @@ func (*Course) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case course.FieldID:
 			values[i] = new(sql.NullInt64)
-		case course.FieldName, course.FieldType:
+		case course.FieldName, course.FieldTeacherName, course.FieldType:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -89,6 +91,12 @@ func (_m *Course) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field name", values[i])
 			} else if value.Valid {
 				_m.Name = value.String
+			}
+		case course.FieldTeacherName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field teacher_name", values[i])
+			} else if value.Valid {
+				_m.TeacherName = value.String
 			}
 		case course.FieldType:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -157,6 +165,9 @@ func (_m *Course) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)
+	builder.WriteString(", ")
+	builder.WriteString("teacher_name=")
+	builder.WriteString(_m.TeacherName)
 	builder.WriteString(", ")
 	builder.WriteString("type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Type))
