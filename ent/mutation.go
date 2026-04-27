@@ -5760,6 +5760,9 @@ type StudentMutation struct {
 	phone              *string
 	email              *string
 	note               *string
+	is_minor           *bool
+	payer_name         *string
+	payer_role         *string
 	is_active          *bool
 	clearedFields      map[string]struct{}
 	enrollments        map[int]struct{}
@@ -6018,6 +6021,114 @@ func (m *StudentMutation) ResetNote() {
 	m.note = nil
 }
 
+// SetIsMinor sets the "is_minor" field.
+func (m *StudentMutation) SetIsMinor(b bool) {
+	m.is_minor = &b
+}
+
+// IsMinor returns the value of the "is_minor" field in the mutation.
+func (m *StudentMutation) IsMinor() (r bool, exists bool) {
+	v := m.is_minor
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsMinor returns the old "is_minor" field's value of the Student entity.
+// If the Student object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StudentMutation) OldIsMinor(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsMinor is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsMinor requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsMinor: %w", err)
+	}
+	return oldValue.IsMinor, nil
+}
+
+// ResetIsMinor resets all changes to the "is_minor" field.
+func (m *StudentMutation) ResetIsMinor() {
+	m.is_minor = nil
+}
+
+// SetPayerName sets the "payer_name" field.
+func (m *StudentMutation) SetPayerName(s string) {
+	m.payer_name = &s
+}
+
+// PayerName returns the value of the "payer_name" field in the mutation.
+func (m *StudentMutation) PayerName() (r string, exists bool) {
+	v := m.payer_name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPayerName returns the old "payer_name" field's value of the Student entity.
+// If the Student object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StudentMutation) OldPayerName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPayerName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPayerName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPayerName: %w", err)
+	}
+	return oldValue.PayerName, nil
+}
+
+// ResetPayerName resets all changes to the "payer_name" field.
+func (m *StudentMutation) ResetPayerName() {
+	m.payer_name = nil
+}
+
+// SetPayerRole sets the "payer_role" field.
+func (m *StudentMutation) SetPayerRole(s string) {
+	m.payer_role = &s
+}
+
+// PayerRole returns the value of the "payer_role" field in the mutation.
+func (m *StudentMutation) PayerRole() (r string, exists bool) {
+	v := m.payer_role
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPayerRole returns the old "payer_role" field's value of the Student entity.
+// If the Student object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StudentMutation) OldPayerRole(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPayerRole is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPayerRole requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPayerRole: %w", err)
+	}
+	return oldValue.PayerRole, nil
+}
+
+// ResetPayerRole resets all changes to the "payer_role" field.
+func (m *StudentMutation) ResetPayerRole() {
+	m.payer_role = nil
+}
+
 // SetIsActive sets the "is_active" field.
 func (m *StudentMutation) SetIsActive(b bool) {
 	m.is_active = &b
@@ -6250,7 +6361,7 @@ func (m *StudentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *StudentMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 8)
 	if m.full_name != nil {
 		fields = append(fields, student.FieldFullName)
 	}
@@ -6262,6 +6373,15 @@ func (m *StudentMutation) Fields() []string {
 	}
 	if m.note != nil {
 		fields = append(fields, student.FieldNote)
+	}
+	if m.is_minor != nil {
+		fields = append(fields, student.FieldIsMinor)
+	}
+	if m.payer_name != nil {
+		fields = append(fields, student.FieldPayerName)
+	}
+	if m.payer_role != nil {
+		fields = append(fields, student.FieldPayerRole)
 	}
 	if m.is_active != nil {
 		fields = append(fields, student.FieldIsActive)
@@ -6282,6 +6402,12 @@ func (m *StudentMutation) Field(name string) (ent.Value, bool) {
 		return m.Email()
 	case student.FieldNote:
 		return m.Note()
+	case student.FieldIsMinor:
+		return m.IsMinor()
+	case student.FieldPayerName:
+		return m.PayerName()
+	case student.FieldPayerRole:
+		return m.PayerRole()
 	case student.FieldIsActive:
 		return m.IsActive()
 	}
@@ -6301,6 +6427,12 @@ func (m *StudentMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldEmail(ctx)
 	case student.FieldNote:
 		return m.OldNote(ctx)
+	case student.FieldIsMinor:
+		return m.OldIsMinor(ctx)
+	case student.FieldPayerName:
+		return m.OldPayerName(ctx)
+	case student.FieldPayerRole:
+		return m.OldPayerRole(ctx)
 	case student.FieldIsActive:
 		return m.OldIsActive(ctx)
 	}
@@ -6339,6 +6471,27 @@ func (m *StudentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetNote(v)
+		return nil
+	case student.FieldIsMinor:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsMinor(v)
+		return nil
+	case student.FieldPayerName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPayerName(v)
+		return nil
+	case student.FieldPayerRole:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPayerRole(v)
 		return nil
 	case student.FieldIsActive:
 		v, ok := value.(bool)
@@ -6407,6 +6560,15 @@ func (m *StudentMutation) ResetField(name string) error {
 		return nil
 	case student.FieldNote:
 		m.ResetNote()
+		return nil
+	case student.FieldIsMinor:
+		m.ResetIsMinor()
+		return nil
+	case student.FieldPayerName:
+		m.ResetPayerName()
+		return nil
+	case student.FieldPayerRole:
+		m.ResetPayerRole()
 		return nil
 	case student.FieldIsActive:
 		m.ResetIsActive()

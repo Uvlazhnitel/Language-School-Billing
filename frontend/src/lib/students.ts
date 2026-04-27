@@ -13,6 +13,9 @@ export type StudentDTO = {
   phone: string;
   email: string;
   note: string;
+  isMinor: boolean;
+  payerName: string;
+  payerRole: string;
   isActive: boolean;
 };
 
@@ -28,9 +31,20 @@ export function createStudent(
   fullName: string,
   phone: string,
   email: string,
-  note: string
+  note: string,
+  isMinor: boolean,
+  payerName: string,
+  payerRole: string
 ): Promise<StudentDTO> {
-  return StudentCreate(fullName, phone, email, note) as Promise<StudentDTO>;
+  return StudentCreate(
+    fullName,
+    phone,
+    email,
+    note,
+    isMinor,
+    payerName,
+    payerRole
+  ) as Promise<StudentDTO>;
 }
 
 export function updateStudent(
@@ -38,9 +52,21 @@ export function updateStudent(
   fullName: string,
   phone: string,
   email: string,
-  note: string
+  note: string,
+  isMinor: boolean,
+  payerName: string,
+  payerRole: string
 ): Promise<StudentDTO> {
-  return StudentUpdate(id, fullName, phone, email, note) as Promise<StudentDTO>;
+  return StudentUpdate(
+    id,
+    fullName,
+    phone,
+    email,
+    note,
+    isMinor,
+    payerName,
+    payerRole
+  ) as Promise<StudentDTO>;
 }
 
 export function setStudentActive(id: number, active: boolean): Promise<void> {

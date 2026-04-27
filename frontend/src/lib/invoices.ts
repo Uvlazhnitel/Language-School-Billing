@@ -34,6 +34,11 @@ export type InvoiceDTO = {
   id: number;
   studentId: number;
   studentName: string;
+  recipientName: string;
+  recipientPhone: string;
+  recipientEmail: string;
+  childName: string;
+  isMinor: boolean;
   year: number;
   month: number;
   total: number;

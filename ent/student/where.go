@@ -74,6 +74,21 @@ func Note(v string) predicate.Student {
 	return predicate.Student(sql.FieldEQ(FieldNote, v))
 }
 
+// IsMinor applies equality check predicate on the "is_minor" field. It's identical to IsMinorEQ.
+func IsMinor(v bool) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldIsMinor, v))
+}
+
+// PayerName applies equality check predicate on the "payer_name" field. It's identical to PayerNameEQ.
+func PayerName(v string) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldPayerName, v))
+}
+
+// PayerRole applies equality check predicate on the "payer_role" field. It's identical to PayerRoleEQ.
+func PayerRole(v string) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldPayerRole, v))
+}
+
 // IsActive applies equality check predicate on the "is_active" field. It's identical to IsActiveEQ.
 func IsActive(v bool) predicate.Student {
 	return predicate.Student(sql.FieldEQ(FieldIsActive, v))
@@ -337,6 +352,146 @@ func NoteEqualFold(v string) predicate.Student {
 // NoteContainsFold applies the ContainsFold predicate on the "note" field.
 func NoteContainsFold(v string) predicate.Student {
 	return predicate.Student(sql.FieldContainsFold(FieldNote, v))
+}
+
+// IsMinorEQ applies the EQ predicate on the "is_minor" field.
+func IsMinorEQ(v bool) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldIsMinor, v))
+}
+
+// IsMinorNEQ applies the NEQ predicate on the "is_minor" field.
+func IsMinorNEQ(v bool) predicate.Student {
+	return predicate.Student(sql.FieldNEQ(FieldIsMinor, v))
+}
+
+// PayerNameEQ applies the EQ predicate on the "payer_name" field.
+func PayerNameEQ(v string) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldPayerName, v))
+}
+
+// PayerNameNEQ applies the NEQ predicate on the "payer_name" field.
+func PayerNameNEQ(v string) predicate.Student {
+	return predicate.Student(sql.FieldNEQ(FieldPayerName, v))
+}
+
+// PayerNameIn applies the In predicate on the "payer_name" field.
+func PayerNameIn(vs ...string) predicate.Student {
+	return predicate.Student(sql.FieldIn(FieldPayerName, vs...))
+}
+
+// PayerNameNotIn applies the NotIn predicate on the "payer_name" field.
+func PayerNameNotIn(vs ...string) predicate.Student {
+	return predicate.Student(sql.FieldNotIn(FieldPayerName, vs...))
+}
+
+// PayerNameGT applies the GT predicate on the "payer_name" field.
+func PayerNameGT(v string) predicate.Student {
+	return predicate.Student(sql.FieldGT(FieldPayerName, v))
+}
+
+// PayerNameGTE applies the GTE predicate on the "payer_name" field.
+func PayerNameGTE(v string) predicate.Student {
+	return predicate.Student(sql.FieldGTE(FieldPayerName, v))
+}
+
+// PayerNameLT applies the LT predicate on the "payer_name" field.
+func PayerNameLT(v string) predicate.Student {
+	return predicate.Student(sql.FieldLT(FieldPayerName, v))
+}
+
+// PayerNameLTE applies the LTE predicate on the "payer_name" field.
+func PayerNameLTE(v string) predicate.Student {
+	return predicate.Student(sql.FieldLTE(FieldPayerName, v))
+}
+
+// PayerNameContains applies the Contains predicate on the "payer_name" field.
+func PayerNameContains(v string) predicate.Student {
+	return predicate.Student(sql.FieldContains(FieldPayerName, v))
+}
+
+// PayerNameHasPrefix applies the HasPrefix predicate on the "payer_name" field.
+func PayerNameHasPrefix(v string) predicate.Student {
+	return predicate.Student(sql.FieldHasPrefix(FieldPayerName, v))
+}
+
+// PayerNameHasSuffix applies the HasSuffix predicate on the "payer_name" field.
+func PayerNameHasSuffix(v string) predicate.Student {
+	return predicate.Student(sql.FieldHasSuffix(FieldPayerName, v))
+}
+
+// PayerNameEqualFold applies the EqualFold predicate on the "payer_name" field.
+func PayerNameEqualFold(v string) predicate.Student {
+	return predicate.Student(sql.FieldEqualFold(FieldPayerName, v))
+}
+
+// PayerNameContainsFold applies the ContainsFold predicate on the "payer_name" field.
+func PayerNameContainsFold(v string) predicate.Student {
+	return predicate.Student(sql.FieldContainsFold(FieldPayerName, v))
+}
+
+// PayerRoleEQ applies the EQ predicate on the "payer_role" field.
+func PayerRoleEQ(v string) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldPayerRole, v))
+}
+
+// PayerRoleNEQ applies the NEQ predicate on the "payer_role" field.
+func PayerRoleNEQ(v string) predicate.Student {
+	return predicate.Student(sql.FieldNEQ(FieldPayerRole, v))
+}
+
+// PayerRoleIn applies the In predicate on the "payer_role" field.
+func PayerRoleIn(vs ...string) predicate.Student {
+	return predicate.Student(sql.FieldIn(FieldPayerRole, vs...))
+}
+
+// PayerRoleNotIn applies the NotIn predicate on the "payer_role" field.
+func PayerRoleNotIn(vs ...string) predicate.Student {
+	return predicate.Student(sql.FieldNotIn(FieldPayerRole, vs...))
+}
+
+// PayerRoleGT applies the GT predicate on the "payer_role" field.
+func PayerRoleGT(v string) predicate.Student {
+	return predicate.Student(sql.FieldGT(FieldPayerRole, v))
+}
+
+// PayerRoleGTE applies the GTE predicate on the "payer_role" field.
+func PayerRoleGTE(v string) predicate.Student {
+	return predicate.Student(sql.FieldGTE(FieldPayerRole, v))
+}
+
+// PayerRoleLT applies the LT predicate on the "payer_role" field.
+func PayerRoleLT(v string) predicate.Student {
+	return predicate.Student(sql.FieldLT(FieldPayerRole, v))
+}
+
+// PayerRoleLTE applies the LTE predicate on the "payer_role" field.
+func PayerRoleLTE(v string) predicate.Student {
+	return predicate.Student(sql.FieldLTE(FieldPayerRole, v))
+}
+
+// PayerRoleContains applies the Contains predicate on the "payer_role" field.
+func PayerRoleContains(v string) predicate.Student {
+	return predicate.Student(sql.FieldContains(FieldPayerRole, v))
+}
+
+// PayerRoleHasPrefix applies the HasPrefix predicate on the "payer_role" field.
+func PayerRoleHasPrefix(v string) predicate.Student {
+	return predicate.Student(sql.FieldHasPrefix(FieldPayerRole, v))
+}
+
+// PayerRoleHasSuffix applies the HasSuffix predicate on the "payer_role" field.
+func PayerRoleHasSuffix(v string) predicate.Student {
+	return predicate.Student(sql.FieldHasSuffix(FieldPayerRole, v))
+}
+
+// PayerRoleEqualFold applies the EqualFold predicate on the "payer_role" field.
+func PayerRoleEqualFold(v string) predicate.Student {
+	return predicate.Student(sql.FieldEqualFold(FieldPayerRole, v))
+}
+
+// PayerRoleContainsFold applies the ContainsFold predicate on the "payer_role" field.
+func PayerRoleContainsFold(v string) predicate.Student {
+	return predicate.Student(sql.FieldContainsFold(FieldPayerRole, v))
 }
 
 // IsActiveEQ applies the EQ predicate on the "is_active" field.

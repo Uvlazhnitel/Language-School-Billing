@@ -14,6 +14,9 @@ func (Student) Fields() []ent.Field {
 		field.String("phone").Default(""),
 		field.String("email").Default(""),
 		field.String("note").Default(""),
+		field.Bool("is_minor").Default(false),
+		field.String("payer_name").Default(""),
+		field.String("payer_role").Default(""),
 		field.Bool("is_active").Default(true),
 	}
 }

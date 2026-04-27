@@ -94,6 +94,32 @@ const monthsLv = [
   "Decembris",
 ];
 
+const payerRoleOptions = [
+  "mother",
+  "father",
+  "grandmother",
+  "grandfather",
+  "guardian",
+  "other",
+ ] as const;
+
+function payerRoleLabel(relation: string): string {
+  switch (relation) {
+    case "mother":
+      return "Mother";
+    case "father":
+      return "Father";
+    case "grandmother":
+      return "Grandmother";
+    case "grandfather":
+      return "Grandfather";
+    case "guardian":
+      return "Guardian";
+    default:
+      return "Other";
+  }
+}
+
 type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
 
 const TAB_META: Record<Tab, { eyebrow: string; title: string; description: string }> = {
@@ -169,7 +195,8 @@ function debtMonthLabel(month: number, year: number, locale: "ru" | "lv"): strin
 function buildDebtReminderMessage(
   locale: "ru" | "lv",
   debtor: DebtorDTO,
-  details: DebtInvoiceDTO[]
+  details: DebtInvoiceDTO[],
+  recipientName?: string
 ): string {
   const intro =
     locale === "ru"
@@ -187,7 +214,15 @@ function buildDebtReminderMessage(
 
   const closing = locale === "ru" ? "Спасибо! ArtLab" : "Paldies! ArtLab";
 
-  return [intro, "", ...lines, "", totalLine, "", closing].join("\n");
+  const recipientLine = recipientName?.trim()
+    ? locale === "ru"
+      ? `Получатель: ${recipientName.trim()}`
+      : `Saņēmējs: ${recipientName.trim()}`
+    : null;
+
+  return [intro, recipientLine, recipientLine ? "" : null, ...lines, "", totalLine, "", closing]
+    .filter((value): value is string => value !== null)
+    .join("\n");
 }
 
 export default function App() {
@@ -274,6 +309,9 @@ export default function App() {
   const [sfPhone, setSfPhone] = useState("");
   const [sfEmail, setSfEmail] = useState("");
   const [sfNote, setSfNote] = useState("");
+  const [sfIsMinor, setSfIsMinor] = useState(false);
+  const [sfPayerName, setSfPayerName] = useState("");
+  const [sfPayerRole, setSfPayerRole] = useState("");
 
   // ---------------- Student Card ----------------
   const [studentCardOpen, setStudentCardOpen] = useState(false);
@@ -315,6 +353,9 @@ export default function App() {
     setSfPhone("");
     setSfEmail("");
     setSfNote("");
+    setSfIsMinor(false);
+    setSfPayerName("");
+    setSfPayerRole("");
     setStudentModalOpen(true);
   }
 
@@ -324,6 +365,9 @@ export default function App() {
     setSfPhone(s.phone);
     setSfEmail(s.email);
     setSfNote(s.note);
+    setSfIsMinor(s.isMinor);
+    setSfPayerName(s.payerName ?? "");
+    setSfPayerRole(s.payerRole ?? "");
     setStudentModalOpen(true);
   }
 
@@ -332,13 +376,30 @@ export default function App() {
       showMessage("Full name is required", "error");
       return;
     }
+    if (sfIsMinor && !sfPayerName.trim()) {
+      showMessage("Payer name is required for a minor student", "error");
+      return;
+    }
+    if (sfIsMinor && !sfPayerRole) {
+      showMessage("Payer role is required for a minor student", "error");
+      return;
+    }
     try {
       if (editingStudent) {
         // Update existing student
-        await updateStudent(editingStudent.id, sfName, sfPhone, sfEmail, sfNote);
+        await updateStudent(
+          editingStudent.id,
+          sfName,
+          sfPhone,
+          sfEmail,
+          sfNote,
+          sfIsMinor,
+          sfPayerName,
+          sfPayerRole
+        );
       } else {
         // Create new student
-        await createStudent(sfName, sfPhone, sfEmail, sfNote);
+        await createStudent(sfName, sfPhone, sfEmail, sfNote, sfIsMinor, sfPayerName, sfPayerRole);
       }
       setStudentModalOpen(false);
       await Promise.all([loadStudents(), loadAllStudents()]);
@@ -417,6 +478,13 @@ export default function App() {
     }
   }
 
+  async function resolveDebtReminderRecipient(studentId: number, studentName: string) {
+    const student =
+      selectedStudentCard?.id === studentId ? selectedStudentCard : await getStudent(studentId);
+    if (!student.isMinor) return student.fullName;
+    return student.payerName?.trim() || studentName;
+  }
+
   async function copyStudentCardDebtMessage(locale: "ru" | "lv") {
     if (!selectedStudentCard || studentCardDebts.length === 0 || !studentCardBalance) return;
     try {
@@ -427,7 +495,16 @@ export default function App() {
         totalInvoiced: studentCardBalance.totalInvoiced,
         totalPaid: studentCardBalance.totalPaid,
       };
-      const text = buildDebtReminderMessage(locale, debtorLike, studentCardDebts);
+      const recipientName = await resolveDebtReminderRecipient(
+        selectedStudentCard.id,
+        selectedStudentCard.fullName
+      );
+      const text = buildDebtReminderMessage(
+        locale,
+        debtorLike,
+        studentCardDebts,
+        recipientName
+      );
       await navigator.clipboard.writeText(text);
       showMessage(locale === "ru" ? "Russian reminder copied" : "Latvian reminder copied");
     } catch (e: any) {
@@ -985,7 +1062,11 @@ export default function App() {
     if (!selectedDebtor || debtDetailsLoading || debtDetails.length === 0) return;
 
     try {
-      const text = buildDebtReminderMessage(locale, selectedDebtor, debtDetails);
+      const recipientName = await resolveDebtReminderRecipient(
+        selectedDebtor.studentId,
+        selectedDebtor.studentName
+      );
+      const text = buildDebtReminderMessage(locale, selectedDebtor, debtDetails, recipientName);
       await navigator.clipboard.writeText(text);
       showMessage(locale === "ru" ? "Russian reminder copied" : "Latvian reminder copied");
     } catch (e: any) {
@@ -1446,17 +1527,53 @@ export default function App() {
                       <input value={sfName} onChange={(e) => setSfName(e.target.value)} />
                     </div>
                     <div className="formRow">
-                      <label>Phone</label>
+                      <label>{sfIsMinor ? "Parent phone" : "Phone"}</label>
                       <input value={sfPhone} onChange={(e) => setSfPhone(e.target.value)} />
                     </div>
                     <div className="formRow">
-                      <label>Email</label>
+                      <label>{sfIsMinor ? "Parent email" : "Email"}</label>
                       <input value={sfEmail} onChange={(e) => setSfEmail(e.target.value)} />
                     </div>
                     <div className="formRow">
                       <label>Note</label>
                       <input value={sfNote} onChange={(e) => setSfNote(e.target.value)} />
                     </div>
+                    <div className="formRow">
+                      <label>Child student</label>
+                      <label className="inline">
+                        <input
+                          type="checkbox"
+                          checked={sfIsMinor}
+                          onChange={(e) => setSfIsMinor(e.target.checked)}
+                        />
+                        Is minor
+                      </label>
+                    </div>
+                    {sfIsMinor && (
+                      <>
+                        <div className="formRow">
+                          <label>Payer name</label>
+                          <input
+                            value={sfPayerName}
+                            onChange={(e) => setSfPayerName(e.target.value)}
+                          />
+                        </div>
+                        <div className="formRow">
+                          <label>Payer role</label>
+                          <select
+                            value={sfPayerRole}
+                            onChange={(e) => setSfPayerRole(e.target.value)}
+                          >
+                            <option value="">Select role…</option>
+                            {payerRoleOptions.map((role) => (
+                              <option key={role} value={role}>
+                                {payerRoleLabel(role)}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
 
                     <div className="modalActions">
                       <button onClick={saveStudent}>Save</button>
@@ -2028,6 +2145,16 @@ export default function App() {
                   {invSummary && selectedInv.status !== "draft" && (
                     <div className="invSummary">
                       <div className="invSummaryRow">
+                        <span>Recipient:</span>
+                        <span>{selectedInv.recipientName || selectedInv.studentName}</span>
+                      </div>
+                      {selectedInv.isMinor && (
+                        <div className="invSummaryRow">
+                          <span>For child:</span>
+                          <span>{selectedInv.childName}</span>
+                        </div>
+                      )}
+                      <div className="invSummaryRow">
                         <span>Total:</span>
                         <span className="money">{formatEUR(invSummary.total)}</span>
                       </div>
@@ -2288,13 +2415,13 @@ export default function App() {
                     </div>
                     {selectedStudentCard.phone && (
                       <div className="invSummaryRow">
-                        <span>Phone</span>
+                        <span>{selectedStudentCard.isMinor ? "Parent phone" : "Phone"}</span>
                         <span>{selectedStudentCard.phone}</span>
                       </div>
                     )}
                     {selectedStudentCard.email && (
                       <div className="invSummaryRow">
-                        <span>Email</span>
+                        <span>{selectedStudentCard.isMinor ? "Parent email" : "Email"}</span>
                         <span>{selectedStudentCard.email}</span>
                       </div>
                     )}
@@ -2310,6 +2437,10 @@ export default function App() {
                         {selectedStudentCard.isActive ? "Active" : "Inactive"}
                       </span>
                     </div>
+                    <div className="invSummaryRow">
+                      <span>Student type</span>
+                      <span>{selectedStudentCard.isMinor ? "Child / minor" : "Adult"}</span>
+                    </div>
                   </div>
                   <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
                     <button
@@ -2323,6 +2454,34 @@ export default function App() {
                     <button onClick={openStudentCardPaymentModal}>Record payment</button>
                   </div>
                 </div>
+
+                {selectedStudentCard.isMinor && (
+                  <div className="cardSection">
+                    <div className="cardSectionTitle">Billing contact</div>
+                    <div className="invSummary">
+                      <div className="invSummaryRow">
+                        <span>Payer name</span>
+                        <span>{selectedStudentCard.payerName || "—"}</span>
+                      </div>
+                      <div className="invSummaryRow">
+                        <span>Payer role</span>
+                        <span>
+                          {selectedStudentCard.payerRole
+                            ? payerRoleLabel(selectedStudentCard.payerRole)
+                            : "—"}
+                        </span>
+                      </div>
+                      <div className="invSummaryRow">
+                        <span>Phone</span>
+                        <span>{selectedStudentCard.phone || "—"}</span>
+                      </div>
+                      <div className="invSummaryRow">
+                        <span>Email</span>
+                        <span>{selectedStudentCard.email || "—"}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Enrollments */}
                 <div className="cardSection">
@@ -2483,6 +2642,7 @@ export default function App() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

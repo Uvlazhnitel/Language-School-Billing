@@ -86,6 +86,48 @@ func (_u *StudentUpdate) SetNillableNote(v *string) *StudentUpdate {
 	return _u
 }
 
+// SetIsMinor sets the "is_minor" field.
+func (_u *StudentUpdate) SetIsMinor(v bool) *StudentUpdate {
+	_u.mutation.SetIsMinor(v)
+	return _u
+}
+
+// SetNillableIsMinor sets the "is_minor" field if the given value is not nil.
+func (_u *StudentUpdate) SetNillableIsMinor(v *bool) *StudentUpdate {
+	if v != nil {
+		_u.SetIsMinor(*v)
+	}
+	return _u
+}
+
+// SetPayerName sets the "payer_name" field.
+func (_u *StudentUpdate) SetPayerName(v string) *StudentUpdate {
+	_u.mutation.SetPayerName(v)
+	return _u
+}
+
+// SetNillablePayerName sets the "payer_name" field if the given value is not nil.
+func (_u *StudentUpdate) SetNillablePayerName(v *string) *StudentUpdate {
+	if v != nil {
+		_u.SetPayerName(*v)
+	}
+	return _u
+}
+
+// SetPayerRole sets the "payer_role" field.
+func (_u *StudentUpdate) SetPayerRole(v string) *StudentUpdate {
+	_u.mutation.SetPayerRole(v)
+	return _u
+}
+
+// SetNillablePayerRole sets the "payer_role" field if the given value is not nil.
+func (_u *StudentUpdate) SetNillablePayerRole(v *string) *StudentUpdate {
+	if v != nil {
+		_u.SetPayerRole(*v)
+	}
+	return _u
+}
+
 // SetIsActive sets the "is_active" field.
 func (_u *StudentUpdate) SetIsActive(v bool) *StudentUpdate {
 	_u.mutation.SetIsActive(v)
@@ -260,6 +302,15 @@ func (_u *StudentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(student.FieldNote, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.IsMinor(); ok {
+		_spec.SetField(student.FieldIsMinor, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.PayerName(); ok {
+		_spec.SetField(student.FieldPayerName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PayerRole(); ok {
+		_spec.SetField(student.FieldPayerRole, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.IsActive(); ok {
 		_spec.SetField(student.FieldIsActive, field.TypeBool, value)
@@ -475,6 +526,48 @@ func (_u *StudentUpdateOne) SetNillableNote(v *string) *StudentUpdateOne {
 	return _u
 }
 
+// SetIsMinor sets the "is_minor" field.
+func (_u *StudentUpdateOne) SetIsMinor(v bool) *StudentUpdateOne {
+	_u.mutation.SetIsMinor(v)
+	return _u
+}
+
+// SetNillableIsMinor sets the "is_minor" field if the given value is not nil.
+func (_u *StudentUpdateOne) SetNillableIsMinor(v *bool) *StudentUpdateOne {
+	if v != nil {
+		_u.SetIsMinor(*v)
+	}
+	return _u
+}
+
+// SetPayerName sets the "payer_name" field.
+func (_u *StudentUpdateOne) SetPayerName(v string) *StudentUpdateOne {
+	_u.mutation.SetPayerName(v)
+	return _u
+}
+
+// SetNillablePayerName sets the "payer_name" field if the given value is not nil.
+func (_u *StudentUpdateOne) SetNillablePayerName(v *string) *StudentUpdateOne {
+	if v != nil {
+		_u.SetPayerName(*v)
+	}
+	return _u
+}
+
+// SetPayerRole sets the "payer_role" field.
+func (_u *StudentUpdateOne) SetPayerRole(v string) *StudentUpdateOne {
+	_u.mutation.SetPayerRole(v)
+	return _u
+}
+
+// SetNillablePayerRole sets the "payer_role" field if the given value is not nil.
+func (_u *StudentUpdateOne) SetNillablePayerRole(v *string) *StudentUpdateOne {
+	if v != nil {
+		_u.SetPayerRole(*v)
+	}
+	return _u
+}
+
 // SetIsActive sets the "is_active" field.
 func (_u *StudentUpdateOne) SetIsActive(v bool) *StudentUpdateOne {
 	_u.mutation.SetIsActive(v)
@@ -679,6 +772,15 @@ func (_u *StudentUpdateOne) sqlSave(ctx context.Context) (_node *Student, err er
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(student.FieldNote, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.IsMinor(); ok {
+		_spec.SetField(student.FieldIsMinor, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.PayerName(); ok {
+		_spec.SetField(student.FieldPayerName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PayerRole(); ok {
+		_spec.SetField(student.FieldPayerRole, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.IsActive(); ok {
 		_spec.SetField(student.FieldIsActive, field.TypeBool, value)

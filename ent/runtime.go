@@ -117,8 +117,20 @@ func init() {
 	studentDescNote := studentFields[3].Descriptor()
 	// student.DefaultNote holds the default value on creation for the note field.
 	student.DefaultNote = studentDescNote.Default.(string)
+	// studentDescIsMinor is the schema descriptor for is_minor field.
+	studentDescIsMinor := studentFields[4].Descriptor()
+	// student.DefaultIsMinor holds the default value on creation for the is_minor field.
+	student.DefaultIsMinor = studentDescIsMinor.Default.(bool)
+	// studentDescPayerName is the schema descriptor for payer_name field.
+	studentDescPayerName := studentFields[5].Descriptor()
+	// student.DefaultPayerName holds the default value on creation for the payer_name field.
+	student.DefaultPayerName = studentDescPayerName.Default.(string)
+	// studentDescPayerRole is the schema descriptor for payer_role field.
+	studentDescPayerRole := studentFields[6].Descriptor()
+	// student.DefaultPayerRole holds the default value on creation for the payer_role field.
+	student.DefaultPayerRole = studentDescPayerRole.Default.(string)
 	// studentDescIsActive is the schema descriptor for is_active field.
-	studentDescIsActive := studentFields[4].Descriptor()
+	studentDescIsActive := studentFields[7].Descriptor()
 	// student.DefaultIsActive holds the default value on creation for the is_active field.
 	student.DefaultIsActive = studentDescIsActive.Default.(bool)
 	teacherFields := schema.Teacher{}.Fields()

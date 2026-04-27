@@ -115,7 +115,7 @@ func TestEnrollmentListIncludesTeacherName(t *testing.T) {
 	app, client := newCRUDTestApp(t, "crudenrollment")
 	defer client.Close()
 
-	st, err := app.StudentCreate("Mila Test", "", "", "")
+	st, err := app.StudentCreate("Mila Test", "", "", "", false, "", "")
 	if err != nil {
 		t.Fatalf("StudentCreate: %v", err)
 	}
@@ -205,5 +205,49 @@ func TestMigrateLegacyCourseTeachers(t *testing.T) {
 	}
 	if count != 1 {
 		t.Fatalf("teacher count = %d, want 1", count)
+	}
+}
+
+func TestStudentCreateAndUpdateIsMinor(t *testing.T) {
+	app, client := newCRUDTestApp(t, "crudstudentminor")
+	defer client.Close()
+
+	created, err := app.StudentCreate("Nika Test", "", "", "", true, "Anna Test", "mother")
+	if err != nil {
+		t.Fatalf("StudentCreate: %v", err)
+	}
+	if !created.IsMinor {
+		t.Fatalf("created.IsMinor = false, want true")
+	}
+	if created.PayerName != "Anna Test" {
+		t.Fatalf("created.PayerName = %q, want %q", created.PayerName, "Anna Test")
+	}
+
+	updated, err := app.StudentUpdate(created.ID, "Nika Test", "123", "", "", false, "", "")
+	if err != nil {
+		t.Fatalf("StudentUpdate: %v", err)
+	}
+	if updated.IsMinor {
+		t.Fatalf("updated.IsMinor = true, want false")
+	}
+	if updated.PayerName != "" {
+		t.Fatalf("updated.PayerName = %q, want empty", updated.PayerName)
+	}
+}
+
+func TestStudentCreateMinorRequiresPayerFields(t *testing.T) {
+	app, client := newCRUDTestApp(t, "crudstudentvalidation")
+	defer client.Close()
+
+	if _, err := app.StudentCreate("Minor Missing Payer", "", "", "", true, "", ""); err == nil {
+		t.Fatalf("expected StudentCreate to fail when minor payer fields are missing")
+	}
+
+	if _, err := app.StudentCreate("Minor Missing Role", "", "", "", true, "Anna Parent", ""); err == nil {
+		t.Fatalf("expected StudentCreate to fail when minor payerRole is missing")
+	}
+
+	if _, err := app.StudentCreate("Minor Bad Role", "", "", "", true, "Anna Parent", "uncle"); err == nil {
+		t.Fatalf("expected StudentCreate to fail for invalid payerRole")
 	}
 }

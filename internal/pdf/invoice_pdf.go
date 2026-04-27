@@ -19,6 +19,7 @@ import (
 	"langschool/ent/invoiceline"
 	"langschool/ent/settings"
 	"langschool/internal/app"
+	"langschool/internal/app/recipient"
 )
 
 type artlabProvider struct {
@@ -115,9 +116,9 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 
 	outPath := filepath.Join(dir, fmt.Sprintf("%s.pdf", safeFileName(*iv.Number)))
 
-	studentName := "—"
-	if iv.Edges.Student != nil && strings.TrimSpace(iv.Edges.Student.FullName) != "" {
-		studentName = strings.TrimSpace(iv.Edges.Student.FullName)
+	recipientInfo, err := recipient.ResolveInvoiceRecipient(ctx, db, iv.StudentID)
+	if err != nil {
+		return "", err
 	}
 
 	invoiceDate := time.Now()
@@ -154,7 +155,7 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 
 	drawHeader(p, provider, *iv.Number, invoiceDate)
 	drawProviderBlock(p, provider)
-	drawRecipientBlock(p, studentName)
+	drawRecipientBlock(p, recipientInfo)
 	drawServiceTable(p, provider.Currency, lines, periodStart, periodEnd)
 	drawTotalAndPayment(p, provider, iv.TotalAmount, dueDate, *iv.Number)
 
@@ -253,20 +254,39 @@ func drawProviderBlock(p *fpdf.Fpdf, provider artlabProvider) {
 	p.Ln(5)
 }
 
-func drawRecipientBlock(p *fpdf.Fpdf, studentName string) {
+func drawRecipientBlock(p *fpdf.Fpdf, recipient recipient.Info) {
 	sectionTitle(p, "PAKALPOJUMA SAŅĒMĒJS")
 
 	rows := []struct {
 		label string
 		value string
 	}{
-		{"Vārds, uzvārds / Nosaukums", studentName},
+		{"Vārds, uzvārds / Nosaukums", recipient.RecipientName},
 		{"Personas kods / Reģ. Nr.", ""},
-		{"E-pasts / tālrunis", ""},
+		{"E-pasts / tālrunis", strings.TrimSpace(strings.Join(filterNonEmptyStrings(recipient.RecipientEmail, recipient.RecipientPhone), " / "))},
+	}
+	if recipient.IsMinor {
+		rows = append(rows, struct {
+			label string
+			value string
+		}{
+			label: "Bērns / audzēknis",
+			value: recipient.ChildName,
+		})
 	}
 
 	infoTable(p, rows)
 	p.Ln(5)
+}
+
+func filterNonEmptyStrings(values ...string) []string {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			out = append(out, strings.TrimSpace(value))
+		}
+	}
+	return out
 }
 
 func drawServiceTable(p *fpdf.Fpdf, currency string, lines []*ent.InvoiceLine, periodStart, periodEnd time.Time) {
