@@ -156,6 +156,172 @@ func TestCreateGlobalPaymentLeavesExtraAsCredit(t *testing.T) {
 	assertFloatEqual(t, balance.Debt, 0)
 }
 
+func TestApplyCreditPartialCoversFutureInvoice(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+	st := createTestStudent(t, ctx, client, "Credit Test Partial")
+
+	// Student has unlinked credit of €20.
+	createUnlinkedPayment(t, ctx, client, st.ID, 20, time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
+
+	// New invoice for €50.
+	inv := createTestInvoice(t, ctx, client, st.ID, 2026, 4, 50, app.InvoiceStatusIssued)
+
+	if err := svc.ApplyCreditToOldestInvoices(ctx, st.ID); err != nil {
+		t.Fatalf("ApplyCreditToOldestInvoices: %v", err)
+	}
+
+	// Linked payment of €20 should have been created for the new invoice.
+	payments, err := client.Payment.Query().
+		Where(entpayment.StudentIDEQ(st.ID), entpayment.InvoiceIDEQ(inv.ID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("query linked payments: %v", err)
+	}
+	if len(payments) != 1 {
+		t.Fatalf("expected 1 linked payment for invoice, got %d", len(payments))
+	}
+	assertFloatEqual(t, payments[0].Amount, 20)
+
+	// Original credit payment should be gone.
+	credits, err := client.Payment.Query().
+		Where(entpayment.StudentIDEQ(st.ID), entpayment.InvoiceIDIsNil()).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("query credits: %v", err)
+	}
+	if len(credits) != 0 {
+		t.Fatalf("expected no unlinked credit to remain, got %d", len(credits))
+	}
+
+	// Invoice should still be issued with €30 remaining.
+	summary, err := svc.InvoiceSummary(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("invoice summary: %v", err)
+	}
+	assertFloatEqual(t, summary.Paid, 20)
+	assertFloatEqual(t, summary.Remaining, 30)
+	assertEqual(t, summary.Status, app.InvoiceStatusIssued)
+}
+
+func TestApplyCreditFullyCoversInvoiceLeavesLeftover(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+	st := createTestStudent(t, ctx, client, "Credit Test Full")
+
+	// Student has unlinked credit of €80.
+	createUnlinkedPayment(t, ctx, client, st.ID, 80, time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
+
+	// New invoice for €50.
+	inv := createTestInvoice(t, ctx, client, st.ID, 2026, 4, 50, app.InvoiceStatusIssued)
+
+	if err := svc.ApplyCreditToOldestInvoices(ctx, st.ID); err != nil {
+		t.Fatalf("ApplyCreditToOldestInvoices: %v", err)
+	}
+
+	// Invoice should be fully paid.
+	summary, err := svc.InvoiceSummary(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("invoice summary: %v", err)
+	}
+	assertFloatEqual(t, summary.Paid, 50)
+	assertFloatEqual(t, summary.Remaining, 0)
+	assertEqual(t, summary.Status, app.InvoiceStatusPaid)
+
+	// Remaining credit of €30 should still be unlinked.
+	credits, err := client.Payment.Query().
+		Where(entpayment.StudentIDEQ(st.ID), entpayment.InvoiceIDIsNil()).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("query credits: %v", err)
+	}
+	if len(credits) != 1 {
+		t.Fatalf("expected 1 unlinked credit to remain, got %d", len(credits))
+	}
+	assertFloatEqual(t, credits[0].Amount, 30)
+}
+
+func TestApplyCreditMultipleCreditsOldestFirst(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+	st := createTestStudent(t, ctx, client, "Credit Test Multi")
+
+	// Two unlinked credit payments: €10 cash, €15 bank.
+	createUnlinkedPayment(t, ctx, client, st.ID, 10, time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
+	createUnlinkedPayment(t, ctx, client, st.ID, 15, time.Date(2026, 3, 2, 0, 0, 0, 0, time.UTC))
+
+	// New invoice for €20.
+	inv := createTestInvoice(t, ctx, client, st.ID, 2026, 4, 20, app.InvoiceStatusIssued)
+
+	if err := svc.ApplyCreditToOldestInvoices(ctx, st.ID); err != nil {
+		t.Fatalf("ApplyCreditToOldestInvoices: %v", err)
+	}
+
+	// Total linked payments for the invoice should be €20.
+	linkedPayments, err := client.Payment.Query().
+		Where(entpayment.StudentIDEQ(st.ID), entpayment.InvoiceIDEQ(inv.ID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("query linked payments: %v", err)
+	}
+	totalLinked := 0.0
+	for _, p := range linkedPayments {
+		totalLinked += p.Amount
+	}
+	assertFloatEqual(t, totalLinked, 20)
+
+	// Invoice should be paid.
+	summary, err := svc.InvoiceSummary(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("invoice summary: %v", err)
+	}
+	assertEqual(t, summary.Status, app.InvoiceStatusPaid)
+
+	// Remaining unlinked credit should be €5.
+	credits, err := client.Payment.Query().
+		Where(entpayment.StudentIDEQ(st.ID), entpayment.InvoiceIDIsNil()).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("query credits: %v", err)
+	}
+	if len(credits) != 1 {
+		t.Fatalf("expected 1 unlinked credit to remain, got %d", len(credits))
+	}
+	assertFloatEqual(t, credits[0].Amount, 5)
+}
+
+func TestApplyCreditNoCreditNoOp(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+	st := createTestStudent(t, ctx, client, "Credit Test No-op")
+	inv := createTestInvoice(t, ctx, client, st.ID, 2026, 4, 50, app.InvoiceStatusIssued)
+
+	// No unlinked payments exist – should be a no-op.
+	if err := svc.ApplyCreditToOldestInvoices(ctx, st.ID); err != nil {
+		t.Fatalf("ApplyCreditToOldestInvoices: %v", err)
+	}
+
+	summary, err := svc.InvoiceSummary(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("invoice summary: %v", err)
+	}
+	assertFloatEqual(t, summary.Paid, 0)
+	assertFloatEqual(t, summary.Remaining, 50)
+	assertEqual(t, summary.Status, app.InvoiceStatusIssued)
+}
+
 func TestDeletePaymentRevertsPaidInvoiceBackToIssued(t *testing.T) {
 	ctx := context.Background()
 	client := newTestClient(t)

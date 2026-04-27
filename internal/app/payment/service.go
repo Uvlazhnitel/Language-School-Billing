@@ -278,6 +278,114 @@ func (s *Service) allocateToOldestInvoices(ctx context.Context, studentID int, a
 	return toDTO(firstCreated), nil
 }
 
+// ApplyCreditToOldestInvoices finds all unlinked payments (student credit) for
+// the given student and applies them to open invoices, oldest-first.
+// If credit partially covers an invoice, the invoice remains "issued" with reduced remaining.
+// If credit fully covers an invoice, the invoice becomes "paid".
+// Remaining credit after all invoices are covered stays as unlinked payments.
+func (s *Service) ApplyCreditToOldestInvoices(ctx context.Context, studentID int) error {
+	// Find all unlinked credit payments for this student, ordered oldest first.
+	credits, err := s.db.Payment.Query().
+		Where(
+			payment.StudentIDEQ(studentID),
+			payment.InvoiceIDIsNil(),
+		).
+		Order(ent.Asc(payment.FieldPaidAt), ent.Asc(payment.FieldID)).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+	if len(credits) == 0 {
+		return nil
+	}
+
+	// Find open invoices for this student, oldest first.
+	invoices, err := s.db.Invoice.Query().
+		Where(
+			invoice.StudentIDEQ(studentID),
+			invoice.StatusIn(app.InvoiceStatusIssued, app.InvoiceStatusPaid),
+		).
+		Order(
+			ent.Asc(invoice.FieldPeriodYear),
+			ent.Asc(invoice.FieldPeriodMonth),
+			ent.Asc(invoice.FieldID),
+		).
+		All(ctx)
+	if err != nil {
+		return err
+	}
+
+	for _, iv := range invoices {
+		if len(credits) == 0 {
+			break
+		}
+
+		_, _, invoiceRemaining, err := s.invoiceBalance(ctx, iv)
+		if err != nil {
+			return err
+		}
+		if invoiceRemaining <= eps() {
+			continue
+		}
+
+		toApply := invoiceRemaining
+
+		for len(credits) > 0 && toApply > eps() {
+			cr := credits[0]
+			creditRemaining := utils.Round2(cr.Amount)
+
+			applied := creditRemaining
+			if toApply < applied {
+				applied = toApply
+			}
+			applied = utils.Round2(applied)
+
+			invoiceID := iv.ID
+			note := cr.Note
+			if note != "" {
+				note = fmt.Sprintf("%s (applied from credit)", note)
+			} else {
+				note = "Applied from student credit"
+			}
+
+			// Create new linked payment for the applied amount.
+			if _, err := s.db.Payment.Create().
+				SetStudentID(studentID).
+				SetAmount(applied).
+				SetMethod(cr.Method).
+				SetPaidAt(cr.PaidAt).
+				SetNote(note).
+				SetNillableInvoiceID(&invoiceID).
+				Save(ctx); err != nil {
+				return err
+			}
+
+			// Reduce or delete original credit payment.
+			newCreditAmount := utils.Round2(creditRemaining - applied)
+			if newCreditAmount <= eps() {
+				if err := s.db.Payment.DeleteOneID(cr.ID).Exec(ctx); err != nil {
+					return err
+				}
+				credits = credits[1:]
+			} else {
+				updated, err := cr.Update().SetAmount(newCreditAmount).Save(ctx)
+				if err != nil {
+					return err
+				}
+				credits[0] = updated
+			}
+
+			toApply = utils.Round2(toApply - applied)
+		}
+
+		if err := s.recomputeInvoiceStatus(ctx, iv.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // Delete removes a payment record. If the payment was linked to an invoice,
 // the invoice status will be recomputed (e.g., from "paid" back to "issued"
 // if the invoice is no longer fully paid).

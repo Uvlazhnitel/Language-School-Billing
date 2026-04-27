@@ -318,6 +318,13 @@ func (a *App) InvoiceIssue(id int) (IssueResult, error) {
 	if err != nil {
 		return IssueResult{}, err
 	}
+	dto, err := a.inv.Get(a.ctx, id)
+	if err != nil {
+		return IssueResult{}, err
+	}
+	if err := a.pay.ApplyCreditToOldestInvoices(a.ctx, dto.StudentID); err != nil {
+		return IssueResult{}, err
+	}
 	return IssueResult{Number: num, PdfPath: path}, nil
 }
 
@@ -332,6 +339,21 @@ func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 	cnt, paths, err := a.inv.IssueAll(a.ctx, year, month, a.dirs.Invoices, fonts)
 	if err != nil {
 		return IssueAllResult{}, err
+	}
+	// Apply credit for all students whose invoices were issued in this period.
+	items, err := a.inv.List(a.ctx, year, month, app.InvoiceStatusIssued)
+	if err != nil {
+		return IssueAllResult{}, err
+	}
+	seen := make(map[int]struct{})
+	for _, item := range items {
+		if _, ok := seen[item.StudentID]; ok {
+			continue
+		}
+		seen[item.StudentID] = struct{}{}
+		if err := a.pay.ApplyCreditToOldestInvoices(a.ctx, item.StudentID); err != nil {
+			return IssueAllResult{}, err
+		}
 	}
 	return IssueAllResult{Count: cnt, PdfPaths: paths}, nil
 }
