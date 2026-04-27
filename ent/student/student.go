@@ -20,6 +20,12 @@ const (
 	FieldEmail = "email"
 	// FieldNote holds the string denoting the note field in the database.
 	FieldNote = "note"
+	// FieldIsMinor holds the string denoting the is_minor field in the database.
+	FieldIsMinor = "is_minor"
+	// FieldPayerName holds the string denoting the payer_name field in the database.
+	FieldPayerName = "payer_name"
+	// FieldPayerRole holds the string denoting the payer_role field in the database.
+	FieldPayerRole = "payer_role"
 	// FieldIsActive holds the string denoting the is_active field in the database.
 	FieldIsActive = "is_active"
 	// EdgeEnrollments holds the string denoting the enrollments edge name in mutations.
@@ -60,6 +66,9 @@ var Columns = []string{
 	FieldPhone,
 	FieldEmail,
 	FieldNote,
+	FieldIsMinor,
+	FieldPayerName,
+	FieldPayerRole,
 	FieldIsActive,
 }
 
@@ -80,6 +89,12 @@ var (
 	DefaultEmail string
 	// DefaultNote holds the default value on creation for the "note" field.
 	DefaultNote string
+	// DefaultIsMinor holds the default value on creation for the "is_minor" field.
+	DefaultIsMinor bool
+	// DefaultPayerName holds the default value on creation for the "payer_name" field.
+	DefaultPayerName string
+	// DefaultPayerRole holds the default value on creation for the "payer_role" field.
+	DefaultPayerRole string
 	// DefaultIsActive holds the default value on creation for the "is_active" field.
 	DefaultIsActive bool
 )
@@ -110,6 +125,21 @@ func ByEmail(opts ...sql.OrderTermOption) OrderOption {
 // ByNote orders the results by the note field.
 func ByNote(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldNote, opts...).ToFunc()
+}
+
+// ByIsMinor orders the results by the is_minor field.
+func ByIsMinor(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIsMinor, opts...).ToFunc()
+}
+
+// ByPayerName orders the results by the payer_name field.
+func ByPayerName(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPayerName, opts...).ToFunc()
+}
+
+// ByPayerRole orders the results by the payer_role field.
+func ByPayerRole(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPayerRole, opts...).ToFunc()
 }
 
 // ByIsActive orders the results by the is_active field.

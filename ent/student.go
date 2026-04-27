@@ -24,6 +24,12 @@ type Student struct {
 	Email string `json:"email,omitempty"`
 	// Note holds the value of the "note" field.
 	Note string `json:"note,omitempty"`
+	// IsMinor holds the value of the "is_minor" field.
+	IsMinor bool `json:"is_minor,omitempty"`
+	// PayerName holds the value of the "payer_name" field.
+	PayerName string `json:"payer_name,omitempty"`
+	// PayerRole holds the value of the "payer_role" field.
+	PayerRole string `json:"payer_role,omitempty"`
 	// IsActive holds the value of the "is_active" field.
 	IsActive bool `json:"is_active,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -77,11 +83,11 @@ func (*Student) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case student.FieldIsActive:
+		case student.FieldIsMinor, student.FieldIsActive:
 			values[i] = new(sql.NullBool)
 		case student.FieldID:
 			values[i] = new(sql.NullInt64)
-		case student.FieldFullName, student.FieldPhone, student.FieldEmail, student.FieldNote:
+		case student.FieldFullName, student.FieldPhone, student.FieldEmail, student.FieldNote, student.FieldPayerName, student.FieldPayerRole:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -127,6 +133,24 @@ func (_m *Student) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field note", values[i])
 			} else if value.Valid {
 				_m.Note = value.String
+			}
+		case student.FieldIsMinor:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field is_minor", values[i])
+			} else if value.Valid {
+				_m.IsMinor = value.Bool
+			}
+		case student.FieldPayerName:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field payer_name", values[i])
+			} else if value.Valid {
+				_m.PayerName = value.String
+			}
+		case student.FieldPayerRole:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field payer_role", values[i])
+			} else if value.Valid {
+				_m.PayerRole = value.String
 			}
 		case student.FieldIsActive:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -196,6 +220,15 @@ func (_m *Student) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("note=")
 	builder.WriteString(_m.Note)
+	builder.WriteString(", ")
+	builder.WriteString("is_minor=")
+	builder.WriteString(fmt.Sprintf("%v", _m.IsMinor))
+	builder.WriteString(", ")
+	builder.WriteString("payer_name=")
+	builder.WriteString(_m.PayerName)
+	builder.WriteString(", ")
+	builder.WriteString("payer_role=")
+	builder.WriteString(_m.PayerRole)
 	builder.WriteString(", ")
 	builder.WriteString("is_active=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsActive))

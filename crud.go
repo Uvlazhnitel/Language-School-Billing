@@ -43,12 +43,15 @@ const (
 // StudentDTO represents a student in the frontend.
 // DTOs are used to transfer data between the Go backend and TypeScript frontend.
 type StudentDTO struct {
-	ID       int    `json:"id"`       // Unique student identifier
-	FullName string `json:"fullName"` // Student's full name
-	Phone    string `json:"phone"`    // Contact phone number
-	Email    string `json:"email"`    // Contact email address
-	Note     string `json:"note"`     // Optional notes about the student
-	IsActive bool   `json:"isActive"` // Whether the student is currently active
+	ID        int    `json:"id"`        // Unique student identifier
+	FullName  string `json:"fullName"`  // Student's full name
+	Phone     string `json:"phone"`     // Student or payer phone number
+	Email     string `json:"email"`     // Student or payer email address
+	Note      string `json:"note"`      // Optional notes about the student
+	IsMinor   bool   `json:"isMinor"`   // Whether the student is a child/minor
+	PayerName string `json:"payerName"` // Name of the adult who pays for a minor student
+	PayerRole string `json:"payerRole"` // Role of the payer for a minor student
+	IsActive  bool   `json:"isActive"`  // Whether the student is currently active
 }
 
 // CourseDTO represents a course in the frontend.
@@ -125,6 +128,39 @@ func validateDiscountPct(discountPct float64) error {
 	return nil
 }
 
+func validatePayerRole(role string) error {
+	role = strings.TrimSpace(role)
+	if role == "" {
+		return nil
+	}
+	switch role {
+	case "mother", "father", "grandmother", "grandfather", "guardian", "other":
+		return nil
+	default:
+		return errors.New("payerRole must be one of: mother, father, grandmother, grandfather, guardian, other")
+	}
+}
+
+func validateMinorPayer(isMinor bool, payerName, payerRole string) error {
+	if err := validatePayerRole(payerRole); err != nil {
+		return err
+	}
+	if !isMinor {
+		return nil
+	}
+	if strings.TrimSpace(payerName) == "" {
+		return errors.New("payerName is required when isMinor is true")
+	}
+	if strings.TrimSpace(payerRole) == "" {
+		return errors.New("payerRole is required when isMinor is true")
+	}
+	return nil
+}
+
+func normalizePayerRole(role string) string {
+	return strings.ToLower(strings.TrimSpace(role))
+}
+
 // sanitizeInput trims and HTML-escapes user input to prevent XSS attacks.
 // This is particularly important for fields that end up in PDFs or other outputs.
 func sanitizeInput(input string) string {
@@ -147,12 +183,15 @@ func (a *App) resolveTeacher(ctx context.Context, teacherID *int) (*ent.Teacher,
 // toStudentDTO converts an ent.Student to StudentDTO.
 func toStudentDTO(s *ent.Student) StudentDTO {
 	return StudentDTO{
-		ID:       s.ID,
-		FullName: s.FullName,
-		Phone:    s.Phone,
-		Email:    s.Email,
-		Note:     s.Note,
-		IsActive: s.IsActive,
+		ID:        s.ID,
+		FullName:  s.FullName,
+		Phone:     s.Phone,
+		Email:     s.Email,
+		Note:      s.Note,
+		IsMinor:   s.IsMinor,
+		PayerName: s.PayerName,
+		PayerRole: s.PayerRole,
+		IsActive:  s.IsActive,
 	}
 }
 
@@ -272,9 +311,14 @@ func (a *App) StudentGet(id int) (*StudentDTO, error) {
 // All user inputs are sanitized to prevent XSS attacks.
 // The fullName parameter is required (validated to be non-empty).
 // The student is created as active by default.
-func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, error) {
+func (a *App) StudentCreate(fullName, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
 	fullName = sanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
+		return nil, err
+	}
+	payerName = sanitizeInput(payerName)
+	payerRole = normalizePayerRole(payerRole)
+	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
 		return nil, err
 	}
 
@@ -283,6 +327,9 @@ func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, e
 		SetPhone(sanitizeInput(phone)).
 		SetEmail(sanitizeInput(email)).
 		SetNote(sanitizeInput(note)).
+		SetIsMinor(isMinor).
+		SetPayerName(payerName).
+		SetPayerRole(payerRole).
 		SetIsActive(true).
 		Save(a.ctx)
 	if err != nil {
@@ -296,9 +343,14 @@ func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, e
 // StudentUpdate updates an existing student's information.
 // All user inputs are sanitized to prevent XSS attacks.
 // The fullName parameter is required (validated to be non-empty).
-func (a *App) StudentUpdate(id int, fullName, phone, email, note string) (*StudentDTO, error) {
+func (a *App) StudentUpdate(id int, fullName, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
 	fullName = sanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
+		return nil, err
+	}
+	payerName = sanitizeInput(payerName)
+	payerRole = normalizePayerRole(payerRole)
+	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
 		return nil, err
 	}
 
@@ -307,6 +359,9 @@ func (a *App) StudentUpdate(id int, fullName, phone, email, note string) (*Stude
 		SetPhone(sanitizeInput(phone)).
 		SetEmail(sanitizeInput(email)).
 		SetNote(sanitizeInput(note)).
+		SetIsMinor(isMinor).
+		SetPayerName(payerName).
+		SetPayerRole(payerRole).
 		Save(a.ctx)
 	if err != nil {
 		return nil, err

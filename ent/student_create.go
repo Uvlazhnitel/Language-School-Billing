@@ -70,6 +70,48 @@ func (_c *StudentCreate) SetNillableNote(v *string) *StudentCreate {
 	return _c
 }
 
+// SetIsMinor sets the "is_minor" field.
+func (_c *StudentCreate) SetIsMinor(v bool) *StudentCreate {
+	_c.mutation.SetIsMinor(v)
+	return _c
+}
+
+// SetNillableIsMinor sets the "is_minor" field if the given value is not nil.
+func (_c *StudentCreate) SetNillableIsMinor(v *bool) *StudentCreate {
+	if v != nil {
+		_c.SetIsMinor(*v)
+	}
+	return _c
+}
+
+// SetPayerName sets the "payer_name" field.
+func (_c *StudentCreate) SetPayerName(v string) *StudentCreate {
+	_c.mutation.SetPayerName(v)
+	return _c
+}
+
+// SetNillablePayerName sets the "payer_name" field if the given value is not nil.
+func (_c *StudentCreate) SetNillablePayerName(v *string) *StudentCreate {
+	if v != nil {
+		_c.SetPayerName(*v)
+	}
+	return _c
+}
+
+// SetPayerRole sets the "payer_role" field.
+func (_c *StudentCreate) SetPayerRole(v string) *StudentCreate {
+	_c.mutation.SetPayerRole(v)
+	return _c
+}
+
+// SetNillablePayerRole sets the "payer_role" field if the given value is not nil.
+func (_c *StudentCreate) SetNillablePayerRole(v *string) *StudentCreate {
+	if v != nil {
+		_c.SetPayerRole(*v)
+	}
+	return _c
+}
+
 // SetIsActive sets the "is_active" field.
 func (_c *StudentCreate) SetIsActive(v bool) *StudentCreate {
 	_c.mutation.SetIsActive(v)
@@ -176,6 +218,18 @@ func (_c *StudentCreate) defaults() {
 		v := student.DefaultNote
 		_c.mutation.SetNote(v)
 	}
+	if _, ok := _c.mutation.IsMinor(); !ok {
+		v := student.DefaultIsMinor
+		_c.mutation.SetIsMinor(v)
+	}
+	if _, ok := _c.mutation.PayerName(); !ok {
+		v := student.DefaultPayerName
+		_c.mutation.SetPayerName(v)
+	}
+	if _, ok := _c.mutation.PayerRole(); !ok {
+		v := student.DefaultPayerRole
+		_c.mutation.SetPayerRole(v)
+	}
 	if _, ok := _c.mutation.IsActive(); !ok {
 		v := student.DefaultIsActive
 		_c.mutation.SetIsActive(v)
@@ -195,6 +249,15 @@ func (_c *StudentCreate) check() error {
 	}
 	if _, ok := _c.mutation.Note(); !ok {
 		return &ValidationError{Name: "note", err: errors.New(`ent: missing required field "Student.note"`)}
+	}
+	if _, ok := _c.mutation.IsMinor(); !ok {
+		return &ValidationError{Name: "is_minor", err: errors.New(`ent: missing required field "Student.is_minor"`)}
+	}
+	if _, ok := _c.mutation.PayerName(); !ok {
+		return &ValidationError{Name: "payer_name", err: errors.New(`ent: missing required field "Student.payer_name"`)}
+	}
+	if _, ok := _c.mutation.PayerRole(); !ok {
+		return &ValidationError{Name: "payer_role", err: errors.New(`ent: missing required field "Student.payer_role"`)}
 	}
 	if _, ok := _c.mutation.IsActive(); !ok {
 		return &ValidationError{Name: "is_active", err: errors.New(`ent: missing required field "Student.is_active"`)}
@@ -240,6 +303,18 @@ func (_c *StudentCreate) createSpec() (*Student, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Note(); ok {
 		_spec.SetField(student.FieldNote, field.TypeString, value)
 		_node.Note = value
+	}
+	if value, ok := _c.mutation.IsMinor(); ok {
+		_spec.SetField(student.FieldIsMinor, field.TypeBool, value)
+		_node.IsMinor = value
+	}
+	if value, ok := _c.mutation.PayerName(); ok {
+		_spec.SetField(student.FieldPayerName, field.TypeString, value)
+		_node.PayerName = value
+	}
+	if value, ok := _c.mutation.PayerRole(); ok {
+		_spec.SetField(student.FieldPayerRole, field.TypeString, value)
+		_node.PayerRole = value
 	}
 	if value, ok := _c.mutation.IsActive(); ok {
 		_spec.SetField(student.FieldIsActive, field.TypeBool, value)

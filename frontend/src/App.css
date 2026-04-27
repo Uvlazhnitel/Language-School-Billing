@@ -639,6 +639,33 @@ tfoot td {
   margin-bottom: 10px;
 }
 
+.badgeRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--accent-pale);
+  border: 1px solid rgba(212, 109, 53, 0.14);
+  color: var(--accent-strong);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.formChecks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 10px;
+}
+
 @media (max-width: 760px) {
   .container {
     width: calc(100% - 20px);
@@ -686,6 +713,11 @@ tfoot td {
   .formRow {
     grid-template-columns: 1fr;
     gap: 8px;
+  }
+
+  .formChecks {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   table {

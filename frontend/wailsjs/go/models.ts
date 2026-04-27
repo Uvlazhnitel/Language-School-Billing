@@ -75,6 +75,11 @@ export namespace invoice {
 	    id: number;
 	    studentId: number;
 	    studentName: string;
+	    recipientName: string;
+	    recipientPhone: string;
+	    recipientEmail: string;
+	    childName: string;
+	    isMinor: boolean;
 	    year: number;
 	    month: number;
 	    total: number;
@@ -91,6 +96,11 @@ export namespace invoice {
 	        this.id = source["id"];
 	        this.studentId = source["studentId"];
 	        this.studentName = source["studentName"];
+	        this.recipientName = source["recipientName"];
+	        this.recipientPhone = source["recipientPhone"];
+	        this.recipientEmail = source["recipientEmail"];
+	        this.childName = source["childName"];
+	        this.isMinor = source["isMinor"];
 	        this.year = source["year"];
 	        this.month = source["month"];
 	        this.total = source["total"];
@@ -239,6 +249,9 @@ export namespace main {
 	    phone: string;
 	    email: string;
 	    note: string;
+	    isMinor: boolean;
+	    payerName: string;
+	    payerRole: string;
 	    isActive: boolean;
 	
 	    static createFrom(source: any = {}) {
@@ -252,6 +265,9 @@ export namespace main {
 	        this.phone = source["phone"];
 	        this.email = source["email"];
 	        this.note = source["note"];
+	        this.isMinor = source["isMinor"];
+	        this.payerName = source["payerName"];
+	        this.payerRole = source["payerRole"];
 	        this.isActive = source["isActive"];
 	    }
 	}

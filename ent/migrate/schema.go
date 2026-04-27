@@ -232,6 +232,9 @@ var (
 		{Name: "phone", Type: field.TypeString, Default: ""},
 		{Name: "email", Type: field.TypeString, Default: ""},
 		{Name: "note", Type: field.TypeString, Default: ""},
+		{Name: "is_minor", Type: field.TypeBool, Default: false},
+		{Name: "payer_name", Type: field.TypeString, Default: ""},
+		{Name: "payer_role", Type: field.TypeString, Default: ""},
 		{Name: "is_active", Type: field.TypeBool, Default: true},
 	}
 	// StudentsTable holds the schema information for the "students" table.
