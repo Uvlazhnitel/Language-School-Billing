@@ -64,6 +64,11 @@ func TeacherName(v string) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldTeacherName, v))
 }
 
+// TeacherID applies equality check predicate on the "teacher_id" field. It's identical to TeacherIDEQ.
+func TeacherID(v int) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldTeacherID, v))
+}
+
 // LessonPrice applies equality check predicate on the "lesson_price" field. It's identical to LessonPriceEQ.
 func LessonPrice(v float64) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldLessonPrice, v))
@@ -209,6 +214,36 @@ func TeacherNameContainsFold(v string) predicate.Course {
 	return predicate.Course(sql.FieldContainsFold(FieldTeacherName, v))
 }
 
+// TeacherIDEQ applies the EQ predicate on the "teacher_id" field.
+func TeacherIDEQ(v int) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldTeacherID, v))
+}
+
+// TeacherIDNEQ applies the NEQ predicate on the "teacher_id" field.
+func TeacherIDNEQ(v int) predicate.Course {
+	return predicate.Course(sql.FieldNEQ(FieldTeacherID, v))
+}
+
+// TeacherIDIn applies the In predicate on the "teacher_id" field.
+func TeacherIDIn(vs ...int) predicate.Course {
+	return predicate.Course(sql.FieldIn(FieldTeacherID, vs...))
+}
+
+// TeacherIDNotIn applies the NotIn predicate on the "teacher_id" field.
+func TeacherIDNotIn(vs ...int) predicate.Course {
+	return predicate.Course(sql.FieldNotIn(FieldTeacherID, vs...))
+}
+
+// TeacherIDIsNil applies the IsNil predicate on the "teacher_id" field.
+func TeacherIDIsNil() predicate.Course {
+	return predicate.Course(sql.FieldIsNull(FieldTeacherID))
+}
+
+// TeacherIDNotNil applies the NotNil predicate on the "teacher_id" field.
+func TeacherIDNotNil() predicate.Course {
+	return predicate.Course(sql.FieldNotNull(FieldTeacherID))
+}
+
 // TypeEQ applies the EQ predicate on the "type" field.
 func TypeEQ(v Type) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldType, v))
@@ -317,6 +352,29 @@ func IsActiveEQ(v bool) predicate.Course {
 // IsActiveNEQ applies the NEQ predicate on the "is_active" field.
 func IsActiveNEQ(v bool) predicate.Course {
 	return predicate.Course(sql.FieldNEQ(FieldIsActive, v))
+}
+
+// HasTeacher applies the HasEdge predicate on the "teacher" edge.
+func HasTeacher() predicate.Course {
+	return predicate.Course(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, TeacherTable, TeacherColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasTeacherWith applies the HasEdge predicate on the "teacher" edge with a given conditions (other predicates).
+func HasTeacherWith(preds ...predicate.Teacher) predicate.Course {
+	return predicate.Course(func(s *sql.Selector) {
+		step := newTeacherStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // HasEnrollments applies the HasEdge predicate on the "enrollments" edge.

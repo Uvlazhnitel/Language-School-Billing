@@ -11,6 +11,7 @@ import (
 	"langschool/ent/schema"
 	"langschool/ent/settings"
 	"langschool/ent/student"
+	"langschool/ent/teacher"
 	"time"
 )
 
@@ -31,15 +32,15 @@ func init() {
 	// course.DefaultTeacherName holds the default value on creation for the teacher_name field.
 	course.DefaultTeacherName = courseDescTeacherName.Default.(string)
 	// courseDescLessonPrice is the schema descriptor for lesson_price field.
-	courseDescLessonPrice := courseFields[3].Descriptor()
+	courseDescLessonPrice := courseFields[4].Descriptor()
 	// course.DefaultLessonPrice holds the default value on creation for the lesson_price field.
 	course.DefaultLessonPrice = courseDescLessonPrice.Default.(float64)
 	// courseDescSubscriptionPrice is the schema descriptor for subscription_price field.
-	courseDescSubscriptionPrice := courseFields[4].Descriptor()
+	courseDescSubscriptionPrice := courseFields[5].Descriptor()
 	// course.DefaultSubscriptionPrice holds the default value on creation for the subscription_price field.
 	course.DefaultSubscriptionPrice = courseDescSubscriptionPrice.Default.(float64)
 	// courseDescIsActive is the schema descriptor for is_active field.
-	courseDescIsActive := courseFields[5].Descriptor()
+	courseDescIsActive := courseFields[6].Descriptor()
 	// course.DefaultIsActive holds the default value on creation for the is_active field.
 	course.DefaultIsActive = courseDescIsActive.Default.(bool)
 	enrollmentFields := schema.Enrollment{}.Fields()
@@ -120,4 +121,10 @@ func init() {
 	studentDescIsActive := studentFields[4].Descriptor()
 	// student.DefaultIsActive holds the default value on creation for the is_active field.
 	student.DefaultIsActive = studentDescIsActive.Default.(bool)
+	teacherFields := schema.Teacher{}.Fields()
+	_ = teacherFields
+	// teacherDescIsActive is the schema descriptor for is_active field.
+	teacherDescIsActive := teacherFields[1].Descriptor()
+	// teacher.DefaultIsActive holds the default value on creation for the is_active field.
+	teacher.DefaultIsActive = teacherDescIsActive.Default.(bool)
 }

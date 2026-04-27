@@ -14,6 +14,7 @@ import (
 	"langschool/ent/payment"
 	"langschool/ent/settings"
 	"langschool/ent/student"
+	"langschool/ent/teacher"
 	"reflect"
 	"sync"
 
@@ -88,6 +89,7 @@ func checkColumn(t, c string) error {
 			payment.Table:         payment.ValidColumn,
 			settings.Table:        settings.ValidColumn,
 			student.Table:         student.ValidColumn,
+			teacher.Table:         teacher.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

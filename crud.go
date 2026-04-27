@@ -6,6 +6,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"html"
@@ -18,6 +19,7 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
 	"langschool/ent/student"
+	"langschool/ent/teacher"
 	"langschool/internal/app"
 	"langschool/internal/app/utils"
 )
@@ -51,8 +53,9 @@ type StudentDTO struct {
 
 // CourseDTO represents a course in the frontend.
 type CourseDTO struct {
-	ID                int     `json:"id"`                // Unique course identifier
-	Name              string  `json:"name"`              // Course name
+	ID                int     `json:"id"`   // Unique course identifier
+	Name              string  `json:"name"` // Course name
+	TeacherID         *int    `json:"teacherId,omitempty"`
 	TeacherName       string  `json:"teacherName"`       // Main teacher name
 	Type              string  `json:"type"`              // Course type: "group" or "individual"
 	LessonPrice       float64 `json:"lessonPrice"`       // Price per lesson
@@ -66,10 +69,18 @@ type EnrollmentDTO struct {
 	StudentName string  `json:"studentName"` // Student's full name (for display)
 	CourseID    int     `json:"courseId"`    // ID of the course
 	CourseName  string  `json:"courseName"`  // Course name (for display)
+	TeacherID   *int    `json:"teacherId,omitempty"`
 	TeacherName string  `json:"teacherName"` // Teacher name from the linked course
 	BillingMode string  `json:"billingMode"` // Billing mode: "subscription" or "per_lesson"
 	DiscountPct float64 `json:"discountPct"` // Discount percentage (0-100)
 	Note        string  `json:"note"`        // Optional notes about the enrollment
+}
+
+// TeacherDTO represents a teacher in the frontend.
+type TeacherDTO struct {
+	ID       int    `json:"id"`
+	FullName string `json:"fullName"`
+	IsActive bool   `json:"isActive"`
 }
 
 // -------------------- Validation helpers --------------------
@@ -121,6 +132,16 @@ func sanitizeInput(input string) string {
 	return html.EscapeString(trimmed)
 }
 
+func (a *App) resolveTeacher(ctx context.Context, teacherID *int) (*ent.Teacher, error) {
+	if teacherID == nil {
+		return nil, nil
+	}
+	if *teacherID <= 0 {
+		return nil, errors.New("teacherID must be > 0 when provided")
+	}
+	return a.db.Ent.Teacher.Get(ctx, *teacherID)
+}
+
 // -------------------- DTO conversion helpers --------------------
 
 // toStudentDTO converts an ent.Student to StudentDTO.
@@ -137,7 +158,7 @@ func toStudentDTO(s *ent.Student) StudentDTO {
 
 // toCourseDTO converts an ent.Course to CourseDTO.
 func toCourseDTO(c *ent.Course) CourseDTO {
-	return CourseDTO{
+	dto := CourseDTO{
 		ID:                c.ID,
 		Name:              c.Name,
 		TeacherName:       c.TeacherName,
@@ -145,6 +166,16 @@ func toCourseDTO(c *ent.Course) CourseDTO {
 		LessonPrice:       utils.Round2(c.LessonPrice),
 		SubscriptionPrice: utils.Round2(c.SubscriptionPrice),
 	}
+	if c.TeacherID != nil {
+		id := *c.TeacherID
+		dto.TeacherID = &id
+	}
+	if c.Edges.Teacher != nil {
+		dto.TeacherName = c.Edges.Teacher.FullName
+		id := c.Edges.Teacher.ID
+		dto.TeacherID = &id
+	}
+	return dto
 }
 
 // toEnrollmentDTO converts an ent.Enrollment to EnrollmentDTO.
@@ -164,8 +195,25 @@ func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
 	if e.Edges.Course != nil {
 		dto.CourseName = e.Edges.Course.Name
 		dto.TeacherName = e.Edges.Course.TeacherName
+		if e.Edges.Course.TeacherID != nil {
+			id := *e.Edges.Course.TeacherID
+			dto.TeacherID = &id
+		}
+		if e.Edges.Course.Edges.Teacher != nil {
+			dto.TeacherName = e.Edges.Course.Edges.Teacher.FullName
+			id := e.Edges.Course.Edges.Teacher.ID
+			dto.TeacherID = &id
+		}
 	}
 	return dto
+}
+
+func toTeacherDTO(t *ent.Teacher) TeacherDTO {
+	return TeacherDTO{
+		ID:       t.ID,
+		FullName: t.FullName,
+		IsActive: t.IsActive,
+	}
 }
 
 // -------------------- Students CRUD --------------------
@@ -354,16 +402,70 @@ func (a *App) StudentDelete(id int) error {
 
 // -------------------- Courses CRUD --------------------
 
+// TeacherList returns active teachers, optionally filtered by name.
+func (a *App) TeacherList(q string) ([]TeacherDTO, error) {
+	ctx := a.ctx
+	q = strings.TrimSpace(q)
+
+	query := a.db.Ent.Teacher.Query().Where(teacher.IsActiveEQ(true))
+	if q != "" {
+		query = query.Where(teacher.FullNameContainsFold(q))
+	}
+
+	teachers, err := query.Order(ent.Asc(teacher.FieldFullName)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]TeacherDTO, 0, len(teachers))
+	for _, t := range teachers {
+		out = append(out, toTeacherDTO(t))
+	}
+	return out, nil
+}
+
+// TeacherCreate creates a new teacher or returns an existing teacher with the same name.
+func (a *App) TeacherCreate(fullName string) (*TeacherDTO, error) {
+	ctx := a.ctx
+	fullName = sanitizeInput(fullName)
+	if err := validateNonEmpty(fullName, "fullName"); err != nil {
+		return nil, err
+	}
+
+	existing, err := a.db.Ent.Teacher.Query().
+		Where(teacher.FullNameEqualFold(fullName)).
+		Only(ctx)
+	if err == nil {
+		dto := toTeacherDTO(existing)
+		return &dto, nil
+	}
+	if err != nil && !ent.IsNotFound(err) {
+		return nil, err
+	}
+
+	tch, err := a.db.Ent.Teacher.Create().
+		SetFullName(fullName).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	dto := toTeacherDTO(tch)
+	return &dto, nil
+}
+
 // CourseList lists courses. Optional search by name or teacher.
 func (a *App) CourseList(q string) ([]CourseDTO, error) {
 	ctx := a.ctx
 	q = strings.TrimSpace(q)
 
-	query := a.db.Ent.Course.Query()
+	query := a.db.Ent.Course.Query().WithTeacher()
 	if q != "" {
 		query = query.Where(course.Or(
 			course.NameContainsFold(q),
 			course.TeacherNameContainsFold(q),
+			course.HasTeacherWith(teacher.FullNameContainsFold(q)),
 		))
 	}
 
@@ -382,7 +484,10 @@ func (a *App) CourseList(q string) ([]CourseDTO, error) {
 // CourseGet retrieves a single course by ID.
 // Returns an error if the course is not found.
 func (a *App) CourseGet(id int) (*CourseDTO, error) {
-	c, err := a.db.Ent.Course.Get(a.ctx, id)
+	c, err := a.db.Ent.Course.Query().
+		Where(course.IDEQ(id)).
+		WithTeacher().
+		Only(a.ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -393,9 +498,8 @@ func (a *App) CourseGet(id int) (*CourseDTO, error) {
 // CourseCreate creates a new course with the specified details.
 // The course name is sanitized to prevent XSS attacks.
 // Prices must be non-negative. Course type must be either "group" or "individual".
-func (a *App) CourseCreate(name, teacherName, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
+func (a *App) CourseCreate(name string, teacherID *int, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = sanitizeInput(name)
-	teacherName = sanitizeInput(teacherName)
 	courseType = strings.TrimSpace(courseType)
 	lessonPrice = utils.Round2(lessonPrice)
 	subscriptionPrice = utils.Round2(subscriptionPrice)
@@ -409,18 +513,33 @@ func (a *App) CourseCreate(name, teacherName, courseType string, lessonPrice, su
 	if err := validatePrices(lessonPrice, subscriptionPrice); err != nil {
 		return nil, err
 	}
-
-	c, err := a.db.Ent.Course.Create().
-		SetName(name).
-		SetTeacherName(teacherName).
-		SetType(course.Type(courseType)).
-		SetLessonPrice(lessonPrice).
-		SetSubscriptionPrice(subscriptionPrice).
-		Save(a.ctx)
+	selectedTeacher, err := a.resolveTeacher(a.ctx, teacherID)
 	if err != nil {
 		return nil, err
 	}
 
+	create := a.db.Ent.Course.Create().
+		SetName(name).
+		SetType(course.Type(courseType)).
+		SetLessonPrice(lessonPrice).
+		SetSubscriptionPrice(subscriptionPrice)
+	if selectedTeacher != nil {
+		create = create.SetTeacherID(selectedTeacher.ID).SetTeacherName(selectedTeacher.FullName)
+	} else {
+		create = create.SetTeacherName("")
+	}
+	c, err := create.Save(a.ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err = a.db.Ent.Course.Query().
+		Where(course.IDEQ(c.ID)).
+		WithTeacher().
+		Only(a.ctx)
+	if err != nil {
+		return nil, err
+	}
 	dto := toCourseDTO(c)
 	return &dto, nil
 }
@@ -428,9 +547,8 @@ func (a *App) CourseCreate(name, teacherName, courseType string, lessonPrice, su
 // CourseUpdate updates an existing course's information.
 // The course name is sanitized to prevent XSS attacks.
 // Prices must be non-negative. Course type must be either "group" or "individual".
-func (a *App) CourseUpdate(id int, name, teacherName, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
+func (a *App) CourseUpdate(id int, name string, teacherID *int, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = sanitizeInput(name)
-	teacherName = sanitizeInput(teacherName)
 	courseType = strings.TrimSpace(courseType)
 	lessonPrice = utils.Round2(lessonPrice)
 	subscriptionPrice = utils.Round2(subscriptionPrice)
@@ -444,18 +562,33 @@ func (a *App) CourseUpdate(id int, name, teacherName, courseType string, lessonP
 	if err := validatePrices(lessonPrice, subscriptionPrice); err != nil {
 		return nil, err
 	}
-
-	c, err := a.db.Ent.Course.UpdateOneID(id).
-		SetName(name).
-		SetTeacherName(teacherName).
-		SetType(course.Type(courseType)).
-		SetLessonPrice(lessonPrice).
-		SetSubscriptionPrice(subscriptionPrice).
-		Save(a.ctx)
+	selectedTeacher, err := a.resolveTeacher(a.ctx, teacherID)
 	if err != nil {
 		return nil, err
 	}
 
+	update := a.db.Ent.Course.UpdateOneID(id).
+		SetName(name).
+		SetType(course.Type(courseType)).
+		SetLessonPrice(lessonPrice).
+		SetSubscriptionPrice(subscriptionPrice)
+	if selectedTeacher != nil {
+		update = update.SetTeacherID(selectedTeacher.ID).SetTeacherName(selectedTeacher.FullName)
+	} else {
+		update = update.ClearTeacher().SetTeacherName("")
+	}
+	c, err := update.Save(a.ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	c, err = a.db.Ent.Course.Query().
+		Where(course.IDEQ(c.ID)).
+		WithTeacher().
+		Only(a.ctx)
+	if err != nil {
+		return nil, err
+	}
 	dto := toCourseDTO(c)
 	return &dto, nil
 }
@@ -492,7 +625,11 @@ func (a *App) CourseDelete(id int) error {
 func (a *App) EnrollmentList(studentID *int, courseID *int) ([]EnrollmentDTO, error) {
 	ctx := a.ctx
 
-	q := a.db.Ent.Enrollment.Query().WithStudent().WithCourse()
+	q := a.db.Ent.Enrollment.Query().
+		WithStudent().
+		WithCourse(func(cq *ent.CourseQuery) {
+			cq.WithTeacher()
+		})
 
 	if studentID != nil {
 		q = q.Where(enrollment.StudentIDEQ(*studentID))
@@ -572,7 +709,9 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 	e2, err := a.db.Ent.Enrollment.Query().
 		Where(enrollment.IDEQ(e.ID)).
 		WithStudent().
-		WithCourse().
+		WithCourse(func(cq *ent.CourseQuery) {
+			cq.WithTeacher()
+		}).
 		Only(ctx)
 	if err != nil {
 		return nil, err
@@ -610,7 +749,9 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct
 	e2, err := a.db.Ent.Enrollment.Query().
 		Where(enrollment.IDEQ(enrollmentID)).
 		WithStudent().
-		WithCourse().
+		WithCourse(func(cq *ent.CourseQuery) {
+			cq.WithTeacher()
+		}).
 		Only(ctx)
 	if err != nil {
 		return nil, err

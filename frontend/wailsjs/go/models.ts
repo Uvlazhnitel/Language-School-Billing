@@ -154,6 +154,7 @@ export namespace main {
 	export class CourseDTO {
 	    id: number;
 	    name: string;
+	    teacherId?: number;
 	    teacherName: string;
 	    type: string;
 	    lessonPrice: number;
@@ -167,6 +168,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.name = source["name"];
+	        this.teacherId = source["teacherId"];
 	        this.teacherName = source["teacherName"];
 	        this.type = source["type"];
 	        this.lessonPrice = source["lessonPrice"];
@@ -179,6 +181,7 @@ export namespace main {
 	    studentName: string;
 	    courseId: number;
 	    courseName: string;
+	    teacherId?: number;
 	    teacherName: string;
 	    billingMode: string;
 	    discountPct: number;
@@ -195,6 +198,7 @@ export namespace main {
 	        this.studentName = source["studentName"];
 	        this.courseId = source["courseId"];
 	        this.courseName = source["courseName"];
+	        this.teacherId = source["teacherId"];
 	        this.teacherName = source["teacherName"];
 	        this.billingMode = source["billingMode"];
 	        this.discountPct = source["discountPct"];
@@ -248,6 +252,22 @@ export namespace main {
 	        this.phone = source["phone"];
 	        this.email = source["email"];
 	        this.note = source["note"];
+	        this.isActive = source["isActive"];
+	    }
+	}
+	export class TeacherDTO {
+	    id: number;
+	    fullName: string;
+	    isActive: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new TeacherDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.fullName = source["fullName"];
 	        this.isActive = source["isActive"];
 	    }
 	}

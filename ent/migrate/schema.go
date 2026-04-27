@@ -39,12 +39,21 @@ var (
 		{Name: "lesson_price", Type: field.TypeFloat64, Default: 0},
 		{Name: "subscription_price", Type: field.TypeFloat64, Default: 0},
 		{Name: "is_active", Type: field.TypeBool, Default: true},
+		{Name: "teacher_id", Type: field.TypeInt, Nullable: true},
 	}
 	// CoursesTable holds the schema information for the "courses" table.
 	CoursesTable = &schema.Table{
 		Name:       "courses",
 		Columns:    CoursesColumns,
 		PrimaryKey: []*schema.Column{CoursesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "courses_teachers_courses",
+				Columns:    []*schema.Column{CoursesColumns[7]},
+				RefColumns: []*schema.Column{TeachersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 	}
 	// EnrollmentsColumns holds the columns for the "enrollments" table.
 	EnrollmentsColumns = []*schema.Column{
@@ -231,6 +240,18 @@ var (
 		Columns:    StudentsColumns,
 		PrimaryKey: []*schema.Column{StudentsColumns[0]},
 	}
+	// TeachersColumns holds the columns for the "teachers" table.
+	TeachersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "full_name", Type: field.TypeString},
+		{Name: "is_active", Type: field.TypeBool, Default: true},
+	}
+	// TeachersTable holds the schema information for the "teachers" table.
+	TeachersTable = &schema.Table{
+		Name:       "teachers",
+		Columns:    TeachersColumns,
+		PrimaryKey: []*schema.Column{TeachersColumns[0]},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AttendanceMonthsTable,
@@ -241,10 +262,12 @@ var (
 		PaymentsTable,
 		SettingsTable,
 		StudentsTable,
+		TeachersTable,
 	}
 )
 
 func init() {
+	CoursesTable.ForeignKeys[0].RefTable = TeachersTable
 	EnrollmentsTable.ForeignKeys[0].RefTable = CoursesTable
 	EnrollmentsTable.ForeignKeys[1].RefTable = StudentsTable
 	InvoicesTable.ForeignKeys[0].RefTable = StudentsTable

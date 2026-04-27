@@ -67,6 +67,10 @@ func (a *App) startup(ctx context.Context) {
 	a.db = db
 	log.Println("DB ready")
 
+	if err := migrateLegacyCourseTeachers(ctx, a.db.Ent); err != nil {
+		log.Fatal(err)
+	}
+
 	// Ensure single Settings record with singleton_id=1 exists
 	exists, err := a.db.Ent.Settings.
 		Query().

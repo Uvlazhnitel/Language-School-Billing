@@ -5,6 +5,7 @@ package ent
 import (
 	"fmt"
 	"langschool/ent/course"
+	"langschool/ent/teacher"
 	"strings"
 
 	"entgo.io/ent"
@@ -20,6 +21,8 @@ type Course struct {
 	Name string `json:"name,omitempty"`
 	// TeacherName holds the value of the "teacher_name" field.
 	TeacherName string `json:"teacher_name,omitempty"`
+	// TeacherID holds the value of the "teacher_id" field.
+	TeacherID *int `json:"teacher_id,omitempty"`
 	// Type holds the value of the "type" field.
 	Type course.Type `json:"type,omitempty"`
 	// LessonPrice holds the value of the "lesson_price" field.
@@ -36,17 +39,30 @@ type Course struct {
 
 // CourseEdges holds the relations/edges for other nodes in the graph.
 type CourseEdges struct {
+	// Teacher holds the value of the teacher edge.
+	Teacher *Teacher `json:"teacher,omitempty"`
 	// Enrollments holds the value of the enrollments edge.
 	Enrollments []*Enrollment `json:"enrollments,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [2]bool
+}
+
+// TeacherOrErr returns the Teacher value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e CourseEdges) TeacherOrErr() (*Teacher, error) {
+	if e.Teacher != nil {
+		return e.Teacher, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: teacher.Label}
+	}
+	return nil, &NotLoadedError{edge: "teacher"}
 }
 
 // EnrollmentsOrErr returns the Enrollments value or an error if the edge
 // was not loaded in eager-loading.
 func (e CourseEdges) EnrollmentsOrErr() ([]*Enrollment, error) {
-	if e.loadedTypes[0] {
+	if e.loadedTypes[1] {
 		return e.Enrollments, nil
 	}
 	return nil, &NotLoadedError{edge: "enrollments"}
@@ -61,7 +77,7 @@ func (*Course) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case course.FieldLessonPrice, course.FieldSubscriptionPrice:
 			values[i] = new(sql.NullFloat64)
-		case course.FieldID:
+		case course.FieldID, course.FieldTeacherID:
 			values[i] = new(sql.NullInt64)
 		case course.FieldName, course.FieldTeacherName, course.FieldType:
 			values[i] = new(sql.NullString)
@@ -97,6 +113,13 @@ func (_m *Course) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field teacher_name", values[i])
 			} else if value.Valid {
 				_m.TeacherName = value.String
+			}
+		case course.FieldTeacherID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field teacher_id", values[i])
+			} else if value.Valid {
+				_m.TeacherID = new(int)
+				*_m.TeacherID = int(value.Int64)
 			}
 		case course.FieldType:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -135,6 +158,11 @@ func (_m *Course) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
+// QueryTeacher queries the "teacher" edge of the Course entity.
+func (_m *Course) QueryTeacher() *TeacherQuery {
+	return NewCourseClient(_m.config).QueryTeacher(_m)
+}
+
 // QueryEnrollments queries the "enrollments" edge of the Course entity.
 func (_m *Course) QueryEnrollments() *EnrollmentQuery {
 	return NewCourseClient(_m.config).QueryEnrollments(_m)
@@ -168,6 +196,11 @@ func (_m *Course) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("teacher_name=")
 	builder.WriteString(_m.TeacherName)
+	builder.WriteString(", ")
+	if v := _m.TeacherID; v != nil {
+		builder.WriteString("teacher_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Type))

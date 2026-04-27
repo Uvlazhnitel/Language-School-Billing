@@ -153,3 +153,11 @@ export function StudentSetActive(arg1, arg2) {
 export function StudentUpdate(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['StudentUpdate'](arg1, arg2, arg3, arg4, arg5);
 }
+
+export function TeacherCreate(arg1) {
+  return window['go']['main']['App']['TeacherCreate'](arg1);
+}
+
+export function TeacherList(arg1) {
+  return window['go']['main']['App']['TeacherList'](arg1);
+}

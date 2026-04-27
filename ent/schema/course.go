@@ -12,6 +12,7 @@ func (Course) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name"),
 		field.String("teacher_name").Default(""),
+		field.Int("teacher_id").Optional().Nillable(),
 		field.Enum("type").Values("group", "individual"),
 		field.Float("lesson_price").Default(0),
 		field.Float("subscription_price").Default(0),
@@ -21,6 +22,10 @@ func (Course) Fields() []ent.Field {
 
 func (Course) Edges() []ent.Edge {
 	return []ent.Edge{
+		edge.From("teacher", Teacher.Type).
+			Ref("courses").
+			Field("teacher_id").
+			Unique(),
 		edge.To("enrollments", Enrollment.Type),
 	}
 }

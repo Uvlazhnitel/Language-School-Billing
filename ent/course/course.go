@@ -18,6 +18,8 @@ const (
 	FieldName = "name"
 	// FieldTeacherName holds the string denoting the teacher_name field in the database.
 	FieldTeacherName = "teacher_name"
+	// FieldTeacherID holds the string denoting the teacher_id field in the database.
+	FieldTeacherID = "teacher_id"
 	// FieldType holds the string denoting the type field in the database.
 	FieldType = "type"
 	// FieldLessonPrice holds the string denoting the lesson_price field in the database.
@@ -26,10 +28,19 @@ const (
 	FieldSubscriptionPrice = "subscription_price"
 	// FieldIsActive holds the string denoting the is_active field in the database.
 	FieldIsActive = "is_active"
+	// EdgeTeacher holds the string denoting the teacher edge name in mutations.
+	EdgeTeacher = "teacher"
 	// EdgeEnrollments holds the string denoting the enrollments edge name in mutations.
 	EdgeEnrollments = "enrollments"
 	// Table holds the table name of the course in the database.
 	Table = "courses"
+	// TeacherTable is the table that holds the teacher relation/edge.
+	TeacherTable = "courses"
+	// TeacherInverseTable is the table name for the Teacher entity.
+	// It exists in this package in order to avoid circular dependency with the "teacher" package.
+	TeacherInverseTable = "teachers"
+	// TeacherColumn is the table column denoting the teacher relation/edge.
+	TeacherColumn = "teacher_id"
 	// EnrollmentsTable is the table that holds the enrollments relation/edge.
 	EnrollmentsTable = "enrollments"
 	// EnrollmentsInverseTable is the table name for the Enrollment entity.
@@ -44,6 +55,7 @@ var Columns = []string{
 	FieldID,
 	FieldName,
 	FieldTeacherName,
+	FieldTeacherID,
 	FieldType,
 	FieldLessonPrice,
 	FieldSubscriptionPrice,
@@ -112,6 +124,11 @@ func ByTeacherName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTeacherName, opts...).ToFunc()
 }
 
+// ByTeacherID orders the results by the teacher_id field.
+func ByTeacherID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTeacherID, opts...).ToFunc()
+}
+
 // ByType orders the results by the type field.
 func ByType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldType, opts...).ToFunc()
@@ -132,6 +149,13 @@ func ByIsActive(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsActive, opts...).ToFunc()
 }
 
+// ByTeacherField orders the results by teacher field.
+func ByTeacherField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newTeacherStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByEnrollmentsCount orders the results by enrollments count.
 func ByEnrollmentsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -144,6 +168,13 @@ func ByEnrollments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newEnrollmentsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
+}
+func newTeacherStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(TeacherInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, TeacherTable, TeacherColumn),
+	)
 }
 func newEnrollmentsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(

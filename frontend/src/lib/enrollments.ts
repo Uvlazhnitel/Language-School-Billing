@@ -7,6 +7,7 @@ export type EnrollmentDTO = {
   studentName: string;
   courseId: number;
   courseName: string;
+  teacherId?: number;
   teacherName: string;
   billingMode: BillingMode;
   discountPct: number;

@@ -29,3 +29,6 @@ type Settings func(*sql.Selector)
 
 // Student is the predicate function for student builders.
 type Student func(*sql.Selector)
+
+// Teacher is the predicate function for teacher builders.
+type Teacher func(*sql.Selector)

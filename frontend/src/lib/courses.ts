@@ -10,6 +10,7 @@ import { CourseType } from "./constants";
 export type CourseDTO = {
   id: number;
   name: string;
+  teacherId?: number;
   teacherName: string;
   type: CourseType;
   lessonPrice: number;
@@ -26,14 +27,15 @@ export async function getCourse(id: number) {
 
 export async function createCourse(
   name: string,
-  teacherName: string,
+  teacherId: number | undefined,
   courseType: CourseType,
   lessonPrice: number,
   subscriptionPrice: number
 ) {
+  const teacher = typeof teacherId === "number" && teacherId > 0 ? teacherId : undefined;
   return (await CourseCreate(
     name,
-    teacherName,
+    teacher,
     courseType,
     lessonPrice,
     subscriptionPrice
@@ -43,15 +45,16 @@ export async function createCourse(
 export async function updateCourse(
   id: number,
   name: string,
-  teacherName: string,
+  teacherId: number | undefined,
   courseType: CourseType,
   lessonPrice: number,
   subscriptionPrice: number
 ) {
+  const teacher = typeof teacherId === "number" && teacherId > 0 ? teacherId : undefined;
   return (await CourseUpdate(
     id,
     name,
-    teacherName,
+    teacher,
     courseType,
     lessonPrice,
     subscriptionPrice

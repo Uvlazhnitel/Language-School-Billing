@@ -24,6 +24,7 @@ import {
 } from "./lib/students";
 
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
+import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
 
 import {
   listEnrollments,
@@ -455,7 +456,12 @@ export default function App() {
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseDTO | null>(null);
   const [cfName, setCfName] = useState("");
-  const [cfTeacherName, setCfTeacherName] = useState("");
+  const [cfTeacherId, setCfTeacherId] = useState<number | undefined>(undefined);
+  const [cfTeacherSearch, setCfTeacherSearch] = useState("");
+  const [cfTeacherPickerOpen, setCfTeacherPickerOpen] = useState(false);
+  const [cfTeacherCreating, setCfTeacherCreating] = useState(false);
+  const [allTeachers, setAllTeachers] = useState<TeacherDTO[]>([]);
+  const cfTeacherComboRef = useRef<HTMLDivElement | null>(null);
   const [cfType, setCfType] = useState<"group" | "individual">("group");
   const [cfLessonPrice, setCfLessonPrice] = useState("0.00");
   const [cfSubscriptionPrice, setCfSubscriptionPrice] = useState("0.00");
@@ -481,6 +487,12 @@ export default function App() {
     return data;
   }, []);
 
+  const loadAllTeachers = useCallback(async () => {
+    const data = await listTeachers("");
+    setAllTeachers(data);
+    return data;
+  }, []);
+
   useEffect(() => {
     if (tab === "courses") loadCourses();
   }, [tab, loadCourses]);
@@ -489,10 +501,48 @@ export default function App() {
     void loadAllCourses();
   }, [loadAllCourses]);
 
+  useEffect(() => {
+    void loadAllTeachers();
+  }, [loadAllTeachers]);
+
+  const selectedCourseTeacher = useMemo(
+    () => allTeachers.find((t) => t.id === cfTeacherId) ?? null,
+    [allTeachers, cfTeacherId]
+  );
+
+  const filteredTeachers = useMemo(() => {
+    const q = cfTeacherSearch.trim().toLowerCase();
+    if (!q) return allTeachers;
+    return allTeachers.filter((t) => t.fullName.toLowerCase().includes(q));
+  }, [allTeachers, cfTeacherSearch]);
+
+  const exactTeacherMatch = useMemo(() => {
+    const q = cfTeacherSearch.trim().toLowerCase();
+    if (!q) return null;
+    return allTeachers.find((t) => t.fullName.trim().toLowerCase() === q) ?? null;
+  }, [allTeachers, cfTeacherSearch]);
+
+  useEffect(() => {
+    if (!cfTeacherPickerOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!cfTeacherComboRef.current?.contains(event.target as Node)) {
+        setCfTeacherPickerOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [cfTeacherPickerOpen]);
+
   function openAddCourse() {
     setEditingCourse(null);
     setCfName("");
-    setCfTeacherName("");
+    setCfTeacherId(undefined);
+    setCfTeacherSearch("");
+    setCfTeacherPickerOpen(false);
     setCfType("group");
     setCfLessonPrice("");
     setCfSubscriptionPrice("");
@@ -502,16 +552,41 @@ export default function App() {
   function openEditCourse(c: CourseDTO) {
     setEditingCourse(c);
     setCfName(c.name);
-    setCfTeacherName(c.teacherName);
+    setCfTeacherId(c.teacherId);
+    setCfTeacherSearch(c.teacherName);
+    setCfTeacherPickerOpen(false);
     setCfType(c.type);
     setCfLessonPrice(c.lessonPrice.toFixed(2));
     setCfSubscriptionPrice(c.subscriptionPrice.toFixed(2));
     setCourseModalOpen(true);
   }
 
+  async function addTeacherFromCourseForm() {
+    const name = cfTeacherSearch.trim();
+    if (!name) return;
+
+    try {
+      setCfTeacherCreating(true);
+      const created = await createTeacher(name);
+      setAllTeachers((prev) => {
+        const withoutSame = prev.filter((t) => t.id !== created.id);
+        return [...withoutSame, created].sort((a, b) => a.fullName.localeCompare(b.fullName));
+      });
+      setCfTeacherId(created.id);
+      setCfTeacherSearch(created.fullName);
+      setCfTeacherPickerOpen(false);
+      showMessage("Teacher added");
+    } catch (e: any) {
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+    } finally {
+      setCfTeacherCreating(false);
+    }
+  }
+
   async function saveCourse() {
     const lessonPrice = decimalOrZero(cfLessonPrice);
     const subscriptionPrice = decimalOrZero(cfSubscriptionPrice);
+    const trimmedTeacherSearch = cfTeacherSearch.trim();
 
     if (!cfName.trim()) {
       showMessage("Course name is required", "error");
@@ -522,18 +597,27 @@ export default function App() {
       return;
     }
 
+    let teacherId = cfTeacherId;
+    if (!teacherId && exactTeacherMatch) {
+      teacherId = exactTeacherMatch.id;
+    }
+    if (trimmedTeacherSearch && !teacherId) {
+      showMessage("Select an existing teacher or add a new one", "error");
+      return;
+    }
+
     try {
       if (editingCourse) {
         await updateCourse(
           editingCourse.id,
           cfName,
-          cfTeacherName,
+          teacherId,
           cfType,
           lessonPrice,
           subscriptionPrice
         );
       } else {
-        await createCourse(cfName, cfTeacherName, cfType, lessonPrice, subscriptionPrice);
+        await createCourse(cfName, teacherId, cfType, lessonPrice, subscriptionPrice);
       }
 
       setCourseModalOpen(false);
@@ -1424,11 +1508,61 @@ export default function App() {
 
                     <div className="formRow">
                       <label>Teacher</label>
-                      <input
-                        value={cfTeacherName}
-                        onChange={(e) => setCfTeacherName(e.target.value)}
-                        placeholder="Teacher name"
-                      />
+                      <div className="comboBox" ref={cfTeacherComboRef}>
+                        <input
+                          value={selectedCourseTeacher?.fullName ?? cfTeacherSearch}
+                          onChange={(e) => {
+                            setCfTeacherSearch(e.target.value);
+                            setCfTeacherId(undefined);
+                            setCfTeacherPickerOpen(true);
+                          }}
+                          onFocus={() => setCfTeacherPickerOpen(true)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Escape") {
+                              setCfTeacherPickerOpen(false);
+                            }
+                          }}
+                          placeholder="Select or add teacher…"
+                        />
+                        {cfTeacherPickerOpen && (
+                          <div className="comboBoxMenu">
+                            {filteredTeachers.map((t) => (
+                              <button
+                                key={t.id}
+                                type="button"
+                                className={`comboBoxOption ${t.id === cfTeacherId ? "active" : ""}`}
+                                onClick={() => {
+                                  setCfTeacherId(t.id);
+                                  setCfTeacherSearch(t.fullName);
+                                  setCfTeacherPickerOpen(false);
+                                }}
+                              >
+                                <span className="comboBoxPrimary">{t.fullName}</span>
+                              </button>
+                            ))}
+                            {!exactTeacherMatch && cfTeacherSearch.trim() && (
+                              <button
+                                type="button"
+                                className="comboBoxOption"
+                                onClick={() => void addTeacherFromCourseForm()}
+                                disabled={cfTeacherCreating}
+                              >
+                                <span className="comboBoxPrimary">
+                                  {cfTeacherCreating
+                                    ? "Adding teacher..."
+                                    : `Add teacher "${cfTeacherSearch.trim()}"`}
+                                </span>
+                                <span className="comboBoxMeta">
+                                  Save a new teacher and select them for this course.
+                                </span>
+                              </button>
+                            )}
+                            {filteredTeachers.length === 0 && !cfTeacherSearch.trim() && (
+                              <div className="comboBoxEmpty">No teachers yet.</div>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </div>
 
                     <div className="formRow">

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
+	"langschool/ent/teacher"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -36,6 +37,20 @@ func (_c *CourseCreate) SetTeacherName(v string) *CourseCreate {
 func (_c *CourseCreate) SetNillableTeacherName(v *string) *CourseCreate {
 	if v != nil {
 		_c.SetTeacherName(*v)
+	}
+	return _c
+}
+
+// SetTeacherID sets the "teacher_id" field.
+func (_c *CourseCreate) SetTeacherID(v int) *CourseCreate {
+	_c.mutation.SetTeacherID(v)
+	return _c
+}
+
+// SetNillableTeacherID sets the "teacher_id" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableTeacherID(v *int) *CourseCreate {
+	if v != nil {
+		_c.SetTeacherID(*v)
 	}
 	return _c
 }
@@ -86,6 +101,11 @@ func (_c *CourseCreate) SetNillableIsActive(v *bool) *CourseCreate {
 		_c.SetIsActive(*v)
 	}
 	return _c
+}
+
+// SetTeacher sets the "teacher" edge to the Teacher entity.
+func (_c *CourseCreate) SetTeacher(v *Teacher) *CourseCreate {
+	return _c.SetTeacherID(v.ID)
 }
 
 // AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by IDs.
@@ -230,6 +250,23 @@ func (_c *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.IsActive(); ok {
 		_spec.SetField(course.FieldIsActive, field.TypeBool, value)
 		_node.IsActive = value
+	}
+	if nodes := _c.mutation.TeacherIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   course.TeacherTable,
+			Columns: []string{course.TeacherColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(teacher.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.TeacherID = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.EnrollmentsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
