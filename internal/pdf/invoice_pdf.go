@@ -40,7 +40,7 @@ type artlabProvider struct {
 
 func artlabProviderDefaults() artlabProvider {
 	return artlabProvider{
-		DisplayName:       "Art Lab",
+		DisplayName:       "ArtLab",
 		LegalName:         "Biedrība „Kultūras, mākslas un izglītības centrs ARTLAB”",
 		RegistrationNo:    "40008216321",
 		LegalAddress:      "Latgales iela 260, Rīga, LV-1063",

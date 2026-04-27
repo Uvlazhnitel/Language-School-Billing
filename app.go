@@ -43,6 +43,8 @@ type App struct {
 // default values and will be fully configured during the startup lifecycle hook.
 func NewApp() *App { return &App{} }
 
+const defaultSchoolDisplayName = "ArtLab"
+
 // startup is called by Wails when the application starts.
 // It initializes the database connection, ensures required directories exist,
 // creates the singleton Settings record if it doesn't exist, and initializes
@@ -83,7 +85,7 @@ func (a *App) startup(ctx context.Context) {
 		if _, err := a.db.Ent.Settings.
 			Create().
 			SetSingletonID(1).
-			SetOrgName("").
+			SetOrgName(defaultSchoolDisplayName).
 			SetAddress("").
 			SetInvoicePrefix("LS").
 			SetNextSeq(1).
@@ -94,11 +96,25 @@ func (a *App) startup(ctx context.Context) {
 			log.Fatal(err)
 		}
 	} else {
-		if _, err := a.db.Ent.Settings.
+		st, err := a.db.Ent.Settings.
+			Query().
+			Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
+			Only(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		upd := a.db.Ent.Settings.
 			Update().
 			Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
-			SetCurrency("EUR").
-			Save(ctx); err != nil {
+			SetCurrency("EUR")
+
+		orgName := strings.TrimSpace(st.OrgName)
+		if orgName == "" || strings.EqualFold(orgName, "North Star Language Studio") {
+			upd.SetOrgName(defaultSchoolDisplayName)
+		}
+
+		if _, err := upd.Save(ctx); err != nil {
 			log.Fatal(err)
 		}
 	}
