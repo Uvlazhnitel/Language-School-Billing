@@ -1,5 +1,6 @@
 import {
   PaymentCreate,
+  PaymentDelete,
   DebtorsList,
   InvoicePaymentSummary,
   StudentDebtDetails,
@@ -57,6 +58,10 @@ export async function createPayment(
 ) {
   const inv = invoiceId ? invoiceId : undefined;
   return (await PaymentCreate(studentId, inv, amount, method, paidAt, note)) as PaymentDTO;
+}
+
+export async function deletePayment(paymentId: number) {
+  return await PaymentDelete(paymentId);
 }
 
 export async function listDebtors() {

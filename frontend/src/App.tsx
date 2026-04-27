@@ -36,6 +36,7 @@ import {
   listDebtors,
   DebtorDTO,
   createPayment,
+  deletePayment,
   invoiceSummary,
   InvoiceSummaryDTO,
   studentDebtDetails,
@@ -280,6 +281,7 @@ export default function App() {
   const [studentCardBalance, setStudentCardBalance] = useState<BalanceDTO | null>(null);
   const [studentCardDebts, setStudentCardDebts] = useState<DebtInvoiceDTO[]>([]);
   const [studentCardPayments, setStudentCardPayments] = useState<PaymentDTO[]>([]);
+  const [studentCardDeletingPaymentId, setStudentCardDeletingPaymentId] = useState<number | null>(null);
 
   const loadStudents = useCallback(async () => {
     setStudentLoading(true);
@@ -419,6 +421,29 @@ export default function App() {
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
+  }
+
+  function deleteStudentPayment(payment: PaymentDTO) {
+    if (!selectedStudentCard) return;
+
+    const amountLabel = formatEUR(payment.amount);
+    const dateLabel = payment.paidAt.slice(0, 10);
+
+    showConfirm(
+      `Delete payment of ${amountLabel} from ${dateLabel}? This will restore any linked invoice balance and cannot be undone.`,
+      async () => {
+        try {
+          setStudentCardDeletingPaymentId(payment.id);
+          await deletePayment(payment.id);
+          await Promise.all([refreshStudentCardData(selectedStudentCard.id), loadDebtors()]);
+          showMessage("Payment deleted successfully!");
+        } catch (e: any) {
+          showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+        } finally {
+          setStudentCardDeletingPaymentId(null);
+        }
+      }
+    );
   }
 
   // ---------------- Courses ----------------
@@ -1115,7 +1140,7 @@ export default function App() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            zIndex: 10001,
+            zIndex: 10100,
           }}
         >
           <div
@@ -2182,6 +2207,7 @@ export default function App() {
                             <th style={{ textAlign: "right" }}>Amount</th>
                             <th>Method</th>
                             <th>Note</th>
+                            <th>Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2193,6 +2219,14 @@ export default function App() {
                               </td>
                               <td>{p.method}</td>
                               <td>{p.note}</td>
+                              <td>
+                                <button
+                                  onClick={() => deleteStudentPayment(p)}
+                                  disabled={studentCardDeletingPaymentId === p.id}
+                                >
+                                  {studentCardDeletingPaymentId === p.id ? "Deleting..." : "Delete"}
+                                </button>
+                              </td>
                             </tr>
                           ))}
                         </tbody>
