@@ -403,6 +403,24 @@ export default function App() {
     }
   }
 
+  async function copyStudentCardDebtMessage(locale: "ru" | "lv") {
+    if (!selectedStudentCard || studentCardDebts.length === 0 || !studentCardBalance) return;
+    try {
+      const debtorLike: DebtorDTO = {
+        studentId: selectedStudentCard.id,
+        studentName: selectedStudentCard.fullName,
+        debt: studentCardBalance.debt,
+        totalInvoiced: studentCardBalance.totalInvoiced,
+        totalPaid: studentCardBalance.totalPaid,
+      };
+      const text = buildDebtReminderMessage(locale, debtorLike, studentCardDebts);
+      await navigator.clipboard.writeText(text);
+      showMessage(locale === "ru" ? "Russian reminder copied" : "Latvian reminder copied");
+    } catch (e: any) {
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+    }
+  }
+
   // ---------------- Courses ----------------
   const [courseList, setCourseList] = useState<CourseDTO[]>([]);
   const [allCourses, setAllCourses] = useState<CourseDTO[]>([]);
@@ -964,7 +982,11 @@ export default function App() {
       }
 
       if (returnToStudentCardAfterPayment && selectedStudentCard?.id === paymentStudentId) {
-        await refreshStudentCardData(paymentStudentId);
+        try {
+          await refreshStudentCardData(paymentStudentId);
+        } catch {
+          // refreshStudentCardData handles its own errors via showMessage
+        }
       }
 
       setReturnToDebtDetailsAfterPayment(false);
@@ -1990,6 +2012,211 @@ export default function App() {
                 </>
               )}
               <button onClick={() => setDebtDetailsOpen(false)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student Card Modal */}
+      {studentCardOpen && selectedStudentCard && (
+        <div className="modal" onClick={() => setStudentCardOpen(false)}>
+          <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
+            <h3>Student card</h3>
+
+            {studentCardLoading ? (
+              <div style={{ padding: "24px 0", textAlign: "center" }}>Loading…</div>
+            ) : (
+              <>
+                {/* Basic info */}
+                <div className="cardSection">
+                  <div className="cardSectionTitle">Basic info</div>
+                  <div className="invSummary">
+                    <div className="invSummaryRow">
+                      <span>Name</span>
+                      <span style={{ fontWeight: 700 }}>{selectedStudentCard.fullName}</span>
+                    </div>
+                    {selectedStudentCard.phone && (
+                      <div className="invSummaryRow">
+                        <span>Phone</span>
+                        <span>{selectedStudentCard.phone}</span>
+                      </div>
+                    )}
+                    {selectedStudentCard.email && (
+                      <div className="invSummaryRow">
+                        <span>Email</span>
+                        <span>{selectedStudentCard.email}</span>
+                      </div>
+                    )}
+                    {selectedStudentCard.note && (
+                      <div className="invSummaryRow">
+                        <span>Note</span>
+                        <span>{selectedStudentCard.note}</span>
+                      </div>
+                    )}
+                    <div className="invSummaryRow">
+                      <span>Status</span>
+                      <span className={`money ${selectedStudentCard.isActive ? "good" : ""}`}>
+                        {selectedStudentCard.isActive ? "Active" : "Inactive"}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                    <button
+                      onClick={() => {
+                        setStudentCardOpen(false);
+                        openEditStudent(selectedStudentCard);
+                      }}
+                    >
+                      Edit student
+                    </button>
+                    <button onClick={openStudentCardPaymentModal}>Record payment</button>
+                  </div>
+                </div>
+
+                {/* Enrollments */}
+                <div className="cardSection">
+                  <div className="cardSectionTitle">Courses</div>
+                  {studentCardEnrollments.length === 0 ? (
+                    <div className="empty">No enrollments.</div>
+                  ) : (
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Course</th>
+                          <th>Billing</th>
+                          <th style={{ textAlign: "right" }}>Discount</th>
+                          <th>Note</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentCardEnrollments.map((e) => (
+                          <tr key={e.id}>
+                            <td>{e.courseName}</td>
+                            <td>{e.billingMode}</td>
+                            <td style={{ textAlign: "right" }}>{e.discountPct.toFixed(1)}%</td>
+                            <td>{e.note}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+
+                {/* Balance */}
+                <div className="cardSection">
+                  <div className="cardSectionTitle">Balance</div>
+                  {studentCardBalance ? (
+                    <div className="invSummary">
+                      <div className="invSummaryRow">
+                        <span>Total invoiced</span>
+                        <span className="money">{formatEUR(studentCardBalance.totalInvoiced)}</span>
+                      </div>
+                      <div className="invSummaryRow">
+                        <span>Total paid</span>
+                        <span className="money good">{formatEUR(studentCardBalance.totalPaid)}</span>
+                      </div>
+                      <div className="invSummaryRow">
+                        <span>Current debt</span>
+                        <span className={`money ${studentCardBalance.debt > 0 ? "bad" : "good"}`}>
+                          {studentCardBalance.debt > 0
+                            ? formatEUR(studentCardBalance.debt)
+                            : "No debt"}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="empty">Balance unavailable.</div>
+                  )}
+                </div>
+
+                {/* Open debts */}
+                <div className="cardSection">
+                  <div className="cardSectionTitle">Open debts</div>
+                  {studentCardDebts.length === 0 ? (
+                    <div className="empty">All paid — no open debts.</div>
+                  ) : (
+                    <div style={{ overflowX: "auto" }}>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Month</th>
+                            <th>Invoice</th>
+                            <th style={{ textAlign: "right" }}>Total</th>
+                            <th style={{ textAlign: "right" }}>Paid</th>
+                            <th style={{ textAlign: "right" }}>Remaining</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {studentCardDebts.map((x) => (
+                            <tr key={x.invoiceId}>
+                              <td>
+                                {months[x.month - 1]} {x.year}
+                              </td>
+                              <td>{x.number ?? "No number"}</td>
+                              <td style={{ textAlign: "right" }}>{formatEUR(x.total)}</td>
+                              <td style={{ textAlign: "right" }}>{formatEUR(x.paid)}</td>
+                              <td style={{ textAlign: "right" }}>
+                                <strong className="money bad">{formatEUR(x.remaining)}</strong>
+                              </td>
+                              <td>{x.status}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent payments */}
+                <div className="cardSection">
+                  <div className="cardSectionTitle">Recent payments</div>
+                  {studentCardPayments.length === 0 ? (
+                    <div className="empty">No payments recorded yet.</div>
+                  ) : (
+                    <>
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th style={{ textAlign: "right" }}>Amount</th>
+                            <th>Method</th>
+                            <th>Note</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {studentCardPayments.slice(0, 10).map((p) => (
+                            <tr key={p.id}>
+                              <td>{p.paidAt.slice(0, 10)}</td>
+                              <td style={{ textAlign: "right" }}>
+                                <span className="money good">{formatEUR(p.amount)}</span>
+                              </td>
+                              <td>{p.method}</td>
+                              <td>{p.note}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {studentCardPayments.length > 10 && (
+                        <p className="mutedInline" style={{ marginTop: 8, textAlign: "right" }}>
+                          Showing 10 most recent of {studentCardPayments.length} payments.
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+
+            <div className="modalActions">
+              {!studentCardLoading && studentCardDebts.length > 0 && (
+                <>
+                  <button onClick={openStudentCardPaymentModal}>Record payment</button>
+                  <button onClick={() => void copyStudentCardDebtMessage("ru")}>Copy RU</button>
+                  <button onClick={() => void copyStudentCardDebtMessage("lv")}>Copy LV</button>
+                </>
+              )}
+              <button onClick={() => setStudentCardOpen(false)}>Close</button>
             </div>
           </div>
         </div>
