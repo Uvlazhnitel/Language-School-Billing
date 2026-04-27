@@ -11,6 +11,7 @@ import (
 	"langschool/ent/payment"
 	"langschool/ent/predicate"
 	"langschool/ent/student"
+	"langschool/ent/studentcontact"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -100,6 +101,20 @@ func (_u *StudentUpdate) SetNillableIsActive(v *bool) *StudentUpdate {
 	return _u
 }
 
+// SetIsMinor sets the "is_minor" field.
+func (_u *StudentUpdate) SetIsMinor(v bool) *StudentUpdate {
+	_u.mutation.SetIsMinor(v)
+	return _u
+}
+
+// SetNillableIsMinor sets the "is_minor" field if the given value is not nil.
+func (_u *StudentUpdate) SetNillableIsMinor(v *bool) *StudentUpdate {
+	if v != nil {
+		_u.SetIsMinor(*v)
+	}
+	return _u
+}
+
 // AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by IDs.
 func (_u *StudentUpdate) AddEnrollmentIDs(ids ...int) *StudentUpdate {
 	_u.mutation.AddEnrollmentIDs(ids...)
@@ -143,6 +158,21 @@ func (_u *StudentUpdate) AddPayments(v ...*Payment) *StudentUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.AddPaymentIDs(ids...)
+}
+
+// AddStudentContactIDs adds the "student_contacts" edge to the StudentContact entity by IDs.
+func (_u *StudentUpdate) AddStudentContactIDs(ids ...int) *StudentUpdate {
+	_u.mutation.AddStudentContactIDs(ids...)
+	return _u
+}
+
+// AddStudentContacts adds the "student_contacts" edges to the StudentContact entity.
+func (_u *StudentUpdate) AddStudentContacts(v ...*StudentContact) *StudentUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddStudentContactIDs(ids...)
 }
 
 // Mutation returns the StudentMutation object of the builder.
@@ -213,6 +243,27 @@ func (_u *StudentUpdate) RemovePayments(v ...*Payment) *StudentUpdate {
 	return _u.RemovePaymentIDs(ids...)
 }
 
+// ClearStudentContacts clears all "student_contacts" edges to the StudentContact entity.
+func (_u *StudentUpdate) ClearStudentContacts() *StudentUpdate {
+	_u.mutation.ClearStudentContacts()
+	return _u
+}
+
+// RemoveStudentContactIDs removes the "student_contacts" edge to StudentContact entities by IDs.
+func (_u *StudentUpdate) RemoveStudentContactIDs(ids ...int) *StudentUpdate {
+	_u.mutation.RemoveStudentContactIDs(ids...)
+	return _u
+}
+
+// RemoveStudentContacts removes "student_contacts" edges to StudentContact entities.
+func (_u *StudentUpdate) RemoveStudentContacts(v ...*StudentContact) *StudentUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveStudentContactIDs(ids...)
+}
+
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *StudentUpdate) Save(ctx context.Context) (int, error) {
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
@@ -263,6 +314,9 @@ func (_u *StudentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.IsActive(); ok {
 		_spec.SetField(student.FieldIsActive, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.IsMinor(); ok {
+		_spec.SetField(student.FieldIsMinor, field.TypeBool, value)
 	}
 	if _u.mutation.EnrollmentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -392,6 +446,51 @@ func (_u *StudentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(payment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.StudentContactsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.StudentContactsTable,
+			Columns: []string{student.StudentContactsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(studentcontact.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedStudentContactsIDs(); len(nodes) > 0 && !_u.mutation.StudentContactsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.StudentContactsTable,
+			Columns: []string{student.StudentContactsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(studentcontact.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.StudentContactsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.StudentContactsTable,
+			Columns: []string{student.StudentContactsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(studentcontact.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -489,6 +588,20 @@ func (_u *StudentUpdateOne) SetNillableIsActive(v *bool) *StudentUpdateOne {
 	return _u
 }
 
+// SetIsMinor sets the "is_minor" field.
+func (_u *StudentUpdateOne) SetIsMinor(v bool) *StudentUpdateOne {
+	_u.mutation.SetIsMinor(v)
+	return _u
+}
+
+// SetNillableIsMinor sets the "is_minor" field if the given value is not nil.
+func (_u *StudentUpdateOne) SetNillableIsMinor(v *bool) *StudentUpdateOne {
+	if v != nil {
+		_u.SetIsMinor(*v)
+	}
+	return _u
+}
+
 // AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by IDs.
 func (_u *StudentUpdateOne) AddEnrollmentIDs(ids ...int) *StudentUpdateOne {
 	_u.mutation.AddEnrollmentIDs(ids...)
@@ -532,6 +645,21 @@ func (_u *StudentUpdateOne) AddPayments(v ...*Payment) *StudentUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.AddPaymentIDs(ids...)
+}
+
+// AddStudentContactIDs adds the "student_contacts" edge to the StudentContact entity by IDs.
+func (_u *StudentUpdateOne) AddStudentContactIDs(ids ...int) *StudentUpdateOne {
+	_u.mutation.AddStudentContactIDs(ids...)
+	return _u
+}
+
+// AddStudentContacts adds the "student_contacts" edges to the StudentContact entity.
+func (_u *StudentUpdateOne) AddStudentContacts(v ...*StudentContact) *StudentUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddStudentContactIDs(ids...)
 }
 
 // Mutation returns the StudentMutation object of the builder.
@@ -600,6 +728,27 @@ func (_u *StudentUpdateOne) RemovePayments(v ...*Payment) *StudentUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemovePaymentIDs(ids...)
+}
+
+// ClearStudentContacts clears all "student_contacts" edges to the StudentContact entity.
+func (_u *StudentUpdateOne) ClearStudentContacts() *StudentUpdateOne {
+	_u.mutation.ClearStudentContacts()
+	return _u
+}
+
+// RemoveStudentContactIDs removes the "student_contacts" edge to StudentContact entities by IDs.
+func (_u *StudentUpdateOne) RemoveStudentContactIDs(ids ...int) *StudentUpdateOne {
+	_u.mutation.RemoveStudentContactIDs(ids...)
+	return _u
+}
+
+// RemoveStudentContacts removes "student_contacts" edges to StudentContact entities.
+func (_u *StudentUpdateOne) RemoveStudentContacts(v ...*StudentContact) *StudentUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveStudentContactIDs(ids...)
 }
 
 // Where appends a list predicates to the StudentUpdate builder.
@@ -682,6 +831,9 @@ func (_u *StudentUpdateOne) sqlSave(ctx context.Context) (_node *Student, err er
 	}
 	if value, ok := _u.mutation.IsActive(); ok {
 		_spec.SetField(student.FieldIsActive, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.IsMinor(); ok {
+		_spec.SetField(student.FieldIsMinor, field.TypeBool, value)
 	}
 	if _u.mutation.EnrollmentsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -811,6 +963,51 @@ func (_u *StudentUpdateOne) sqlSave(ctx context.Context) (_node *Student, err er
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(payment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.StudentContactsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.StudentContactsTable,
+			Columns: []string{student.StudentContactsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(studentcontact.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedStudentContactsIDs(); len(nodes) > 0 && !_u.mutation.StudentContactsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.StudentContactsTable,
+			Columns: []string{student.StudentContactsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(studentcontact.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.StudentContactsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.StudentContactsTable,
+			Columns: []string{student.StudentContactsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(studentcontact.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

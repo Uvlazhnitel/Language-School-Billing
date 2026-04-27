@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"langschool/ent/attendancemonth"
+	"langschool/ent/contact"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
@@ -14,6 +15,7 @@ import (
 	"langschool/ent/payment"
 	"langschool/ent/settings"
 	"langschool/ent/student"
+	"langschool/ent/studentcontact"
 	"langschool/ent/teacher"
 	"reflect"
 	"sync"
@@ -82,6 +84,7 @@ func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			attendancemonth.Table: attendancemonth.ValidColumn,
+			contact.Table:         contact.ValidColumn,
 			course.Table:          course.ValidColumn,
 			enrollment.Table:      enrollment.ValidColumn,
 			invoice.Table:         invoice.ValidColumn,
@@ -89,6 +92,7 @@ func checkColumn(t, c string) error {
 			payment.Table:         payment.ValidColumn,
 			settings.Table:        settings.ValidColumn,
 			student.Table:         student.ValidColumn,
+			studentcontact.Table:  studentcontact.ValidColumn,
 			teacher.Table:         teacher.ValidColumn,
 		})
 	})

@@ -22,12 +22,16 @@ const (
 	FieldNote = "note"
 	// FieldIsActive holds the string denoting the is_active field in the database.
 	FieldIsActive = "is_active"
+	// FieldIsMinor holds the string denoting the is_minor field in the database.
+	FieldIsMinor = "is_minor"
 	// EdgeEnrollments holds the string denoting the enrollments edge name in mutations.
 	EdgeEnrollments = "enrollments"
 	// EdgeInvoices holds the string denoting the invoices edge name in mutations.
 	EdgeInvoices = "invoices"
 	// EdgePayments holds the string denoting the payments edge name in mutations.
 	EdgePayments = "payments"
+	// EdgeStudentContacts holds the string denoting the student_contacts edge name in mutations.
+	EdgeStudentContacts = "student_contacts"
 	// Table holds the table name of the student in the database.
 	Table = "students"
 	// EnrollmentsTable is the table that holds the enrollments relation/edge.
@@ -51,6 +55,13 @@ const (
 	PaymentsInverseTable = "payments"
 	// PaymentsColumn is the table column denoting the payments relation/edge.
 	PaymentsColumn = "student_id"
+	// StudentContactsTable is the table that holds the student_contacts relation/edge.
+	StudentContactsTable = "student_contacts"
+	// StudentContactsInverseTable is the table name for the StudentContact entity.
+	// It exists in this package in order to avoid circular dependency with the "studentcontact" package.
+	StudentContactsInverseTable = "student_contacts"
+	// StudentContactsColumn is the table column denoting the student_contacts relation/edge.
+	StudentContactsColumn = "student_id"
 )
 
 // Columns holds all SQL columns for student fields.
@@ -61,6 +72,7 @@ var Columns = []string{
 	FieldEmail,
 	FieldNote,
 	FieldIsActive,
+	FieldIsMinor,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -82,6 +94,8 @@ var (
 	DefaultNote string
 	// DefaultIsActive holds the default value on creation for the "is_active" field.
 	DefaultIsActive bool
+	// DefaultIsMinor holds the default value on creation for the "is_minor" field.
+	DefaultIsMinor bool
 )
 
 // OrderOption defines the ordering options for the Student queries.
@@ -115,6 +129,11 @@ func ByNote(opts ...sql.OrderTermOption) OrderOption {
 // ByIsActive orders the results by the is_active field.
 func ByIsActive(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsActive, opts...).ToFunc()
+}
+
+// ByIsMinor orders the results by the is_minor field.
+func ByIsMinor(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIsMinor, opts...).ToFunc()
 }
 
 // ByEnrollmentsCount orders the results by enrollments count.
@@ -158,6 +177,20 @@ func ByPayments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newPaymentsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByStudentContactsCount orders the results by student_contacts count.
+func ByStudentContactsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newStudentContactsStep(), opts...)
+	}
+}
+
+// ByStudentContacts orders the results by student_contacts terms.
+func ByStudentContacts(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newStudentContactsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newEnrollmentsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -177,5 +210,12 @@ func newPaymentsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(PaymentsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, PaymentsTable, PaymentsColumn),
+	)
+}
+func newStudentContactsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(StudentContactsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, StudentContactsTable, StudentContactsColumn),
 	)
 }

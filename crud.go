@@ -14,11 +14,13 @@ import (
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
+	"langschool/ent/contact"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
 	"langschool/ent/student"
+	"langschool/ent/studentcontact"
 	"langschool/ent/teacher"
 	"langschool/internal/app"
 	"langschool/internal/app/utils"
@@ -49,6 +51,33 @@ type StudentDTO struct {
 	Email    string `json:"email"`    // Contact email address
 	Note     string `json:"note"`     // Optional notes about the student
 	IsActive bool   `json:"isActive"` // Whether the student is currently active
+	IsMinor  bool   `json:"isMinor"`  // Whether the student is a minor (child)
+}
+
+// ContactDTO represents a contact person in the frontend.
+type ContactDTO struct {
+	ID        int    `json:"id"`
+	FullName  string `json:"fullName"`
+	Phone     string `json:"phone"`
+	Email     string `json:"email"`
+	Note      string `json:"note"`
+	IsActive  bool   `json:"isActive"`
+	CreatedAt string `json:"createdAt"`
+}
+
+// StudentContactDTO represents a link between a student and a contact.
+type StudentContactDTO struct {
+	ID               int    `json:"id"`
+	StudentID        int    `json:"studentId"`
+	ContactID        int    `json:"contactId"`
+	ContactFullName  string `json:"contactFullName"`
+	ContactPhone     string `json:"contactPhone"`
+	ContactEmail     string `json:"contactEmail"`
+	Relation         string `json:"relation"`
+	IsPrimary        bool   `json:"isPrimary"`
+	IsPayer          bool   `json:"isPayer"`
+	ReceivesMessages bool   `json:"receivesMessages"`
+	Note             string `json:"note"`
 }
 
 // CourseDTO represents a course in the frontend.
@@ -153,6 +182,7 @@ func toStudentDTO(s *ent.Student) StudentDTO {
 		Email:    s.Email,
 		Note:     s.Note,
 		IsActive: s.IsActive,
+		IsMinor:  s.IsMinor,
 	}
 }
 
@@ -272,7 +302,7 @@ func (a *App) StudentGet(id int) (*StudentDTO, error) {
 // All user inputs are sanitized to prevent XSS attacks.
 // The fullName parameter is required (validated to be non-empty).
 // The student is created as active by default.
-func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, error) {
+func (a *App) StudentCreate(fullName, phone, email, note string, isMinor bool) (*StudentDTO, error) {
 	fullName = sanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
 		return nil, err
@@ -284,6 +314,7 @@ func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, e
 		SetEmail(sanitizeInput(email)).
 		SetNote(sanitizeInput(note)).
 		SetIsActive(true).
+		SetIsMinor(isMinor).
 		Save(a.ctx)
 	if err != nil {
 		return nil, err
@@ -296,7 +327,7 @@ func (a *App) StudentCreate(fullName, phone, email, note string) (*StudentDTO, e
 // StudentUpdate updates an existing student's information.
 // All user inputs are sanitized to prevent XSS attacks.
 // The fullName parameter is required (validated to be non-empty).
-func (a *App) StudentUpdate(id int, fullName, phone, email, note string) (*StudentDTO, error) {
+func (a *App) StudentUpdate(id int, fullName, phone, email, note string, isMinor bool) (*StudentDTO, error) {
 	fullName = sanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
 		return nil, err
@@ -307,6 +338,7 @@ func (a *App) StudentUpdate(id int, fullName, phone, email, note string) (*Stude
 		SetPhone(sanitizeInput(phone)).
 		SetEmail(sanitizeInput(email)).
 		SetNote(sanitizeInput(note)).
+		SetIsMinor(isMinor).
 		Save(a.ctx)
 	if err != nil {
 		return nil, err
@@ -759,4 +791,285 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct
 
 	dto := toEnrollmentDTO(e2)
 	return &dto, nil
+}
+
+// -------------------- Contacts CRUD --------------------
+
+// toContactDTO converts an ent.Contact to ContactDTO.
+func toContactDTO(c *ent.Contact) ContactDTO {
+return ContactDTO{
+ID:        c.ID,
+FullName:  c.FullName,
+Phone:     c.Phone,
+Email:     c.Email,
+Note:      c.Note,
+IsActive:  c.IsActive,
+CreatedAt: c.CreatedAt.Format("2006-01-02"),
+}
+}
+
+// toStudentContactDTO converts an ent.StudentContact to StudentContactDTO.
+func toStudentContactDTO(sc *ent.StudentContact) StudentContactDTO {
+dto := StudentContactDTO{
+ID:               sc.ID,
+StudentID:        sc.StudentID,
+ContactID:        sc.ContactID,
+Relation:         sc.Relation,
+IsPrimary:        sc.IsPrimary,
+IsPayer:          sc.IsPayer,
+ReceivesMessages: sc.ReceivesMessages,
+Note:             sc.Note,
+}
+if sc.Edges.Contact != nil {
+dto.ContactFullName = sc.Edges.Contact.FullName
+dto.ContactPhone = sc.Edges.Contact.Phone
+dto.ContactEmail = sc.Edges.Contact.Email
+}
+return dto
+}
+
+// ContactList returns contacts, optionally filtered by a search query.
+// If includeInactive is false, only active contacts are returned.
+func (a *App) ContactList(q string, includeInactive bool) ([]ContactDTO, error) {
+ctx := a.ctx
+q = strings.TrimSpace(q)
+
+query := a.db.Ent.Contact.Query()
+if !includeInactive {
+query = query.Where(contact.IsActiveEQ(true))
+}
+if q != "" {
+query = query.Where(contact.Or(
+contact.FullNameContainsFold(q),
+contact.PhoneContainsFold(q),
+contact.EmailContainsFold(q),
+))
+}
+
+contacts, err := query.Order(ent.Asc(contact.FieldFullName)).All(ctx)
+if err != nil {
+return nil, err
+}
+
+out := make([]ContactDTO, 0, len(contacts))
+for _, c := range contacts {
+out = append(out, toContactDTO(c))
+}
+return out, nil
+}
+
+// ContactCreate creates a new contact.
+func (a *App) ContactCreate(fullName, phone, email, note string) (*ContactDTO, error) {
+fullName = sanitizeInput(fullName)
+if err := validateNonEmpty(fullName, "fullName"); err != nil {
+return nil, err
+}
+
+c, err := a.db.Ent.Contact.Create().
+SetFullName(fullName).
+SetPhone(sanitizeInput(phone)).
+SetEmail(sanitizeInput(email)).
+SetNote(sanitizeInput(note)).
+SetIsActive(true).
+Save(a.ctx)
+if err != nil {
+return nil, err
+}
+
+dto := toContactDTO(c)
+return &dto, nil
+}
+
+// ContactUpdate updates an existing contact's information.
+func (a *App) ContactUpdate(id int, fullName, phone, email, note string) (*ContactDTO, error) {
+fullName = sanitizeInput(fullName)
+if err := validateNonEmpty(fullName, "fullName"); err != nil {
+return nil, err
+}
+
+c, err := a.db.Ent.Contact.UpdateOneID(id).
+SetFullName(fullName).
+SetPhone(sanitizeInput(phone)).
+SetEmail(sanitizeInput(email)).
+SetNote(sanitizeInput(note)).
+Save(a.ctx)
+if err != nil {
+return nil, err
+}
+
+dto := toContactDTO(c)
+return &dto, nil
+}
+
+// ContactSetActive activates or deactivates a contact.
+func (a *App) ContactSetActive(id int, active bool) error {
+_, err := a.db.Ent.Contact.UpdateOneID(id).
+SetIsActive(active).
+Save(a.ctx)
+return err
+}
+
+// -------------------- StudentContacts CRUD --------------------
+
+// StudentContactsList returns all student-contact links for a given student,
+// including contact details.
+func (a *App) StudentContactsList(studentID int) ([]StudentContactDTO, error) {
+ctx := a.ctx
+
+scs, err := a.db.Ent.StudentContact.Query().
+Where(studentcontact.StudentIDEQ(studentID)).
+WithContact().
+Order(ent.Asc(studentcontact.FieldID)).
+All(ctx)
+if err != nil {
+return nil, err
+}
+
+out := make([]StudentContactDTO, 0, len(scs))
+for _, sc := range scs {
+out = append(out, toStudentContactDTO(sc))
+}
+return out, nil
+}
+
+// StudentContactCreate creates a new link between a student and a contact.
+// If isPrimary is true, clears isPrimary on all other links for this student.
+// If isPayer is true, clears isPayer on all other links for this student.
+func (a *App) StudentContactCreate(studentID, contactID int, relation string, isPrimary, isPayer, receivesMessages bool, note string) (*StudentContactDTO, error) {
+ctx := a.ctx
+
+if studentID <= 0 || contactID <= 0 {
+return nil, errors.New("studentID and contactID must be > 0")
+}
+relation = strings.TrimSpace(relation)
+if relation == "" {
+relation = "other"
+}
+
+tx, err := a.db.Ent.Tx(ctx)
+if err != nil {
+return nil, err
+}
+defer tx.Rollback()
+
+if isPrimary {
+if _, err := tx.StudentContact.Update().
+Where(studentcontact.StudentIDEQ(studentID)).
+SetIsPrimary(false).
+Save(ctx); err != nil {
+return nil, err
+}
+}
+if isPayer {
+if _, err := tx.StudentContact.Update().
+Where(studentcontact.StudentIDEQ(studentID)).
+SetIsPayer(false).
+Save(ctx); err != nil {
+return nil, err
+}
+}
+
+sc, err := tx.StudentContact.Create().
+SetStudentID(studentID).
+SetContactID(contactID).
+SetRelation(relation).
+SetIsPrimary(isPrimary).
+SetIsPayer(isPayer).
+SetReceivesMessages(receivesMessages).
+SetNote(sanitizeInput(note)).
+Save(ctx)
+if err != nil {
+return nil, err
+}
+
+if err := tx.Commit(); err != nil {
+return nil, err
+}
+
+sc2, err := a.db.Ent.StudentContact.Query().
+Where(studentcontact.IDEQ(sc.ID)).
+WithContact().
+Only(ctx)
+if err != nil {
+return nil, err
+}
+
+dto := toStudentContactDTO(sc2)
+return &dto, nil
+}
+
+// StudentContactUpdate updates an existing student-contact link.
+// If isPrimary is true, clears isPrimary on all other links for this student.
+// If isPayer is true, clears isPayer on all other links for this student.
+func (a *App) StudentContactUpdate(id int, relation string, isPrimary, isPayer, receivesMessages bool, note string) (*StudentContactDTO, error) {
+ctx := a.ctx
+
+relation = strings.TrimSpace(relation)
+if relation == "" {
+relation = "other"
+}
+
+existing, err := a.db.Ent.StudentContact.Get(ctx, id)
+if err != nil {
+return nil, err
+}
+
+tx, err := a.db.Ent.Tx(ctx)
+if err != nil {
+return nil, err
+}
+defer tx.Rollback()
+
+if isPrimary {
+if _, err := tx.StudentContact.Update().
+Where(
+studentcontact.StudentIDEQ(existing.StudentID),
+studentcontact.IDNEQ(id),
+).
+SetIsPrimary(false).
+Save(ctx); err != nil {
+return nil, err
+}
+}
+if isPayer {
+if _, err := tx.StudentContact.Update().
+Where(
+studentcontact.StudentIDEQ(existing.StudentID),
+studentcontact.IDNEQ(id),
+).
+SetIsPayer(false).
+Save(ctx); err != nil {
+return nil, err
+}
+}
+
+if _, err := tx.StudentContact.UpdateOneID(id).
+SetRelation(relation).
+SetIsPrimary(isPrimary).
+SetIsPayer(isPayer).
+SetReceivesMessages(receivesMessages).
+SetNote(sanitizeInput(note)).
+Save(ctx); err != nil {
+return nil, err
+}
+
+if err := tx.Commit(); err != nil {
+return nil, err
+}
+
+sc2, err := a.db.Ent.StudentContact.Query().
+Where(studentcontact.IDEQ(id)).
+WithContact().
+Only(ctx)
+if err != nil {
+return nil, err
+}
+
+dto := toStudentContactDTO(sc2)
+return &dto, nil
+}
+
+// StudentContactDelete removes a student-contact link.
+func (a *App) StudentContactDelete(id int) error {
+return a.db.Ent.StudentContact.DeleteOneID(id).Exec(a.ctx)
 }

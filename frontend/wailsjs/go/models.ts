@@ -240,6 +240,7 @@ export namespace main {
 	    email: string;
 	    note: string;
 	    isActive: boolean;
+	    isMinor: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new StudentDTO(source);
@@ -253,6 +254,63 @@ export namespace main {
 	        this.email = source["email"];
 	        this.note = source["note"];
 	        this.isActive = source["isActive"];
+	        this.isMinor = source["isMinor"];
+	    }
+	}
+	export class ContactDTO {
+	    id: number;
+	    fullName: string;
+	    phone: string;
+	    email: string;
+	    note: string;
+	    isActive: boolean;
+	    createdAt: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ContactDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.fullName = source["fullName"];
+	        this.phone = source["phone"];
+	        this.email = source["email"];
+	        this.note = source["note"];
+	        this.isActive = source["isActive"];
+	        this.createdAt = source["createdAt"];
+	    }
+	}
+	export class StudentContactDTO {
+	    id: number;
+	    studentId: number;
+	    contactId: number;
+	    contactFullName: string;
+	    contactPhone: string;
+	    contactEmail: string;
+	    relation: string;
+	    isPrimary: boolean;
+	    isPayer: boolean;
+	    receivesMessages: boolean;
+	    note: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new StudentContactDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.studentId = source["studentId"];
+	        this.contactId = source["contactId"];
+	        this.contactFullName = source["contactFullName"];
+	        this.contactPhone = source["contactPhone"];
+	        this.contactEmail = source["contactEmail"];
+	        this.relation = source["relation"];
+	        this.isPrimary = source["isPrimary"];
+	        this.isPayer = source["isPayer"];
+	        this.receivesMessages = source["receivesMessages"];
+	        this.note = source["note"];
 	    }
 	}
 	export class TeacherDTO {

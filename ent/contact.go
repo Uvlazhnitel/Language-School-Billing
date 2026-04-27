@@ -4,15 +4,16 @@ package ent
 
 import (
 	"fmt"
-	"langschool/ent/student"
+	"langschool/ent/contact"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 )
 
-// Student is the model entity for the Student schema.
-type Student struct {
+// Contact is the model entity for the Contact schema.
+type Contact struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
@@ -26,76 +27,47 @@ type Student struct {
 	Note string `json:"note,omitempty"`
 	// IsActive holds the value of the "is_active" field.
 	IsActive bool `json:"is_active,omitempty"`
-	// IsMinor holds the value of the "is_minor" field.
-	IsMinor bool `json:"is_minor,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt time.Time `json:"created_at,omitempty"`
+	// UpdatedAt holds the value of the "updated_at" field.
+	UpdatedAt time.Time `json:"updated_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
-	// The values are being populated by the StudentQuery when eager-loading is set.
-	Edges        StudentEdges `json:"edges"`
+	// The values are being populated by the ContactQuery when eager-loading is set.
+	Edges        ContactEdges `json:"edges"`
 	selectValues sql.SelectValues
 }
 
-// StudentEdges holds the relations/edges for other nodes in the graph.
-type StudentEdges struct {
-	// Enrollments holds the value of the enrollments edge.
-	Enrollments []*Enrollment `json:"enrollments,omitempty"`
-	// Invoices holds the value of the invoices edge.
-	Invoices []*Invoice `json:"invoices,omitempty"`
-	// Payments holds the value of the payments edge.
-	Payments []*Payment `json:"payments,omitempty"`
+// ContactEdges holds the relations/edges for other nodes in the graph.
+type ContactEdges struct {
 	// StudentContacts holds the value of the student_contacts edge.
 	StudentContacts []*StudentContact `json:"student_contacts,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
-}
-
-// EnrollmentsOrErr returns the Enrollments value or an error if the edge
-// was not loaded in eager-loading.
-func (e StudentEdges) EnrollmentsOrErr() ([]*Enrollment, error) {
-	if e.loadedTypes[0] {
-		return e.Enrollments, nil
-	}
-	return nil, &NotLoadedError{edge: "enrollments"}
-}
-
-// InvoicesOrErr returns the Invoices value or an error if the edge
-// was not loaded in eager-loading.
-func (e StudentEdges) InvoicesOrErr() ([]*Invoice, error) {
-	if e.loadedTypes[1] {
-		return e.Invoices, nil
-	}
-	return nil, &NotLoadedError{edge: "invoices"}
-}
-
-// PaymentsOrErr returns the Payments value or an error if the edge
-// was not loaded in eager-loading.
-func (e StudentEdges) PaymentsOrErr() ([]*Payment, error) {
-	if e.loadedTypes[2] {
-		return e.Payments, nil
-	}
-	return nil, &NotLoadedError{edge: "payments"}
+	loadedTypes [1]bool
 }
 
 // StudentContactsOrErr returns the StudentContacts value or an error if the edge
 // was not loaded in eager-loading.
-func (e StudentEdges) StudentContactsOrErr() ([]*StudentContact, error) {
-	if e.loadedTypes[3] {
+func (e ContactEdges) StudentContactsOrErr() ([]*StudentContact, error) {
+	if e.loadedTypes[0] {
 		return e.StudentContacts, nil
 	}
 	return nil, &NotLoadedError{edge: "student_contacts"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
-func (*Student) scanValues(columns []string) ([]any, error) {
+func (*Contact) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case student.FieldIsActive, student.FieldIsMinor:
+		case contact.FieldIsActive:
 			values[i] = new(sql.NullBool)
-		case student.FieldID:
+		case contact.FieldID:
 			values[i] = new(sql.NullInt64)
-		case student.FieldFullName, student.FieldPhone, student.FieldEmail, student.FieldNote:
+		case contact.FieldFullName, contact.FieldPhone, contact.FieldEmail, contact.FieldNote:
 			values[i] = new(sql.NullString)
+		case contact.FieldCreatedAt, contact.FieldUpdatedAt:
+			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -104,54 +76,60 @@ func (*Student) scanValues(columns []string) ([]any, error) {
 }
 
 // assignValues assigns the values that were returned from sql.Rows (after scanning)
-// to the Student fields.
-func (_m *Student) assignValues(columns []string, values []any) error {
+// to the Contact fields.
+func (_m *Contact) assignValues(columns []string, values []any) error {
 	if m, n := len(values), len(columns); m < n {
 		return fmt.Errorf("mismatch number of scan values: %d != %d", m, n)
 	}
 	for i := range columns {
 		switch columns[i] {
-		case student.FieldID:
+		case contact.FieldID:
 			value, ok := values[i].(*sql.NullInt64)
 			if !ok {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int(value.Int64)
-		case student.FieldFullName:
+		case contact.FieldFullName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field full_name", values[i])
 			} else if value.Valid {
 				_m.FullName = value.String
 			}
-		case student.FieldPhone:
+		case contact.FieldPhone:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field phone", values[i])
 			} else if value.Valid {
 				_m.Phone = value.String
 			}
-		case student.FieldEmail:
+		case contact.FieldEmail:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field email", values[i])
 			} else if value.Valid {
 				_m.Email = value.String
 			}
-		case student.FieldNote:
+		case contact.FieldNote:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field note", values[i])
 			} else if value.Valid {
 				_m.Note = value.String
 			}
-		case student.FieldIsActive:
+		case contact.FieldIsActive:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field is_active", values[i])
 			} else if value.Valid {
 				_m.IsActive = value.Bool
 			}
-		case student.FieldIsMinor:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field is_minor", values[i])
+		case contact.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
 			} else if value.Valid {
-				_m.IsMinor = value.Bool
+				_m.CreatedAt = value.Time
+			}
+		case contact.FieldUpdatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field updated_at", values[i])
+			} else if value.Valid {
+				_m.UpdatedAt = value.Time
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -160,54 +138,39 @@ func (_m *Student) assignValues(columns []string, values []any) error {
 	return nil
 }
 
-// Value returns the ent.Value that was dynamically selected and assigned to the Student.
+// Value returns the ent.Value that was dynamically selected and assigned to the Contact.
 // This includes values selected through modifiers, order, etc.
-func (_m *Student) Value(name string) (ent.Value, error) {
+func (_m *Contact) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
-// QueryEnrollments queries the "enrollments" edge of the Student entity.
-func (_m *Student) QueryEnrollments() *EnrollmentQuery {
-	return NewStudentClient(_m.config).QueryEnrollments(_m)
+// QueryStudentContacts queries the "student_contacts" edge of the Contact entity.
+func (_m *Contact) QueryStudentContacts() *StudentContactQuery {
+	return NewContactClient(_m.config).QueryStudentContacts(_m)
 }
 
-// QueryInvoices queries the "invoices" edge of the Student entity.
-func (_m *Student) QueryInvoices() *InvoiceQuery {
-	return NewStudentClient(_m.config).QueryInvoices(_m)
-}
-
-// QueryPayments queries the "payments" edge of the Student entity.
-func (_m *Student) QueryPayments() *PaymentQuery {
-	return NewStudentClient(_m.config).QueryPayments(_m)
-}
-
-// QueryStudentContacts queries the "student_contacts" edge of the Student entity.
-func (_m *Student) QueryStudentContacts() *StudentContactQuery {
-	return NewStudentClient(_m.config).QueryStudentContacts(_m)
-}
-
-// Update returns a builder for updating this Student.
-// Note that you need to call Student.Unwrap() before calling this method if this Student
+// Update returns a builder for updating this Contact.
+// Note that you need to call Contact.Unwrap() before calling this method if this Contact
 // was returned from a transaction, and the transaction was committed or rolled back.
-func (_m *Student) Update() *StudentUpdateOne {
-	return NewStudentClient(_m.config).UpdateOne(_m)
+func (_m *Contact) Update() *ContactUpdateOne {
+	return NewContactClient(_m.config).UpdateOne(_m)
 }
 
-// Unwrap unwraps the Student entity that was returned from a transaction after it was closed,
+// Unwrap unwraps the Contact entity that was returned from a transaction after it was closed,
 // so that all future queries will be executed through the driver which created the transaction.
-func (_m *Student) Unwrap() *Student {
+func (_m *Contact) Unwrap() *Contact {
 	_tx, ok := _m.config.driver.(*txDriver)
 	if !ok {
-		panic("ent: Student is not a transactional entity")
+		panic("ent: Contact is not a transactional entity")
 	}
 	_m.config.driver = _tx.drv
 	return _m
 }
 
 // String implements the fmt.Stringer.
-func (_m *Student) String() string {
+func (_m *Contact) String() string {
 	var builder strings.Builder
-	builder.WriteString("Student(")
+	builder.WriteString("Contact(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("full_name=")
 	builder.WriteString(_m.FullName)
@@ -224,11 +187,14 @@ func (_m *Student) String() string {
 	builder.WriteString("is_active=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsActive))
 	builder.WriteString(", ")
-	builder.WriteString("is_minor=")
-	builder.WriteString(fmt.Sprintf("%v", _m.IsMinor))
+	builder.WriteString("created_at=")
+	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))
+	builder.WriteString(", ")
+	builder.WriteString("updated_at=")
+	builder.WriteString(_m.UpdatedAt.Format(time.ANSIC))
 	builder.WriteByte(')')
 	return builder.String()
 }
 
-// Students is a parsable slice of Student.
-type Students []*Student
+// Contacts is a parsable slice of Contact.
+type Contacts []*Contact

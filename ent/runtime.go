@@ -4,6 +4,7 @@ package ent
 
 import (
 	"langschool/ent/attendancemonth"
+	"langschool/ent/contact"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
@@ -11,6 +12,7 @@ import (
 	"langschool/ent/schema"
 	"langschool/ent/settings"
 	"langschool/ent/student"
+	"langschool/ent/studentcontact"
 	"langschool/ent/teacher"
 	"time"
 )
@@ -25,6 +27,34 @@ func init() {
 	attendancemonthDescLessonsCount := attendancemonthFields[4].Descriptor()
 	// attendancemonth.DefaultLessonsCount holds the default value on creation for the lessons_count field.
 	attendancemonth.DefaultLessonsCount = attendancemonthDescLessonsCount.Default.(int)
+	contactFields := schema.Contact{}.Fields()
+	_ = contactFields
+	// contactDescPhone is the schema descriptor for phone field.
+	contactDescPhone := contactFields[1].Descriptor()
+	// contact.DefaultPhone holds the default value on creation for the phone field.
+	contact.DefaultPhone = contactDescPhone.Default.(string)
+	// contactDescEmail is the schema descriptor for email field.
+	contactDescEmail := contactFields[2].Descriptor()
+	// contact.DefaultEmail holds the default value on creation for the email field.
+	contact.DefaultEmail = contactDescEmail.Default.(string)
+	// contactDescNote is the schema descriptor for note field.
+	contactDescNote := contactFields[3].Descriptor()
+	// contact.DefaultNote holds the default value on creation for the note field.
+	contact.DefaultNote = contactDescNote.Default.(string)
+	// contactDescIsActive is the schema descriptor for is_active field.
+	contactDescIsActive := contactFields[4].Descriptor()
+	// contact.DefaultIsActive holds the default value on creation for the is_active field.
+	contact.DefaultIsActive = contactDescIsActive.Default.(bool)
+	// contactDescCreatedAt is the schema descriptor for created_at field.
+	contactDescCreatedAt := contactFields[5].Descriptor()
+	// contact.DefaultCreatedAt holds the default value on creation for the created_at field.
+	contact.DefaultCreatedAt = contactDescCreatedAt.Default.(func() time.Time)
+	// contactDescUpdatedAt is the schema descriptor for updated_at field.
+	contactDescUpdatedAt := contactFields[6].Descriptor()
+	// contact.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	contact.DefaultUpdatedAt = contactDescUpdatedAt.Default.(func() time.Time)
+	// contact.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	contact.UpdateDefaultUpdatedAt = contactDescUpdatedAt.UpdateDefault.(func() time.Time)
 	courseFields := schema.Course{}.Fields()
 	_ = courseFields
 	// courseDescTeacherName is the schema descriptor for teacher_name field.
@@ -121,6 +151,42 @@ func init() {
 	studentDescIsActive := studentFields[4].Descriptor()
 	// student.DefaultIsActive holds the default value on creation for the is_active field.
 	student.DefaultIsActive = studentDescIsActive.Default.(bool)
+	// studentDescIsMinor is the schema descriptor for is_minor field.
+	studentDescIsMinor := studentFields[5].Descriptor()
+	// student.DefaultIsMinor holds the default value on creation for the is_minor field.
+	student.DefaultIsMinor = studentDescIsMinor.Default.(bool)
+	studentcontactFields := schema.StudentContact{}.Fields()
+	_ = studentcontactFields
+	// studentcontactDescRelation is the schema descriptor for relation field.
+	studentcontactDescRelation := studentcontactFields[2].Descriptor()
+	// studentcontact.DefaultRelation holds the default value on creation for the relation field.
+	studentcontact.DefaultRelation = studentcontactDescRelation.Default.(string)
+	// studentcontactDescIsPrimary is the schema descriptor for is_primary field.
+	studentcontactDescIsPrimary := studentcontactFields[3].Descriptor()
+	// studentcontact.DefaultIsPrimary holds the default value on creation for the is_primary field.
+	studentcontact.DefaultIsPrimary = studentcontactDescIsPrimary.Default.(bool)
+	// studentcontactDescIsPayer is the schema descriptor for is_payer field.
+	studentcontactDescIsPayer := studentcontactFields[4].Descriptor()
+	// studentcontact.DefaultIsPayer holds the default value on creation for the is_payer field.
+	studentcontact.DefaultIsPayer = studentcontactDescIsPayer.Default.(bool)
+	// studentcontactDescReceivesMessages is the schema descriptor for receives_messages field.
+	studentcontactDescReceivesMessages := studentcontactFields[5].Descriptor()
+	// studentcontact.DefaultReceivesMessages holds the default value on creation for the receives_messages field.
+	studentcontact.DefaultReceivesMessages = studentcontactDescReceivesMessages.Default.(bool)
+	// studentcontactDescNote is the schema descriptor for note field.
+	studentcontactDescNote := studentcontactFields[6].Descriptor()
+	// studentcontact.DefaultNote holds the default value on creation for the note field.
+	studentcontact.DefaultNote = studentcontactDescNote.Default.(string)
+	// studentcontactDescCreatedAt is the schema descriptor for created_at field.
+	studentcontactDescCreatedAt := studentcontactFields[7].Descriptor()
+	// studentcontact.DefaultCreatedAt holds the default value on creation for the created_at field.
+	studentcontact.DefaultCreatedAt = studentcontactDescCreatedAt.Default.(func() time.Time)
+	// studentcontactDescUpdatedAt is the schema descriptor for updated_at field.
+	studentcontactDescUpdatedAt := studentcontactFields[8].Descriptor()
+	// studentcontact.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	studentcontact.DefaultUpdatedAt = studentcontactDescUpdatedAt.Default.(func() time.Time)
+	// studentcontact.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	studentcontact.UpdateDefaultUpdatedAt = studentcontactDescUpdatedAt.UpdateDefault.(func() time.Time)
 	teacherFields := schema.Teacher{}.Fields()
 	_ = teacherFields
 	// teacherDescIsActive is the schema descriptor for is_active field.

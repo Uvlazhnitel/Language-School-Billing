@@ -115,7 +115,7 @@ func TestEnrollmentListIncludesTeacherName(t *testing.T) {
 	app, client := newCRUDTestApp(t, "crudenrollment")
 	defer client.Close()
 
-	st, err := app.StudentCreate("Mila Test", "", "", "")
+	st, err := app.StudentCreate("Mila Test", "", "", "", false)
 	if err != nil {
 		t.Fatalf("StudentCreate: %v", err)
 	}

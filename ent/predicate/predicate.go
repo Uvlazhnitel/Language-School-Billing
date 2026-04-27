@@ -9,6 +9,9 @@ import (
 // AttendanceMonth is the predicate function for attendancemonth builders.
 type AttendanceMonth func(*sql.Selector)
 
+// Contact is the predicate function for contact builders.
+type Contact func(*sql.Selector)
+
 // Course is the predicate function for course builders.
 type Course func(*sql.Selector)
 
@@ -29,6 +32,9 @@ type Settings func(*sql.Selector)
 
 // Student is the predicate function for student builders.
 type Student func(*sql.Selector)
+
+// StudentContact is the predicate function for studentcontact builders.
+type StudentContact func(*sql.Selector)
 
 // Teacher is the predicate function for teacher builders.
 type Teacher func(*sql.Selector)

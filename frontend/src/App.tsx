@@ -24,6 +24,18 @@ import {
   StudentDTO,
 } from "./lib/students";
 
+import {
+  listContacts,
+  createContact,
+  listStudentContacts,
+  createStudentContact,
+  updateStudentContact,
+  deleteStudentContact,
+  ContactDTO,
+  StudentContactDTO,
+  RELATIONS,
+} from "./lib/contacts";
+
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
 
@@ -274,6 +286,7 @@ export default function App() {
   const [sfPhone, setSfPhone] = useState("");
   const [sfEmail, setSfEmail] = useState("");
   const [sfNote, setSfNote] = useState("");
+  const [sfIsMinor, setSfIsMinor] = useState(false);
 
   // ---------------- Student Card ----------------
   const [studentCardOpen, setStudentCardOpen] = useState(false);
@@ -284,6 +297,25 @@ export default function App() {
   const [studentCardDebts, setStudentCardDebts] = useState<DebtInvoiceDTO[]>([]);
   const [studentCardPayments, setStudentCardPayments] = useState<PaymentDTO[]>([]);
   const [studentCardDeletingPaymentId, setStudentCardDeletingPaymentId] = useState<number | null>(null);
+
+  // Student card contacts state
+  const [studentCardContacts, setStudentCardContacts] = useState<StudentContactDTO[]>([]);
+  const [contactModalOpen, setContactModalOpen] = useState(false);
+  const [editingStudentContact, setEditingStudentContact] = useState<StudentContactDTO | null>(null);
+  // For linking existing contact
+  const [allContacts, setAllContacts] = useState<ContactDTO[]>([]);
+  const [scContactId, setScContactId] = useState<number>(0);
+  const [scContactSearch, setScContactSearch] = useState("");
+  const [scRelation, setScRelation] = useState("other");
+  const [scIsPrimary, setScIsPrimary] = useState(false);
+  const [scIsPayer, setScIsPayer] = useState(false);
+  const [scReceivesMessages, setScReceivesMessages] = useState(true);
+  const [scNote, setScNote] = useState("");
+  // For creating a new contact inline
+  const [newContactMode, setNewContactMode] = useState(false);
+  const [ncName, setNcName] = useState("");
+  const [ncPhone, setNcPhone] = useState("");
+  const [ncEmail, setNcEmail] = useState("");
 
   const loadStudents = useCallback(async () => {
     setStudentLoading(true);
@@ -315,6 +347,7 @@ export default function App() {
     setSfPhone("");
     setSfEmail("");
     setSfNote("");
+    setSfIsMinor(false);
     setStudentModalOpen(true);
   }
 
@@ -324,6 +357,7 @@ export default function App() {
     setSfPhone(s.phone);
     setSfEmail(s.email);
     setSfNote(s.note);
+    setSfIsMinor(s.isMinor);
     setStudentModalOpen(true);
   }
 
@@ -335,10 +369,10 @@ export default function App() {
     try {
       if (editingStudent) {
         // Update existing student
-        await updateStudent(editingStudent.id, sfName, sfPhone, sfEmail, sfNote);
+        await updateStudent(editingStudent.id, sfName, sfPhone, sfEmail, sfNote, sfIsMinor);
       } else {
         // Create new student
-        await createStudent(sfName, sfPhone, sfEmail, sfNote);
+        await createStudent(sfName, sfPhone, sfEmail, sfNote, sfIsMinor);
       }
       setStudentModalOpen(false);
       await Promise.all([loadStudents(), loadAllStudents()]);

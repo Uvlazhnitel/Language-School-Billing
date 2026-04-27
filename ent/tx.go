@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// AttendanceMonth is the client for interacting with the AttendanceMonth builders.
 	AttendanceMonth *AttendanceMonthClient
+	// Contact is the client for interacting with the Contact builders.
+	Contact *ContactClient
 	// Course is the client for interacting with the Course builders.
 	Course *CourseClient
 	// Enrollment is the client for interacting with the Enrollment builders.
@@ -28,6 +30,8 @@ type Tx struct {
 	Settings *SettingsClient
 	// Student is the client for interacting with the Student builders.
 	Student *StudentClient
+	// StudentContact is the client for interacting with the StudentContact builders.
+	StudentContact *StudentContactClient
 	// Teacher is the client for interacting with the Teacher builders.
 	Teacher *TeacherClient
 
@@ -162,6 +166,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.AttendanceMonth = NewAttendanceMonthClient(tx.config)
+	tx.Contact = NewContactClient(tx.config)
 	tx.Course = NewCourseClient(tx.config)
 	tx.Enrollment = NewEnrollmentClient(tx.config)
 	tx.Invoice = NewInvoiceClient(tx.config)
@@ -169,6 +174,7 @@ func (tx *Tx) init() {
 	tx.Payment = NewPaymentClient(tx.config)
 	tx.Settings = NewSettingsClient(tx.config)
 	tx.Student = NewStudentClient(tx.config)
+	tx.StudentContact = NewStudentContactClient(tx.config)
 	tx.Teacher = NewTeacherClient(tx.config)
 }
 

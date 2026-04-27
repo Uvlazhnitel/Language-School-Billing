@@ -10,6 +10,7 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
 	"langschool/ent/student"
+	"langschool/ent/studentcontact"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -84,6 +85,20 @@ func (_c *StudentCreate) SetNillableIsActive(v *bool) *StudentCreate {
 	return _c
 }
 
+// SetIsMinor sets the "is_minor" field.
+func (_c *StudentCreate) SetIsMinor(v bool) *StudentCreate {
+	_c.mutation.SetIsMinor(v)
+	return _c
+}
+
+// SetNillableIsMinor sets the "is_minor" field if the given value is not nil.
+func (_c *StudentCreate) SetNillableIsMinor(v *bool) *StudentCreate {
+	if v != nil {
+		_c.SetIsMinor(*v)
+	}
+	return _c
+}
+
 // AddEnrollmentIDs adds the "enrollments" edge to the Enrollment entity by IDs.
 func (_c *StudentCreate) AddEnrollmentIDs(ids ...int) *StudentCreate {
 	_c.mutation.AddEnrollmentIDs(ids...)
@@ -127,6 +142,21 @@ func (_c *StudentCreate) AddPayments(v ...*Payment) *StudentCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddPaymentIDs(ids...)
+}
+
+// AddStudentContactIDs adds the "student_contacts" edge to the StudentContact entity by IDs.
+func (_c *StudentCreate) AddStudentContactIDs(ids ...int) *StudentCreate {
+	_c.mutation.AddStudentContactIDs(ids...)
+	return _c
+}
+
+// AddStudentContacts adds the "student_contacts" edges to the StudentContact entity.
+func (_c *StudentCreate) AddStudentContacts(v ...*StudentContact) *StudentCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddStudentContactIDs(ids...)
 }
 
 // Mutation returns the StudentMutation object of the builder.
@@ -180,6 +210,10 @@ func (_c *StudentCreate) defaults() {
 		v := student.DefaultIsActive
 		_c.mutation.SetIsActive(v)
 	}
+	if _, ok := _c.mutation.IsMinor(); !ok {
+		v := student.DefaultIsMinor
+		_c.mutation.SetIsMinor(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -198,6 +232,9 @@ func (_c *StudentCreate) check() error {
 	}
 	if _, ok := _c.mutation.IsActive(); !ok {
 		return &ValidationError{Name: "is_active", err: errors.New(`ent: missing required field "Student.is_active"`)}
+	}
+	if _, ok := _c.mutation.IsMinor(); !ok {
+		return &ValidationError{Name: "is_minor", err: errors.New(`ent: missing required field "Student.is_minor"`)}
 	}
 	return nil
 }
@@ -245,6 +282,10 @@ func (_c *StudentCreate) createSpec() (*Student, *sqlgraph.CreateSpec) {
 		_spec.SetField(student.FieldIsActive, field.TypeBool, value)
 		_node.IsActive = value
 	}
+	if value, ok := _c.mutation.IsMinor(); ok {
+		_spec.SetField(student.FieldIsMinor, field.TypeBool, value)
+		_node.IsMinor = value
+	}
 	if nodes := _c.mutation.EnrollmentsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
 			Rel:     sqlgraph.O2M,
@@ -286,6 +327,22 @@ func (_c *StudentCreate) createSpec() (*Student, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(payment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.StudentContactsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   student.StudentContactsTable,
+			Columns: []string{student.StudentContactsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(studentcontact.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

@@ -14,6 +14,7 @@ export type StudentDTO = {
   email: string;
   note: string;
   isActive: boolean;
+  isMinor: boolean;
 };
 
 export async function listStudents(q: string, includeInactive: boolean): Promise<StudentDTO[]> {
@@ -28,9 +29,10 @@ export function createStudent(
   fullName: string,
   phone: string,
   email: string,
-  note: string
+  note: string,
+  isMinor: boolean
 ): Promise<StudentDTO> {
-  return StudentCreate(fullName, phone, email, note) as Promise<StudentDTO>;
+  return StudentCreate(fullName, phone, email, note, isMinor) as Promise<StudentDTO>;
 }
 
 export function updateStudent(
@@ -38,9 +40,10 @@ export function updateStudent(
   fullName: string,
   phone: string,
   email: string,
-  note: string
+  note: string,
+  isMinor: boolean
 ): Promise<StudentDTO> {
-  return StudentUpdate(id, fullName, phone, email, note) as Promise<StudentDTO>;
+  return StudentUpdate(id, fullName, phone, email, note, isMinor) as Promise<StudentDTO>;
 }
 
 export function setStudentActive(id: number, active: boolean): Promise<void> {

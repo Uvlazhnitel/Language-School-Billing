@@ -11,6 +11,7 @@ import (
 	"langschool/ent/payment"
 	"langschool/ent/predicate"
 	"langschool/ent/student"
+	"langschool/ent/studentcontact"
 	"math"
 
 	"entgo.io/ent"
@@ -22,13 +23,14 @@ import (
 // StudentQuery is the builder for querying Student entities.
 type StudentQuery struct {
 	config
-	ctx             *QueryContext
-	order           []student.OrderOption
-	inters          []Interceptor
-	predicates      []predicate.Student
-	withEnrollments *EnrollmentQuery
-	withInvoices    *InvoiceQuery
-	withPayments    *PaymentQuery
+	ctx                 *QueryContext
+	order               []student.OrderOption
+	inters              []Interceptor
+	predicates          []predicate.Student
+	withEnrollments     *EnrollmentQuery
+	withInvoices        *InvoiceQuery
+	withPayments        *PaymentQuery
+	withStudentContacts *StudentContactQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -124,6 +126,28 @@ func (_q *StudentQuery) QueryPayments() *PaymentQuery {
 			sqlgraph.From(student.Table, student.FieldID, selector),
 			sqlgraph.To(payment.Table, payment.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, student.PaymentsTable, student.PaymentsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryStudentContacts chains the current query on the "student_contacts" edge.
+func (_q *StudentQuery) QueryStudentContacts() *StudentContactQuery {
+	query := (&StudentContactClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(student.Table, student.FieldID, selector),
+			sqlgraph.To(studentcontact.Table, studentcontact.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, student.StudentContactsTable, student.StudentContactsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -318,14 +342,15 @@ func (_q *StudentQuery) Clone() *StudentQuery {
 		return nil
 	}
 	return &StudentQuery{
-		config:          _q.config,
-		ctx:             _q.ctx.Clone(),
-		order:           append([]student.OrderOption{}, _q.order...),
-		inters:          append([]Interceptor{}, _q.inters...),
-		predicates:      append([]predicate.Student{}, _q.predicates...),
-		withEnrollments: _q.withEnrollments.Clone(),
-		withInvoices:    _q.withInvoices.Clone(),
-		withPayments:    _q.withPayments.Clone(),
+		config:              _q.config,
+		ctx:                 _q.ctx.Clone(),
+		order:               append([]student.OrderOption{}, _q.order...),
+		inters:              append([]Interceptor{}, _q.inters...),
+		predicates:          append([]predicate.Student{}, _q.predicates...),
+		withEnrollments:     _q.withEnrollments.Clone(),
+		withInvoices:        _q.withInvoices.Clone(),
+		withPayments:        _q.withPayments.Clone(),
+		withStudentContacts: _q.withStudentContacts.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -362,6 +387,17 @@ func (_q *StudentQuery) WithPayments(opts ...func(*PaymentQuery)) *StudentQuery 
 		opt(query)
 	}
 	_q.withPayments = query
+	return _q
+}
+
+// WithStudentContacts tells the query-builder to eager-load the nodes that are connected to
+// the "student_contacts" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *StudentQuery) WithStudentContacts(opts ...func(*StudentContactQuery)) *StudentQuery {
+	query := (&StudentContactClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withStudentContacts = query
 	return _q
 }
 
@@ -443,10 +479,11 @@ func (_q *StudentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Stud
 	var (
 		nodes       = []*Student{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
 			_q.withEnrollments != nil,
 			_q.withInvoices != nil,
 			_q.withPayments != nil,
+			_q.withStudentContacts != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -485,6 +522,13 @@ func (_q *StudentQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Stud
 		if err := _q.loadPayments(ctx, query, nodes,
 			func(n *Student) { n.Edges.Payments = []*Payment{} },
 			func(n *Student, e *Payment) { n.Edges.Payments = append(n.Edges.Payments, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withStudentContacts; query != nil {
+		if err := _q.loadStudentContacts(ctx, query, nodes,
+			func(n *Student) { n.Edges.StudentContacts = []*StudentContact{} },
+			func(n *Student, e *StudentContact) { n.Edges.StudentContacts = append(n.Edges.StudentContacts, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -566,6 +610,36 @@ func (_q *StudentQuery) loadPayments(ctx context.Context, query *PaymentQuery, n
 	}
 	query.Where(predicate.Payment(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(student.PaymentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.StudentID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "student_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *StudentQuery) loadStudentContacts(ctx context.Context, query *StudentContactQuery, nodes []*Student, init func(*Student), assign func(*Student, *StudentContact)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Student)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(studentcontact.FieldStudentID)
+	}
+	query.Where(predicate.StudentContact(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(student.StudentContactsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

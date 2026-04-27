@@ -30,6 +30,23 @@ var (
 			},
 		},
 	}
+	// ContactsColumns holds the columns for the "contacts" table.
+	ContactsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "full_name", Type: field.TypeString},
+		{Name: "phone", Type: field.TypeString, Default: ""},
+		{Name: "email", Type: field.TypeString, Default: ""},
+		{Name: "note", Type: field.TypeString, Default: ""},
+		{Name: "is_active", Type: field.TypeBool, Default: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// ContactsTable holds the schema information for the "contacts" table.
+	ContactsTable = &schema.Table{
+		Name:       "contacts",
+		Columns:    ContactsColumns,
+		PrimaryKey: []*schema.Column{ContactsColumns[0]},
+	}
 	// CoursesColumns holds the columns for the "courses" table.
 	CoursesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -233,12 +250,46 @@ var (
 		{Name: "email", Type: field.TypeString, Default: ""},
 		{Name: "note", Type: field.TypeString, Default: ""},
 		{Name: "is_active", Type: field.TypeBool, Default: true},
+		{Name: "is_minor", Type: field.TypeBool, Default: false},
 	}
 	// StudentsTable holds the schema information for the "students" table.
 	StudentsTable = &schema.Table{
 		Name:       "students",
 		Columns:    StudentsColumns,
 		PrimaryKey: []*schema.Column{StudentsColumns[0]},
+	}
+	// StudentContactsColumns holds the columns for the "student_contacts" table.
+	StudentContactsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "relation", Type: field.TypeString, Default: "other"},
+		{Name: "is_primary", Type: field.TypeBool, Default: false},
+		{Name: "is_payer", Type: field.TypeBool, Default: false},
+		{Name: "receives_messages", Type: field.TypeBool, Default: true},
+		{Name: "note", Type: field.TypeString, Default: ""},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "contact_id", Type: field.TypeInt},
+		{Name: "student_id", Type: field.TypeInt},
+	}
+	// StudentContactsTable holds the schema information for the "student_contacts" table.
+	StudentContactsTable = &schema.Table{
+		Name:       "student_contacts",
+		Columns:    StudentContactsColumns,
+		PrimaryKey: []*schema.Column{StudentContactsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "student_contacts_contacts_student_contacts",
+				Columns:    []*schema.Column{StudentContactsColumns[8]},
+				RefColumns: []*schema.Column{ContactsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+			{
+				Symbol:     "student_contacts_students_student_contacts",
+				Columns:    []*schema.Column{StudentContactsColumns[9]},
+				RefColumns: []*schema.Column{StudentsColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 	}
 	// TeachersColumns holds the columns for the "teachers" table.
 	TeachersColumns = []*schema.Column{
@@ -255,6 +306,7 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AttendanceMonthsTable,
+		ContactsTable,
 		CoursesTable,
 		EnrollmentsTable,
 		InvoicesTable,
@@ -262,6 +314,7 @@ var (
 		PaymentsTable,
 		SettingsTable,
 		StudentsTable,
+		StudentContactsTable,
 		TeachersTable,
 	}
 )
@@ -275,4 +328,6 @@ func init() {
 	InvoiceLinesTable.ForeignKeys[1].RefTable = InvoicesTable
 	PaymentsTable.ForeignKeys[0].RefTable = InvoicesTable
 	PaymentsTable.ForeignKeys[1].RefTable = StudentsTable
+	StudentContactsTable.ForeignKeys[0].RefTable = ContactsTable
+	StudentContactsTable.ForeignKeys[1].RefTable = StudentsTable
 }

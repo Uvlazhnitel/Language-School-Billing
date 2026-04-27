@@ -126,8 +126,8 @@ export function StudentBalance(arg1) {
   return window['go']['main']['App']['StudentBalance'](arg1);
 }
 
-export function StudentCreate(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['StudentCreate'](arg1, arg2, arg3, arg4);
+export function StudentCreate(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['StudentCreate'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function StudentDebtDetails(arg1) {
@@ -150,8 +150,8 @@ export function StudentSetActive(arg1, arg2) {
   return window['go']['main']['App']['StudentSetActive'](arg1, arg2);
 }
 
-export function StudentUpdate(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['StudentUpdate'](arg1, arg2, arg3, arg4, arg5);
+export function StudentUpdate(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['StudentUpdate'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function TeacherCreate(arg1) {
@@ -160,4 +160,36 @@ export function TeacherCreate(arg1) {
 
 export function TeacherList(arg1) {
   return window['go']['main']['App']['TeacherList'](arg1);
+}
+
+export function ContactList(arg1, arg2) {
+  return window['go']['main']['App']['ContactList'](arg1, arg2);
+}
+
+export function ContactCreate(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['ContactCreate'](arg1, arg2, arg3, arg4);
+}
+
+export function ContactUpdate(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['ContactUpdate'](arg1, arg2, arg3, arg4, arg5);
+}
+
+export function ContactSetActive(arg1, arg2) {
+  return window['go']['main']['App']['ContactSetActive'](arg1, arg2);
+}
+
+export function StudentContactsList(arg1) {
+  return window['go']['main']['App']['StudentContactsList'](arg1);
+}
+
+export function StudentContactCreate(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
+  return window['go']['main']['App']['StudentContactCreate'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+}
+
+export function StudentContactUpdate(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['StudentContactUpdate'](arg1, arg2, arg3, arg4, arg5, arg6);
+}
+
+export function StudentContactDelete(arg1) {
+  return window['go']['main']['App']['StudentContactDelete'](arg1);
 }

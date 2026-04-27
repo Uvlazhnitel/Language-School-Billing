@@ -79,6 +79,11 @@ func IsActive(v bool) predicate.Student {
 	return predicate.Student(sql.FieldEQ(FieldIsActive, v))
 }
 
+// IsMinor applies equality check predicate on the "is_minor" field. It's identical to IsMinorEQ.
+func IsMinor(v bool) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldIsMinor, v))
+}
+
 // FullNameEQ applies the EQ predicate on the "full_name" field.
 func FullNameEQ(v string) predicate.Student {
 	return predicate.Student(sql.FieldEQ(FieldFullName, v))
@@ -349,6 +354,16 @@ func IsActiveNEQ(v bool) predicate.Student {
 	return predicate.Student(sql.FieldNEQ(FieldIsActive, v))
 }
 
+// IsMinorEQ applies the EQ predicate on the "is_minor" field.
+func IsMinorEQ(v bool) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldIsMinor, v))
+}
+
+// IsMinorNEQ applies the NEQ predicate on the "is_minor" field.
+func IsMinorNEQ(v bool) predicate.Student {
+	return predicate.Student(sql.FieldNEQ(FieldIsMinor, v))
+}
+
 // HasEnrollments applies the HasEdge predicate on the "enrollments" edge.
 func HasEnrollments() predicate.Student {
 	return predicate.Student(func(s *sql.Selector) {
@@ -410,6 +425,29 @@ func HasPayments() predicate.Student {
 func HasPaymentsWith(preds ...predicate.Payment) predicate.Student {
 	return predicate.Student(func(s *sql.Selector) {
 		step := newPaymentsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasStudentContacts applies the HasEdge predicate on the "student_contacts" edge.
+func HasStudentContacts() predicate.Student {
+	return predicate.Student(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, StudentContactsTable, StudentContactsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasStudentContactsWith applies the HasEdge predicate on the "student_contacts" edge with a given conditions (other predicates).
+func HasStudentContactsWith(preds ...predicate.StudentContact) predicate.Student {
+	return predicate.Student(func(s *sql.Selector) {
+		step := newStudentContactsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

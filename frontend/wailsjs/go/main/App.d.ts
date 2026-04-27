@@ -67,7 +67,7 @@ export function SettingsSetLocale(arg1:string):Promise<void>;
 
 export function StudentBalance(arg1:number):Promise<payment.BalanceDTO>;
 
-export function StudentCreate(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.StudentDTO>;
+export function StudentCreate(arg1:string,arg2:string,arg3:string,arg4:string,arg5:boolean):Promise<main.StudentDTO>;
 
 export function StudentDebtDetails(arg1:number):Promise<Array<payment.DebtInvoiceDTO>>;
 
@@ -79,8 +79,24 @@ export function StudentList(arg1:string,arg2:boolean):Promise<Array<main.Student
 
 export function StudentSetActive(arg1:number,arg2:boolean):Promise<void>;
 
-export function StudentUpdate(arg1:number,arg2:string,arg3:string,arg4:string,arg5:string):Promise<main.StudentDTO>;
+export function StudentUpdate(arg1:number,arg2:string,arg3:string,arg4:string,arg5:string,arg6:boolean):Promise<main.StudentDTO>;
 
 export function TeacherCreate(arg1:string):Promise<main.TeacherDTO>;
 
 export function TeacherList(arg1:string):Promise<Array<main.TeacherDTO>>;
+
+export function ContactList(arg1:string,arg2:boolean):Promise<Array<main.ContactDTO>>;
+
+export function ContactCreate(arg1:string,arg2:string,arg3:string,arg4:string):Promise<main.ContactDTO>;
+
+export function ContactUpdate(arg1:number,arg2:string,arg3:string,arg4:string,arg5:string):Promise<main.ContactDTO>;
+
+export function ContactSetActive(arg1:number,arg2:boolean):Promise<void>;
+
+export function StudentContactsList(arg1:number):Promise<Array<main.StudentContactDTO>>;
+
+export function StudentContactCreate(arg1:number,arg2:number,arg3:string,arg4:boolean,arg5:boolean,arg6:boolean,arg7:string):Promise<main.StudentContactDTO>;
+
+export function StudentContactUpdate(arg1:number,arg2:string,arg3:boolean,arg4:boolean,arg5:boolean,arg6:string):Promise<main.StudentContactDTO>;
+
+export function StudentContactDelete(arg1:number):Promise<void>;
