@@ -16,6 +16,7 @@ import {
 
 import {
   listStudents,
+  getStudent,
   createStudent,
   updateStudent,
   setStudentActive,
@@ -406,6 +407,16 @@ export default function App() {
     }
   }
 
+  async function openStudentCardById(studentId: number) {
+    const existing = allStudents.find((s) => s.id === studentId);
+    try {
+      const student = existing ?? (await getStudent(studentId));
+      await openStudentCard(student);
+    } catch (e: any) {
+      showMessage(`Error loading student card: ${String(e?.message ?? e)}`, "error");
+    }
+  }
+
   async function copyStudentCardDebtMessage(locale: "ru" | "lv") {
     if (!selectedStudentCard || studentCardDebts.length === 0 || !studentCardBalance) return;
     try {
@@ -791,6 +802,7 @@ export default function App() {
   const [loadingAtt, setLoadingAtt] = useState(false);
   const [courseFilter, setCourseFilter] = useState<number | undefined>(undefined);
   const [attQ, setAttQ] = useState("");
+  const [attendanceSavingRows, setAttendanceSavingRows] = useState<Record<number, boolean>>({});
 
   // For search by phone we need students list (shared with invoices and attendance)
   const studentIndex = useMemo(() => {
@@ -846,14 +858,22 @@ export default function App() {
   const onChangeCount = async (r: Row, v: number) => {
     if (!Number.isFinite(v)) return;
     const n = v < 0 ? 0 : Math.trunc(v);
+    if (attendanceSavingRows[r.enrollmentId]) return;
 
     try {
+      setAttendanceSavingRows((prev) => ({ ...prev, [r.enrollmentId]: true }));
       await saveCount(r.studentId, r.courseId, year, month, n);
       setRows((prev) =>
         prev.map((x) => (x.enrollmentId === r.enrollmentId ? { ...x, count: n } : x))
       );
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+    } finally {
+      setAttendanceSavingRows((prev) => {
+        const next = { ...prev };
+        delete next[r.enrollmentId];
+        return next;
+      });
     }
   };
 
@@ -1661,7 +1681,11 @@ export default function App() {
                   <tbody>
                     {enrollments.map((e) => (
                       <tr key={e.id}>
-                        <td>{e.studentName}</td>
+                        <td>
+                          <button className="linkButton" onClick={() => void openStudentCardById(e.studentId)}>
+                            {e.studentName}
+                          </button>
+                        </td>
                         <td>{e.courseName}</td>
                         <td>{e.teacherName || "—"}</td>
                         <td>{e.billingMode}</td>
@@ -1833,19 +1857,45 @@ export default function App() {
                   <tbody>
                     {filteredAttendanceRows.map((r) => (
                       <tr key={r.enrollmentId}>
-                        <td>{r.studentName}</td>
+                        <td>
+                          <button className="linkButton" onClick={() => void openStudentCardById(r.studentId)}>
+                            {r.studentName}
+                          </button>
+                        </td>
                         <td>
                           {r.courseName} ({r.courseType})
                         </td>
                         <td style={{ textAlign: "right" }}>{formatEUR(r.lessonPrice)}</td>
                         <td style={{ textAlign: "right" }}>
-                          <input
-                            type="number"
-                            min={0}
-                            value={r.count}
-                            onChange={(e) => onChangeCount(r, Number(e.target.value))}
-                            style={{ width: "5rem", textAlign: "right" }}
-                          />
+                          <div className="attendanceStepper">
+                            <button
+                              type="button"
+                              className="attendanceStepperButton"
+                              onClick={() => onChangeCount(r, r.count - 1)}
+                              disabled={attendanceSavingRows[r.enrollmentId] || r.count <= 0}
+                              aria-label={`Decrease lesson count for ${r.studentName}`}
+                            >
+                              −
+                            </button>
+                            <input
+                              type="number"
+                              min={0}
+                              value={r.count}
+                              disabled={attendanceSavingRows[r.enrollmentId]}
+                              onChange={(e) => onChangeCount(r, Number(e.target.value))}
+                              className="attendanceStepperInput"
+                              aria-label={`Lesson count for ${r.studentName}`}
+                            />
+                            <button
+                              type="button"
+                              className="attendanceStepperButton"
+                              onClick={() => onChangeCount(r, r.count + 1)}
+                              disabled={attendanceSavingRows[r.enrollmentId]}
+                              aria-label={`Increase lesson count for ${r.studentName}`}
+                            >
+                              +
+                            </button>
+                          </div>
                         </td>
                         <td style={{ textAlign: "right" }}>{formatEUR(r.count * r.lessonPrice)}</td>
                         <td>
@@ -1917,7 +1967,11 @@ export default function App() {
                   <tbody>
                     {filteredInvItems.map((it) => (
                       <tr key={it.id}>
-                        <td>{it.studentName}</td>
+                        <td>
+                          <button className="linkButton" onClick={() => void openStudentCardById(it.studentId)}>
+                            {it.studentName}
+                          </button>
+                        </td>
                         <td>
                           {months[it.month - 1]} {it.year}
                         </td>
@@ -1961,7 +2015,13 @@ export default function App() {
                   <div style={{ marginBottom: "1rem" }}>
                     <h3>
                       Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
-                      {selectedInv.studentName} — {months[selectedInv.month - 1]} {selectedInv.year}
+                      <button
+                        className="linkButton"
+                        onClick={() => void openStudentCardById(selectedInv.studentId)}
+                      >
+                        {selectedInv.studentName}
+                      </button>{" "}
+                      — {months[selectedInv.month - 1]} {selectedInv.year}
                     </h3>
                   </div>
 
@@ -2051,7 +2111,11 @@ export default function App() {
                   <tbody>
                     {debtors.map((d) => (
                       <tr key={d.studentId}>
-                        <td>{d.studentName}</td>
+                        <td>
+                          <button className="linkButton" onClick={() => void openStudentCardById(d.studentId)}>
+                            {d.studentName}
+                          </button>
+                        </td>
                         <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
                           {formatEUR(d.debt)}
                         </td>
@@ -2140,7 +2204,12 @@ export default function App() {
             <div className="invSummary">
               <div className="invSummaryRow">
                 <span>Student</span>
-                <span>{selectedDebtor.studentName}</span>
+                <button
+                  className="linkButton"
+                  onClick={() => void openStudentCardById(selectedDebtor.studentId)}
+                >
+                  {selectedDebtor.studentName}
+                </button>
               </div>
               <div className="invSummaryRow">
                 <span>Total debt</span>
