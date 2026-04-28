@@ -304,6 +304,12 @@ func (a *App) InvoiceDeleteDraft(id int) error {
 	return a.inv.DeleteDraft(a.ctx, id)
 }
 
+// InvoiceReopenDraft moves an issued invoice with no payments back to draft state.
+// The invoice lines remain unchanged so the draft can be reviewed and issued again.
+func (a *App) InvoiceReopenDraft(id int) error {
+	return a.inv.ReopenDraft(a.ctx, id, a.dirs.Invoices)
+}
+
 // IssueResult contains the result of issuing a single invoice.
 type IssueResult struct {
 	Number  string `json:"number"`  // The assigned invoice number

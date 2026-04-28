@@ -9,6 +9,7 @@ import {
   genDrafts,
   issueOne,
   issueAll,
+  reopenToDraft,
   ensurePdfAndOpen,
   InvoiceListItem,
   InvoiceDTO,
@@ -1260,6 +1261,25 @@ export default function App() {
     }
   };
 
+  const onReopenToDraft = async (id: number) => {
+    showConfirm(
+      "Reopen this issued invoice to draft? This is allowed only when it has no payments. The old invoice number will be cleared.",
+      async () => {
+        try {
+          await reopenToDraft(id);
+          if (selectedInv?.id === id) {
+            await onOpenInvoice(id);
+          }
+          await loadInvoices();
+          showMessage("Invoice reopened to draft");
+        } catch (e: any) {
+          showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+        }
+      },
+      "Reopen"
+    );
+  };
+
   const onIssueAll = async () => {
     try {
       const res = await issueAll(year, month);
@@ -2154,6 +2174,11 @@ export default function App() {
                           <button onClick={() => onOpenInvoice(it.id)}>Open</button>
                           {it.status === "draft" && (
                             <button onClick={() => onIssueOne(it.id)}>Issue</button>
+                          )}
+                          {it.status === "issued" && (
+                            <button onClick={() => void onReopenToDraft(it.id)}>
+                              Reopen to draft
+                            </button>
                           )}
                           {it.status !== "draft" && (
                             <button onClick={() => onOpenPdf(it.id)}>PDF</button>
