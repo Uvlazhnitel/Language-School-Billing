@@ -17,6 +17,7 @@ func TestResolveInvoiceRecipient(t *testing.T) {
 	t.Run("adult student uses self", func(t *testing.T) {
 		st, err := client.Student.Create().
 			SetFullName("Adult Student").
+			SetPersonalCode("111111-11111").
 			SetPhone("111").
 			SetEmail("adult@example.com").
 			SetIsMinor(false).
@@ -38,6 +39,9 @@ func TestResolveInvoiceRecipient(t *testing.T) {
 		if got.ChildName != "Adult Student" {
 			t.Fatalf("ChildName = %q, want %q", got.ChildName, "Adult Student")
 		}
+		if got.StudentPersonalCode != "111111-11111" {
+			t.Fatalf("StudentPersonalCode = %q, want %q", got.StudentPersonalCode, "111111-11111")
+		}
 		if got.IsMinor {
 			t.Fatalf("IsMinor = true, want false")
 		}
@@ -46,6 +50,7 @@ func TestResolveInvoiceRecipient(t *testing.T) {
 	t.Run("minor uses payer fields", func(t *testing.T) {
 		st, err := client.Student.Create().
 			SetFullName("Child One").
+			SetPersonalCode("222222-22222").
 			SetPhone("300").
 			SetEmail("payer@example.com").
 			SetIsMinor(true).
@@ -69,6 +74,9 @@ func TestResolveInvoiceRecipient(t *testing.T) {
 		if got.ChildName != "Child One" {
 			t.Fatalf("ChildName = %q, want %q", got.ChildName, "Child One")
 		}
+		if got.StudentPersonalCode != "222222-22222" {
+			t.Fatalf("StudentPersonalCode = %q, want %q", got.StudentPersonalCode, "222222-22222")
+		}
 		if !got.IsMinor {
 			t.Fatalf("IsMinor = false, want true")
 		}
@@ -77,6 +85,7 @@ func TestResolveInvoiceRecipient(t *testing.T) {
 	t.Run("minor without payer falls back to child", func(t *testing.T) {
 		st, err := client.Student.Create().
 			SetFullName("Child Three").
+			SetPersonalCode("333333-33333").
 			SetPhone("500").
 			SetEmail("child3@example.com").
 			SetIsMinor(true).
@@ -91,6 +100,9 @@ func TestResolveInvoiceRecipient(t *testing.T) {
 		}
 		if got.RecipientName != "Child Three" {
 			t.Fatalf("RecipientName = %q, want %q", got.RecipientName, "Child Three")
+		}
+		if got.StudentPersonalCode != "333333-33333" {
+			t.Fatalf("StudentPersonalCode = %q, want %q", got.StudentPersonalCode, "333333-33333")
 		}
 	})
 }

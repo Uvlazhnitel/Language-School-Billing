@@ -67,7 +67,7 @@ export function SettingsSetLocale(arg1:string):Promise<void>;
 
 export function StudentBalance(arg1:number):Promise<payment.BalanceDTO>;
 
-export function StudentCreate(arg1:string,arg2:string,arg3:string,arg4:string,arg5:boolean,arg6:string,arg7:string):Promise<main.StudentDTO>;
+export function StudentCreate(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:boolean,arg7:string,arg8:string):Promise<main.StudentDTO>;
 
 export function StudentDebtDetails(arg1:number):Promise<Array<payment.DebtInvoiceDTO>>;
 
@@ -79,7 +79,7 @@ export function StudentList(arg1:string,arg2:boolean):Promise<Array<main.Student
 
 export function StudentSetActive(arg1:number,arg2:boolean):Promise<void>;
 
-export function StudentUpdate(arg1:number,arg2:string,arg3:string,arg4:string,arg5:string,arg6:boolean,arg7:string,arg8:string):Promise<main.StudentDTO>;
+export function StudentUpdate(arg1:number,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:boolean,arg8:string,arg9:string):Promise<main.StudentDTO>;
 
 export function TeacherCreate(arg1:string):Promise<main.TeacherDTO>;
 

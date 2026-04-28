@@ -18,6 +18,8 @@ type Student struct {
 	ID int `json:"id,omitempty"`
 	// FullName holds the value of the "full_name" field.
 	FullName string `json:"full_name,omitempty"`
+	// PersonalCode holds the value of the "personal_code" field.
+	PersonalCode string `json:"personal_code,omitempty"`
 	// Phone holds the value of the "phone" field.
 	Phone string `json:"phone,omitempty"`
 	// Email holds the value of the "email" field.
@@ -87,7 +89,7 @@ func (*Student) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case student.FieldID:
 			values[i] = new(sql.NullInt64)
-		case student.FieldFullName, student.FieldPhone, student.FieldEmail, student.FieldNote, student.FieldPayerName, student.FieldPayerRole:
+		case student.FieldFullName, student.FieldPersonalCode, student.FieldPhone, student.FieldEmail, student.FieldNote, student.FieldPayerName, student.FieldPayerRole:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -115,6 +117,12 @@ func (_m *Student) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field full_name", values[i])
 			} else if value.Valid {
 				_m.FullName = value.String
+			}
+		case student.FieldPersonalCode:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field personal_code", values[i])
+			} else if value.Valid {
+				_m.PersonalCode = value.String
 			}
 		case student.FieldPhone:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -211,6 +219,9 @@ func (_m *Student) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("full_name=")
 	builder.WriteString(_m.FullName)
+	builder.WriteString(", ")
+	builder.WriteString("personal_code=")
+	builder.WriteString(_m.PersonalCode)
 	builder.WriteString(", ")
 	builder.WriteString("phone=")
 	builder.WriteString(_m.Phone)

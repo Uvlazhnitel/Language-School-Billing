@@ -5757,6 +5757,7 @@ type StudentMutation struct {
 	typ                string
 	id                 *int
 	full_name          *string
+	personal_code      *string
 	phone              *string
 	email              *string
 	note               *string
@@ -5911,6 +5912,42 @@ func (m *StudentMutation) OldFullName(ctx context.Context) (v string, err error)
 // ResetFullName resets all changes to the "full_name" field.
 func (m *StudentMutation) ResetFullName() {
 	m.full_name = nil
+}
+
+// SetPersonalCode sets the "personal_code" field.
+func (m *StudentMutation) SetPersonalCode(s string) {
+	m.personal_code = &s
+}
+
+// PersonalCode returns the value of the "personal_code" field in the mutation.
+func (m *StudentMutation) PersonalCode() (r string, exists bool) {
+	v := m.personal_code
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPersonalCode returns the old "personal_code" field's value of the Student entity.
+// If the Student object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StudentMutation) OldPersonalCode(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPersonalCode is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPersonalCode requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPersonalCode: %w", err)
+	}
+	return oldValue.PersonalCode, nil
+}
+
+// ResetPersonalCode resets all changes to the "personal_code" field.
+func (m *StudentMutation) ResetPersonalCode() {
+	m.personal_code = nil
 }
 
 // SetPhone sets the "phone" field.
@@ -6361,9 +6398,12 @@ func (m *StudentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *StudentMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.full_name != nil {
 		fields = append(fields, student.FieldFullName)
+	}
+	if m.personal_code != nil {
+		fields = append(fields, student.FieldPersonalCode)
 	}
 	if m.phone != nil {
 		fields = append(fields, student.FieldPhone)
@@ -6396,6 +6436,8 @@ func (m *StudentMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case student.FieldFullName:
 		return m.FullName()
+	case student.FieldPersonalCode:
+		return m.PersonalCode()
 	case student.FieldPhone:
 		return m.Phone()
 	case student.FieldEmail:
@@ -6421,6 +6463,8 @@ func (m *StudentMutation) OldField(ctx context.Context, name string) (ent.Value,
 	switch name {
 	case student.FieldFullName:
 		return m.OldFullName(ctx)
+	case student.FieldPersonalCode:
+		return m.OldPersonalCode(ctx)
 	case student.FieldPhone:
 		return m.OldPhone(ctx)
 	case student.FieldEmail:
@@ -6450,6 +6494,13 @@ func (m *StudentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetFullName(v)
+		return nil
+	case student.FieldPersonalCode:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPersonalCode(v)
 		return nil
 	case student.FieldPhone:
 		v, ok := value.(string)
@@ -6551,6 +6602,9 @@ func (m *StudentMutation) ResetField(name string) error {
 	switch name {
 	case student.FieldFullName:
 		m.ResetFullName()
+		return nil
+	case student.FieldPersonalCode:
+		m.ResetPersonalCode()
 		return nil
 	case student.FieldPhone:
 		m.ResetPhone()

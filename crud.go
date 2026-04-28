@@ -43,15 +43,16 @@ const (
 // StudentDTO represents a student in the frontend.
 // DTOs are used to transfer data between the Go backend and TypeScript frontend.
 type StudentDTO struct {
-	ID        int    `json:"id"`        // Unique student identifier
-	FullName  string `json:"fullName"`  // Student's full name
-	Phone     string `json:"phone"`     // Student or payer phone number
-	Email     string `json:"email"`     // Student or payer email address
-	Note      string `json:"note"`      // Optional notes about the student
-	IsMinor   bool   `json:"isMinor"`   // Whether the student is a child/minor
-	PayerName string `json:"payerName"` // Name of the adult who pays for a minor student
-	PayerRole string `json:"payerRole"` // Role of the payer for a minor student
-	IsActive  bool   `json:"isActive"`  // Whether the student is currently active
+	ID           int    `json:"id"`           // Unique student identifier
+	FullName     string `json:"fullName"`     // Student's full name
+	PersonalCode string `json:"personalCode"` // Student's own personal code
+	Phone        string `json:"phone"`        // Student or payer phone number
+	Email        string `json:"email"`        // Student or payer email address
+	Note         string `json:"note"`         // Optional notes about the student
+	IsMinor      bool   `json:"isMinor"`      // Whether the student is a child/minor
+	PayerName    string `json:"payerName"`    // Name of the adult who pays for a minor student
+	PayerRole    string `json:"payerRole"`    // Role of the payer for a minor student
+	IsActive     bool   `json:"isActive"`     // Whether the student is currently active
 }
 
 // CourseDTO represents a course in the frontend.
@@ -183,15 +184,16 @@ func (a *App) resolveTeacher(ctx context.Context, teacherID *int) (*ent.Teacher,
 // toStudentDTO converts an ent.Student to StudentDTO.
 func toStudentDTO(s *ent.Student) StudentDTO {
 	return StudentDTO{
-		ID:        s.ID,
-		FullName:  s.FullName,
-		Phone:     s.Phone,
-		Email:     s.Email,
-		Note:      s.Note,
-		IsMinor:   s.IsMinor,
-		PayerName: s.PayerName,
-		PayerRole: s.PayerRole,
-		IsActive:  s.IsActive,
+		ID:           s.ID,
+		FullName:     s.FullName,
+		PersonalCode: s.PersonalCode,
+		Phone:        s.Phone,
+		Email:        s.Email,
+		Note:         s.Note,
+		IsMinor:      s.IsMinor,
+		PayerName:    s.PayerName,
+		PayerRole:    s.PayerRole,
+		IsActive:     s.IsActive,
 	}
 }
 
@@ -311,11 +313,12 @@ func (a *App) StudentGet(id int) (*StudentDTO, error) {
 // All user inputs are sanitized to prevent XSS attacks.
 // The fullName parameter is required (validated to be non-empty).
 // The student is created as active by default.
-func (a *App) StudentCreate(fullName, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
+func (a *App) StudentCreate(fullName, personalCode, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
 	fullName = sanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
 		return nil, err
 	}
+	personalCode = sanitizeInput(personalCode)
 	payerName = sanitizeInput(payerName)
 	payerRole = normalizePayerRole(payerRole)
 	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
@@ -324,6 +327,7 @@ func (a *App) StudentCreate(fullName, phone, email, note string, isMinor bool, p
 
 	s, err := a.db.Ent.Student.Create().
 		SetFullName(fullName).
+		SetPersonalCode(personalCode).
 		SetPhone(sanitizeInput(phone)).
 		SetEmail(sanitizeInput(email)).
 		SetNote(sanitizeInput(note)).
@@ -343,11 +347,12 @@ func (a *App) StudentCreate(fullName, phone, email, note string, isMinor bool, p
 // StudentUpdate updates an existing student's information.
 // All user inputs are sanitized to prevent XSS attacks.
 // The fullName parameter is required (validated to be non-empty).
-func (a *App) StudentUpdate(id int, fullName, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
+func (a *App) StudentUpdate(id int, fullName, personalCode, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
 	fullName = sanitizeInput(fullName)
 	if err := validateNonEmpty(fullName, "fullName"); err != nil {
 		return nil, err
 	}
+	personalCode = sanitizeInput(personalCode)
 	payerName = sanitizeInput(payerName)
 	payerRole = normalizePayerRole(payerRole)
 	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
@@ -356,6 +361,7 @@ func (a *App) StudentUpdate(id int, fullName, phone, email, note string, isMinor
 
 	s, err := a.db.Ent.Student.UpdateOneID(id).
 		SetFullName(fullName).
+		SetPersonalCode(personalCode).
 		SetPhone(sanitizeInput(phone)).
 		SetEmail(sanitizeInput(email)).
 		SetNote(sanitizeInput(note)).

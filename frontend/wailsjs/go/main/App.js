@@ -126,8 +126,8 @@ export function StudentBalance(arg1) {
   return window['go']['main']['App']['StudentBalance'](arg1);
 }
 
-export function StudentCreate(arg1, arg2, arg3, arg4, arg5, arg6, arg7) {
-  return window['go']['main']['App']['StudentCreate'](arg1, arg2, arg3, arg4, arg5, arg6, arg7);
+export function StudentCreate(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
+  return window['go']['main']['App']['StudentCreate'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
 }
 
 export function StudentDebtDetails(arg1) {
@@ -150,8 +150,8 @@ export function StudentSetActive(arg1, arg2) {
   return window['go']['main']['App']['StudentSetActive'](arg1, arg2);
 }
 
-export function StudentUpdate(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
-  return window['go']['main']['App']['StudentUpdate'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+export function StudentUpdate(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9) {
+  return window['go']['main']['App']['StudentUpdate'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
 }
 
 export function TeacherCreate(arg1) {

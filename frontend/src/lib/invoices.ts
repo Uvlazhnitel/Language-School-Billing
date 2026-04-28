@@ -38,6 +38,7 @@ export type InvoiceDTO = {
   recipientPhone: string;
   recipientEmail: string;
   childName: string;
+  studentPersonalCode: string;
   isMinor: boolean;
   year: number;
   month: number;

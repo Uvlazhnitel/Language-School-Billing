@@ -115,7 +115,7 @@ func TestEnrollmentListIncludesTeacherName(t *testing.T) {
 	app, client := newCRUDTestApp(t, "crudenrollment")
 	defer client.Close()
 
-	st, err := app.StudentCreate("Mila Test", "", "", "", false, "", "")
+	st, err := app.StudentCreate("Mila Test", "010101-12345", "", "", "", false, "", "")
 	if err != nil {
 		t.Fatalf("StudentCreate: %v", err)
 	}
@@ -212,7 +212,7 @@ func TestStudentCreateAndUpdateIsMinor(t *testing.T) {
 	app, client := newCRUDTestApp(t, "crudstudentminor")
 	defer client.Close()
 
-	created, err := app.StudentCreate("Nika Test", "", "", "", true, "Anna Test", "mother")
+	created, err := app.StudentCreate("Nika Test", "020202-23456", "", "", "", true, "Anna Test", "mother")
 	if err != nil {
 		t.Fatalf("StudentCreate: %v", err)
 	}
@@ -222,8 +222,11 @@ func TestStudentCreateAndUpdateIsMinor(t *testing.T) {
 	if created.PayerName != "Anna Test" {
 		t.Fatalf("created.PayerName = %q, want %q", created.PayerName, "Anna Test")
 	}
+	if created.PersonalCode != "020202-23456" {
+		t.Fatalf("created.PersonalCode = %q, want %q", created.PersonalCode, "020202-23456")
+	}
 
-	updated, err := app.StudentUpdate(created.ID, "Nika Test", "123", "", "", false, "", "")
+	updated, err := app.StudentUpdate(created.ID, "Nika Test", "030303-34567", "123", "", "", false, "", "")
 	if err != nil {
 		t.Fatalf("StudentUpdate: %v", err)
 	}
@@ -233,21 +236,24 @@ func TestStudentCreateAndUpdateIsMinor(t *testing.T) {
 	if updated.PayerName != "" {
 		t.Fatalf("updated.PayerName = %q, want empty", updated.PayerName)
 	}
+	if updated.PersonalCode != "030303-34567" {
+		t.Fatalf("updated.PersonalCode = %q, want %q", updated.PersonalCode, "030303-34567")
+	}
 }
 
 func TestStudentCreateMinorRequiresPayerFields(t *testing.T) {
 	app, client := newCRUDTestApp(t, "crudstudentvalidation")
 	defer client.Close()
 
-	if _, err := app.StudentCreate("Minor Missing Payer", "", "", "", true, "", ""); err == nil {
+	if _, err := app.StudentCreate("Minor Missing Payer", "", "", "", "", true, "", ""); err == nil {
 		t.Fatalf("expected StudentCreate to fail when minor payer fields are missing")
 	}
 
-	if _, err := app.StudentCreate("Minor Missing Role", "", "", "", true, "Anna Parent", ""); err == nil {
+	if _, err := app.StudentCreate("Minor Missing Role", "", "", "", "", true, "Anna Parent", ""); err == nil {
 		t.Fatalf("expected StudentCreate to fail when minor payerRole is missing")
 	}
 
-	if _, err := app.StudentCreate("Minor Bad Role", "", "", "", true, "Anna Parent", "uncle"); err == nil {
+	if _, err := app.StudentCreate("Minor Bad Role", "", "", "", "", true, "Anna Parent", "uncle"); err == nil {
 		t.Fatalf("expected StudentCreate to fail for invalid payerRole")
 	}
 }

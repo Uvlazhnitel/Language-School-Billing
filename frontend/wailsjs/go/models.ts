@@ -81,6 +81,7 @@ export namespace invoice {
 	    recipientPhone: string;
 	    recipientEmail: string;
 	    childName: string;
+	    studentPersonalCode: string;
 	    isMinor: boolean;
 	    year: number;
 	    month: number;
@@ -102,6 +103,7 @@ export namespace invoice {
 	        this.recipientPhone = source["recipientPhone"];
 	        this.recipientEmail = source["recipientEmail"];
 	        this.childName = source["childName"];
+	        this.studentPersonalCode = source["studentPersonalCode"];
 	        this.isMinor = source["isMinor"];
 	        this.year = source["year"];
 	        this.month = source["month"];
@@ -248,6 +250,7 @@ export namespace main {
 	export class StudentDTO {
 	    id: number;
 	    fullName: string;
+	    personalCode: string;
 	    phone: string;
 	    email: string;
 	    note: string;
@@ -264,6 +267,7 @@ export namespace main {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
 	        this.fullName = source["fullName"];
+	        this.personalCode = source["personalCode"];
 	        this.phone = source["phone"];
 	        this.email = source["email"];
 	        this.note = source["note"];

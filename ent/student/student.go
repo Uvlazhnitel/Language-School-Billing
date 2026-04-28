@@ -14,6 +14,8 @@ const (
 	FieldID = "id"
 	// FieldFullName holds the string denoting the full_name field in the database.
 	FieldFullName = "full_name"
+	// FieldPersonalCode holds the string denoting the personal_code field in the database.
+	FieldPersonalCode = "personal_code"
 	// FieldPhone holds the string denoting the phone field in the database.
 	FieldPhone = "phone"
 	// FieldEmail holds the string denoting the email field in the database.
@@ -63,6 +65,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldFullName,
+	FieldPersonalCode,
 	FieldPhone,
 	FieldEmail,
 	FieldNote,
@@ -83,6 +86,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultPersonalCode holds the default value on creation for the "personal_code" field.
+	DefaultPersonalCode string
 	// DefaultPhone holds the default value on creation for the "phone" field.
 	DefaultPhone string
 	// DefaultEmail holds the default value on creation for the "email" field.
@@ -110,6 +115,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // ByFullName orders the results by the full_name field.
 func ByFullName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFullName, opts...).ToFunc()
+}
+
+// ByPersonalCode orders the results by the personal_code field.
+func ByPersonalCode(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPersonalCode, opts...).ToFunc()
 }
 
 // ByPhone orders the results by the phone field.

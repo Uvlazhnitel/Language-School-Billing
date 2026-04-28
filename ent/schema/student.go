@@ -11,6 +11,7 @@ type Student struct{ ent.Schema }
 func (Student) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("full_name"),
+		field.String("personal_code").Default(""),
 		field.String("phone").Default(""),
 		field.String("email").Default(""),
 		field.String("note").Default(""),

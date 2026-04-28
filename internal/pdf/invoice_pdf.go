@@ -262,7 +262,12 @@ func drawRecipientBlock(p *fpdf.Fpdf, recipient recipient.Info) {
 		value string
 	}{
 		{"Vārds, uzvārds / Nosaukums", recipient.RecipientName},
-		{"Personas kods / Reģ. Nr.", ""},
+		{"Personas kods / Reģ. Nr.", func() string {
+			if recipient.IsMinor {
+				return ""
+			}
+			return recipient.StudentPersonalCode
+		}()},
 		{"E-pasts / tālrunis", strings.TrimSpace(strings.Join(filterNonEmptyStrings(recipient.RecipientEmail, recipient.RecipientPhone), " / "))},
 	}
 	if recipient.IsMinor {
@@ -272,6 +277,12 @@ func drawRecipientBlock(p *fpdf.Fpdf, recipient recipient.Info) {
 		}{
 			label: "Bērns / audzēknis",
 			value: recipient.ChildName,
+		}, struct {
+			label string
+			value string
+		}{
+			label: "Bērna personas kods",
+			value: recipient.StudentPersonalCode,
 		})
 	}
 

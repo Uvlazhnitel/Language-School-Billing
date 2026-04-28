@@ -229,6 +229,7 @@ var (
 	StudentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "full_name", Type: field.TypeString},
+		{Name: "personal_code", Type: field.TypeString, Default: ""},
 		{Name: "phone", Type: field.TypeString, Default: ""},
 		{Name: "email", Type: field.TypeString, Default: ""},
 		{Name: "note", Type: field.TypeString, Default: ""},

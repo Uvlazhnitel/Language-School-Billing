@@ -28,6 +28,20 @@ func (_c *StudentCreate) SetFullName(v string) *StudentCreate {
 	return _c
 }
 
+// SetPersonalCode sets the "personal_code" field.
+func (_c *StudentCreate) SetPersonalCode(v string) *StudentCreate {
+	_c.mutation.SetPersonalCode(v)
+	return _c
+}
+
+// SetNillablePersonalCode sets the "personal_code" field if the given value is not nil.
+func (_c *StudentCreate) SetNillablePersonalCode(v *string) *StudentCreate {
+	if v != nil {
+		_c.SetPersonalCode(*v)
+	}
+	return _c
+}
+
 // SetPhone sets the "phone" field.
 func (_c *StudentCreate) SetPhone(v string) *StudentCreate {
 	_c.mutation.SetPhone(v)
@@ -206,6 +220,10 @@ func (_c *StudentCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *StudentCreate) defaults() {
+	if _, ok := _c.mutation.PersonalCode(); !ok {
+		v := student.DefaultPersonalCode
+		_c.mutation.SetPersonalCode(v)
+	}
 	if _, ok := _c.mutation.Phone(); !ok {
 		v := student.DefaultPhone
 		_c.mutation.SetPhone(v)
@@ -240,6 +258,9 @@ func (_c *StudentCreate) defaults() {
 func (_c *StudentCreate) check() error {
 	if _, ok := _c.mutation.FullName(); !ok {
 		return &ValidationError{Name: "full_name", err: errors.New(`ent: missing required field "Student.full_name"`)}
+	}
+	if _, ok := _c.mutation.PersonalCode(); !ok {
+		return &ValidationError{Name: "personal_code", err: errors.New(`ent: missing required field "Student.personal_code"`)}
 	}
 	if _, ok := _c.mutation.Phone(); !ok {
 		return &ValidationError{Name: "phone", err: errors.New(`ent: missing required field "Student.phone"`)}
@@ -291,6 +312,10 @@ func (_c *StudentCreate) createSpec() (*Student, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.FullName(); ok {
 		_spec.SetField(student.FieldFullName, field.TypeString, value)
 		_node.FullName = value
+	}
+	if value, ok := _c.mutation.PersonalCode(); ok {
+		_spec.SetField(student.FieldPersonalCode, field.TypeString, value)
+		_node.PersonalCode = value
 	}
 	if value, ok := _c.mutation.Phone(); ok {
 		_spec.SetField(student.FieldPhone, field.TypeString, value)

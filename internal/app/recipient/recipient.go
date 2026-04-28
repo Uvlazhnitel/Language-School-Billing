@@ -9,11 +9,12 @@ import (
 
 // Info describes who should appear as the visible recipient of a student's invoice/reminder.
 type Info struct {
-	RecipientName  string
-	RecipientPhone string
-	RecipientEmail string
-	ChildName      string
-	IsMinor        bool
+	RecipientName       string
+	RecipientPhone      string
+	RecipientEmail      string
+	ChildName           string
+	StudentPersonalCode string
+	IsMinor             bool
 }
 
 // ResolveInvoiceRecipient determines the visible invoice recipient for a student.
@@ -27,11 +28,12 @@ func ResolveInvoiceRecipient(ctx context.Context, db *ent.Client, studentID int)
 	}
 
 	info := Info{
-		RecipientName:  st.FullName,
-		RecipientPhone: st.Phone,
-		RecipientEmail: st.Email,
-		ChildName:      st.FullName,
-		IsMinor:        st.IsMinor,
+		RecipientName:       st.FullName,
+		RecipientPhone:      st.Phone,
+		RecipientEmail:      st.Email,
+		ChildName:           st.FullName,
+		StudentPersonalCode: st.PersonalCode,
+		IsMinor:             st.IsMinor,
 	}
 	if !st.IsMinor {
 		return info, nil

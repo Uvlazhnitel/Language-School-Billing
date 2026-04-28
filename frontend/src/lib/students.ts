@@ -10,6 +10,7 @@ import {
 export type StudentDTO = {
   id: number;
   fullName: string;
+  personalCode: string;
   phone: string;
   email: string;
   note: string;
@@ -29,6 +30,7 @@ export async function getStudent(id: number): Promise<StudentDTO> {
 
 export function createStudent(
   fullName: string,
+  personalCode: string,
   phone: string,
   email: string,
   note: string,
@@ -38,6 +40,7 @@ export function createStudent(
 ): Promise<StudentDTO> {
   return StudentCreate(
     fullName,
+    personalCode,
     phone,
     email,
     note,
@@ -50,6 +53,7 @@ export function createStudent(
 export function updateStudent(
   id: number,
   fullName: string,
+  personalCode: string,
   phone: string,
   email: string,
   note: string,
@@ -60,6 +64,7 @@ export function updateStudent(
   return StudentUpdate(
     id,
     fullName,
+    personalCode,
     phone,
     email,
     note,

@@ -59,6 +59,11 @@ func FullName(v string) predicate.Student {
 	return predicate.Student(sql.FieldEQ(FieldFullName, v))
 }
 
+// PersonalCode applies equality check predicate on the "personal_code" field. It's identical to PersonalCodeEQ.
+func PersonalCode(v string) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldPersonalCode, v))
+}
+
 // Phone applies equality check predicate on the "phone" field. It's identical to PhoneEQ.
 func Phone(v string) predicate.Student {
 	return predicate.Student(sql.FieldEQ(FieldPhone, v))
@@ -157,6 +162,71 @@ func FullNameEqualFold(v string) predicate.Student {
 // FullNameContainsFold applies the ContainsFold predicate on the "full_name" field.
 func FullNameContainsFold(v string) predicate.Student {
 	return predicate.Student(sql.FieldContainsFold(FieldFullName, v))
+}
+
+// PersonalCodeEQ applies the EQ predicate on the "personal_code" field.
+func PersonalCodeEQ(v string) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldPersonalCode, v))
+}
+
+// PersonalCodeNEQ applies the NEQ predicate on the "personal_code" field.
+func PersonalCodeNEQ(v string) predicate.Student {
+	return predicate.Student(sql.FieldNEQ(FieldPersonalCode, v))
+}
+
+// PersonalCodeIn applies the In predicate on the "personal_code" field.
+func PersonalCodeIn(vs ...string) predicate.Student {
+	return predicate.Student(sql.FieldIn(FieldPersonalCode, vs...))
+}
+
+// PersonalCodeNotIn applies the NotIn predicate on the "personal_code" field.
+func PersonalCodeNotIn(vs ...string) predicate.Student {
+	return predicate.Student(sql.FieldNotIn(FieldPersonalCode, vs...))
+}
+
+// PersonalCodeGT applies the GT predicate on the "personal_code" field.
+func PersonalCodeGT(v string) predicate.Student {
+	return predicate.Student(sql.FieldGT(FieldPersonalCode, v))
+}
+
+// PersonalCodeGTE applies the GTE predicate on the "personal_code" field.
+func PersonalCodeGTE(v string) predicate.Student {
+	return predicate.Student(sql.FieldGTE(FieldPersonalCode, v))
+}
+
+// PersonalCodeLT applies the LT predicate on the "personal_code" field.
+func PersonalCodeLT(v string) predicate.Student {
+	return predicate.Student(sql.FieldLT(FieldPersonalCode, v))
+}
+
+// PersonalCodeLTE applies the LTE predicate on the "personal_code" field.
+func PersonalCodeLTE(v string) predicate.Student {
+	return predicate.Student(sql.FieldLTE(FieldPersonalCode, v))
+}
+
+// PersonalCodeContains applies the Contains predicate on the "personal_code" field.
+func PersonalCodeContains(v string) predicate.Student {
+	return predicate.Student(sql.FieldContains(FieldPersonalCode, v))
+}
+
+// PersonalCodeHasPrefix applies the HasPrefix predicate on the "personal_code" field.
+func PersonalCodeHasPrefix(v string) predicate.Student {
+	return predicate.Student(sql.FieldHasPrefix(FieldPersonalCode, v))
+}
+
+// PersonalCodeHasSuffix applies the HasSuffix predicate on the "personal_code" field.
+func PersonalCodeHasSuffix(v string) predicate.Student {
+	return predicate.Student(sql.FieldHasSuffix(FieldPersonalCode, v))
+}
+
+// PersonalCodeEqualFold applies the EqualFold predicate on the "personal_code" field.
+func PersonalCodeEqualFold(v string) predicate.Student {
+	return predicate.Student(sql.FieldEqualFold(FieldPersonalCode, v))
+}
+
+// PersonalCodeContainsFold applies the ContainsFold predicate on the "personal_code" field.
+func PersonalCodeContainsFold(v string) predicate.Student {
+	return predicate.Student(sql.FieldContainsFold(FieldPersonalCode, v))
 }
 
 // PhoneEQ applies the EQ predicate on the "phone" field.

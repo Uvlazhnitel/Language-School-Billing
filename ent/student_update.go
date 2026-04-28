@@ -44,6 +44,20 @@ func (_u *StudentUpdate) SetNillableFullName(v *string) *StudentUpdate {
 	return _u
 }
 
+// SetPersonalCode sets the "personal_code" field.
+func (_u *StudentUpdate) SetPersonalCode(v string) *StudentUpdate {
+	_u.mutation.SetPersonalCode(v)
+	return _u
+}
+
+// SetNillablePersonalCode sets the "personal_code" field if the given value is not nil.
+func (_u *StudentUpdate) SetNillablePersonalCode(v *string) *StudentUpdate {
+	if v != nil {
+		_u.SetPersonalCode(*v)
+	}
+	return _u
+}
+
 // SetPhone sets the "phone" field.
 func (_u *StudentUpdate) SetPhone(v string) *StudentUpdate {
 	_u.mutation.SetPhone(v)
@@ -294,6 +308,9 @@ func (_u *StudentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.FullName(); ok {
 		_spec.SetField(student.FieldFullName, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.PersonalCode(); ok {
+		_spec.SetField(student.FieldPersonalCode, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.Phone(); ok {
 		_spec.SetField(student.FieldPhone, field.TypeString, value)
 	}
@@ -480,6 +497,20 @@ func (_u *StudentUpdateOne) SetFullName(v string) *StudentUpdateOne {
 func (_u *StudentUpdateOne) SetNillableFullName(v *string) *StudentUpdateOne {
 	if v != nil {
 		_u.SetFullName(*v)
+	}
+	return _u
+}
+
+// SetPersonalCode sets the "personal_code" field.
+func (_u *StudentUpdateOne) SetPersonalCode(v string) *StudentUpdateOne {
+	_u.mutation.SetPersonalCode(v)
+	return _u
+}
+
+// SetNillablePersonalCode sets the "personal_code" field if the given value is not nil.
+func (_u *StudentUpdateOne) SetNillablePersonalCode(v *string) *StudentUpdateOne {
+	if v != nil {
+		_u.SetPersonalCode(*v)
 	}
 	return _u
 }
@@ -763,6 +794,9 @@ func (_u *StudentUpdateOne) sqlSave(ctx context.Context) (_node *Student, err er
 	}
 	if value, ok := _u.mutation.FullName(); ok {
 		_spec.SetField(student.FieldFullName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.PersonalCode(); ok {
+		_spec.SetField(student.FieldPersonalCode, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Phone(); ok {
 		_spec.SetField(student.FieldPhone, field.TypeString, value)

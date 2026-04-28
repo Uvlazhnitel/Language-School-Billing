@@ -306,6 +306,7 @@ export default function App() {
   const [studentModalOpen, setStudentModalOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentDTO | null>(null);
   const [sfName, setSfName] = useState("");
+  const [sfPersonalCode, setSfPersonalCode] = useState("");
   const [sfPhone, setSfPhone] = useState("");
   const [sfEmail, setSfEmail] = useState("");
   const [sfNote, setSfNote] = useState("");
@@ -350,6 +351,7 @@ export default function App() {
   function openAddStudent() {
     setEditingStudent(null);
     setSfName("");
+    setSfPersonalCode("");
     setSfPhone("");
     setSfEmail("");
     setSfNote("");
@@ -362,6 +364,7 @@ export default function App() {
   function openEditStudent(s: StudentDTO) {
     setEditingStudent(s);
     setSfName(s.fullName);
+    setSfPersonalCode(s.personalCode ?? "");
     setSfPhone(s.phone);
     setSfEmail(s.email);
     setSfNote(s.note);
@@ -390,6 +393,7 @@ export default function App() {
         await updateStudent(
           editingStudent.id,
           sfName,
+          sfPersonalCode,
           sfPhone,
           sfEmail,
           sfNote,
@@ -399,7 +403,16 @@ export default function App() {
         );
       } else {
         // Create new student
-        await createStudent(sfName, sfPhone, sfEmail, sfNote, sfIsMinor, sfPayerName, sfPayerRole);
+        await createStudent(
+          sfName,
+          sfPersonalCode,
+          sfPhone,
+          sfEmail,
+          sfNote,
+          sfIsMinor,
+          sfPayerName,
+          sfPayerRole
+        );
       }
       setStudentModalOpen(false);
       await Promise.all([loadStudents(), loadAllStudents()]);
@@ -1549,6 +1562,13 @@ export default function App() {
                       <input value={sfName} onChange={(e) => setSfName(e.target.value)} />
                     </div>
                     <div className="formRow">
+                      <label>Personal code</label>
+                      <input
+                        value={sfPersonalCode}
+                        onChange={(e) => setSfPersonalCode(e.target.value)}
+                      />
+                    </div>
+                    <div className="formRow">
                       <label>{sfIsMinor ? "Parent phone" : "Phone"}</label>
                       <input value={sfPhone} onChange={(e) => setSfPhone(e.target.value)} />
                     </div>
@@ -2203,6 +2223,12 @@ export default function App() {
                         <span>Recipient:</span>
                         <span>{selectedInv.recipientName || selectedInv.studentName}</span>
                       </div>
+                      {selectedInv.studentPersonalCode && (
+                        <div className="invSummaryRow">
+                          <span>{selectedInv.isMinor ? "Child personal code:" : "Personal code:"}</span>
+                          <span>{selectedInv.studentPersonalCode}</span>
+                        </div>
+                      )}
                       {selectedInv.isMinor && (
                         <div className="invSummaryRow">
                           <span>For child:</span>
@@ -2472,6 +2498,12 @@ export default function App() {
                       <div className="invSummaryRow">
                         <span>{selectedStudentCard.isMinor ? "Parent phone" : "Phone"}</span>
                         <span>{selectedStudentCard.phone}</span>
+                      </div>
+                    )}
+                    {selectedStudentCard.personalCode && (
+                      <div className="invSummaryRow">
+                        <span>Personal code</span>
+                        <span>{selectedStudentCard.personalCode}</span>
                       </div>
                     )}
                     {selectedStudentCard.email && (

@@ -63,20 +63,21 @@ type LineDTO struct {
 
 // InvoiceDTO represents a complete invoice with all line items.
 type InvoiceDTO struct {
-	ID             int       `json:"id"`               // Invoice ID
-	StudentID      int       `json:"studentId"`        // Student ID
-	StudentName    string    `json:"studentName"`      // Student's full name
-	RecipientName  string    `json:"recipientName"`    // Visible invoice recipient
-	RecipientPhone string    `json:"recipientPhone"`   // Optional recipient phone
-	RecipientEmail string    `json:"recipientEmail"`   // Optional recipient email
-	ChildName      string    `json:"childName"`        // Child/student name
-	IsMinor        bool      `json:"isMinor"`          // Whether invoice is for a minor student
-	Year           int       `json:"year"`             // Invoice period year
-	Month          int       `json:"month"`            // Invoice period month
-	Total          float64   `json:"total"`            // Total invoice amount
-	Status         string    `json:"status"`           // Invoice status
-	Number         *string   `json:"number,omitempty"` // Invoice number (nil for drafts)
-	Lines          []LineDTO `json:"lines"`            // All line items in the invoice
+	ID                  int       `json:"id"`                  // Invoice ID
+	StudentID           int       `json:"studentId"`           // Student ID
+	StudentName         string    `json:"studentName"`         // Student's full name
+	RecipientName       string    `json:"recipientName"`       // Visible invoice recipient
+	RecipientPhone      string    `json:"recipientPhone"`      // Optional recipient phone
+	RecipientEmail      string    `json:"recipientEmail"`      // Optional recipient email
+	ChildName           string    `json:"childName"`           // Child/student name
+	StudentPersonalCode string    `json:"studentPersonalCode"` // Student's own personal code
+	IsMinor             bool      `json:"isMinor"`             // Whether invoice is for a minor student
+	Year                int       `json:"year"`                // Invoice period year
+	Month               int       `json:"month"`               // Invoice period month
+	Total               float64   `json:"total"`               // Total invoice amount
+	Status              string    `json:"status"`              // Invoice status
+	Number              *string   `json:"number,omitempty"`    // Invoice number (nil for drafts)
+	Lines               []LineDTO `json:"lines"`               // All line items in the invoice
 }
 
 // GenerateResult contains statistics about invoice generation.
@@ -334,19 +335,20 @@ func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 		return nil, err
 	}
 	dto := &InvoiceDTO{
-		ID:             iv.ID,
-		StudentID:      iv.StudentID,
-		StudentName:    getStudentName(iv),
-		RecipientName:  recipientInfo.RecipientName,
-		RecipientPhone: recipientInfo.RecipientPhone,
-		RecipientEmail: recipientInfo.RecipientEmail,
-		ChildName:      recipientInfo.ChildName,
-		IsMinor:        recipientInfo.IsMinor,
-		Year:           iv.PeriodYear,
-		Month:          iv.PeriodMonth,
-		Total:          utils.Round2(iv.TotalAmount),
-		Status:         string(iv.Status),
-		Number:         iv.Number,
+		ID:                  iv.ID,
+		StudentID:           iv.StudentID,
+		StudentName:         getStudentName(iv),
+		RecipientName:       recipientInfo.RecipientName,
+		RecipientPhone:      recipientInfo.RecipientPhone,
+		RecipientEmail:      recipientInfo.RecipientEmail,
+		ChildName:           recipientInfo.ChildName,
+		StudentPersonalCode: recipientInfo.StudentPersonalCode,
+		IsMinor:             recipientInfo.IsMinor,
+		Year:                iv.PeriodYear,
+		Month:               iv.PeriodMonth,
+		Total:               utils.Round2(iv.TotalAmount),
+		Status:              string(iv.Status),
+		Number:              iv.Number,
 	}
 	for _, l := range ls {
 		dto.Lines = append(dto.Lines, LineDTO{

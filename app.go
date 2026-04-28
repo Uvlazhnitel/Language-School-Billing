@@ -44,6 +44,7 @@ type App struct {
 func NewApp() *App { return &App{} }
 
 const defaultSchoolDisplayName = "ArtLab"
+const defaultSchoolAddress = "Latgales iela 260, Rīga, Latvija"
 
 // startup is called by Wails when the application starts.
 // It initializes the database connection, ensures required directories exist,
@@ -86,7 +87,7 @@ func (a *App) startup(ctx context.Context) {
 			Create().
 			SetSingletonID(1).
 			SetOrgName(defaultSchoolDisplayName).
-			SetAddress("").
+			SetAddress(defaultSchoolAddress).
 			SetInvoicePrefix("LS").
 			SetNextSeq(1).
 			SetInvoiceDayOfMonth(1).
@@ -112,6 +113,11 @@ func (a *App) startup(ctx context.Context) {
 		orgName := strings.TrimSpace(st.OrgName)
 		if orgName == "" || strings.EqualFold(orgName, "North Star Language Studio") {
 			upd.SetOrgName(defaultSchoolDisplayName)
+		}
+
+		address := strings.TrimSpace(st.Address)
+		if address == "" || strings.EqualFold(address, "Brivibas iela 88, Riga, Latvia") {
+			upd.SetAddress(defaultSchoolAddress)
 		}
 
 		if _, err := upd.Save(ctx); err != nil {
