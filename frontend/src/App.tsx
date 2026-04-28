@@ -51,18 +51,18 @@ import {
 } from "./lib/payments";
 
 const months = [
-  "January",
-  "February",
-  "March",
-  "April",
-  "May",
-  "June",
-  "July",
-  "August",
-  "September",
-  "October",
-  "November",
-  "December",
+  "Январь",
+  "Февраль",
+  "Март",
+  "Апрель",
+  "Май",
+  "Июнь",
+  "Июль",
+  "Август",
+  "Сентябрь",
+  "Октябрь",
+  "Ноябрь",
+  "Декабрь",
 ];
 
 const monthsRu = [
@@ -107,17 +107,67 @@ const payerRoleOptions = [
 function payerRoleLabel(relation: string): string {
   switch (relation) {
     case "mother":
-      return "Mother";
+      return "Мама";
     case "father":
-      return "Father";
+      return "Папа";
     case "grandmother":
-      return "Grandmother";
+      return "Бабушка";
     case "grandfather":
-      return "Grandfather";
+      return "Дедушка";
     case "guardian":
-      return "Guardian";
+      return "Опекун";
     default:
-      return "Other";
+      return "Другое";
+  }
+}
+
+function courseTypeLabel(type: string): string {
+  switch (type) {
+    case "group":
+      return "группа";
+    case "individual":
+      return "индивидуально";
+    default:
+      return type;
+  }
+}
+
+function billingModeLabel(mode: string): string {
+  switch (mode) {
+    case "per_lesson":
+      return "по занятиям";
+    case "subscription":
+      return "абонемент";
+    default:
+      return mode;
+  }
+}
+
+function paymentMethodLabel(method: string): string {
+  switch (method) {
+    case "cash":
+      return "Наличные";
+    case "bank":
+      return "Банк";
+    default:
+      return method;
+  }
+}
+
+function invoiceStatusLabel(status: string): string {
+  switch (status) {
+    case "draft":
+      return "черновик";
+    case "issued":
+      return "выставлен";
+    case "paid":
+      return "оплачен";
+    case "canceled":
+      return "отменён";
+    case "all":
+      return "все";
+    default:
+      return status;
   }
 }
 
@@ -125,37 +175,34 @@ type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "
 
 const TAB_META: Record<Tab, { eyebrow: string; title: string; description: string }> = {
   students: {
-    eyebrow: "People",
-    title: "Students workspace",
-    description: "Manage your student base, contacts, and active roster in one clean place.",
+    eyebrow: "Люди",
+    title: "Ученики",
+    description: "Управляйте базой учеников, контактами и активным списком в одном месте.",
   },
   courses: {
-    eyebrow: "Programs",
-    title: "Courses and pricing",
-    description:
-      "Shape your offers, keep prices consistent, and edit the catalog without friction.",
+    eyebrow: "Программы",
+    title: "Курсы и цены",
+    description: "Настраивайте предложения, держите цены в порядке и удобно редактируйте каталог.",
   },
   enrollments: {
-    eyebrow: "Links",
-    title: "Enrollment flow",
-    description: "Connect students to courses, apply discounts, and keep billing modes clear.",
+    eyebrow: "Связи",
+    title: "Зачисления",
+    description: "Привязывайте учеников к курсам, задавайте скидки и не путайтесь в режимах оплаты.",
   },
   attendance: {
-    eyebrow: "Operations",
-    title: "Attendance overview",
-    description: "Track lesson counts fast and prepare accurate monthly billing with less clutter.",
+    eyebrow: "Учёт",
+    title: "Посещаемость",
+    description: "Быстро отмечайте количество занятий и готовьте точное начисление за месяц.",
   },
   invoice: {
-    eyebrow: "Billing",
-    title: "Invoices and summaries",
-    description:
-      "Generate, issue, review, and pay invoices with a clearer month-by-month workflow.",
+    eyebrow: "Счета",
+    title: "Счета и сводка",
+    description: "Создавайте, выставляйте, проверяйте и оплачивайте счета в понятном помесячном потоке.",
   },
   debtors: {
-    eyebrow: "Follow-up",
-    title: "Debtors snapshot",
-    description:
-      "See who still owes money and record payments without losing the historical trail.",
+    eyebrow: "Долги",
+    title: "Должники",
+    description: "Смотрите, кто ещё должен оплату, и записывайте платежи без потери истории.",
   },
 };
 
@@ -377,15 +424,15 @@ export default function App() {
 
   async function saveStudent() {
     if (!sfName.trim()) {
-      showMessage("Full name is required", "error");
+      showMessage("Введите имя ученика", "error");
       return;
     }
     if (sfIsMinor && !sfPayerName.trim()) {
-      showMessage("Payer name is required for a minor student", "error");
+      showMessage("Для несовершеннолетнего ученика нужно указать имя плательщика", "error");
       return;
     }
     if (sfIsMinor && !sfPayerRole) {
-      showMessage("Payer role is required for a minor student", "error");
+      showMessage("Для несовершеннолетнего ученика нужно выбрать роль плательщика", "error");
       return;
     }
     try {
@@ -418,10 +465,10 @@ export default function App() {
       setStudentModalOpen(false);
       await Promise.all([loadStudents(), loadAllStudents()]);
       showMessage(
-        editingStudent ? "Student updated successfully!" : "Student created successfully!"
+        editingStudent ? "Ученик успешно обновлён" : "Ученик успешно создан"
       );
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   }
 
@@ -429,22 +476,22 @@ export default function App() {
     try {
       await setStudentActive(s.id, !s.isActive);
       await Promise.all([loadStudents(), loadAllStudents()]);
-      showMessage(s.isActive ? "Student deactivated" : "Student activated");
+      showMessage(s.isActive ? "Ученик деактивирован" : "Ученик активирован");
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   }
 
   async function removeStudent(id: number) {
     showConfirm(
-      "Delete student? This will automatically remove their enrollments and attendance records. Deletion will fail if the student has any invoices or payments. This action cannot be undone.",
+      "Удалить ученика? Вместе с ним будут удалены зачисления и записи посещаемости. Удаление не сработает, если у ученика уже есть счета или оплаты. Это действие нельзя отменить.",
       async () => {
         try {
           await deleteStudent(id);
           await Promise.all([loadStudents(), loadAllStudents()]);
-          showMessage("Student deleted successfully!");
+          showMessage("Ученик удалён");
         } catch (e: any) {
-          showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+          showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
         }
       }
     );
@@ -463,7 +510,7 @@ export default function App() {
       setStudentCardDebts(debts);
       setStudentCardPayments(payments);
     } catch (e: any) {
-      showMessage(`Error loading student card: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка загрузки карточки ученика: ${String(e?.message ?? e)}`, "error");
     }
   }
 
@@ -488,7 +535,7 @@ export default function App() {
       const student = existing ?? (await getStudent(studentId));
       await openStudentCard(student);
     } catch (e: any) {
-      showMessage(`Error loading student card: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка загрузки карточки ученика: ${String(e?.message ?? e)}`, "error");
     }
   }
 
@@ -520,9 +567,9 @@ export default function App() {
         recipientName
       );
       await navigator.clipboard.writeText(text);
-      showMessage(locale === "ru" ? "Russian reminder copied" : "Latvian reminder copied");
+      showMessage(locale === "ru" ? "Русское напоминание скопировано" : "Латышское напоминание скопировано");
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   }
 
@@ -533,15 +580,15 @@ export default function App() {
     const dateLabel = payment.paidAt.slice(0, 10);
 
     showConfirm(
-      `Delete payment of ${amountLabel} from ${dateLabel}? This will restore any linked invoice balance and cannot be undone.`,
+      `Удалить оплату ${amountLabel} от ${dateLabel}? Остаток по связанному счёту будет восстановлен. Это действие нельзя отменить.`,
       async () => {
         try {
           setStudentCardDeletingPaymentId(payment.id);
           await deletePayment(payment.id);
           await Promise.all([refreshStudentCardData(selectedStudentCard.id), loadDebtors()]);
-          showMessage("Payment deleted successfully!");
+          showMessage("Оплата удалена");
         } catch (e: any) {
-          showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+          showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
         } finally {
           setStudentCardDeletingPaymentId(null);
         }
@@ -677,9 +724,9 @@ export default function App() {
       setCfTeacherId(created.id);
       setCfTeacherSearch(created.fullName);
       setCfTeacherPickerOpen(false);
-      showMessage("Teacher added");
+      showMessage("Учитель добавлен");
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     } finally {
       setCfTeacherCreating(false);
     }
@@ -691,11 +738,11 @@ export default function App() {
     const trimmedTeacherSearch = cfTeacherSearch.trim();
 
     if (!cfName.trim()) {
-      showMessage("Course name is required", "error");
+      showMessage("Введите название курса", "error");
       return;
     }
     if (lessonPrice < 0 || subscriptionPrice < 0) {
-      showMessage("Prices must be >= 0", "error");
+      showMessage("Цены должны быть не меньше 0", "error");
       return;
     }
 
@@ -704,7 +751,7 @@ export default function App() {
       teacherId = exactTeacherMatch.id;
     }
     if (trimmedTeacherSearch && !teacherId) {
-      showMessage("Select an existing teacher or add a new one", "error");
+      showMessage("Выберите существующего учителя или добавьте нового", "error");
       return;
     }
 
@@ -724,20 +771,20 @@ export default function App() {
 
       setCourseModalOpen(false);
       await Promise.all([loadCourses(), loadAllCourses()]);
-      showMessage(editingCourse ? "Course updated successfully!" : "Course created successfully!");
+      showMessage(editingCourse ? "Курс успешно обновлён" : "Курс успешно создан");
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   }
 
   async function removeCourse(id: number) {
-    showConfirm("Delete course? This is blocked if enrollments exist.", async () => {
+    showConfirm("Удалить курс? Если по нему есть зачисления, удаление будет заблокировано.", async () => {
       try {
         await deleteCourse(id);
         await Promise.all([loadCourses(), loadAllCourses()]);
-        showMessage("Course deleted successfully!");
+        showMessage("Курс удалён");
       } catch (e: any) {
-        showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+        showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
       }
     });
   }
@@ -815,12 +862,12 @@ export default function App() {
 
   function openAddEnrollment() {
     if (activeStudents.length === 0) {
-      showMessage("No active students available. Please add or activate students first.", "error");
+      showMessage("Нет активных учеников. Сначала добавьте или активируйте ученика.", "error");
       setTab("students");
       return;
     }
     if (allCourses.length === 0) {
-      showMessage("No courses available. Please add courses first.", "error");
+      showMessage("Нет доступных курсов. Сначала добавьте курс.", "error");
       setTab("courses");
       return;
     }
@@ -852,11 +899,11 @@ export default function App() {
 
   async function saveEnrollment() {
     if (efStudentId <= 0 || efCourseId <= 0) {
-      showMessage("Please select both student and course", "error");
+      showMessage("Выберите ученика и курс", "error");
       return;
     }
     if (efDiscount < 0 || efDiscount > 100) {
-      showMessage("Discount must be between 0 and 100", "error");
+      showMessage("Скидка должна быть от 0 до 100", "error");
       return;
     }
 
@@ -864,7 +911,7 @@ export default function App() {
       let result: EnrollmentDTO;
       if (editingEnr) {
         result = await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
-        showMessage("Enrollment updated successfully!");
+        showMessage("Зачисление обновлено");
       } else {
         result = await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
 
@@ -873,10 +920,10 @@ export default function App() {
           (enrCourseFilter === undefined || enrCourseFilter === result.courseId);
 
         if (matchesFilters) {
-          showMessage(`Enrollment created: ${result.studentName} → ${result.courseName}`);
+          showMessage(`Зачисление создано: ${result.studentName} → ${result.courseName}`);
         } else {
           showMessage(
-            `Enrollment created: ${result.studentName} → ${result.courseName}. Clear filters to see it in the list.`
+            `Зачисление создано: ${result.studentName} → ${result.courseName}. Очистите фильтры, чтобы увидеть его в списке.`
           );
         }
       }
@@ -884,7 +931,7 @@ export default function App() {
       setEnrModalOpen(false);
       await loadEnrollments();
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   }
 
@@ -980,7 +1027,7 @@ export default function App() {
         )
       );
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     } finally {
       setAttendanceSavingRows((prev) => {
         const next = { ...prev };
@@ -994,22 +1041,22 @@ export default function App() {
     try {
       await addOneMass(year, month, courseFilter);
       await loadAttendance();
-      showMessage("Added +1 to all visible rows");
+      showMessage("Ко всем видимым строкам добавлено +1");
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   };
 
   const onDeleteEnrollmentFromSheet = async (id: number) => {
     showConfirm(
-      "Delete enrollment? This will remove the enrollment and related attendance records. This action cannot be undone.",
+      "Удалить зачисление? Вместе с ним будут удалены связанные записи посещаемости. Это действие нельзя отменить.",
       async () => {
         try {
           await deleteEnrollment(id);
           await loadAttendance();
-          showMessage("Enrollment deleted successfully!");
+          showMessage("Зачисление удалено");
         } catch (e: any) {
-          showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+          showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
         }
       }
     );
@@ -1019,6 +1066,7 @@ export default function App() {
   const [invStatus, setInvStatus] = useState<string>("all");
   const [invItems, setInvItems] = useState<InvoiceListItem[]>([]);
   const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
+  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
   const [loadingInv, setLoadingInv] = useState(false);
   const [invQ, setInvQ] = useState("");
   const [invSummary, setInvSummary] = useState<InvoiceSummaryDTO | null>(null);
@@ -1041,8 +1089,9 @@ export default function App() {
       const li = await listInvoices(year, month, invStatus);
       setInvItems(li);
       setSelectedInv(null);
+      setInvoiceModalOpen(false);
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     } finally {
       setLoadingInv(false);
     }
@@ -1067,7 +1116,7 @@ export default function App() {
       setDebtors(data);
       return data;
     } catch (e: any) {
-      showMessage(`Error loading debtors: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка загрузки должников: ${String(e?.message ?? e)}`, "error");
       return [];
     } finally {
       setDebtorsLoading(false);
@@ -1088,7 +1137,7 @@ export default function App() {
       const details = await studentDebtDetails(debtor.studentId);
       setDebtDetails(details);
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     } finally {
       setDebtDetailsLoading(false);
     }
@@ -1104,9 +1153,9 @@ export default function App() {
       );
       const text = buildDebtReminderMessage(locale, selectedDebtor, debtDetails, recipientName);
       await navigator.clipboard.writeText(text);
-      showMessage(locale === "ru" ? "Russian reminder copied" : "Latvian reminder copied");
+      showMessage(locale === "ru" ? "Русское напоминание скопировано" : "Латышское напоминание скопировано");
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   }
 
@@ -1128,6 +1177,7 @@ export default function App() {
     try {
       const iv = await getInvoice(id);
       setSelectedInv(iv);
+      setInvoiceModalOpen(true);
       // Load payment summary
       if (iv.status !== "draft") {
         const summary = await invoiceSummary(id);
@@ -1136,8 +1186,14 @@ export default function App() {
         setInvSummary(null);
       }
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
+  };
+
+  const closeInvoiceModal = () => {
+    setInvoiceModalOpen(false);
+    setSelectedInv(null);
+    setInvSummary(null);
   };
 
   const openPaymentModal = (inv?: InvoiceDTO, summary?: InvoiceSummaryDTO | null) => {
@@ -1193,11 +1249,11 @@ export default function App() {
   const handleCreatePayment = async () => {
     const amount = parseFloat(paymentAmount);
     if (paymentStudentId <= 0) {
-      showMessage("No student selected for payment", "error");
+      showMessage("Для оплаты не выбран ученик", "error");
       return;
     }
     if (isNaN(amount) || amount <= 0) {
-      showMessage("Please enter a valid amount", "error");
+      showMessage("Введите корректную сумму", "error");
       return;
     }
 
@@ -1213,7 +1269,7 @@ export default function App() {
       );
 
       setPaymentModalOpen(false);
-      showMessage("Payment recorded successfully!");
+      showMessage("Оплата записана");
 
       if (paymentInvoiceId) {
         await onOpenInvoice(paymentInvoiceId);
@@ -1248,7 +1304,7 @@ export default function App() {
       setReturnToDebtDetailsAfterPayment(false);
       setReturnToStudentCardAfterPayment(false);
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   };
 
@@ -1256,27 +1312,27 @@ export default function App() {
     try {
       const res = await genDrafts(year, month);
       showMessage(
-        `Drafts generated: ${res.created} created, ${res.updated} updated, ${res.skippedHasInvoice} skipped (already issued), ${res.skippedNoLines} skipped (no lines)`
+        `Черновики сформированы: создано ${res.created}, обновлено ${res.updated}, пропущено ${res.skippedHasInvoice} (уже выставлены), пропущено ${res.skippedNoLines} (нет строк)`
       );
       await loadInvoices();
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   };
 
   const onIssueOne = async (id: number) => {
     try {
       const res = await issueOne(id);
-      showMessage(`Invoice issued: #${res.number}`);
+      showMessage(`Счёт выставлен: #${res.number}`);
       await loadInvoices();
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   };
 
   const onReopenToDraft = async (id: number) => {
     showConfirm(
-      "Reopen this issued invoice to draft? This is allowed only when it has no payments. The old invoice number will be cleared.",
+      "Вернуть этот выставленный счёт в черновик? Это разрешено только если по нему нет оплат. Старый номер счёта будет очищен.",
       async () => {
         try {
           await reopenToDraft(id);
@@ -1284,22 +1340,22 @@ export default function App() {
             await onOpenInvoice(id);
           }
           await loadInvoices();
-          showMessage("Invoice reopened to draft");
+          showMessage("Счёт возвращён в черновик");
         } catch (e: any) {
-          showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+          showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
         }
       },
-      "Reopen"
+      "Вернуть"
     );
   };
 
   const onIssueAll = async () => {
     try {
       const res = await issueAll(year, month);
-      showMessage(`Issued: ${res.count}. PDFs: ${res.pdfPaths.length}`);
+      showMessage(`Выставлено счетов: ${res.count}. PDF: ${res.pdfPaths.length}`);
       await loadInvoices();
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   };
 
@@ -1307,9 +1363,9 @@ export default function App() {
     try {
       const path = await ensurePdfAndOpen(id);
       console.log("Opened PDF:", path);
-      showMessage("PDF opened");
+      showMessage("PDF открыт");
     } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   };
 
@@ -1317,9 +1373,9 @@ export default function App() {
   const showMonthPicker = tab === "attendance" || tab === "invoice";
   const currentMeta = TAB_META[tab];
   const dashboardStats = [
-    { label: "Students", value: studentList.length },
-    { label: "Courses", value: courseList.length },
-    { label: "Open debtors", value: debtors.length },
+    { label: "Ученики", value: studentList.length },
+    { label: "Курсы", value: courseList.length },
+    { label: "Открытые долги", value: debtors.length },
   ];
 
   return (
@@ -1360,7 +1416,7 @@ export default function App() {
                 e.stopPropagation();
                 setMessage(null);
               }}
-              aria-label="Close notification"
+              aria-label="Закрыть уведомление"
               style={{
                 background: "none",
                 border: "none",
@@ -1402,7 +1458,7 @@ export default function App() {
               boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
             }}
           >
-            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Confirm Action</h3>
+            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Подтверждение</h3>
             <p style={{ marginBottom: "24px", lineHeight: "1.5" }}>{confirmDialog.message}</p>
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
               <button onClick={handleConfirmNo} style={{ padding: "8px 16px" }}>
@@ -1419,7 +1475,7 @@ export default function App() {
                   cursor: "pointer",
                 }}
               >
-                {confirmDialog.confirmButtonLabel ?? "Delete"}
+                {confirmDialog.confirmButtonLabel ?? "Удалить"}
               </button>
             </div>
           </div>
@@ -1435,10 +1491,10 @@ export default function App() {
               <p>{currentMeta.description}</p>
             </div>
 
-            <div className="workspaceStats" aria-label="Application overview">
+            <div className="workspaceStats" aria-label="Обзор приложения">
               {(tab === "attendance" || tab === "invoice") && (
                 <div className="workspaceStat workspaceStatFocus">
-                  <span>Focus</span>
+                  <span>Фокус</span>
                   <strong>
                     {months[month - 1]} {year}
                   </strong>
@@ -1458,28 +1514,28 @@ export default function App() {
               className={tab === "students" ? "active" : ""}
               onClick={() => setTab("students")}
             >
-              Students
+              Ученики
             </button>
             <button className={tab === "courses" ? "active" : ""} onClick={() => setTab("courses")}>
-              Courses
+              Курсы
             </button>
             <button
               className={tab === "enrollments" ? "active" : ""}
               onClick={() => setTab("enrollments")}
             >
-              Enrollments
+              Зачисления
             </button>
             <button
               className={tab === "attendance" ? "active" : ""}
               onClick={() => setTab("attendance")}
             >
-              Attendance
+              Посещаемость
             </button>
             <button className={tab === "invoice" ? "active" : ""} onClick={() => setTab("invoice")}>
-              Invoices
+              Счета
             </button>
             <button className={tab === "debtors" ? "active" : ""} onClick={() => setTab("debtors")}>
-              Debtors
+              Должники
             </button>
 
             <div className="spacer" />
@@ -1508,9 +1564,9 @@ export default function App() {
           {tab === "students" && (
             <>
               <div className="controls">
-                <button onClick={openAddStudent}>Add student</button>
+                <button onClick={openAddStudent}>Добавить ученика</button>
                 <input
-                  placeholder="Search name/phone/email…"
+                  placeholder="Поиск по имени / телефону / email…"
                   value={studentQ}
                   onChange={(e) => setStudentQ(e.target.value)}
                   style={{ width: 260 }}
@@ -1521,23 +1577,23 @@ export default function App() {
                     checked={includeInactive}
                     onChange={(e) => setIncludeInactive(e.target.checked)}
                   />
-                  Include inactive
+                  Показывать неактивных
                 </label>
-                <button onClick={loadStudents}>Refresh</button>
+                <button onClick={loadStudents}>Обновить</button>
               </div>
 
               {studentLoading ? (
-                <div>Loading…</div>
+                <div>Загрузка…</div>
               ) : studentList.length === 0 ? (
-                <div className="empty">No students yet.</div>
+                <div className="empty">Учеников пока нет.</div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Phone</th>
+                      <th>Имя</th>
+                      <th>Телефон</th>
                       <th>Email</th>
-                      <th>Active</th>
+                      <th>Активен</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -1548,22 +1604,22 @@ export default function App() {
                           <button
                             className="linkButton"
                             onClick={() => openStudentCard(s)}
-                            title="Open student card"
+                            title="Открыть карточку ученика"
                           >
                             {s.fullName}
                           </button>
                         </td>
                         <td>{s.phone}</td>
                         <td>{s.email}</td>
-                        <td>{s.isActive ? "yes" : "no"}</td>
+                        <td>{s.isActive ? "да" : "нет"}</td>
                         <td>
-                          <button onClick={() => openStudentCard(s)}>Student card</button>
-                          <button onClick={() => openEditStudent(s)}>Edit</button>
+                          <button onClick={() => openStudentCard(s)}>Карточка</button>
+                          <button onClick={() => openEditStudent(s)}>Редактировать</button>
                           <button onClick={() => toggleStudentActive(s)}>
-                            {s.isActive ? "Deactivate" : "Activate"}
+                            {s.isActive ? "Деактивировать" : "Активировать"}
                           </button>
                           {!s.isActive && (
-                            <button onClick={() => removeStudent(s.id)}>Delete</button>
+                            <button onClick={() => removeStudent(s.id)}>Удалить</button>
                           )}
                         </td>
                       </tr>
@@ -1575,58 +1631,58 @@ export default function App() {
               {studentModalOpen && (
                 <div className="modal">
                   <div className="modalBody">
-                    <h3>{editingStudent ? "Edit student" : "Add student"}</h3>
+                    <h3>{editingStudent ? "Редактировать ученика" : "Добавить ученика"}</h3>
 
                     <div className="formRow">
-                      <label>Full name</label>
+                      <label>Полное имя</label>
                       <input value={sfName} onChange={(e) => setSfName(e.target.value)} />
                     </div>
                     <div className="formRow">
-                      <label>Personal code</label>
+                      <label>Персональный код</label>
                       <input
                         value={sfPersonalCode}
                         onChange={(e) => setSfPersonalCode(e.target.value)}
                       />
                     </div>
                     <div className="formRow">
-                      <label>{sfIsMinor ? "Parent phone" : "Phone"}</label>
+                      <label>{sfIsMinor ? "Телефон родителя" : "Телефон"}</label>
                       <input value={sfPhone} onChange={(e) => setSfPhone(e.target.value)} />
                     </div>
                     <div className="formRow">
-                      <label>{sfIsMinor ? "Parent email" : "Email"}</label>
+                      <label>{sfIsMinor ? "Email родителя" : "Email"}</label>
                       <input value={sfEmail} onChange={(e) => setSfEmail(e.target.value)} />
                     </div>
                     <div className="formRow">
-                      <label>Note</label>
+                      <label>Заметка</label>
                       <input value={sfNote} onChange={(e) => setSfNote(e.target.value)} />
                     </div>
                     <div className="formRow">
-                      <label>Child student</label>
+                      <label>Несовершеннолетний ученик</label>
                       <label className="inline">
                         <input
                           type="checkbox"
                           checked={sfIsMinor}
                           onChange={(e) => setSfIsMinor(e.target.checked)}
                         />
-                        Is minor
+                        Да
                       </label>
                     </div>
                     {sfIsMinor && (
                       <>
                         <div className="formRow">
-                          <label>Payer name</label>
+                          <label>Имя плательщика</label>
                           <input
                             value={sfPayerName}
                             onChange={(e) => setSfPayerName(e.target.value)}
                           />
                         </div>
                         <div className="formRow">
-                          <label>Payer role</label>
+                          <label>Кем приходится плательщик</label>
                           <select
                             value={sfPayerRole}
                             onChange={(e) => setSfPayerRole(e.target.value)}
                           >
-                            <option value="">Select role…</option>
+                            <option value="">Выберите роль…</option>
                             {payerRoleOptions.map((role) => (
                               <option key={role} value={role}>
                                 {payerRoleLabel(role)}
@@ -1638,8 +1694,8 @@ export default function App() {
                     )}
 
                     <div className="modalActions">
-                      <button onClick={saveStudent}>Save</button>
-                      <button onClick={() => setStudentModalOpen(false)}>Cancel</button>
+                      <button onClick={saveStudent}>Сохранить</button>
+                      <button onClick={() => setStudentModalOpen(false)}>Отмена</button>
                     </div>
                   </div>
                 </div>
@@ -1651,29 +1707,29 @@ export default function App() {
           {tab === "courses" && (
             <>
               <div className="controls">
-                <button onClick={openAddCourse}>Add course</button>
+                <button onClick={openAddCourse}>Добавить курс</button>
                 <input
-                  placeholder="Search course or teacher…"
+                  placeholder="Поиск по курсу или учителю…"
                   value={courseQ}
                   onChange={(e) => setCourseQ(e.target.value)}
                   style={{ width: 260 }}
                 />
-                <button onClick={loadCourses}>Refresh</button>
+                <button onClick={loadCourses}>Обновить</button>
               </div>
 
               {courseLoading ? (
-                <div>Loading…</div>
+                <div>Загрузка…</div>
               ) : courseList.length === 0 ? (
-                <div className="empty">No courses yet.</div>
+                <div className="empty">Курсов пока нет.</div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>Name</th>
-                      <th>Teacher</th>
-                      <th>Type</th>
-                      <th style={{ textAlign: "right" }}>Lesson (EUR)</th>
-                      <th style={{ textAlign: "right" }}>Subscription (EUR)</th>
+                      <th>Название</th>
+                      <th>Учитель</th>
+                      <th>Тип</th>
+                      <th style={{ textAlign: "right" }}>За занятие (EUR)</th>
+                      <th style={{ textAlign: "right" }}>Абонемент (EUR)</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -1682,12 +1738,12 @@ export default function App() {
                       <tr key={c.id}>
                         <td>{c.name}</td>
                         <td>{c.teacherName || "—"}</td>
-                        <td>{c.type}</td>
+                        <td>{courseTypeLabel(c.type)}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(c.lessonPrice)}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(c.subscriptionPrice)}</td>
                         <td>
-                          <button onClick={() => openEditCourse(c)}>Edit</button>
-                          <button onClick={() => removeCourse(c.id)}>Delete</button>
+                          <button onClick={() => openEditCourse(c)}>Редактировать</button>
+                          <button onClick={() => removeCourse(c.id)}>Удалить</button>
                         </td>
                       </tr>
                     ))}
@@ -1698,15 +1754,15 @@ export default function App() {
               {courseModalOpen && (
                 <div className="modal">
                   <div className="modalBody">
-                    <h3>{editingCourse ? "Edit course" : "Add course"}</h3>
+                    <h3>{editingCourse ? "Редактировать курс" : "Добавить курс"}</h3>
 
                     <div className="formRow">
-                      <label>Name</label>
+                      <label>Название</label>
                       <input value={cfName} onChange={(e) => setCfName(e.target.value)} />
                     </div>
 
                     <div className="formRow">
-                      <label>Teacher</label>
+                      <label>Учитель</label>
                       <div className="comboBox" ref={cfTeacherComboRef}>
                         <input
                           value={selectedCourseTeacher?.fullName ?? cfTeacherSearch}
@@ -1721,7 +1777,7 @@ export default function App() {
                               setCfTeacherPickerOpen(false);
                             }
                           }}
-                          placeholder="Select or add teacher…"
+                          placeholder="Выберите или добавьте учителя…"
                         />
                         {cfTeacherPickerOpen && (
                           <div className="comboBoxMenu">
@@ -1748,16 +1804,16 @@ export default function App() {
                               >
                                 <span className="comboBoxPrimary">
                                   {cfTeacherCreating
-                                    ? "Adding teacher..."
-                                    : `Add teacher "${cfTeacherSearch.trim()}"`}
+                                    ? "Учитель добавляется..."
+                                    : `Добавить учителя «${cfTeacherSearch.trim()}»`}
                                 </span>
                                 <span className="comboBoxMeta">
-                                  Save a new teacher and select them for this course.
+                                  Сохранить нового учителя и выбрать его для этого курса.
                                 </span>
                               </button>
                             )}
                             {filteredTeachers.length === 0 && !cfTeacherSearch.trim() && (
-                              <div className="comboBoxEmpty">No teachers yet.</div>
+                              <div className="comboBoxEmpty">Учителей пока нет.</div>
                             )}
                           </div>
                         )}
@@ -1765,15 +1821,15 @@ export default function App() {
                     </div>
 
                     <div className="formRow">
-                      <label>Type</label>
+                      <label>Тип</label>
                       <select value={cfType} onChange={(e) => setCfType(e.target.value as any)}>
-                        <option value="group">group</option>
-                        <option value="individual">individual</option>
+                        <option value="group">группа</option>
+                        <option value="individual">индивидуально</option>
                       </select>
                     </div>
 
                     <div className="formRow">
-                      <label>Lesson price (EUR)</label>
+                      <label>Цена за занятие (EUR)</label>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -1785,7 +1841,7 @@ export default function App() {
                     </div>
 
                     <div className="formRow">
-                      <label>Subscription price (EUR)</label>
+                      <label>Цена абонемента (EUR)</label>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -1799,8 +1855,8 @@ export default function App() {
                     </div>
 
                     <div className="modalActions">
-                      <button onClick={saveCourse}>Save</button>
-                      <button onClick={() => setCourseModalOpen(false)}>Cancel</button>
+                      <button onClick={saveCourse}>Сохранить</button>
+                      <button onClick={() => setCourseModalOpen(false)}>Отмена</button>
                     </div>
                   </div>
                 </div>
@@ -1812,13 +1868,13 @@ export default function App() {
           {tab === "enrollments" && (
             <>
               <div className="controls">
-                <button onClick={openAddEnrollment}>Add enrollment</button>
+                <button onClick={openAddEnrollment}>Добавить зачисление</button>
 
                 <select
                   value={enrStudentFilter ?? ""}
                   onChange={(e) => setEnrStudentFilter(intOrUndef(e.target.value))}
                 >
-                  <option value="">All students</option>
+                  <option value="">Все ученики</option>
                   {allStudents.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.fullName}
@@ -1830,7 +1886,7 @@ export default function App() {
                   value={enrCourseFilter ?? ""}
                   onChange={(e) => setEnrCourseFilter(intOrUndef(e.target.value))}
                 >
-                  <option value="">All courses</option>
+                  <option value="">Все курсы</option>
                   {allCourses.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -1838,22 +1894,22 @@ export default function App() {
                   ))}
                 </select>
 
-                <button onClick={loadEnrollments}>Refresh</button>
+                <button onClick={loadEnrollments}>Обновить</button>
               </div>
 
               {enrLoading ? (
-                <div>Loading…</div>
+                <div>Загрузка…</div>
               ) : enrollments.length === 0 ? (
-                <div className="empty">No enrollments yet.</div>
+                <div className="empty">Зачислений пока нет.</div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>Student</th>
-                      <th>Course</th>
-                      <th>Teacher</th>
-                      <th>Billing</th>
-                      <th style={{ textAlign: "right" }}>Discount</th>
+                      <th>Ученик</th>
+                      <th>Курс</th>
+                      <th>Учитель</th>
+                      <th>Оплата</th>
+                      <th style={{ textAlign: "right" }}>Скидка</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -1867,10 +1923,10 @@ export default function App() {
                         </td>
                         <td>{e.courseName}</td>
                         <td>{e.teacherName || "—"}</td>
-                        <td>{e.billingMode}</td>
+                        <td>{billingModeLabel(e.billingMode)}</td>
                         <td style={{ textAlign: "right" }}>{e.discountPct.toFixed(1)}%</td>
                         <td>
-                          <button onClick={() => openEditEnrollment(e)}>Edit</button>
+                          <button onClick={() => openEditEnrollment(e)}>Редактировать</button>
                         </td>
                       </tr>
                     ))}
@@ -1881,10 +1937,10 @@ export default function App() {
               {enrModalOpen && (
                 <div className="modal">
                   <div className="modalBody">
-                    <h3>{editingEnr ? "Edit enrollment" : "Add enrollment"}</h3>
+                    <h3>{editingEnr ? "Редактировать зачисление" : "Добавить зачисление"}</h3>
 
                     <div className="formRow">
-                      <label>Student</label>
+                      <label>Ученик</label>
                       {editingEnr ? (
                         <input
                           value={selectedEnrollmentStudent?.fullName ?? efStudentSearch}
@@ -1904,12 +1960,12 @@ export default function App() {
                                 setEfStudentPickerOpen(false);
                               }
                             }}
-                            placeholder="Search student by name, phone, or email…"
+                            placeholder="Поиск ученика по имени, телефону или email…"
                           />
                           {efStudentPickerOpen && (
                             <div className="comboBoxMenu">
                               {filteredEnrollmentStudents.length === 0 ? (
-                                <div className="comboBoxEmpty">No students found.</div>
+                                <div className="comboBoxEmpty">Ученики не найдены.</div>
                               ) : (
                                 filteredEnrollmentStudents.map((s) => (
                                   <button
@@ -1936,7 +1992,7 @@ export default function App() {
                     </div>
 
                     <div className="formRow">
-                      <label>Course</label>
+                      <label>Курс</label>
                       <select
                         value={efCourseId}
                         disabled={!!editingEnr}
@@ -1951,15 +2007,15 @@ export default function App() {
                     </div>
 
                     <div className="formRow">
-                      <label>Billing</label>
+                      <label>Оплата</label>
                       <select value={efMode} onChange={(e) => setEfMode(e.target.value as any)}>
-                        <option value="per_lesson">per_lesson</option>
-                        <option value="subscription">subscription</option>
+                        <option value="per_lesson">по занятиям</option>
+                        <option value="subscription">абонемент</option>
                       </select>
                     </div>
 
                     <div className="formRow">
-                      <label>Discount %</label>
+                      <label>Скидка %</label>
                       <input
                         type="number"
                         min={0}
@@ -1971,13 +2027,13 @@ export default function App() {
                     </div>
 
                     <div className="formRow">
-                      <label>Note</label>
+                      <label>Заметка</label>
                       <input value={efNote} onChange={(e) => setEfNote(e.target.value)} />
                     </div>
 
                     <div className="modalActions">
-                      <button onClick={saveEnrollment}>Save</button>
-                      <button onClick={() => setEnrModalOpen(false)}>Cancel</button>
+                      <button onClick={saveEnrollment}>Сохранить</button>
+                      <button onClick={() => setEnrModalOpen(false)}>Отмена</button>
                     </div>
                   </div>
                 </div>
@@ -1989,13 +2045,13 @@ export default function App() {
           {tab === "attendance" && (
             <>
               <div className="controls">
-                <button onClick={onAddAll}>+1 all</button>
+                <button onClick={onAddAll}>+1 всем</button>
 
                 <select
                   value={courseFilter ?? ""}
                   onChange={(e) => setCourseFilter(intOrUndef(e.target.value))}
                 >
-                  <option value="">All groups</option>
+                  <option value="">Все группы</option>
                   {allCourses.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -2004,7 +2060,7 @@ export default function App() {
                 </select>
 
                 <input
-                  placeholder="Search student / phone / group…"
+                  placeholder="Поиск по ученику / телефону / группе…"
                   value={attQ}
                   onChange={(e) => setAttQ(e.target.value)}
                   style={{ width: 260 }}
@@ -2014,40 +2070,40 @@ export default function App() {
                   value={attFilter}
                   onChange={(e) => setAttFilter(e.target.value as typeof attFilter)}
                 >
-                  <option value="all">Show: All</option>
-                  <option value="missing">Missing only</option>
-                  <option value="filled">Filled only</option>
-                  <option value="zero">Zero lessons</option>
+                  <option value="all">Показать: всё</option>
+                  <option value="missing">Только не заполненные</option>
+                  <option value="filled">Только заполненные</option>
+                  <option value="zero">Ноль занятий</option>
                 </select>
 
-                <button onClick={loadAttendance}>Refresh</button>
+                <button onClick={loadAttendance}>Обновить</button>
               </div>
 
               {rows.length > 0 && (
                 <div className="attSummary">
-                  Filled: {attendanceSummary.filled} / {attendanceSummary.total}
-                  &nbsp;·&nbsp;Missing: {attendanceSummary.missing}
-                  &nbsp;·&nbsp;Zero lessons: {attendanceSummary.zero}
+                  Заполнено: {attendanceSummary.filled} / {attendanceSummary.total}
+                  &nbsp;·&nbsp;Не заполнено: {attendanceSummary.missing}
+                  &nbsp;·&nbsp;Ноль занятий: {attendanceSummary.zero}
                 </div>
               )}
 
               {loadingAtt ? (
-                <div>Loading…</div>
+                <div>Загрузка…</div>
               ) : filteredAttendanceRows.length === 0 ? (
                 <div className="empty">
                   {attQ.trim() || attFilter !== "all"
-                    ? "No matches found for your search."
-                    : "No per-lesson rows. Create enrollments first."}
+                    ? "По вашему запросу ничего не найдено."
+                    : "Нет строк с оплатой по занятиям. Сначала создайте зачисления."}
                 </div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>Student</th>
-                      <th>Course</th>
-                      <th style={{ textAlign: "right" }}>Lesson price (EUR)</th>
-                      <th style={{ textAlign: "right" }}>Count</th>
-                      <th style={{ textAlign: "right" }}>Total (EUR)</th>
+                      <th>Ученик</th>
+                      <th>Курс</th>
+                      <th style={{ textAlign: "right" }}>Цена занятия (EUR)</th>
+                      <th style={{ textAlign: "right" }}>Кол-во</th>
+                      <th style={{ textAlign: "right" }}>Итого (EUR)</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -2060,15 +2116,15 @@ export default function App() {
                           </button>
                         </td>
                         <td>
-                          {r.courseName} ({r.courseType})
+                          {r.courseName} ({courseTypeLabel(r.courseType)})
                         </td>
                         <td style={{ textAlign: "right" }}>{formatEUR(r.lessonPrice)}</td>
                         <td style={{ textAlign: "right" }}>
                           {!r.hasRecord && (
-                            <span className="attBadge attBadge--missing">Not filled</span>
+                            <span className="attBadge attBadge--missing">Не заполнено</span>
                           )}
                           {r.hasRecord && r.count === 0 && (
-                            <span className="attBadge attBadge--zero">0 lessons</span>
+                            <span className="attBadge attBadge--zero">0 занятий</span>
                           )}
                           <div className="attendanceStepper">
                             <button
@@ -2076,7 +2132,7 @@ export default function App() {
                               className="attendanceStepperButton"
                               onClick={() => onChangeCount(r, r.count - 1)}
                               disabled={attendanceSavingRows[r.enrollmentId] || r.count <= 0}
-                              aria-label={`Decrease lesson count for ${r.studentName}`}
+                              aria-label={`Уменьшить количество занятий для ${r.studentName}`}
                             >
                               −
                             </button>
@@ -2087,14 +2143,14 @@ export default function App() {
                               disabled={attendanceSavingRows[r.enrollmentId]}
                               onChange={(e) => onChangeCount(r, Number(e.target.value))}
                               className="attendanceStepperInput"
-                              aria-label={`Lesson count for ${r.studentName}`}
+                              aria-label={`Количество занятий для ${r.studentName}`}
                             />
                             <button
                               type="button"
                               className="attendanceStepperButton"
                               onClick={() => onChangeCount(r, r.count + 1)}
                               disabled={attendanceSavingRows[r.enrollmentId]}
-                              aria-label={`Increase lesson count for ${r.studentName}`}
+                              aria-label={`Увеличить количество занятий для ${r.studentName}`}
                             >
                               +
                             </button>
@@ -2108,15 +2164,15 @@ export default function App() {
                               disabled={attendanceSavingRows[r.enrollmentId]}
                               style={{ marginRight: "0.5rem" }}
                             >
-                              Mark as 0
+                              Отметить 0
                             </button>
                           )}
                           {r.canDelete ? (
                             <button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>
-                              Delete enrollment
+                              Удалить зачисление
                             </button>
                           ) : (
-                            <span className="mutedInline">Used in invoice history</span>
+                            <span className="mutedInline">Использовано в истории счёта</span>
                           )}
                         </td>
                       </tr>
@@ -2125,7 +2181,7 @@ export default function App() {
                   <tfoot>
                     <tr>
                       <td colSpan={4} style={{ textAlign: "right" }}>
-                        Per-lesson total (EUR):
+                        Итого по занятиям (EUR):
                       </td>
                       <td style={{ textAlign: "right" }}>{formatEUR(perLessonTotal)}</td>
                       <td></td>
@@ -2140,39 +2196,39 @@ export default function App() {
           {tab === "invoice" && (
             <>
               <div className="controls">
-                <button onClick={onGenerateDrafts}>Generate drafts</button>
-                <button onClick={onIssueAll}>Issue all</button>
+                <button onClick={onGenerateDrafts}>Сформировать черновики</button>
+                <button onClick={onIssueAll}>Выставить все</button>
 
                 <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
-                  <option value="draft">draft</option>
-                  <option value="issued">issued</option>
-                  <option value="paid">paid</option>
-                  <option value="all">all</option>
+                  <option value="draft">черновик</option>
+                  <option value="issued">выставлен</option>
+                  <option value="paid">оплачен</option>
+                  <option value="all">все</option>
                 </select>
 
                 <input
-                  placeholder="Search student / phone / email / invoice number"
+                  placeholder="Поиск по ученику / телефону / email / номеру счёта"
                   value={invQ}
                   onChange={(e) => setInvQ(e.target.value)}
                   style={{ width: "320px" }}
                 />
 
-                <button onClick={loadInvoices}>Refresh</button>
+                <button onClick={loadInvoices}>Обновить</button>
               </div>
 
               {loadingInv ? (
-                <div>Loading…</div>
+                <div>Загрузка…</div>
               ) : filteredInvItems.length === 0 ? (
-                <div className="empty">No invoices found for this period/status/search.</div>
+                <div className="empty">Счета за выбранный период, статус или поиск не найдены.</div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>Student</th>
-                      <th>Period</th>
-                      <th style={{ textAlign: "right" }}>Total (EUR)</th>
-                      <th>Status</th>
-                      <th>Number</th>
+                      <th>Ученик</th>
+                      <th>Период</th>
+                      <th style={{ textAlign: "right" }}>Сумма (EUR)</th>
+                      <th>Статус</th>
+                      <th>Номер</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -2188,16 +2244,16 @@ export default function App() {
                           {months[it.month - 1]} {it.year}
                         </td>
                         <td style={{ textAlign: "right" }}>{formatEUR(it.total)}</td>
-                        <td>{it.status}</td>
+                        <td>{invoiceStatusLabel(it.status)}</td>
                         <td>{it.number ?? ""}</td>
                         <td>
-                          <button onClick={() => onOpenInvoice(it.id)}>Open</button>
+                          <button onClick={() => onOpenInvoice(it.id)}>Открыть</button>
                           {it.status === "draft" && (
-                            <button onClick={() => onIssueOne(it.id)}>Issue</button>
+                            <button onClick={() => onIssueOne(it.id)}>Выставить</button>
                           )}
                           {it.status === "issued" && (
                             <button onClick={() => void onReopenToDraft(it.id)}>
-                              Reopen to draft
+                              Вернуть в черновик
                             </button>
                           )}
                           {it.status !== "draft" && (
@@ -2213,11 +2269,11 @@ export default function App() {
                                   setInvSummary(summary);
                                   openPaymentModal(iv, summary);
                                 } catch (e: any) {
-                                  showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+                                  showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
                                 }
                               }}
                             >
-                              Record Payment
+                              Записать оплату
                             </button>
                           )}
                         </td>
@@ -2227,93 +2283,6 @@ export default function App() {
                 </table>
               )}
 
-              {selectedInv && (
-                <div className="panel">
-                  <div style={{ marginBottom: "1rem" }}>
-                    <h3>
-                      Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
-                      <button
-                        className="linkButton"
-                        onClick={() => void openStudentCardById(selectedInv.studentId)}
-                      >
-                        {selectedInv.studentName}
-                      </button>{" "}
-                      — {months[selectedInv.month - 1]} {selectedInv.year}
-                    </h3>
-                  </div>
-
-                  {invSummary && selectedInv.status !== "draft" && (
-                    <div className="invSummary">
-                      <div className="invSummaryRow">
-                        <span>Recipient:</span>
-                        <span>{selectedInv.recipientName || selectedInv.studentName}</span>
-                      </div>
-                      {selectedInv.studentPersonalCode && (
-                        <div className="invSummaryRow">
-                          <span>{selectedInv.isMinor ? "Child personal code:" : "Personal code:"}</span>
-                          <span>{selectedInv.studentPersonalCode}</span>
-                        </div>
-                      )}
-                      {selectedInv.isMinor && (
-                        <div className="invSummaryRow">
-                          <span>For child:</span>
-                          <span>{selectedInv.childName}</span>
-                        </div>
-                      )}
-                      <div className="invSummaryRow">
-                        <span>Total:</span>
-                        <span className="money">{formatEUR(invSummary.total)}</span>
-                      </div>
-
-                      <div className="invSummaryRow">
-                        <span>Paid:</span>
-                        <span className="money good">{formatEUR(invSummary.paid)}</span>
-                      </div>
-
-                      <div className="invSummaryRow">
-                        <span>Remaining:</span>
-                        <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
-                          {formatEUR(invSummary.remaining)}
-                        </span>
-                      </div>
-
-                      <div className="invSummaryRow">
-                        <span>Status:</span>
-                        <span className="money">{invSummary.status}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Description</th>
-                        <th style={{ textAlign: "right" }}>Qty</th>
-                        <th style={{ textAlign: "right" }}>Unit (EUR)</th>
-                        <th style={{ textAlign: "right" }}>Amount (EUR)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedInv.lines.map((l, idx) => (
-                        <tr key={idx}>
-                          <td>{l.description}</td>
-                          <td style={{ textAlign: "right" }}>{l.qty}</td>
-                          <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
-                          <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan={3} style={{ textAlign: "right" }}>
-                          Total (EUR):
-                        </td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              )}
             </>
           )}
 
@@ -2321,23 +2290,23 @@ export default function App() {
           {tab === "debtors" && (
             <>
               <div className="controls">
-                <button onClick={loadDebtors}>Refresh</button>
+                <button onClick={loadDebtors}>Обновить</button>
               </div>
 
               {debtorsLoading ? (
-                <div>Loading…</div>
+                <div>Загрузка…</div>
               ) : debtors.length === 0 ? (
                 <div className="empty">
-                  No debtors found. All students are up to date with payments.
+                  Должников не найдено. Все ученики оплатили вовремя.
                 </div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>Student Name</th>
-                      <th style={{ textAlign: "right" }}>Debt (EUR)</th>
-                      <th style={{ textAlign: "right" }}>Total Invoiced (EUR)</th>
-                      <th style={{ textAlign: "right" }}>Total Paid (EUR)</th>
+                      <th>Имя ученика</th>
+                      <th style={{ textAlign: "right" }}>Долг (EUR)</th>
+                      <th style={{ textAlign: "right" }}>Выставлено (EUR)</th>
+                      <th style={{ textAlign: "right" }}>Оплачено (EUR)</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -2355,15 +2324,15 @@ export default function App() {
                         <td style={{ textAlign: "right" }}>{formatEUR(d.totalInvoiced)}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(d.totalPaid)}</td>
                         <td>
-                          <button onClick={() => openDebtorPaymentModal(d)}>Record Payment</button>
-                          <button onClick={() => openDebtDetails(d)}>Debt details</button>
+                          <button onClick={() => openDebtorPaymentModal(d)}>Записать оплату</button>
+                          <button onClick={() => openDebtDetails(d)}>Расшифровка долга</button>
                         </td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td style={{ fontWeight: "bold" }}>Total Debt (EUR):</td>
+                      <td style={{ fontWeight: "bold" }}>Общий долг (EUR):</td>
                       <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
                         {formatEUR(debtors.reduce((sum, d) => sum + d.debt, 0))}
                       </td>
@@ -2378,22 +2347,137 @@ export default function App() {
       </div>
 
       {/* Global Payment Modal */}
+      {invoiceModalOpen && selectedInv && (
+        <div className="modal" onClick={closeInvoiceModal}>
+          <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
+            <h3>
+              Счёт {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
+              <button
+                className="linkButton"
+                onClick={() => void openStudentCardById(selectedInv.studentId)}
+              >
+                {selectedInv.studentName}
+              </button>{" "}
+              — {months[selectedInv.month - 1]} {selectedInv.year}
+            </h3>
+
+            {invSummary && selectedInv.status !== "draft" && (
+              <div className="invSummary">
+                <div className="invSummaryRow">
+                  <span>Получатель:</span>
+                  <span>{selectedInv.recipientName || selectedInv.studentName}</span>
+                </div>
+                {selectedInv.studentPersonalCode && (
+                  <div className="invSummaryRow">
+                    <span>{selectedInv.isMinor ? "Персональный код ребёнка:" : "Персональный код:"}</span>
+                    <span>{selectedInv.studentPersonalCode}</span>
+                  </div>
+                )}
+                {selectedInv.isMinor && (
+                  <div className="invSummaryRow">
+                    <span>За ребёнка:</span>
+                    <span>{selectedInv.childName}</span>
+                  </div>
+                )}
+                <div className="invSummaryRow">
+                  <span>Сумма:</span>
+                  <span className="money">{formatEUR(invSummary.total)}</span>
+                </div>
+                <div className="invSummaryRow">
+                  <span>Оплачено:</span>
+                  <span className="money good">{formatEUR(invSummary.paid)}</span>
+                </div>
+                <div className="invSummaryRow">
+                  <span>Осталось:</span>
+                  <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
+                    {formatEUR(invSummary.remaining)}
+                  </span>
+                </div>
+                <div className="invSummaryRow">
+                  <span>Статус:</span>
+                  <span className="money">{invoiceStatusLabel(invSummary.status)}</span>
+                </div>
+              </div>
+            )}
+
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Описание</th>
+                    <th style={{ textAlign: "right" }}>Кол-во</th>
+                    <th style={{ textAlign: "right" }}>Цена (EUR)</th>
+                    <th style={{ textAlign: "right" }}>Сумма (EUR)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedInv.lines.map((l, idx) => (
+                    <tr key={idx}>
+                      <td>{l.description}</td>
+                      <td style={{ textAlign: "right" }}>{l.qty}</td>
+                      <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
+                      <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: "right" }}>
+                      Итого (EUR):
+                    </td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className="modalActions">
+              {selectedInv.status === "draft" && (
+                <button
+                  onClick={async () => {
+                    await onIssueOne(selectedInv.id);
+                  }}
+                >
+                  Выставить
+                </button>
+              )}
+              {selectedInv.status === "issued" && (
+                <button
+                  onClick={async () => {
+                    await onReopenToDraft(selectedInv.id);
+                  }}
+                >
+                  Вернуть в черновик
+                </button>
+              )}
+              {selectedInv.status !== "draft" && (
+                <>
+                  <button onClick={() => onOpenPdf(selectedInv.id)}>PDF</button>
+                  <button onClick={() => openPaymentModal()}>Записать оплату</button>
+                </>
+              )}
+              <button onClick={closeInvoiceModal}>Закрыть</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {paymentModalOpen && paymentStudentId > 0 && (
         <div className="modal" onClick={() => setPaymentModalOpen(false)}>
           <div className="modalBody" onClick={(e) => e.stopPropagation()}>
-            <h3>Record Payment</h3>
+            <h3>Записать оплату</h3>
             <div className="formRow">
-              <label>Student</label>
+              <label>Ученик</label>
               <input value={paymentStudentName} disabled />
             </div>
             {paymentInvoiceId && (
               <div className="formRow">
-                <label>Applied to</label>
-                <input value={`Invoice #${paymentInvoiceId}`} disabled />
+                <label>Применить к</label>
+                <input value={`Счёт #${paymentInvoiceId}`} disabled />
               </div>
             )}
             <div className="formRow">
-              <label>Amount (EUR):</label>
+              <label>Сумма (EUR):</label>
               <input
                 type="number"
                 step="0.01"
@@ -2403,27 +2487,27 @@ export default function App() {
               />
             </div>
             <div className="formRow">
-              <label>Method:</label>
+              <label>Способ:</label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as "cash" | "bank")}
               >
-                <option value="cash">Cash</option>
-                <option value="bank">Bank</option>
+                <option value="cash">Наличные</option>
+                <option value="bank">Банк</option>
               </select>
             </div>
             <div className="formRow">
-              <label>Note (optional):</label>
+              <label>Заметка (необязательно):</label>
               <input
                 type="text"
                 value={paymentNote}
                 onChange={(e) => setPaymentNote(e.target.value)}
-                placeholder="Payment note..."
+                placeholder="Заметка к оплате..."
               />
             </div>
             <div className="modalActions">
-              <button onClick={closePaymentModal}>Cancel</button>
-              <button onClick={handleCreatePayment}>Record Payment</button>
+              <button onClick={closePaymentModal}>Отмена</button>
+              <button onClick={handleCreatePayment}>Записать оплату</button>
             </div>
           </div>
         </div>
@@ -2432,11 +2516,11 @@ export default function App() {
       {debtDetailsOpen && selectedDebtor && (
         <div className="modal" onClick={() => setDebtDetailsOpen(false)}>
           <div className="modalBody" onClick={(e) => e.stopPropagation()}>
-            <h3>Debt details</h3>
+            <h3>Расшифровка долга</h3>
 
             <div className="invSummary">
               <div className="invSummaryRow">
-                <span>Student</span>
+                <span>Ученик</span>
                 <button
                   className="linkButton"
                   onClick={() => void openStudentCardById(selectedDebtor.studentId)}
@@ -2445,26 +2529,26 @@ export default function App() {
                 </button>
               </div>
               <div className="invSummaryRow">
-                <span>Total debt</span>
+                <span>Общий долг</span>
                 <strong className="money bad">{formatEUR(selectedDebtor.debt)}</strong>
               </div>
             </div>
 
             {debtDetailsLoading ? (
-              <div>Loading...</div>
+              <div>Загрузка...</div>
             ) : debtDetails.length === 0 ? (
-              <div className="empty">No open invoices with remaining balance.</div>
+              <div className="empty">Нет открытых счетов с остатком.</div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table>
                   <thead>
                     <tr>
-                      <th>Month</th>
-                      <th>Invoice</th>
-                      <th style={{ textAlign: "right" }}>Total</th>
-                      <th style={{ textAlign: "right" }}>Paid</th>
-                      <th style={{ textAlign: "right" }}>Remaining</th>
-                      <th>Status</th>
+                      <th>Месяц</th>
+                      <th>Счёт</th>
+                      <th style={{ textAlign: "right" }}>Сумма</th>
+                      <th style={{ textAlign: "right" }}>Оплачено</th>
+                      <th style={{ textAlign: "right" }}>Осталось</th>
+                      <th>Статус</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -2473,13 +2557,13 @@ export default function App() {
                         <td>
                           {months[x.month - 1]} {x.year}
                         </td>
-                        <td>{x.number ?? "No number"}</td>
+                        <td>{x.number ?? "Без номера"}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(x.total)}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(x.paid)}</td>
                         <td style={{ textAlign: "right" }}>
                           <strong className="money bad">{formatEUR(x.remaining)}</strong>
                         </td>
-                        <td>{x.status}</td>
+                        <td>{invoiceStatusLabel(x.status)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -2490,12 +2574,12 @@ export default function App() {
             <div className="modalActions">
               {!debtDetailsLoading && debtDetails.length > 0 && (
                 <>
-                  <button onClick={openPaymentFromDebtDetails}>Record Payment</button>
-                  <button onClick={() => void copyDebtMessage("ru")}>Copy RU</button>
-                  <button onClick={() => void copyDebtMessage("lv")}>Copy LV</button>
+                  <button onClick={openPaymentFromDebtDetails}>Записать оплату</button>
+                  <button onClick={() => void copyDebtMessage("ru")}>Копировать RU</button>
+                  <button onClick={() => void copyDebtMessage("lv")}>Копировать LV</button>
                 </>
               )}
-              <button onClick={() => setDebtDetailsOpen(false)}>Close</button>
+              <button onClick={() => setDebtDetailsOpen(false)}>Закрыть</button>
             </div>
           </div>
         </div>
@@ -2505,53 +2589,53 @@ export default function App() {
       {studentCardOpen && selectedStudentCard && (
         <div className="modal" onClick={() => setStudentCardOpen(false)}>
           <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
-            <h3>Student card</h3>
+            <h3>Карточка ученика</h3>
 
             {studentCardLoading ? (
-              <div style={{ padding: "24px 0", textAlign: "center" }}>Loading…</div>
+              <div style={{ padding: "24px 0", textAlign: "center" }}>Загрузка…</div>
             ) : (
               <>
                 {/* Basic info */}
                 <div className="cardSection">
-                  <div className="cardSectionTitle">Basic info</div>
+                  <div className="cardSectionTitle">Основная информация</div>
                   <div className="invSummary">
                     <div className="invSummaryRow">
-                      <span>Name</span>
+                      <span>Имя</span>
                       <span style={{ fontWeight: 700 }}>{selectedStudentCard.fullName}</span>
                     </div>
                     {selectedStudentCard.phone && (
                       <div className="invSummaryRow">
-                        <span>{selectedStudentCard.isMinor ? "Parent phone" : "Phone"}</span>
+                        <span>{selectedStudentCard.isMinor ? "Телефон родителя" : "Телефон"}</span>
                         <span>{selectedStudentCard.phone}</span>
                       </div>
                     )}
                     {selectedStudentCard.personalCode && (
                       <div className="invSummaryRow">
-                        <span>Personal code</span>
+                        <span>Персональный код</span>
                         <span>{selectedStudentCard.personalCode}</span>
                       </div>
                     )}
                     {selectedStudentCard.email && (
                       <div className="invSummaryRow">
-                        <span>{selectedStudentCard.isMinor ? "Parent email" : "Email"}</span>
+                        <span>{selectedStudentCard.isMinor ? "Email родителя" : "Email"}</span>
                         <span>{selectedStudentCard.email}</span>
                       </div>
                     )}
                     {selectedStudentCard.note && (
                       <div className="invSummaryRow">
-                        <span>Note</span>
+                        <span>Заметка</span>
                         <span>{selectedStudentCard.note}</span>
                       </div>
                     )}
                     <div className="invSummaryRow">
-                      <span>Status</span>
+                      <span>Статус</span>
                       <span className={`money ${selectedStudentCard.isActive ? "good" : ""}`}>
-                        {selectedStudentCard.isActive ? "Active" : "Inactive"}
+                        {selectedStudentCard.isActive ? "Активен" : "Неактивен"}
                       </span>
                     </div>
                     <div className="invSummaryRow">
-                      <span>Student type</span>
-                      <span>{selectedStudentCard.isMinor ? "Child / minor" : "Adult"}</span>
+                      <span>Тип ученика</span>
+                      <span>{selectedStudentCard.isMinor ? "Ребёнок / несовершеннолетний" : "Взрослый"}</span>
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
@@ -2561,22 +2645,22 @@ export default function App() {
                         openEditStudent(selectedStudentCard);
                       }}
                     >
-                      Edit student
+                      Редактировать ученика
                     </button>
-                    <button onClick={openStudentCardPaymentModal}>Record payment</button>
+                    <button onClick={openStudentCardPaymentModal}>Записать оплату</button>
                   </div>
                 </div>
 
                 {selectedStudentCard.isMinor && (
                   <div className="cardSection">
-                    <div className="cardSectionTitle">Billing contact</div>
+                    <div className="cardSectionTitle">Плательщик</div>
                     <div className="invSummary">
                       <div className="invSummaryRow">
-                        <span>Payer name</span>
+                        <span>Имя плательщика</span>
                         <span>{selectedStudentCard.payerName || "—"}</span>
                       </div>
                       <div className="invSummaryRow">
-                        <span>Payer role</span>
+                        <span>Кем приходится</span>
                         <span>
                           {selectedStudentCard.payerRole
                             ? payerRoleLabel(selectedStudentCard.payerRole)
@@ -2584,7 +2668,7 @@ export default function App() {
                         </span>
                       </div>
                       <div className="invSummaryRow">
-                        <span>Phone</span>
+                        <span>Телефон</span>
                         <span>{selectedStudentCard.phone || "—"}</span>
                       </div>
                       <div className="invSummaryRow">
@@ -2597,18 +2681,18 @@ export default function App() {
 
                 {/* Enrollments */}
                 <div className="cardSection">
-                  <div className="cardSectionTitle">Courses</div>
+                  <div className="cardSectionTitle">Курсы</div>
                   {studentCardEnrollments.length === 0 ? (
-                    <div className="empty">No enrollments.</div>
+                    <div className="empty">Зачислений нет.</div>
                   ) : (
                     <table>
                       <thead>
                         <tr>
-                          <th>Course</th>
-                          <th>Teacher</th>
-                          <th>Billing</th>
-                          <th style={{ textAlign: "right" }}>Discount</th>
-                          <th>Note</th>
+                          <th>Курс</th>
+                          <th>Учитель</th>
+                          <th>Оплата</th>
+                          <th style={{ textAlign: "right" }}>Скидка</th>
+                          <th>Заметка</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -2616,7 +2700,7 @@ export default function App() {
                           <tr key={e.id}>
                             <td>{e.courseName}</td>
                             <td>{e.teacherName || "—"}</td>
-                            <td>{e.billingMode}</td>
+                            <td>{billingModeLabel(e.billingMode)}</td>
                             <td style={{ textAlign: "right" }}>{e.discountPct.toFixed(1)}%</td>
                             <td>{e.note}</td>
                           </tr>
@@ -2628,47 +2712,47 @@ export default function App() {
 
                 {/* Balance */}
                 <div className="cardSection">
-                  <div className="cardSectionTitle">Balance</div>
+                  <div className="cardSectionTitle">Баланс</div>
                   {studentCardBalance ? (
                     <div className="invSummary">
                       <div className="invSummaryRow">
-                        <span>Total invoiced</span>
+                        <span>Выставлено</span>
                         <span className="money">{formatEUR(studentCardBalance.totalInvoiced)}</span>
                       </div>
                       <div className="invSummaryRow">
-                        <span>Total paid</span>
+                        <span>Оплачено</span>
                         <span className="money good">{formatEUR(studentCardBalance.totalPaid)}</span>
                       </div>
                       <div className="invSummaryRow">
-                        <span>Current debt</span>
+                        <span>Текущий долг</span>
                         <span className={`money ${studentCardBalance.debt > 0 ? "bad" : "good"}`}>
                           {studentCardBalance.debt > 0
                             ? formatEUR(studentCardBalance.debt)
-                            : "No debt"}
+                            : "Долга нет"}
                         </span>
                       </div>
                     </div>
                   ) : (
-                    <div className="empty">Balance unavailable.</div>
+                    <div className="empty">Баланс недоступен.</div>
                   )}
                 </div>
 
                 {/* Open debts */}
                 <div className="cardSection">
-                  <div className="cardSectionTitle">Open debts</div>
+                  <div className="cardSectionTitle">Открытые долги</div>
                   {studentCardDebts.length === 0 ? (
-                    <div className="empty">All paid — no open debts.</div>
+                    <div className="empty">Всё оплачено — открытых долгов нет.</div>
                   ) : (
                     <div style={{ overflowX: "auto" }}>
                       <table>
                         <thead>
                           <tr>
-                            <th>Month</th>
-                            <th>Invoice</th>
-                            <th style={{ textAlign: "right" }}>Total</th>
-                            <th style={{ textAlign: "right" }}>Paid</th>
-                            <th style={{ textAlign: "right" }}>Remaining</th>
-                            <th>Status</th>
+                            <th>Месяц</th>
+                            <th>Счёт</th>
+                            <th style={{ textAlign: "right" }}>Сумма</th>
+                            <th style={{ textAlign: "right" }}>Оплачено</th>
+                            <th style={{ textAlign: "right" }}>Осталось</th>
+                            <th>Статус</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2677,13 +2761,13 @@ export default function App() {
                               <td>
                                 {months[x.month - 1]} {x.year}
                               </td>
-                              <td>{x.number ?? "No number"}</td>
+                              <td>{x.number ?? "Без номера"}</td>
                               <td style={{ textAlign: "right" }}>{formatEUR(x.total)}</td>
                               <td style={{ textAlign: "right" }}>{formatEUR(x.paid)}</td>
                               <td style={{ textAlign: "right" }}>
                                 <strong className="money bad">{formatEUR(x.remaining)}</strong>
                               </td>
-                              <td>{x.status}</td>
+                              <td>{invoiceStatusLabel(x.status)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -2694,19 +2778,19 @@ export default function App() {
 
                 {/* Recent payments */}
                 <div className="cardSection">
-                  <div className="cardSectionTitle">Recent payments</div>
+                  <div className="cardSectionTitle">Последние оплаты</div>
                   {studentCardPayments.length === 0 ? (
-                    <div className="empty">No payments recorded yet.</div>
+                    <div className="empty">Оплат пока нет.</div>
                   ) : (
                     <>
                       <table>
                         <thead>
                           <tr>
-                            <th>Date</th>
-                            <th style={{ textAlign: "right" }}>Amount</th>
-                            <th>Method</th>
-                            <th>Note</th>
-                            <th>Actions</th>
+                            <th>Дата</th>
+                            <th style={{ textAlign: "right" }}>Сумма</th>
+                            <th>Способ</th>
+                            <th>Заметка</th>
+                            <th>Действия</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2716,14 +2800,14 @@ export default function App() {
                               <td style={{ textAlign: "right" }}>
                                 <span className="money good">{formatEUR(p.amount)}</span>
                               </td>
-                              <td>{p.method}</td>
+                              <td>{paymentMethodLabel(p.method)}</td>
                               <td>{p.note}</td>
                               <td>
                                 <button
                                   onClick={() => deleteStudentPayment(p)}
                                   disabled={studentCardDeletingPaymentId === p.id}
                                 >
-                                  {studentCardDeletingPaymentId === p.id ? "Deleting..." : "Delete"}
+                                  {studentCardDeletingPaymentId === p.id ? "Удаление..." : "Удалить"}
                                 </button>
                               </td>
                             </tr>
@@ -2732,7 +2816,7 @@ export default function App() {
                       </table>
                       {studentCardPayments.length > 10 && (
                         <p className="mutedInline" style={{ marginTop: 8, textAlign: "right" }}>
-                          Showing 10 most recent of {studentCardPayments.length} payments.
+                          Показаны 10 последних оплат из {studentCardPayments.length}.
                         </p>
                       )}
                     </>
@@ -2744,12 +2828,12 @@ export default function App() {
             <div className="modalActions">
               {!studentCardLoading && studentCardDebts.length > 0 && (
                 <>
-                  <button onClick={openStudentCardPaymentModal}>Record payment</button>
-                  <button onClick={() => void copyStudentCardDebtMessage("ru")}>Copy RU</button>
-                  <button onClick={() => void copyStudentCardDebtMessage("lv")}>Copy LV</button>
+                  <button onClick={openStudentCardPaymentModal}>Записать оплату</button>
+                  <button onClick={() => void copyStudentCardDebtMessage("ru")}>Копировать RU</button>
+                  <button onClick={() => void copyStudentCardDebtMessage("lv")}>Копировать LV</button>
                 </>
               )}
-              <button onClick={() => setStudentCardOpen(false)}>Close</button>
+              <button onClick={() => setStudentCardOpen(false)}>Закрыть</button>
             </div>
           </div>
         </div>
