@@ -3,6 +3,7 @@ import {
   InvoiceList,
   InvoiceGet,
   InvoiceDeleteDraft,
+  InvoiceReopenDraft,
   InvoiceIssue,
   InvoiceIssueAll,
   InvoiceEnsurePDF,
@@ -72,6 +73,10 @@ export async function getInvoice(id: number) {
 
 export async function deleteDraft(id: number) {
   return await InvoiceDeleteDraft(id);
+}
+
+export async function reopenToDraft(id: number) {
+  return await InvoiceReopenDraft(id);
 }
 
 export async function issueOne(id: number) {

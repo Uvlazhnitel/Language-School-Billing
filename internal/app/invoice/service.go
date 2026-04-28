@@ -5,6 +5,7 @@ package invoice
 import (
 	"context"
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"langschool/ent"
@@ -12,6 +13,7 @@ import (
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
+	"langschool/ent/payment"
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"langschool/internal/app"
@@ -376,6 +378,48 @@ func (s *Service) DeleteDraft(ctx context.Context, id int) error {
 		return err
 	}
 	return s.db.Invoice.DeleteOneID(iv.ID).Exec(ctx)
+}
+
+// ReopenDraft moves an issued invoice with no payments back to draft state.
+// The invoice lines and total remain unchanged, but the assigned number is cleared.
+// If a PDF exists for the old issued number, it is removed to prevent stale documents.
+func (s *Service) ReopenDraft(ctx context.Context, id int, outBaseDir string) error {
+	iv, err := s.db.Invoice.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if iv.Status != StatusIssued {
+		return fmt.Errorf("can reopen only issued invoices")
+	}
+
+	paymentCount, err := s.db.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).Count(ctx)
+	if err != nil {
+		return err
+	}
+	if paymentCount > 0 {
+		return fmt.Errorf("cannot reopen an invoice that has payments")
+	}
+
+	oldNumber := ""
+	if iv.Number != nil {
+		oldNumber = *iv.Number
+	}
+
+	if _, err := s.db.Invoice.UpdateOneID(iv.ID).
+		SetStatus(StatusDraft).
+		ClearNumber().
+		Save(ctx); err != nil {
+		return err
+	}
+
+	if oldNumber != "" && outBaseDir != "" {
+		pdfPath := PDFPathByNumber(outBaseDir, iv.PeriodYear, iv.PeriodMonth, oldNumber)
+		if err := os.Remove(pdfPath); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ----- Issuing, numbering, PDF generation -----
