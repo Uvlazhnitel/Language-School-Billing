@@ -739,3 +739,36 @@ tfoot td {
     transition: none !important;
   }
 }
+
+.attBadge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.attBadge--missing {
+  background: rgba(180, 120, 0, 0.12);
+  border: 1px solid rgba(180, 120, 0, 0.3);
+  color: #7a5000;
+}
+
+.attBadge--zero {
+  background: rgba(133, 102, 69, 0.1);
+  border: 1px solid rgba(133, 102, 69, 0.2);
+  color: var(--text-secondary);
+}
+
+.attSummary {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  padding: 6px 12px;
+  background: var(--accent-pale);
+  border-radius: 8px;
+  display: inline-block;
+}

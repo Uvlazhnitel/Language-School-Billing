@@ -15,6 +15,7 @@ export type Row = {
   courseType: CourseType;
   lessonPrice: number;
   count: number;
+  hasRecord: boolean;
   canDelete: boolean;
 };
 

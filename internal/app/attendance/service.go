@@ -34,6 +34,7 @@ type Row struct {
 	CourseType   string  `json:"courseType"`   // Course type: "group" or "individual"
 	LessonPrice  float64 `json:"lessonPrice"`  // Price per lesson for this enrollment
 	Count        int     `json:"count"`        // Number of lessons attended in the month
+	HasRecord    bool    `json:"hasRecord"`    // Whether an AttendanceMonth record exists for this month
 	CanDelete    bool    `json:"canDelete"`    // Whether enrollment can be safely deleted
 }
 
@@ -73,8 +74,10 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			).Only(ctx)
 
 		cnt := 0
+		hasRecord := false
 		if am != nil {
 			cnt = am.LessonsCount
+			hasRecord = true
 		}
 
 		hasInvoiceHistory, err := s.db.InvoiceLine.Query().
@@ -88,7 +91,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			EnrollmentID: e.ID,
 			StudentID:    e.StudentID, StudentName: sname,
 			CourseID: e.CourseID, CourseName: c.Name, CourseType: string(c.Type),
-			LessonPrice: utils.Round2(c.LessonPrice), Count: cnt, CanDelete: !hasInvoiceHistory,
+			LessonPrice: utils.Round2(c.LessonPrice), Count: cnt, HasRecord: hasRecord, CanDelete: !hasInvoiceHistory,
 		})
 	}
 	return rows, nil
