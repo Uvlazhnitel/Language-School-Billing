@@ -879,6 +879,7 @@ export default function App() {
   const [loadingAtt, setLoadingAtt] = useState(false);
   const [courseFilter, setCourseFilter] = useState<number | undefined>(undefined);
   const [attQ, setAttQ] = useState("");
+  const [attFilter, setAttFilter] = useState<"all" | "missing" | "filled" | "zero">("all");
   const [attendanceSavingRows, setAttendanceSavingRows] = useState<Record<number, boolean>>({});
 
   // For search by phone we need students list (shared with invoices and attendance)
@@ -921,16 +922,35 @@ export default function App() {
 
   const filteredAttendanceRows = useMemo(() => {
     const q = attQ.trim().toLowerCase();
-    if (!q) return rows;
+    let filtered = rows;
 
-    return rows.filter((r) => {
-      const s = studentIndex.get(r.studentId);
-      const studentName = (r.studentName ?? "").toLowerCase();
-      const courseName = (r.courseName ?? "").toLowerCase();
-      const phone = (s?.phone ?? "").toLowerCase();
-      return studentName.includes(q) || courseName.includes(q) || phone.includes(q);
-    });
-  }, [rows, attQ, studentIndex]);
+    if (q) {
+      filtered = filtered.filter((r) => {
+        const s = studentIndex.get(r.studentId);
+        const studentName = (r.studentName ?? "").toLowerCase();
+        const courseName = (r.courseName ?? "").toLowerCase();
+        const phone = (s?.phone ?? "").toLowerCase();
+        return studentName.includes(q) || courseName.includes(q) || phone.includes(q);
+      });
+    }
+
+    if (attFilter === "missing") {
+      filtered = filtered.filter((r) => !r.hasRecord);
+    } else if (attFilter === "filled") {
+      filtered = filtered.filter((r) => r.hasRecord);
+    } else if (attFilter === "zero") {
+      filtered = filtered.filter((r) => r.hasRecord && r.count === 0);
+    }
+
+    return filtered;
+  }, [rows, attQ, attFilter, studentIndex]);
+
+  const attendanceSummary = useMemo(() => {
+    const filled = rows.filter((r) => r.hasRecord).length;
+    const missing = rows.filter((r) => !r.hasRecord).length;
+    const zero = rows.filter((r) => r.hasRecord && r.count === 0).length;
+    return { filled, missing, zero, total: rows.length };
+  }, [rows]);
 
   const onChangeCount = async (r: Row, v: number) => {
     if (!Number.isFinite(v)) return;
@@ -941,7 +961,9 @@ export default function App() {
       setAttendanceSavingRows((prev) => ({ ...prev, [r.enrollmentId]: true }));
       await saveCount(r.studentId, r.courseId, year, month, n);
       setRows((prev) =>
-        prev.map((x) => (x.enrollmentId === r.enrollmentId ? { ...x, count: n } : x))
+        prev.map((x) =>
+          x.enrollmentId === r.enrollmentId ? { ...x, count: n, hasRecord: true } : x
+        )
       );
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
@@ -1948,14 +1970,32 @@ export default function App() {
                   style={{ width: 260 }}
                 />
 
+                <select
+                  value={attFilter}
+                  onChange={(e) => setAttFilter(e.target.value as typeof attFilter)}
+                >
+                  <option value="all">Show: All</option>
+                  <option value="missing">Missing only</option>
+                  <option value="filled">Filled only</option>
+                  <option value="zero">Zero lessons</option>
+                </select>
+
                 <button onClick={loadAttendance}>Refresh</button>
               </div>
+
+              {rows.length > 0 && (
+                <div className="attSummary">
+                  Filled: {attendanceSummary.filled} / {attendanceSummary.total}
+                  &nbsp;·&nbsp;Missing: {attendanceSummary.missing}
+                  &nbsp;·&nbsp;Zero lessons: {attendanceSummary.zero}
+                </div>
+              )}
 
               {loadingAtt ? (
                 <div>Loading…</div>
               ) : filteredAttendanceRows.length === 0 ? (
                 <div className="empty">
-                  {attQ.trim()
+                  {attQ.trim() || attFilter !== "all"
                     ? "No matches found for your search."
                     : "No per-lesson rows. Create enrollments first."}
                 </div>
@@ -1984,6 +2024,12 @@ export default function App() {
                         </td>
                         <td style={{ textAlign: "right" }}>{formatEUR(r.lessonPrice)}</td>
                         <td style={{ textAlign: "right" }}>
+                          {!r.hasRecord && (
+                            <span className="attBadge attBadge--missing">Not filled</span>
+                          )}
+                          {r.hasRecord && r.count === 0 && (
+                            <span className="attBadge attBadge--zero">0 lessons</span>
+                          )}
                           <div className="attendanceStepper">
                             <button
                               type="button"
@@ -2016,6 +2062,15 @@ export default function App() {
                         </td>
                         <td style={{ textAlign: "right" }}>{formatEUR(r.count * r.lessonPrice)}</td>
                         <td>
+                          {!r.hasRecord && (
+                            <button
+                              onClick={() => onChangeCount(r, 0)}
+                              disabled={attendanceSavingRows[r.enrollmentId]}
+                              style={{ marginRight: "0.5rem" }}
+                            >
+                              Mark as 0
+                            </button>
+                          )}
                           {r.canDelete ? (
                             <button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>
                               Delete enrollment
