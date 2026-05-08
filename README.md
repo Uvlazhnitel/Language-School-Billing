@@ -166,7 +166,7 @@ find build -maxdepth 5 -name "*.app"
 open build/**/langschool.app
 ```
 
-### Windows: build an `.exe`
+### Windows: build a portable `.exe`
 1) Build the frontend (creates `frontend/dist`):
 ```powershell
 cd frontend
@@ -192,6 +192,26 @@ dir build -Recurse -Filter *.exe
 
 > The exact output subfolder under `build\` may vary by Wails version/config.
 
+If you package the portable `.exe` as a `.zip`, include a `Fonts\` folder next
+to `langschool.exe` containing:
+
+- `DejaVuSans.ttf`
+- `DejaVuSans-Bold.ttf`
+
+### Windows: build an installer
+The Windows installer is the recommended release artifact. It installs for the
+current user, checks/installs WebView2, and bundles the required PDF fonts.
+
+```powershell
+$env:CGO_ENABLED = "0"
+wails build -clean -nsis -webview2 download
+```
+
+Locate the generated installer:
+```powershell
+dir build\bin -Filter "*installer.exe"
+```
+
 ---
 
 ## Fonts
@@ -210,6 +230,10 @@ The app will also look for fonts in:
 - a directory specified by the environment variable `LS_FONTS_DIR`
 - `Fonts/` or `fonts/` next to the app executable (useful for zipped distributions)
 - `Fonts/` or `fonts/` in the current working directory (dev convenience)
+
+The Windows installer bundles these fonts automatically into the install
+directory, so users do not need to copy them manually when installing from the
+installer.
 
 If fonts are missing, invoice issuing/PDF generation will fail with an error explaining where to put them.
 
