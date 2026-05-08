@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/ncruces/go-sqlite3/embed"
 
 	"langschool/ent/enttest"
 	"langschool/ent/settings"
