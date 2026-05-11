@@ -1392,13 +1392,13 @@ export default function App() {
 
   const openAppFolder = async (path: string | undefined, label: string) => {
     if (!path) {
-      showMessage(`${label} folder is unavailable`, "error");
+      showMessage(`Папка «${label}» недоступна`, "error");
       return;
     }
     try {
       await OpenFile(path);
     } catch (e: any) {
-      showMessage(`Failed to open ${label.toLowerCase()} folder: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Не удалось открыть папку «${label}»: ${String(e?.message ?? e)}`, "error");
     }
   };
 
@@ -1406,9 +1406,9 @@ export default function App() {
     try {
       setCreatingBackup(true);
       const backupPath = await BackupNow();
-      showMessage(`Backup created: ${backupPath}`);
+      showMessage(`Резервная копия создана: ${backupPath}`);
     } catch (e: any) {
-      showMessage(`Failed to create backup: ${String(e?.message ?? e)}`, "error");
+      showMessage(`Не удалось создать резервную копию: ${String(e?.message ?? e)}`, "error");
     } finally {
       setCreatingBackup(false);
     }
@@ -1560,23 +1560,23 @@ export default function App() {
                 onClick={() => void createManualBackup()}
                 disabled={creatingBackup}
               >
-                {creatingBackup ? "Creating backup..." : "Create backup"}
+                {creatingBackup ? "Создание копии..." : "Создать резервную копию"}
               </button>
               <button
                 type="button"
                 className="workspaceActionButton"
-                onClick={() => void openAppFolder(appDirs?.backups, "Backups")}
+                onClick={() => void openAppFolder(appDirs?.backups, "резервных копий")}
                 disabled={!appDirs?.backups}
               >
-                Open backups folder
+                Открыть папку резервных копий
               </button>
               <button
                 type="button"
                 className="workspaceActionButton"
-                onClick={() => void openAppFolder(appDirs?.invoices, "Invoices")}
+                onClick={() => void openAppFolder(appDirs?.invoices, "счетов")}
                 disabled={!appDirs?.invoices}
               >
-                Open invoices folder
+                Открыть папку счетов
               </button>
             </div>
           </div>
