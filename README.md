@@ -61,6 +61,10 @@ Automatic schema updates are intentionally non-destructive:
 - the app does not automatically drop existing columns or indexes from a user's database
 - destructive schema cleanup should be handled only through explicit, manual migrations
 
+Before startup applies schema migrations to an existing `app.sqlite`, the app
+automatically creates a timestamped backup in `LangSchool/Backups/`. If that
+backup cannot be created, startup stops before opening the database.
+
 ---
 
 ## Prerequisites

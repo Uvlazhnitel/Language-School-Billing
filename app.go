@@ -63,6 +63,12 @@ func (a *App) startup(ctx context.Context) {
 	a.appDBPath = filepath.Join(dirs.Data, "app.sqlite")
 	log.Println("Data path:", a.appDBPath)
 
+	if backupPath, err := a.backupBeforeMigration(); err != nil {
+		log.Fatal(err)
+	} else if backupPath != "" {
+		log.Println("Pre-migration backup created:", backupPath)
+	}
+
 	db, err := infra.Open(ctx, a.appDBPath)
 	if err != nil {
 		log.Fatal(err)
@@ -231,6 +237,33 @@ func (a *App) BackupNow() (string, error) {
 	}
 	ts := time.Now().Format("20060102-150405")
 	dst := filepath.Join(a.dirs.Backups, fmt.Sprintf("app-%s.sqlite", ts))
+	if err := copyFile(a.appDBPath, dst); err != nil {
+		return "", err
+	}
+	return dst, nil
+}
+
+// backupBeforeMigration creates a timestamped copy of the existing SQLite DB
+// before startup runs schema migrations. If the DB does not exist yet, the
+// first-run startup continues without creating a backup.
+func (a *App) backupBeforeMigration() (string, error) {
+	if a.appDBPath == "" {
+		return "", fmt.Errorf("db path is empty")
+	}
+
+	info, err := os.Stat(a.appDBPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	if info.IsDir() {
+		return "", fmt.Errorf("db path points to a directory: %s", a.appDBPath)
+	}
+
+	ts := time.Now().Format("20060102-150405")
+	dst := filepath.Join(a.dirs.Backups, fmt.Sprintf("pre-migration-%s.sqlite", ts))
 	if err := copyFile(a.appDBPath, dst); err != nil {
 		return "", err
 	}
