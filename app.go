@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	rt "runtime"
 	"strings"
 	"time"
@@ -45,6 +46,7 @@ func NewApp() *App { return &App{} }
 
 const defaultSchoolDisplayName = "ArtLab"
 const defaultSchoolAddress = "Latgales iela 260, Rīga, Latvija"
+const preMigrationBackupLimit = 30
 
 // startup is called by Wails when the application starts.
 // It initializes the database connection, ensures required directories exist,
@@ -62,6 +64,15 @@ func (a *App) startup(ctx context.Context) {
 
 	a.appDBPath = filepath.Join(dirs.Data, "app.sqlite")
 	log.Println("Data path:", a.appDBPath)
+
+	if backupPath, err := a.backupBeforeMigration(); err != nil {
+		log.Fatal(err)
+	} else if backupPath != "" {
+		log.Println("Pre-migration backup created:", backupPath)
+		if err := a.cleanupOldPreMigrationBackups(preMigrationBackupLimit); err != nil {
+			log.Fatal(err)
+		}
+	}
 
 	db, err := infra.Open(ctx, a.appDBPath)
 	if err != nil {
@@ -235,6 +246,86 @@ func (a *App) BackupNow() (string, error) {
 		return "", err
 	}
 	return dst, nil
+}
+
+// backupBeforeMigration creates a timestamped copy of the existing SQLite DB
+// before startup runs schema migrations. If the DB does not exist yet, the
+// first-run startup continues without creating a backup.
+func (a *App) backupBeforeMigration() (string, error) {
+	if a.appDBPath == "" {
+		return "", fmt.Errorf("db path is empty")
+	}
+
+	info, err := os.Stat(a.appDBPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", err
+	}
+	if info.IsDir() {
+		return "", fmt.Errorf("db path points to a directory: %s", a.appDBPath)
+	}
+
+	ts := time.Now().Format("20060102-150405")
+	dst := filepath.Join(a.dirs.Backups, fmt.Sprintf("pre-migration-%s.sqlite", ts))
+	if err := copyFile(a.appDBPath, dst); err != nil {
+		return "", err
+	}
+	return dst, nil
+}
+
+func (a *App) cleanupOldPreMigrationBackups(limit int) error {
+	if limit <= 0 {
+		return fmt.Errorf("backup retention limit must be positive")
+	}
+
+	entries, err := os.ReadDir(a.dirs.Backups)
+	if err != nil {
+		return err
+	}
+
+	type backupFile struct {
+		path    string
+		modTime time.Time
+	}
+
+	backups := make([]backupFile, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.HasPrefix(name, "pre-migration-") || !strings.HasSuffix(name, ".sqlite") {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		backups = append(backups, backupFile{
+			path:    filepath.Join(a.dirs.Backups, name),
+			modTime: info.ModTime(),
+		})
+	}
+
+	if len(backups) <= limit {
+		return nil
+	}
+
+	sort.Slice(backups, func(i, j int) bool {
+		return backups[i].modTime.After(backups[j].modTime)
+	})
+
+	for _, backup := range backups[limit:] {
+		if err := os.Remove(backup.path); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func copyFile(src, dst string) error {
