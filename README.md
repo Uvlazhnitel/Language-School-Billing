@@ -212,6 +212,37 @@ Locate the generated installer:
 dir build\bin -Filter "*installer.exe"
 ```
 
+### GitHub: publish downloadable releases
+This repository includes a GitHub Actions workflow that creates a GitHub Release
+and uploads both:
+
+- a Windows installer `.exe`
+- a macOS app archive `.zip`
+
+- Push a tag from `main` for the English release:
+```bash
+git switch main
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+- Push a tag from `release/ru` for the Russian release:
+```bash
+git switch release/ru
+git tag ru-v0.1.0
+git push origin ru-v0.1.0
+```
+
+After the workflow finishes, open the repository's **Releases** page on GitHub.
+Each release will contain:
+
+- `langschool-en-windows-installer-<tag>.exe` or `langschool-ru-windows-installer-<tag>.exe`
+- `langschool-en-macos-<tag>.zip` or `langschool-ru-macos-<tag>.zip`
+
+On macOS, users can unzip the archive and open `langschool.app`. Because the
+app is not code-signed, macOS may ask for confirmation the first time it is
+opened.
+
 ---
 
 ## Fonts
