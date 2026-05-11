@@ -55,6 +55,12 @@ SQLite DB file location:
 
 - `LangSchool/Data/app.sqlite`
 
+Automatic schema updates are intentionally non-destructive:
+
+- the app may create missing tables, columns, relations, and indexes
+- the app does not automatically drop existing columns or indexes from a user's database
+- destructive schema cleanup should be handled only through explicit, manual migrations
+
 ---
 
 ## Prerequisites

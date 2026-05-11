@@ -7,7 +7,6 @@ import (
 	"log"
 
 	"langschool/ent"
-	"langschool/ent/migrate"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
@@ -27,8 +26,8 @@ type DB struct {
 // - cache=shared: Use shared cache mode for better concurrency
 // - mode=rwc: Read-write-create mode
 //
-// Migrations are configured to drop columns and indexes that have been
-// removed from the schema, ensuring the database structure matches the code.
+// Migrations are configured to safely apply additive schema updates without
+// automatically dropping existing columns or indexes from user databases.
 func Open(ctx context.Context, dbPath string) (*DB, error) {
 	dsn := fmt.Sprintf("file:%s?_fk=1&_busy_timeout=5000&cache=shared&mode=rwc", dbPath)
 
@@ -37,8 +36,9 @@ func Open(ctx context.Context, dbPath string) (*DB, error) {
 		return nil, err
 	}
 
-	// Use migration options to enable dropping columns and indexes that were removed from schema
-	if err := client.Schema.Create(ctx, migrate.WithDropColumn(true), migrate.WithDropIndex(true)); err != nil {
+	// Apply non-destructive automatic migrations only. Schema removals must be
+	// handled through explicit, manual migrations in future updates.
+	if err := client.Schema.Create(ctx); err != nil {
 		_ = client.Close()
 		return nil, err
 	}
