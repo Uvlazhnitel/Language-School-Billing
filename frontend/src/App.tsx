@@ -1352,7 +1352,7 @@ export default function App() {
   const onIssueAll = async () => {
     try {
       const res = await issueAll(year, month);
-      showMessage(`Выставлено счетов: ${res.count}. PDF: ${res.pdfPaths.length}`);
+      showMessage(`Выставлено счетов: ${res.count}. PDF-файлов создано: ${res.pdfPaths.length}`);
       await loadInvoices();
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
@@ -1362,8 +1362,8 @@ export default function App() {
   const onOpenPdf = async (id: number) => {
     try {
       const path = await ensurePdfAndOpen(id);
-      console.log("Opened PDF:", path);
-      showMessage("PDF открыт");
+      console.log("Открыт PDF:", path);
+      showMessage("PDF-файл открыт");
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
@@ -1462,7 +1462,7 @@ export default function App() {
             <p style={{ marginBottom: "24px", lineHeight: "1.5" }}>{confirmDialog.message}</p>
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
               <button onClick={handleConfirmNo} style={{ padding: "8px 16px" }}>
-                Cancel
+                Отмена
               </button>
               <button
                 onClick={handleConfirmYes}
@@ -1566,7 +1566,7 @@ export default function App() {
               <div className="controls">
                 <button onClick={openAddStudent}>Добавить ученика</button>
                 <input
-                  placeholder="Поиск по имени / телефону / email…"
+                  placeholder="Поиск по имени / телефону / эл. почте…"
                   value={studentQ}
                   onChange={(e) => setStudentQ(e.target.value)}
                   style={{ width: 260 }}
@@ -1592,7 +1592,7 @@ export default function App() {
                     <tr>
                       <th>Имя</th>
                       <th>Телефон</th>
-                      <th>Email</th>
+                      <th>Эл. почта</th>
                       <th>Активен</th>
                       <th></th>
                     </tr>
@@ -1649,7 +1649,7 @@ export default function App() {
                       <input value={sfPhone} onChange={(e) => setSfPhone(e.target.value)} />
                     </div>
                     <div className="formRow">
-                      <label>{sfIsMinor ? "Email родителя" : "Email"}</label>
+                      <label>{sfIsMinor ? "Эл. почта родителя" : "Эл. почта"}</label>
                       <input value={sfEmail} onChange={(e) => setSfEmail(e.target.value)} />
                     </div>
                     <div className="formRow">
@@ -1960,7 +1960,7 @@ export default function App() {
                                 setEfStudentPickerOpen(false);
                               }
                             }}
-                            placeholder="Поиск ученика по имени, телефону или email…"
+                            placeholder="Поиск ученика по имени, телефону или эл. почте…"
                           />
                           {efStudentPickerOpen && (
                             <div className="comboBoxMenu">
@@ -2207,7 +2207,7 @@ export default function App() {
                 </select>
 
                 <input
-                  placeholder="Поиск по ученику / телефону / email / номеру счёта"
+                  placeholder="Поиск по ученику / телефону / эл. почте / номеру счёта"
                   value={invQ}
                   onChange={(e) => setInvQ(e.target.value)}
                   style={{ width: "320px" }}
@@ -2575,8 +2575,8 @@ export default function App() {
               {!debtDetailsLoading && debtDetails.length > 0 && (
                 <>
                   <button onClick={openPaymentFromDebtDetails}>Записать оплату</button>
-                  <button onClick={() => void copyDebtMessage("ru")}>Копировать RU</button>
-                  <button onClick={() => void copyDebtMessage("lv")}>Копировать LV</button>
+                  <button onClick={() => void copyDebtMessage("ru")}>Скопировать по-русски</button>
+                  <button onClick={() => void copyDebtMessage("lv")}>Скопировать по-латышски</button>
                 </>
               )}
               <button onClick={() => setDebtDetailsOpen(false)}>Закрыть</button>
@@ -2617,7 +2617,7 @@ export default function App() {
                     )}
                     {selectedStudentCard.email && (
                       <div className="invSummaryRow">
-                        <span>{selectedStudentCard.isMinor ? "Email родителя" : "Email"}</span>
+                        <span>{selectedStudentCard.isMinor ? "Эл. почта родителя" : "Эл. почта"}</span>
                         <span>{selectedStudentCard.email}</span>
                       </div>
                     )}
@@ -2672,7 +2672,7 @@ export default function App() {
                         <span>{selectedStudentCard.phone || "—"}</span>
                       </div>
                       <div className="invSummaryRow">
-                        <span>Email</span>
+                        <span>Эл. почта</span>
                         <span>{selectedStudentCard.email || "—"}</span>
                       </div>
                     </div>
@@ -2829,8 +2829,8 @@ export default function App() {
               {!studentCardLoading && studentCardDebts.length > 0 && (
                 <>
                   <button onClick={openStudentCardPaymentModal}>Записать оплату</button>
-                  <button onClick={() => void copyStudentCardDebtMessage("ru")}>Копировать RU</button>
-                  <button onClick={() => void copyStudentCardDebtMessage("lv")}>Копировать LV</button>
+                  <button onClick={() => void copyStudentCardDebtMessage("ru")}>Скопировать по-русски</button>
+                  <button onClick={() => void copyStudentCardDebtMessage("lv")}>Скопировать по-латышски</button>
                 </>
               )}
               <button onClick={() => setStudentCardOpen(false)}>Закрыть</button>
