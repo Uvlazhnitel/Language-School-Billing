@@ -27,6 +27,7 @@ import {
 
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
+import { AppDirs, BackupNow, OpenFile } from "../wailsjs/go/main/App";
 
 import {
   listEnrollments,
@@ -229,6 +230,8 @@ function buildDebtReminderMessage(
 export default function App() {
   const now = new Date();
   const [tab, setTab] = useState<Tab>("students");
+  const [appDirs, setAppDirs] = useState<Record<string, string> | null>(null);
+  const [creatingBackup, setCreatingBackup] = useState(false);
 
   // Global message display
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -292,6 +295,24 @@ export default function App() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    void AppDirs()
+      .then((dirs) => {
+        if (!cancelled) setAppDirs(dirs);
+      })
+      .catch((e: any) => {
+        if (!cancelled) {
+          showMessage(`Failed to load app folders: ${String(e?.message ?? e)}`, "error");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [showMessage]);
 
   // Shared month/year for Attendance + Invoices
   const [year, setYear] = useState(now.getFullYear());
@@ -1313,6 +1334,30 @@ export default function App() {
     }
   };
 
+  const openAppFolder = async (path: string | undefined, label: string) => {
+    if (!path) {
+      showMessage(`${label} folder is unavailable`, "error");
+      return;
+    }
+    try {
+      await OpenFile(path);
+    } catch (e: any) {
+      showMessage(`Failed to open ${label.toLowerCase()} folder: ${String(e?.message ?? e)}`, "error");
+    }
+  };
+
+  const createManualBackup = async () => {
+    try {
+      setCreatingBackup(true);
+      const backupPath = await BackupNow();
+      showMessage(`Backup created: ${backupPath}`);
+    } catch (e: any) {
+      showMessage(`Failed to create backup: ${String(e?.message ?? e)}`, "error");
+    } finally {
+      setCreatingBackup(false);
+    }
+  };
+
   // ---------------- Render ----------------
   const showMonthPicker = tab === "attendance" || tab === "invoice";
   const currentMeta = TAB_META[tab];
@@ -1450,6 +1495,33 @@ export default function App() {
                   <strong>{stat.value}</strong>
                 </div>
               ))}
+            </div>
+
+            <div className="workspaceActions" aria-label="File and backup actions">
+              <button
+                type="button"
+                className="workspaceActionButton workspaceActionButtonPrimary"
+                onClick={() => void createManualBackup()}
+                disabled={creatingBackup}
+              >
+                {creatingBackup ? "Creating backup..." : "Create backup"}
+              </button>
+              <button
+                type="button"
+                className="workspaceActionButton"
+                onClick={() => void openAppFolder(appDirs?.backups, "Backups")}
+                disabled={!appDirs?.backups}
+              >
+                Open backups folder
+              </button>
+              <button
+                type="button"
+                className="workspaceActionButton"
+                onClick={() => void openAppFolder(appDirs?.invoices, "Invoices")}
+                disabled={!appDirs?.invoices}
+              >
+                Open invoices folder
+              </button>
             </div>
           </div>
 
