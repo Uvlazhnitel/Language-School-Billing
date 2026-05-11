@@ -65,6 +65,15 @@ Before startup applies schema migrations to an existing `app.sqlite`, the app
 automatically creates a timestamped backup in `LangSchool/Backups/`. If that
 backup cannot be created, startup stops before opening the database.
 
+SQLite is configured for safer local durability by default:
+
+- `journal_mode=WAL`
+- `synchronous=FULL`
+
+The app keeps up to 30 latest automatic `pre-migration-*.sqlite` backups and
+removes only older automatic pre-migration copies. Manual `app-*.sqlite`
+backups are not deleted automatically.
+
 ---
 
 ## Prerequisites

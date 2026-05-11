@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net/url"
 
 	"langschool/ent"
 
@@ -24,12 +25,14 @@ type DB struct {
 // - _fk=1: Enable foreign key constraints
 // - _busy_timeout=5000: Wait up to 5 seconds if database is locked
 // - cache=shared: Use shared cache mode for better concurrency
+// - _journal_mode=WAL: Use write-ahead logging for safer crash recovery
+// - _synchronous=FULL: Favor durability of business data over write speed
 // - mode=rwc: Read-write-create mode
 //
 // Migrations are configured to safely apply additive schema updates without
 // automatically dropping existing columns or indexes from user databases.
 func Open(ctx context.Context, dbPath string) (*DB, error) {
-	dsn := fmt.Sprintf("file:%s?_fk=1&_busy_timeout=5000&cache=shared&mode=rwc", dbPath)
+	dsn := buildDSN(dbPath)
 
 	client, err := ent.Open("sqlite3", dsn)
 	if err != nil {
@@ -45,4 +48,15 @@ func Open(ctx context.Context, dbPath string) (*DB, error) {
 
 	log.Println("DB ready at", dbPath)
 	return &DB{Ent: client}, nil
+}
+
+func buildDSN(dbPath string) string {
+	params := url.Values{}
+	params.Set("_fk", "1")
+	params.Set("_busy_timeout", "5000")
+	params.Set("cache", "shared")
+	params.Set("mode", "rwc")
+	params.Set("_journal_mode", "WAL")
+	params.Set("_synchronous", "FULL")
+	return fmt.Sprintf("file:%s?%s", dbPath, params.Encode())
 }

@@ -2,10 +2,41 @@ package infra
 
 import (
 	"context"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
+
+func TestBuildDSNIncludesSafeSQLiteOptions(t *testing.T) {
+	dsn := buildDSN("/tmp/app.sqlite")
+
+	if !strings.HasPrefix(dsn, "file:/tmp/app.sqlite?") {
+		t.Fatalf("expected file DSN, got %q", dsn)
+	}
+
+	rawQuery := strings.TrimPrefix(dsn, "file:/tmp/app.sqlite?")
+	values, err := url.ParseQuery(rawQuery)
+	if err != nil {
+		t.Fatalf("ParseQuery: %v", err)
+	}
+
+	expected := map[string]string{
+		"_fk":           "1",
+		"_busy_timeout": "5000",
+		"cache":         "shared",
+		"mode":          "rwc",
+		"_journal_mode": "WAL",
+		"_synchronous":  "FULL",
+	}
+
+	for key, want := range expected {
+		if got := values.Get(key); got != want {
+			t.Fatalf("expected %s=%q, got %q", key, want, got)
+		}
+	}
+}
 
 func TestOpenCreatesNewSQLiteDatabase(t *testing.T) {
 	ctx := context.Background()
