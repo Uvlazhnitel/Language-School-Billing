@@ -58,7 +58,7 @@ a {
 }
 
 .container {
-  min-height: calc(100dvh - 58px);
+  min-height: calc(100vh - 58px);
   width: min(1440px, calc(100% - 40px));
   margin: 18px auto 40px;
 }
@@ -548,7 +548,7 @@ tfoot td {
 
 .modalBody {
   width: min(620px, 100%);
-  max-height: min(88dvh, 900px);
+  max-height: min(88vh, 900px);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -604,7 +604,7 @@ tfoot td {
   top: calc(100% + 10px);
   left: 0;
   right: 0;
-  max-height: min(280px, 40dvh);
+  max-height: min(280px, 40vh);
   overflow-y: auto;
   border-radius: 20px;
   border: 1px solid rgba(133, 102, 69, 0.14);
@@ -689,7 +689,7 @@ tfoot td {
 
 .modalBodyWide {
   width: min(900px, 100%);
-  max-height: min(90dvh, 980px);
+  max-height: min(90vh, 980px);
   display: flex;
   flex-direction: column;
   overflow-y: auto;
@@ -919,6 +919,24 @@ tfoot td {
   *::after {
     animation: none !important;
     transition: none !important;
+  }
+}
+
+@supports (height: 100dvh) {
+  .container {
+    min-height: calc(100dvh - 58px);
+  }
+
+  .modalBody {
+    max-height: min(88dvh, 900px);
+  }
+
+  .comboBoxMenu {
+    max-height: min(280px, 40dvh);
+  }
+
+  .modalBodyWide {
+    max-height: min(90dvh, 980px);
   }
 }
 
