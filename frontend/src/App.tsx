@@ -1582,10 +1582,10 @@ export default function App() {
               <div className="controls">
                 <button onClick={openAddStudent}>Add student</button>
                 <input
+                  className="searchField"
                   placeholder="Search name/phone/email…"
                   value={studentQ}
                   onChange={(e) => setStudentQ(e.target.value)}
-                  style={{ width: 260 }}
                 />
                 <label className="inline">
                   <input
@@ -1725,10 +1725,10 @@ export default function App() {
               <div className="controls">
                 <button onClick={openAddCourse}>Add course</button>
                 <input
+                  className="searchField"
                   placeholder="Search course or teacher…"
                   value={courseQ}
                   onChange={(e) => setCourseQ(e.target.value)}
-                  style={{ width: 260 }}
                 />
                 <button onClick={loadCourses}>Refresh</button>
               </div>
@@ -2076,10 +2076,10 @@ export default function App() {
                 </select>
 
                 <input
+                  className="searchField"
                   placeholder="Search student / phone / group…"
                   value={attQ}
                   onChange={(e) => setAttQ(e.target.value)}
-                  style={{ width: 260 }}
                 />
 
                 <select
@@ -2223,10 +2223,10 @@ export default function App() {
                 </select>
 
                 <input
+                  className="searchField searchFieldWide"
                   placeholder="Search student / phone / email / invoice number"
                   value={invQ}
                   onChange={(e) => setInvQ(e.target.value)}
-                  style={{ width: "320px" }}
                 />
 
                 <button onClick={loadInvoices}>Refresh</button>
