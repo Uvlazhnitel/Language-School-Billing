@@ -5,11 +5,14 @@ package attendance
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
 	"langschool/ent/enrollment"
+	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
+	"langschool/internal/app"
 	"langschool/internal/app/utils"
 )
 
@@ -24,17 +27,40 @@ func New(db *ent.Client) *Service { return &Service{db: db} }
 // It combines enrollment, student, and course information with the
 // attendance count for a specific month.
 type Row struct {
-	EnrollmentID int     `json:"enrollmentId"` // ID of the enrollment
-	StudentID    int     `json:"studentId"`    // ID of the student
-	StudentName  string  `json:"studentName"`  // Student's full name
-	CourseID     int     `json:"courseId"`     // ID of the course
-	CourseName   string  `json:"courseName"`   // Course name
-	CourseType   string  `json:"courseType"`   // Course type: "group" or "individual"
-	BillingMode  string  `json:"billingMode"`  // Enrollment billing mode
-	LessonPrice  float64 `json:"lessonPrice"`  // Price per lesson for this enrollment
-	Count        int     `json:"count"`        // Number of lessons attended in the month
-	HasRecord    bool    `json:"hasRecord"`    // Whether an AttendanceMonth record exists for this month
-	CanDelete    bool    `json:"canDelete"`    // Whether enrollment can be safely deleted
+	EnrollmentID     int     `json:"enrollmentId"`     // ID of the enrollment
+	StudentID        int     `json:"studentId"`        // ID of the student
+	StudentName      string  `json:"studentName"`      // Student's full name
+	CourseID         int     `json:"courseId"`         // ID of the course
+	CourseName       string  `json:"courseName"`       // Course name
+	CourseType       string  `json:"courseType"`       // Course type: "group" or "individual"
+	BillingMode      string  `json:"billingMode"`      // Enrollment billing mode
+	LessonPrice      float64 `json:"lessonPrice"`      // Price per lesson for this enrollment
+	Count            int     `json:"count"`            // Number of lessons attended in the month
+	HasRecord        bool    `json:"hasRecord"`        // Whether an AttendanceMonth record exists for this month
+	CanDelete        bool    `json:"canDelete"`        // Whether enrollment can be safely deleted
+	AttendanceLocked bool    `json:"attendanceLocked"` // Whether attendance is locked by a non-draft invoice
+	InvoiceStatus    string  `json:"invoiceStatus"`    // Invoice status for the student/month, if any
+}
+
+func (s *Service) getMonthInvoiceStatus(ctx context.Context, studentID, y, m int) (string, bool, error) {
+	iv, err := s.db.Invoice.Query().
+		Where(
+			invoice.StudentIDEQ(studentID),
+			invoice.PeriodYearEQ(y),
+			invoice.PeriodMonthEQ(m),
+		).
+		Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return "", false, nil
+		}
+		return "", false, err
+	}
+	return string(iv.Status), true, nil
+}
+
+func lockReason(invoiceStatus string) bool {
+	return invoiceStatus != "" && invoiceStatus != app.InvoiceStatusDraft
 }
 
 // ListPerLesson retrieves attendance sheet rows for all enrollments
@@ -85,11 +111,25 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			return nil, err
 		}
 
+		invoiceStatus, _, err := s.getMonthInvoiceStatus(ctx, e.StudentID, y, m)
+		if err != nil {
+			return nil, err
+		}
+
 		rows = append(rows, Row{
-			EnrollmentID: e.ID,
-			StudentID:    e.StudentID, StudentName: sname,
-			CourseID: e.CourseID, CourseName: c.Name, CourseType: string(c.Type), BillingMode: string(e.BillingMode),
-			LessonPrice: utils.Round2(c.LessonPrice), Count: cnt, HasRecord: hasRecord, CanDelete: !hasInvoiceHistory,
+			EnrollmentID:     e.ID,
+			StudentID:        e.StudentID,
+			StudentName:      sname,
+			CourseID:         e.CourseID,
+			CourseName:       c.Name,
+			CourseType:       string(c.Type),
+			BillingMode:      string(e.BillingMode),
+			LessonPrice:      utils.Round2(c.LessonPrice),
+			Count:            cnt,
+			HasRecord:        hasRecord,
+			CanDelete:        !hasInvoiceHistory,
+			AttendanceLocked: lockReason(invoiceStatus),
+			InvoiceStatus:    invoiceStatus,
 		})
 	}
 	return rows, nil
@@ -98,6 +138,14 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 // Upsert creates or updates an attendance record for a student-course pair
 // for a specific month. If no record exists, a new one is created. If a record exists, it is updated.
 func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count int) error {
+	invoiceStatus, _, err := s.getMonthInvoiceStatus(ctx, studentID, y, m)
+	if err != nil {
+		return err
+	}
+	if lockReason(invoiceStatus) {
+		return fmt.Errorf("attendance is locked because the invoice for %04d-%02d is %s; reopen it to draft first", y, m, invoiceStatus)
+	}
+
 	am, err := s.db.AttendanceMonth.
 		Query().
 		Where(
@@ -108,6 +156,9 @@ func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count i
 		).Only(ctx)
 	if err == nil {
 		_, err = am.Update().SetLessonsCount(count).Save(ctx)
+		return err
+	}
+	if !ent.IsNotFound(err) {
 		return err
 	}
 	_, err = s.db.AttendanceMonth.

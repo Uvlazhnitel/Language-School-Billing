@@ -12,6 +12,8 @@ export namespace attendance {
 	    count: number;
 	    hasRecord: boolean;
 	    canDelete: boolean;
+	    attendanceLocked: boolean;
+	    invoiceStatus: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Row(source);
@@ -30,6 +32,8 @@ export namespace attendance {
 	        this.count = source["count"];
 	        this.hasRecord = source["hasRecord"];
 	        this.canDelete = source["canDelete"];
+	        this.attendanceLocked = source["attendanceLocked"];
+	        this.invoiceStatus = source["invoiceStatus"];
 	    }
 	}
 

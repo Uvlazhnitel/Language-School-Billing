@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
 
-import { fetchRows, saveCount, addOneMass, deleteEnrollment, Row } from "./lib/attendance";
+import { fetchRows, saveCount, deleteEnrollment, Row } from "./lib/attendance";
 
 import {
   listInvoices,
@@ -29,7 +29,13 @@ import {
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
 import { AppDirs, BackupNow, OpenFile } from "../wailsjs/go/main/App";
-import { BillingModePerLesson, BillingModeSubscription } from "./lib/constants";
+import {
+  BillingModePerLesson,
+  BillingModeSubscription,
+  InvoiceStatusCanceled,
+  InvoiceStatusIssued,
+  InvoiceStatusPaid,
+} from "./lib/constants";
 
 import {
   listEnrollments,
@@ -989,6 +995,13 @@ export default function App() {
 
   const onChangeCount = async (r: Row, v: number) => {
     if (r.billingMode !== BillingModePerLesson) return;
+    if (r.attendanceLocked) {
+      showMessage(
+        `Attendance is locked for this month because the invoice is ${r.invoiceStatus ?? "not draft"}. Reopen it to draft first.`,
+        "error"
+      );
+      return;
+    }
     if (!Number.isFinite(v)) return;
     const n = v < 0 ? 0 : Math.trunc(v);
     if (attendanceSavingRows[r.enrollmentId]) return;
@@ -1019,16 +1032,6 @@ export default function App() {
         delete next[r.enrollmentId];
         return next;
       });
-    }
-  };
-
-  const onAddAll = async () => {
-    try {
-      await addOneMass(year, month, courseFilter);
-      await loadAttendance();
-      showMessage("Added +1 to all visible rows");
-    } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
   };
 
@@ -2056,8 +2059,6 @@ export default function App() {
           {tab === "attendance" && (
             <>
               <div className="controls">
-                <button onClick={onAddAll}>+1 all</button>
-
                 <select
                   value={courseFilter ?? ""}
                   onChange={(e) => setCourseFilter(intOrUndef(e.target.value))}
@@ -2145,7 +2146,7 @@ export default function App() {
                           {r.billingMode === BillingModePerLesson && r.hasRecord && r.count === 0 && (
                             <span className="attBadge attBadge--zero">0 lessons</span>
                           )}
-                          {r.billingMode === BillingModePerLesson ? (
+                          {r.billingMode === BillingModePerLesson && !r.attendanceLocked ? (
                             <div className="attendanceStepper">
                               <button
                                 type="button"
@@ -2178,7 +2179,17 @@ export default function App() {
                           ) : (
                             <div className="attendanceReadOnly">
                               <span className="attBadge attBadge--subscription">Read-only</span>
-                              <span className="mutedInline">Subscription student</span>
+                              <span className="mutedInline">
+                                {r.billingMode === BillingModeSubscription
+                                  ? "Subscription student"
+                                  : r.invoiceStatus === InvoiceStatusIssued
+                                    ? "Locked by issued invoice"
+                                    : r.invoiceStatus === InvoiceStatusPaid
+                                      ? "Locked by paid invoice"
+                                      : r.invoiceStatus === InvoiceStatusCanceled
+                                        ? "Locked by canceled invoice"
+                                        : "Locked until invoice is reopened to draft"}
+                              </span>
                             </div>
                           )}
                         </td>
@@ -2186,7 +2197,7 @@ export default function App() {
                           {r.billingMode === BillingModePerLesson ? formatEUR(r.count * r.lessonPrice) : "—"}
                         </td>
                         <td>
-                          {r.billingMode === BillingModePerLesson && !r.hasRecord && (
+                          {r.billingMode === BillingModePerLesson && !r.attendanceLocked && !r.hasRecord && (
                             <button
                               onClick={() => onChangeCount(r, 0)}
                               disabled={attendanceSavingRows[r.enrollmentId]}

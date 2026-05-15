@@ -1,10 +1,9 @@
 import {
   AttendanceListPerLesson,
   AttendanceUpsert,
-  AttendanceAddOne,
   EnrollmentDelete,
 } from "../../wailsjs/go/main/App";
-import { BillingMode, CourseType } from "./constants";
+import { BillingMode, CourseType, InvoiceStatus } from "./constants";
 
 export type Row = {
   enrollmentId: number;
@@ -18,6 +17,8 @@ export type Row = {
   count: number;
   hasRecord: boolean;
   canDelete: boolean;
+  attendanceLocked: boolean;
+  invoiceStatus?: InvoiceStatus;
 };
 
 function normalizeCourseId(courseId?: number): number | undefined {
@@ -37,11 +38,6 @@ export function saveCount(
   count: number
 ): Promise<void> {
   return AttendanceUpsert(studentId, courseId, year, month, count);
-}
-
-export function addOneMass(year: number, month: number, courseId?: number) {
-  const cid = normalizeCourseId(courseId);
-  return AttendanceAddOne(year, month, cid);
 }
 
 export function deleteEnrollment(enrollmentId: number) {
