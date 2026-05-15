@@ -124,39 +124,30 @@ function payerRoleLabel(relation: string): string {
 
 type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
 
-const TAB_META: Record<Tab, { eyebrow: string; title: string; description: string }> = {
+const TAB_META: Record<Tab, { eyebrow: string; title: string }> = {
   students: {
     eyebrow: "People",
     title: "Students workspace",
-    description: "Manage your student base, contacts, and active roster in one clean place.",
   },
   courses: {
     eyebrow: "Programs",
     title: "Courses and pricing",
-    description:
-      "Shape your offers, keep prices consistent, and edit the catalog without friction.",
   },
   enrollments: {
     eyebrow: "Links",
     title: "Enrollment flow",
-    description: "Connect students to courses, apply discounts, and keep billing modes clear.",
   },
   attendance: {
     eyebrow: "Operations",
     title: "Attendance overview",
-    description: "Track lesson counts fast and prepare accurate monthly billing with less clutter.",
   },
   invoice: {
     eyebrow: "Billing",
     title: "Invoices and summaries",
-    description:
-      "Generate, issue, review, and pay invoices with a clearer month-by-month workflow.",
   },
   debtors: {
     eyebrow: "Follow-up",
     title: "Debtors snapshot",
-    description:
-      "See who still owes money and record payments without losing the historical trail.",
   },
 };
 
@@ -1472,8 +1463,25 @@ export default function App() {
             <div className="workspaceHeading">
               <div className="workspaceEyebrow">{currentMeta.eyebrow}</div>
               <h1>{currentMeta.title}</h1>
-              <p>{currentMeta.description}</p>
             </div>
+            {showMonthPicker && (
+              <div className="monthpickers monthpickersTopbar">
+                <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))}>
+                  {months.map((m, i) => (
+                    <option key={m} value={i + 1}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
+                  {[year - 1, year, year + 1].map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="workspaceActions" aria-label="File and backup actions">
               <button
                 type="button"
@@ -1530,27 +1538,6 @@ export default function App() {
             <button className={tab === "debtors" ? "active" : ""} onClick={() => setTab("debtors")}>
               Debtors
             </button>
-
-            <div className="spacer" />
-
-            {showMonthPicker && (
-              <div className="monthpickers">
-                <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))}>
-                  {months.map((m, i) => (
-                    <option key={m} value={i + 1}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
-                  {[year - 1, year, year + 1].map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
           </nav>
 
           {/* ---------------- Students ---------------- */}

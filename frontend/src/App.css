@@ -82,6 +82,13 @@ a {
   flex: 1 1 420px;
 }
 
+.monthpickersTopbar {
+  align-items: center;
+  justify-content: flex-end;
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
 .workspaceEyebrow {
   margin-bottom: 6px;
   color: var(--accent-strong);
@@ -96,14 +103,6 @@ a {
   font-size: clamp(1.35rem, 1.9vw, 1.9rem);
   line-height: 1;
   letter-spacing: -0.05em;
-}
-
-.workspaceHeading p {
-  margin: 8px 0 0;
-  max-width: 62ch;
-  color: var(--muted-strong);
-  font-size: 0.92rem;
-  line-height: 1.5;
 }
 
 .workspaceActions {
@@ -224,10 +223,6 @@ a {
 
 .tabs button:active {
   transform: translateY(1px);
-}
-
-.spacer {
-  flex: 1;
 }
 
 .monthpickers {
@@ -748,6 +743,7 @@ tfoot td {
 
   .monthpickers {
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .monthpickers select,
@@ -798,8 +794,14 @@ tfoot td {
 
 @media (max-width: 1100px) {
   .workspaceHeading,
+  .monthpickersTopbar,
   .workspaceActions {
     flex-basis: 100%;
+  }
+
+  .monthpickersTopbar {
+    justify-content: flex-start;
+    margin-left: 0;
   }
 
   .workspaceActions {
