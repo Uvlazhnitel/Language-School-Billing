@@ -1031,6 +1031,7 @@ export default function App() {
   const [invStatus, setInvStatus] = useState<string>("all");
   const [invItems, setInvItems] = useState<InvoiceListItem[]>([]);
   const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
+  const [invoiceDetailsOpen, setInvoiceDetailsOpen] = useState(false);
   const [loadingInv, setLoadingInv] = useState(false);
   const [invQ, setInvQ] = useState("");
   const [invSummary, setInvSummary] = useState<InvoiceSummaryDTO | null>(null);
@@ -1052,7 +1053,6 @@ export default function App() {
       await ensureStudentsLoaded();
       const li = await listInvoices(year, month, invStatus);
       setInvItems(li);
-      setSelectedInv(null);
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     } finally {
@@ -1136,17 +1136,23 @@ export default function App() {
     });
   }, [invItems, invQ, studentIndex]);
 
+  const loadInvoiceDetails = async (id: number) => {
+    const iv = await getInvoice(id);
+    setSelectedInv(iv);
+    if (iv.status !== "draft") {
+      const summary = await invoiceSummary(id);
+      setInvSummary(summary);
+      return { invoice: iv, summary };
+    } else {
+      setInvSummary(null);
+      return { invoice: iv, summary: null };
+    }
+  };
+
   const onOpenInvoice = async (id: number) => {
     try {
-      const iv = await getInvoice(id);
-      setSelectedInv(iv);
-      // Load payment summary
-      if (iv.status !== "draft") {
-        const summary = await invoiceSummary(id);
-        setInvSummary(summary);
-      } else {
-        setInvSummary(null);
-      }
+      await loadInvoiceDetails(id);
+      setInvoiceDetailsOpen(true);
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
@@ -1228,8 +1234,10 @@ export default function App() {
       showMessage("Payment recorded successfully!");
 
       if (paymentInvoiceId) {
-        await onOpenInvoice(paymentInvoiceId);
         await loadInvoices();
+        if (invoiceDetailsOpen && selectedInv?.id === paymentInvoiceId) {
+          await loadInvoiceDetails(paymentInvoiceId);
+        }
       }
       const updatedDebtors = await loadDebtors();
 
@@ -1281,6 +1289,9 @@ export default function App() {
       const res = await issueOne(id);
       showMessage(`Invoice issued: #${res.number}`);
       await loadInvoices();
+      if (invoiceDetailsOpen && selectedInv?.id === id) {
+        await loadInvoiceDetails(id);
+      }
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
@@ -1292,10 +1303,10 @@ export default function App() {
       async () => {
         try {
           await reopenToDraft(id);
-          if (selectedInv?.id === id) {
-            await onOpenInvoice(id);
-          }
           await loadInvoices();
+          if (invoiceDetailsOpen && selectedInv?.id === id) {
+            await loadInvoiceDetails(id);
+          }
           showMessage("Invoice reopened to draft");
         } catch (e: any) {
           showMessage(`Error: ${String(e?.message ?? e)}`, "error");
@@ -1869,7 +1880,7 @@ export default function App() {
                   <option value="">All courses</option>
                   {allCourses.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
                     </option>
                   ))}
                 </select>
@@ -2034,7 +2045,7 @@ export default function App() {
                   <option value="">All groups</option>
                   {allCourses.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
                     </option>
                   ))}
                 </select>
@@ -2243,11 +2254,8 @@ export default function App() {
                             <button
                               onClick={async () => {
                                 try {
-                                  const iv = await getInvoice(it.id);
-                                  setSelectedInv(iv);
-                                  const summary = await invoiceSummary(it.id);
-                                  setInvSummary(summary);
-                                  openPaymentModal(iv, summary);
+                                  const { invoice, summary } = await loadInvoiceDetails(it.id);
+                                  openPaymentModal(invoice, summary);
                                 } catch (e: any) {
                                   showMessage(`Error: ${String(e?.message ?? e)}`, "error");
                                 }
@@ -2263,93 +2271,6 @@ export default function App() {
                 </table>
               )}
 
-              {selectedInv && (
-                <div className="panel">
-                  <div style={{ marginBottom: "1rem" }}>
-                    <h3>
-                      Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
-                      <button
-                        className="linkButton"
-                        onClick={() => void openStudentCardById(selectedInv.studentId)}
-                      >
-                        {selectedInv.studentName}
-                      </button>{" "}
-                      — {months[selectedInv.month - 1]} {selectedInv.year}
-                    </h3>
-                  </div>
-
-                  {invSummary && selectedInv.status !== "draft" && (
-                    <div className="invSummary">
-                      <div className="invSummaryRow">
-                        <span>Recipient:</span>
-                        <span>{selectedInv.recipientName || selectedInv.studentName}</span>
-                      </div>
-                      {selectedInv.studentPersonalCode && (
-                        <div className="invSummaryRow">
-                          <span>{selectedInv.isMinor ? "Child personal code:" : "Personal code:"}</span>
-                          <span>{selectedInv.studentPersonalCode}</span>
-                        </div>
-                      )}
-                      {selectedInv.isMinor && (
-                        <div className="invSummaryRow">
-                          <span>For child:</span>
-                          <span>{selectedInv.childName}</span>
-                        </div>
-                      )}
-                      <div className="invSummaryRow">
-                        <span>Total:</span>
-                        <span className="money">{formatEUR(invSummary.total)}</span>
-                      </div>
-
-                      <div className="invSummaryRow">
-                        <span>Paid:</span>
-                        <span className="money good">{formatEUR(invSummary.paid)}</span>
-                      </div>
-
-                      <div className="invSummaryRow">
-                        <span>Remaining:</span>
-                        <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
-                          {formatEUR(invSummary.remaining)}
-                        </span>
-                      </div>
-
-                      <div className="invSummaryRow">
-                        <span>Status:</span>
-                        <span className="money">{invSummary.status}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Description</th>
-                        <th style={{ textAlign: "right" }}>Qty</th>
-                        <th style={{ textAlign: "right" }}>Unit (EUR)</th>
-                        <th style={{ textAlign: "right" }}>Amount (EUR)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedInv.lines.map((l, idx) => (
-                        <tr key={idx}>
-                          <td>{l.description}</td>
-                          <td style={{ textAlign: "right" }}>{l.qty}</td>
-                          <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
-                          <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan={3} style={{ textAlign: "right" }}>
-                          Total (EUR):
-                        </td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              )}
             </>
           )}
 
@@ -2460,6 +2381,114 @@ export default function App() {
             <div className="modalActions">
               <button onClick={closePaymentModal}>Cancel</button>
               <button onClick={handleCreatePayment}>Record Payment</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {invoiceDetailsOpen && selectedInv && (
+        <div className="modal" onClick={() => setInvoiceDetailsOpen(false)}>
+          <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
+            <div style={{ marginBottom: "1rem" }}>
+              <h3>
+                Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
+                <button
+                  className="linkButton"
+                  onClick={() => void openStudentCardById(selectedInv.studentId)}
+                >
+                  {selectedInv.studentName}
+                </button>{" "}
+                — {months[selectedInv.month - 1]} {selectedInv.year}
+              </h3>
+            </div>
+
+            {invSummary && selectedInv.status !== "draft" && (
+              <div className="invSummary">
+                <div className="invSummaryRow">
+                  <span>Recipient:</span>
+                  <span>{selectedInv.recipientName || selectedInv.studentName}</span>
+                </div>
+                {selectedInv.studentPersonalCode && (
+                  <div className="invSummaryRow">
+                    <span>{selectedInv.isMinor ? "Child personal code:" : "Personal code:"}</span>
+                    <span>{selectedInv.studentPersonalCode}</span>
+                  </div>
+                )}
+                {selectedInv.isMinor && (
+                  <div className="invSummaryRow">
+                    <span>For child:</span>
+                    <span>{selectedInv.childName}</span>
+                  </div>
+                )}
+                <div className="invSummaryRow">
+                  <span>Total:</span>
+                  <span className="money">{formatEUR(invSummary.total)}</span>
+                </div>
+
+                <div className="invSummaryRow">
+                  <span>Paid:</span>
+                  <span className="money good">{formatEUR(invSummary.paid)}</span>
+                </div>
+
+                <div className="invSummaryRow">
+                  <span>Remaining:</span>
+                  <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
+                    {formatEUR(invSummary.remaining)}
+                  </span>
+                </div>
+
+                <div className="invSummaryRow">
+                  <span>Status:</span>
+                  <span className="money">{invSummary.status}</span>
+                </div>
+              </div>
+            )}
+
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th style={{ textAlign: "right" }}>Qty</th>
+                    <th style={{ textAlign: "right" }}>Unit (EUR)</th>
+                    <th style={{ textAlign: "right" }}>Amount (EUR)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedInv.lines.map((l, idx) => (
+                    <tr key={idx}>
+                      <td>{l.description}</td>
+                      <td style={{ textAlign: "right" }}>{l.qty}</td>
+                      <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
+                      <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: "right" }}>
+                      Total (EUR):
+                    </td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className="modalActions">
+              {selectedInv.status === "draft" && (
+                <button onClick={() => onIssueOne(selectedInv.id)}>Issue</button>
+              )}
+              {selectedInv.status === "issued" && (
+                <button onClick={() => void onReopenToDraft(selectedInv.id)}>Reopen to draft</button>
+              )}
+              {selectedInv.status !== "draft" && (
+                <button onClick={() => onOpenPdf(selectedInv.id)}>PDF</button>
+              )}
+              {selectedInv.status !== "draft" && (
+                <button onClick={() => openPaymentModal(selectedInv, invSummary)}>Record Payment</button>
+              )}
+              <button onClick={() => setInvoiceDetailsOpen(false)}>Close</button>
             </div>
           </div>
         </div>
