@@ -2211,7 +2211,7 @@ export default function App() {
                               Delete enrollment
                             </button>
                           ) : (
-                            <span className="mutedInline">Used in invoice history</span>
+                            <span className="mutedInline">Can't delete: used in invoices</span>
                           )}
                         </td>
                       </tr>

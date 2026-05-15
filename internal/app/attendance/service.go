@@ -204,7 +204,7 @@ func (s *Service) DeleteEnrollment(ctx context.Context, enrollmentID int) error 
 		return err
 	}
 	if hasInvoiceHistory {
-		return errors.New("cannot delete enrollment: it is already used in invoice history")
+		return errors.New("can't delete enrollment: used in invoices")
 	}
 	if _, err := s.db.AttendanceMonth.
 		Delete().
