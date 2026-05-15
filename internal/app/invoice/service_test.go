@@ -35,7 +35,7 @@ func TestGenerateDraftsAddsSingleMaterialsLine(t *testing.T) {
 	}
 
 	crs, err := client.Course.Create().
-		SetName("Subscription Course").
+		SetName("Gleznošana").
 		SetType(course.TypeGroup).
 		SetLessonPrice(20).
 		SetSubscriptionPrice(60).
@@ -83,6 +83,11 @@ func TestGenerateDraftsAddsSingleMaterialsLine(t *testing.T) {
 			t.Fatalf("invoice line count = %d, want 2", len(lines))
 		}
 
+		serviceLine := lines[0]
+		if serviceLine.Description != "Dalības maksa par Gleznošana" {
+			t.Fatalf("service description = %q, want %q", serviceLine.Description, "Dalības maksa par Gleznošana")
+		}
+
 		materials := lines[len(lines)-1]
 		if materials.Description != materialsLineDescription {
 			t.Fatalf("materials description = %q, want %q", materials.Description, materialsLineDescription)
@@ -118,6 +123,92 @@ func TestGenerateDraftsAddsSingleMaterialsLine(t *testing.T) {
 		t.Fatalf("unexpected second GenerateDrafts result: %+v", res)
 	}
 	assertDraft(string(StatusDraft), 65)
+}
+
+func TestGenerateDraftsPerLessonDescriptionIsLatvian(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-generate-per-lesson?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Per Lesson Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Zīmēšana").
+		SetType(course.TypeGroup).
+		SetLessonPrice(25).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(5).
+		SetLessonsCount(4).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	res, err := svc.GenerateDrafts(ctx, 2026, 5)
+	if err != nil {
+		t.Fatalf("GenerateDrafts: %v", err)
+	}
+	if res.Created != 1 {
+		t.Fatalf("Created = %d, want 1", res.Created)
+	}
+
+	iv, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(5)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Query: %v", err)
+	}
+	if iv.TotalAmount != 105 {
+		t.Fatalf("invoice total = %v, want 105", iv.TotalAmount)
+	}
+
+	lines, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(iv.ID)).
+		Order(ent.Asc(invoiceline.FieldID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query: %v", err)
+	}
+	if len(lines) != 2 {
+		t.Fatalf("invoice line count = %d, want 2", len(lines))
+	}
+	if lines[0].EnrollmentID != enr.ID {
+		t.Fatalf("service enrollment_id = %d, want %d", lines[0].EnrollmentID, enr.ID)
+	}
+	if lines[0].Description != "Dalības maksa par Zīmēšana" {
+		t.Fatalf("service description = %q, want %q", lines[0].Description, "Dalības maksa par Zīmēšana")
+	}
+	if lines[1].Description != materialsLineDescription {
+		t.Fatalf("materials description = %q, want %q", lines[1].Description, materialsLineDescription)
+	}
 }
 
 func TestReopenDraft(t *testing.T) {

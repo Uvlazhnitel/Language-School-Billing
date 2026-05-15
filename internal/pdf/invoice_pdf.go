@@ -532,11 +532,6 @@ func normalizeInvoiceDescription(description string, periodStart time.Time) stri
 		return fmt.Sprintf("Mācību pakalpojumi — %s", latvianMonthName(periodStart.Month()))
 	}
 
-	description = strings.ReplaceAll(description, "lessons", "nodarbības")
-	description = strings.ReplaceAll(description, "Lessons", "Nodarbības")
-	description = strings.ReplaceAll(description, "subscription", "abonements")
-	description = strings.ReplaceAll(description, "Subscription", "Abonements")
-
 	return description
 }
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
@@ -104,6 +105,14 @@ func getStudentName(iv *ent.Invoice) string {
 	return ""
 }
 
+func buildCourseLineDescription(courseName string) string {
+	courseName = strings.TrimSpace(courseName)
+	if courseName == "" {
+		return "Dalības maksa par mācību pakalpojumiem"
+	}
+	return fmt.Sprintf("Dalības maksa par %s", courseName)
+}
+
 // buildPerLessonLine creates an invoice line for per-lesson billing
 func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPrice float64) (*ent.InvoiceLineCreate, float64) {
 	// Query attendance for the month
@@ -126,7 +135,11 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 	}
 
 	amount := utils.Round2(float64(qty) * lessonPrice)
-	desc := fmt.Sprintf("Payment for lessons (%02d.%d), course #%d", m, y, en.CourseID)
+	courseName := ""
+	if c, err := s.db.Course.Get(ctx, en.CourseID); err == nil {
+		courseName = c.Name
+	}
+	desc := buildCourseLineDescription(courseName)
 
 	line := s.db.InvoiceLine.Create().
 		SetEnrollmentID(en.ID).
@@ -139,9 +152,13 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 }
 
 // buildSubscriptionLine creates an invoice line for subscription billing
-func (s *Service) buildSubscriptionLine(en *ent.Enrollment, y, m int, subscriptionPrice float64) (*ent.InvoiceLineCreate, float64) {
+func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment, y, m int, subscriptionPrice float64) (*ent.InvoiceLineCreate, float64) {
 	amount := utils.Round2(subscriptionPrice)
-	desc := fmt.Sprintf("Subscription (%02d.%d), course #%d", m, y, en.CourseID)
+	courseName := ""
+	if c, err := s.db.Course.Get(ctx, en.CourseID); err == nil {
+		courseName = c.Name
+	}
+	desc := buildCourseLineDescription(courseName)
 
 	line := s.db.InvoiceLine.Create().
 		SetEnrollmentID(en.ID).
@@ -251,7 +268,7 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 				if sp <= 0 {
 					continue
 				}
-				line, amount := s.buildSubscriptionLine(en, y, m, sp)
+				line, amount := s.buildSubscriptionLine(ctx, en, y, m, sp)
 				lines = append(lines, line)
 				total += amount
 
