@@ -1,5 +1,5 @@
 // Package attendance provides services for tracking student attendance.
-// Attendance is tracked monthly per student-course pair for per-lesson billing.
+// Attendance is tracked monthly per student-course pair.
 package attendance
 
 import (
@@ -10,13 +10,11 @@ import (
 	"langschool/ent/attendancemonth"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoiceline"
-	"langschool/internal/app"
 	"langschool/internal/app/utils"
 )
 
 // Service provides attendance tracking functionality.
-// It manages monthly attendance records for students enrolled in courses
-// with per-lesson billing mode.
+// It manages monthly attendance records for students enrolled in courses.
 type Service struct{ db *ent.Client }
 
 // New creates a new attendance service with the given database client.
@@ -32,20 +30,20 @@ type Row struct {
 	CourseID     int     `json:"courseId"`     // ID of the course
 	CourseName   string  `json:"courseName"`   // Course name
 	CourseType   string  `json:"courseType"`   // Course type: "group" or "individual"
+	BillingMode  string  `json:"billingMode"`  // Enrollment billing mode
 	LessonPrice  float64 `json:"lessonPrice"`  // Price per lesson for this enrollment
 	Count        int     `json:"count"`        // Number of lessons attended in the month
 	HasRecord    bool    `json:"hasRecord"`    // Whether an AttendanceMonth record exists for this month
 	CanDelete    bool    `json:"canDelete"`    // Whether enrollment can be safely deleted
 }
 
-// ListPerLesson retrieves attendance records for all enrollments with per-lesson billing
+// ListPerLesson retrieves attendance sheet rows for all enrollments
 // for the specified year and month. Optionally filters by courseID.
 // Returns a list of rows with student, course, and attendance information.
 // If no attendance record exists for a student-course pair, the count defaults to 0.
 func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([]Row, error) {
 	q := s.db.Enrollment.
 		Query().
-		Where(enrollment.BillingModeEQ(app.BillingModePerLesson)).
 		WithStudent().
 		WithCourse()
 	if courseID != nil && *courseID > 0 {
@@ -90,7 +88,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 		rows = append(rows, Row{
 			EnrollmentID: e.ID,
 			StudentID:    e.StudentID, StudentName: sname,
-			CourseID: e.CourseID, CourseName: c.Name, CourseType: string(c.Type),
+			CourseID: e.CourseID, CourseName: c.Name, CourseType: string(c.Type), BillingMode: string(e.BillingMode),
 			LessonPrice: utils.Round2(c.LessonPrice), Count: cnt, HasRecord: hasRecord, CanDelete: !hasInvoiceHistory,
 		})
 	}

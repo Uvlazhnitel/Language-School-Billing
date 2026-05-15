@@ -629,6 +629,13 @@ tfoot td {
   font-weight: 800;
 }
 
+.attendanceReadOnly {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
 .modalActions {
   display: flex;
   flex-wrap: wrap;
@@ -920,6 +927,12 @@ tfoot td {
   background: rgba(133, 102, 69, 0.1);
   border: 1px solid rgba(133, 102, 69, 0.2);
   color: var(--text-secondary);
+}
+
+.attBadge--subscription {
+  background: rgba(33, 131, 95, 0.12);
+  border: 1px solid rgba(33, 131, 95, 0.28);
+  color: var(--good);
 }
 
 .attSummary {

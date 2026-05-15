@@ -4,7 +4,7 @@ import {
   AttendanceAddOne,
   EnrollmentDelete,
 } from "../../wailsjs/go/main/App";
-import { CourseType } from "./constants";
+import { BillingMode, CourseType } from "./constants";
 
 export type Row = {
   enrollmentId: number;
@@ -13,6 +13,7 @@ export type Row = {
   courseId: number;
   courseName: string;
   courseType: CourseType;
+  billingMode: BillingMode;
   lessonPrice: number;
   count: number;
   hasRecord: boolean;

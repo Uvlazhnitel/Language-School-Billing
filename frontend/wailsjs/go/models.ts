@@ -7,6 +7,7 @@ export namespace attendance {
 	    courseId: number;
 	    courseName: string;
 	    courseType: string;
+	    billingMode: string;
 	    lessonPrice: number;
 	    count: number;
 	    hasRecord: boolean;
@@ -24,6 +25,7 @@ export namespace attendance {
 	        this.courseId = source["courseId"];
 	        this.courseName = source["courseName"];
 	        this.courseType = source["courseType"];
+	        this.billingMode = source["billingMode"];
 	        this.lessonPrice = source["lessonPrice"];
 	        this.count = source["count"];
 	        this.hasRecord = source["hasRecord"];

@@ -28,6 +28,7 @@ import {
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
 import { AppDirs, BackupNow, OpenFile } from "../wailsjs/go/main/App";
+import { BillingModePerLesson, BillingModeSubscription } from "./lib/constants";
 
 import {
   listEnrollments,
@@ -942,7 +943,11 @@ export default function App() {
   }, [tab, loadAttendance]);
 
   const perLessonTotal = useMemo(
-    () => rows.reduce((s, r) => s + r.count * r.lessonPrice, 0),
+    () =>
+      rows.reduce(
+        (s, r) => s + (r.billingMode === BillingModePerLesson ? r.count * r.lessonPrice : 0),
+        0
+      ),
     [rows]
   );
 
@@ -961,24 +966,28 @@ export default function App() {
     }
 
     if (attFilter === "missing") {
-      filtered = filtered.filter((r) => !r.hasRecord);
+      filtered = filtered.filter((r) => r.billingMode === BillingModePerLesson && !r.hasRecord);
     } else if (attFilter === "filled") {
-      filtered = filtered.filter((r) => r.hasRecord);
+      filtered = filtered.filter((r) => r.billingMode === BillingModePerLesson && r.hasRecord);
     } else if (attFilter === "zero") {
-      filtered = filtered.filter((r) => r.hasRecord && r.count === 0);
+      filtered = filtered.filter(
+        (r) => r.billingMode === BillingModePerLesson && r.hasRecord && r.count === 0
+      );
     }
 
     return filtered;
   }, [rows, attQ, attFilter, studentIndex]);
 
   const attendanceSummary = useMemo(() => {
-    const filled = rows.filter((r) => r.hasRecord).length;
-    const missing = rows.filter((r) => !r.hasRecord).length;
-    const zero = rows.filter((r) => r.hasRecord && r.count === 0).length;
-    return { filled, missing, zero, total: rows.length };
+    const editableRows = rows.filter((r) => r.billingMode === BillingModePerLesson);
+    const filled = editableRows.filter((r) => r.hasRecord).length;
+    const missing = editableRows.filter((r) => !r.hasRecord).length;
+    const zero = editableRows.filter((r) => r.hasRecord && r.count === 0).length;
+    return { filled, missing, zero, total: editableRows.length };
   }, [rows]);
 
   const onChangeCount = async (r: Row, v: number) => {
+    if (r.billingMode !== BillingModePerLesson) return;
     if (!Number.isFinite(v)) return;
     const n = v < 0 ? 0 : Math.trunc(v);
     if (attendanceSavingRows[r.enrollmentId]) return;
@@ -2084,7 +2093,7 @@ export default function App() {
                 <div className="empty">
                   {attQ.trim() || attFilter !== "all"
                     ? "No matches found for your search."
-                    : "No per-lesson rows. Create enrollments first."}
+                    : "No attendance rows for this selection. Create enrollments first."}
                 </div>
               ) : (
                 <table>
@@ -2108,48 +2117,65 @@ export default function App() {
                         </td>
                         <td>
                           {r.courseName} ({r.courseType})
+                          {r.billingMode === BillingModeSubscription && (
+                            <>
+                              {" "}
+                              <span className="attBadge attBadge--subscription">Subscription</span>
+                            </>
+                          )}
                         </td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(r.lessonPrice)}</td>
                         <td style={{ textAlign: "right" }}>
-                          {!r.hasRecord && (
+                          {r.billingMode === BillingModePerLesson ? formatEUR(r.lessonPrice) : "—"}
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          {r.billingMode === BillingModePerLesson && !r.hasRecord && (
                             <span className="attBadge attBadge--missing">Not filled</span>
                           )}
-                          {r.hasRecord && r.count === 0 && (
+                          {r.billingMode === BillingModePerLesson && r.hasRecord && r.count === 0 && (
                             <span className="attBadge attBadge--zero">0 lessons</span>
                           )}
-                          <div className="attendanceStepper">
-                            <button
-                              type="button"
-                              className="attendanceStepperButton"
-                              onClick={() => onChangeCount(r, r.count - 1)}
-                              disabled={attendanceSavingRows[r.enrollmentId] || r.count <= 0}
-                              aria-label={`Decrease lesson count for ${r.studentName}`}
-                            >
-                              −
-                            </button>
-                            <input
-                              type="number"
-                              min={0}
-                              value={r.count}
-                              disabled={attendanceSavingRows[r.enrollmentId]}
-                              onChange={(e) => onChangeCount(r, Number(e.target.value))}
-                              className="attendanceStepperInput"
-                              aria-label={`Lesson count for ${r.studentName}`}
-                            />
-                            <button
-                              type="button"
-                              className="attendanceStepperButton"
-                              onClick={() => onChangeCount(r, r.count + 1)}
-                              disabled={attendanceSavingRows[r.enrollmentId]}
-                              aria-label={`Increase lesson count for ${r.studentName}`}
-                            >
-                              +
-                            </button>
-                          </div>
+                          {r.billingMode === BillingModePerLesson ? (
+                            <div className="attendanceStepper">
+                              <button
+                                type="button"
+                                className="attendanceStepperButton"
+                                onClick={() => onChangeCount(r, r.count - 1)}
+                                disabled={attendanceSavingRows[r.enrollmentId] || r.count <= 0}
+                                aria-label={`Decrease lesson count for ${r.studentName}`}
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                min={0}
+                                value={r.count}
+                                disabled={attendanceSavingRows[r.enrollmentId]}
+                                onChange={(e) => onChangeCount(r, Number(e.target.value))}
+                                className="attendanceStepperInput"
+                                aria-label={`Lesson count for ${r.studentName}`}
+                              />
+                              <button
+                                type="button"
+                                className="attendanceStepperButton"
+                                onClick={() => onChangeCount(r, r.count + 1)}
+                                disabled={attendanceSavingRows[r.enrollmentId]}
+                                aria-label={`Increase lesson count for ${r.studentName}`}
+                              >
+                                +
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="attendanceReadOnly">
+                              <span className="attBadge attBadge--subscription">Read-only</span>
+                              <span className="mutedInline">Subscription student</span>
+                            </div>
+                          )}
                         </td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(r.count * r.lessonPrice)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          {r.billingMode === BillingModePerLesson ? formatEUR(r.count * r.lessonPrice) : "—"}
+                        </td>
                         <td>
-                          {!r.hasRecord && (
+                          {r.billingMode === BillingModePerLesson && !r.hasRecord && (
                             <button
                               onClick={() => onChangeCount(r, 0)}
                               disabled={attendanceSavingRows[r.enrollmentId]}
