@@ -19,7 +19,7 @@ import (
 	"langschool/internal/app"
 )
 
-func TestGenerateDraftsAddsSingleMaterialsLine(t *testing.T) {
+func TestGenerateDraftsSubscriptionWithoutLessonsDoesNotAddMaterials(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:invoice-generate?mode=memory&_fk=1")
 	defer client.Close()
@@ -79,30 +79,13 @@ func TestGenerateDraftsAddsSingleMaterialsLine(t *testing.T) {
 		if err != nil {
 			t.Fatalf("InvoiceLine.Query: %v", err)
 		}
-		if len(lines) != 2 {
-			t.Fatalf("invoice line count = %d, want 2", len(lines))
+		if len(lines) != 1 {
+			t.Fatalf("invoice line count = %d, want 1", len(lines))
 		}
 
 		serviceLine := lines[0]
 		if serviceLine.Description != "Dalības maksa par Gleznošana" {
 			t.Fatalf("service description = %q, want %q", serviceLine.Description, "Dalības maksa par Gleznošana")
-		}
-
-		materials := lines[len(lines)-1]
-		if materials.Description != materialsLineDescription {
-			t.Fatalf("materials description = %q, want %q", materials.Description, materialsLineDescription)
-		}
-		if materials.EnrollmentID != enr.ID {
-			t.Fatalf("materials enrollment_id = %d, want %d", materials.EnrollmentID, enr.ID)
-		}
-		if materials.Qty != 1 {
-			t.Fatalf("materials qty = %d, want 1", materials.Qty)
-		}
-		if materials.UnitPrice != materialsLineAmount {
-			t.Fatalf("materials unit price = %v, want %v", materials.UnitPrice, materialsLineAmount)
-		}
-		if materials.Amount != materialsLineAmount {
-			t.Fatalf("materials amount = %v, want %v", materials.Amount, materialsLineAmount)
 		}
 	}
 
@@ -113,7 +96,10 @@ func TestGenerateDraftsAddsSingleMaterialsLine(t *testing.T) {
 	if res.Created != 1 || res.Updated != 0 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
 		t.Fatalf("unexpected first GenerateDrafts result: %+v", res)
 	}
-	assertDraft(string(StatusDraft), 65)
+	if enr.ID <= 0 {
+		t.Fatalf("unexpected enrollment id: %d", enr.ID)
+	}
+	assertDraft(string(StatusDraft), 60)
 
 	res, err = svc.GenerateDrafts(ctx, 2026, 4)
 	if err != nil {
@@ -122,7 +108,7 @@ func TestGenerateDraftsAddsSingleMaterialsLine(t *testing.T) {
 	if res.Created != 0 || res.Updated != 1 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
 		t.Fatalf("unexpected second GenerateDrafts result: %+v", res)
 	}
-	assertDraft(string(StatusDraft), 65)
+	assertDraft(string(StatusDraft), 60)
 }
 
 func TestGenerateDraftsPerLessonDescriptionIsLatvian(t *testing.T) {
@@ -208,6 +194,76 @@ func TestGenerateDraftsPerLessonDescriptionIsLatvian(t *testing.T) {
 	}
 	if lines[1].Description != materialsLineDescription {
 		t.Fatalf("materials description = %q, want %q", lines[1].Description, materialsLineDescription)
+	}
+}
+
+func TestGenerateDraftsPerLessonZeroLessonsDoesNotAddMaterials(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-generate-zero-lessons?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Zero Lessons Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Keramika").
+		SetType(course.TypeGroup).
+		SetLessonPrice(25).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	_, err = client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	res, err := svc.GenerateDrafts(ctx, 2026, 6)
+	if err != nil {
+		t.Fatalf("GenerateDrafts: %v", err)
+	}
+	if res.Created != 1 {
+		t.Fatalf("Created = %d, want 1", res.Created)
+	}
+
+	iv, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(6)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Query: %v", err)
+	}
+	if iv.TotalAmount != 0 {
+		t.Fatalf("invoice total = %v, want 0", iv.TotalAmount)
+	}
+
+	lines, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(iv.ID)).
+		Order(ent.Asc(invoiceline.FieldID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query: %v", err)
+	}
+	if len(lines) != 1 {
+		t.Fatalf("invoice line count = %d, want 1", len(lines))
+	}
+	if lines[0].Description != "Dalības maksa par Keramika" {
+		t.Fatalf("service description = %q, want %q", lines[0].Description, "Dalības maksa par Keramika")
 	}
 }
 

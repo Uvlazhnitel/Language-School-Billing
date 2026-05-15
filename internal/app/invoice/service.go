@@ -216,6 +216,24 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 	return utils.Round2(lessonPrice), utils.Round2(subscriptionPrice)
 }
 
+func (s *Service) hasAnyLessonsInMonth(ctx context.Context, ens []*ent.Enrollment, y, m int) bool {
+	for _, en := range ens {
+		count, err := s.db.AttendanceMonth.Query().
+			Where(
+				attendancemonth.StudentIDEQ(en.StudentID),
+				attendancemonth.CourseIDEQ(en.CourseID),
+				attendancemonth.YearEQ(y),
+				attendancemonth.MonthEQ(m),
+				attendancemonth.LessonsCountGT(0),
+			).
+			Count(ctx)
+		if err == nil && count > 0 {
+			return true
+		}
+	}
+	return false
+}
+
 // ----- Draft generation -----
 
 // GenerateDrafts creates draft invoices for all active students in the specified period.
@@ -283,9 +301,11 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 			continue
 		}
 
-		materialsLine, materialsAmount := s.buildMaterialsLine(ens[0].ID)
-		lines = append(lines, materialsLine)
-		total += materialsAmount
+		if s.hasAnyLessonsInMonth(ctx, ens, y, m) {
+			materialsLine, materialsAmount := s.buildMaterialsLine(ens[0].ID)
+			lines = append(lines, materialsLine)
+			total += materialsAmount
+		}
 		total = utils.Round2(total)
 
 		// Find ANY invoice for the period
