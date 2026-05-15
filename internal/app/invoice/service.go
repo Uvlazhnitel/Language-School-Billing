@@ -31,6 +31,9 @@ const (
 
 	BillingPerLesson    = app.BillingModePerLesson    // Per-lesson billing mode
 	BillingSubscription = app.BillingModeSubscription // Subscription billing mode
+
+	materialsLineDescription = "Mācību materiāli"
+	materialsLineAmount      = 5.0
 )
 
 // Service provides invoice generation, management, and PDF creation functionality.
@@ -150,6 +153,22 @@ func (s *Service) buildSubscriptionLine(en *ent.Enrollment, y, m int, subscripti
 	return line, amount
 }
 
+// buildMaterialsLine creates a fixed invoice line for monthly learning materials.
+// InvoiceLine requires an enrollment reference, so this line is attached to one of
+// the student's enrollments for the billing period.
+func (s *Service) buildMaterialsLine(enrollmentID int) (*ent.InvoiceLineCreate, float64) {
+	amount := utils.Round2(materialsLineAmount)
+
+	line := s.db.InvoiceLine.Create().
+		SetEnrollmentID(enrollmentID).
+		SetDescription(materialsLineDescription).
+		SetQty(1).
+		SetUnitPrice(amount).
+		SetAmount(amount)
+
+	return line, amount
+}
+
 // getSettings retrieves the singleton settings record
 // getSettings retrieves the singleton Settings entity from the database.
 func (s *Service) getSettings(ctx context.Context) (*ent.Settings, error) {
@@ -246,6 +265,10 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 			res.SkippedNoLines++
 			continue
 		}
+
+		materialsLine, materialsAmount := s.buildMaterialsLine(ens[0].ID)
+		lines = append(lines, materialsLine)
+		total += materialsAmount
 		total = utils.Round2(total)
 
 		// Find ANY invoice for the period

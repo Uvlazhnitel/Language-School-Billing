@@ -10,11 +10,115 @@ import (
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
 
+	"langschool/ent"
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
+	"langschool/ent/invoice"
+	"langschool/ent/invoiceline"
 	"langschool/ent/enttest"
 	"langschool/internal/app"
 )
+
+func TestGenerateDraftsAddsSingleMaterialsLine(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-generate?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Materials Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Subscription Course").
+		SetType(course.TypeGroup).
+		SetLessonPrice(20).
+		SetSubscriptionPrice(60).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModeSubscription).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	assertDraft := func(expectedStatus string, expectedTotal float64) {
+		t.Helper()
+
+		iv, err := client.Invoice.Query().
+			Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(4)).
+			Only(ctx)
+		if err != nil {
+			t.Fatalf("Invoice.Query: %v", err)
+		}
+		if string(iv.Status) != expectedStatus {
+			t.Fatalf("invoice status = %q, want %q", iv.Status, expectedStatus)
+		}
+		if iv.TotalAmount != expectedTotal {
+			t.Fatalf("invoice total = %v, want %v", iv.TotalAmount, expectedTotal)
+		}
+
+		lines, err := client.InvoiceLine.Query().
+			Where(invoiceline.InvoiceIDEQ(iv.ID)).
+			Order(ent.Asc(invoiceline.FieldID)).
+			All(ctx)
+		if err != nil {
+			t.Fatalf("InvoiceLine.Query: %v", err)
+		}
+		if len(lines) != 2 {
+			t.Fatalf("invoice line count = %d, want 2", len(lines))
+		}
+
+		materials := lines[len(lines)-1]
+		if materials.Description != materialsLineDescription {
+			t.Fatalf("materials description = %q, want %q", materials.Description, materialsLineDescription)
+		}
+		if materials.EnrollmentID != enr.ID {
+			t.Fatalf("materials enrollment_id = %d, want %d", materials.EnrollmentID, enr.ID)
+		}
+		if materials.Qty != 1 {
+			t.Fatalf("materials qty = %d, want 1", materials.Qty)
+		}
+		if materials.UnitPrice != materialsLineAmount {
+			t.Fatalf("materials unit price = %v, want %v", materials.UnitPrice, materialsLineAmount)
+		}
+		if materials.Amount != materialsLineAmount {
+			t.Fatalf("materials amount = %v, want %v", materials.Amount, materialsLineAmount)
+		}
+	}
+
+	res, err := svc.GenerateDrafts(ctx, 2026, 4)
+	if err != nil {
+		t.Fatalf("GenerateDrafts: %v", err)
+	}
+	if res.Created != 1 || res.Updated != 0 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
+		t.Fatalf("unexpected first GenerateDrafts result: %+v", res)
+	}
+	assertDraft(string(StatusDraft), 65)
+
+	res, err = svc.GenerateDrafts(ctx, 2026, 4)
+	if err != nil {
+		t.Fatalf("GenerateDrafts second run: %v", err)
+	}
+	if res.Created != 0 || res.Updated != 1 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
+		t.Fatalf("unexpected second GenerateDrafts result: %+v", res)
+	}
+	assertDraft(string(StatusDraft), 65)
+}
 
 func TestReopenDraft(t *testing.T) {
 	ctx := context.Background()
