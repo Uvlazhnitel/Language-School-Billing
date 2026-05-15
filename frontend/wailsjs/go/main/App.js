@@ -94,6 +94,10 @@ export function InvoicePaymentSummary(arg1) {
   return window['go']['main']['App']['InvoicePaymentSummary'](arg1);
 }
 
+export function InvoiceRebuildStudentDraft(arg1, arg2, arg3) {
+  return window['go']['main']['App']['InvoiceRebuildStudentDraft'](arg1, arg2, arg3);
+}
+
 export function InvoiceReopenDraft(arg1) {
   return window['go']['main']['App']['InvoiceReopenDraft'](arg1);
 }

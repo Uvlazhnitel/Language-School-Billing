@@ -9,8 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	rt "runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -385,6 +385,20 @@ func (a *App) InvoiceGenerateDrafts(year, month int) (invsvc.GenerateResult, err
 		return res, err
 	}
 	log.Printf("InvoiceGenerateDrafts result: created=%d updated=%d skippedHasInvoice=%d skippedNoLines=%d",
+		res.Created, res.Updated, res.SkippedHasInvoice, res.SkippedNoLines)
+	return res, nil
+}
+
+// InvoiceRebuildStudentDraft rebuilds the draft invoice for a single student
+// in the specified year and month. Issued, paid, and canceled invoices are skipped.
+func (a *App) InvoiceRebuildStudentDraft(studentID, year, month int) (invsvc.GenerateResult, error) {
+	log.Printf("InvoiceRebuildStudentDraft called for student=%d period=%04d-%02d", studentID, year, month)
+	res, err := a.inv.RebuildStudentDraft(a.ctx, studentID, year, month)
+	if err != nil {
+		log.Printf("InvoiceRebuildStudentDraft error: %v", err)
+		return res, err
+	}
+	log.Printf("InvoiceRebuildStudentDraft result: created=%d updated=%d skippedHasInvoice=%d skippedNoLines=%d",
 		res.Created, res.Updated, res.SkippedHasInvoice, res.SkippedNoLines)
 	return res, nil
 }

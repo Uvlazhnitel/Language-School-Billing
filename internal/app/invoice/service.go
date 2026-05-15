@@ -234,6 +234,113 @@ func (s *Service) hasAnyLessonsInMonth(ctx context.Context, ens []*ent.Enrollmen
 	return false
 }
 
+func mergeGenerateResult(dst *GenerateResult, src GenerateResult) {
+	dst.Created += src.Created
+	dst.Updated += src.Updated
+	dst.SkippedHasInvoice += src.SkippedHasInvoice
+	dst.SkippedNoLines += src.SkippedNoLines
+}
+
+func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m int) (GenerateResult, error) {
+	res := GenerateResult{}
+
+	ens, err := s.db.Enrollment.Query().
+		Where(enrollment.StudentIDEQ(studentID)).
+		All(ctx)
+	if err != nil {
+		return res, err
+	}
+
+	lineCapacity := len(ens) + 1
+	if lineCapacity < 1 {
+		lineCapacity = 1
+	}
+	lines := make([]*ent.InvoiceLineCreate, 0, lineCapacity)
+	total := 0.0
+
+	for _, en := range ens {
+		lp, sp := s.resolvePrices(ctx, en, y, m)
+
+		switch en.BillingMode {
+		case BillingPerLesson:
+			line, amount := s.buildPerLessonLine(ctx, en, y, m, lp)
+			lines = append(lines, line)
+			total += amount
+
+		case BillingSubscription:
+			if sp <= 0 {
+				continue
+			}
+			line, amount := s.buildSubscriptionLine(ctx, en, y, m, sp)
+			lines = append(lines, line)
+			total += amount
+
+		default:
+			fmt.Printf("Unexpected billing mode: %s\n", en.BillingMode)
+		}
+	}
+
+	if len(ens) > 0 && s.hasAnyLessonsInMonth(ctx, ens, y, m) {
+		materialsLine, materialsAmount := s.buildMaterialsLine(ens[0].ID)
+		lines = append(lines, materialsLine)
+		total += materialsAmount
+	}
+	total = utils.Round2(total)
+
+	existing, err := s.db.Invoice.Query().Where(
+		invoice.StudentIDEQ(studentID),
+		invoice.PeriodYearEQ(y),
+		invoice.PeriodMonthEQ(m),
+	).Only(ctx)
+	if err != nil && !ent.IsNotFound(err) {
+		return res, err
+	}
+
+	if total <= 0 {
+		if err == nil && existing.Status == StatusDraft {
+			_, _ = s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx)
+			_ = s.db.Invoice.DeleteOneID(existing.ID).Exec(ctx)
+		}
+		res.SkippedNoLines++
+		return res, nil
+	}
+
+	switch {
+	case ent.IsNotFound(err):
+		inv, createErr := s.db.Invoice.Create().
+			SetStudentID(studentID).
+			SetPeriodYear(y).
+			SetPeriodMonth(m).
+			SetStatus(StatusDraft).
+			SetTotalAmount(total).
+			Save(ctx)
+		if createErr != nil {
+			return res, createErr
+		}
+		for _, lc := range lines {
+			if _, saveErr := lc.SetInvoiceID(inv.ID).Save(ctx); saveErr != nil {
+				fmt.Printf("InvoiceLine save failed (student %d, period %04d-%02d): %v\n", studentID, y, m, saveErr)
+			}
+		}
+		res.Created++
+
+	case existing.Status == StatusDraft:
+		_, _ = s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx)
+		for _, lc := range lines {
+			if _, saveErr := lc.SetInvoiceID(existing.ID).Save(ctx); saveErr != nil {
+				fmt.Printf("InvoiceLine save failed (rebuild, invoice %d): %v\n", existing.ID, saveErr)
+			}
+		}
+		_, _ = existing.Update().SetTotalAmount(total).Save(ctx)
+		res.Updated++
+
+	default:
+		res.SkippedHasInvoice++
+	}
+
+	return res, nil
+}
+
 // ----- Draft generation -----
 
 // GenerateDrafts creates draft invoices for all active students in the specified period.
@@ -261,98 +368,25 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 	}
 
 	for _, st := range studs {
-		ens, err := s.db.Enrollment.Query().
-			Where(enrollment.StudentIDEQ(st.ID)).
-			All(ctx)
+		ens, err := s.db.Enrollment.Query().Where(enrollment.StudentIDEQ(st.ID)).All(ctx)
 		if err != nil || len(ens) == 0 {
 			continue
 		}
-
-		// collect invoice lines
-		lines := make([]*ent.InvoiceLineCreate, 0, 4)
-		total := 0.0
-
-		for _, en := range ens {
-			lp, sp := s.resolvePrices(ctx, en, y, m)
-
-			switch en.BillingMode {
-			case BillingPerLesson:
-				line, amount := s.buildPerLessonLine(ctx, en, y, m, lp)
-				lines = append(lines, line)
-				total += amount
-
-			case BillingSubscription:
-				// Skip if subscription price is invalid
-				if sp <= 0 {
-					continue
-				}
-				line, amount := s.buildSubscriptionLine(ctx, en, y, m, sp)
-				lines = append(lines, line)
-				total += amount
-
-			default:
-				// Log unexpected billing mode
-				fmt.Printf("Unexpected billing mode: %s\n", en.BillingMode)
-			}
-		}
-
-		if len(lines) == 0 {
-			res.SkippedNoLines++
+		studentRes, rebuildErr := s.rebuildDraftForStudent(ctx, st.ID, y, m)
+		if rebuildErr != nil {
+			fmt.Printf("Invoice rebuild failed (student %d, period %04d-%02d): %v\n", st.ID, y, m, rebuildErr)
 			continue
 		}
-
-		if s.hasAnyLessonsInMonth(ctx, ens, y, m) {
-			materialsLine, materialsAmount := s.buildMaterialsLine(ens[0].ID)
-			lines = append(lines, materialsLine)
-			total += materialsAmount
-		}
-		total = utils.Round2(total)
-
-		// Find ANY invoice for the period
-		existing, _ := s.db.Invoice.Query().Where(
-			invoice.StudentIDEQ(st.ID),
-			invoice.PeriodYearEQ(y),
-			invoice.PeriodMonthEQ(m),
-		).Only(ctx)
-
-		switch {
-		case existing == nil:
-			// create a new draft
-			inv, err := s.db.Invoice.Create().
-				SetStudentID(st.ID).
-				SetPeriodYear(y).
-				SetPeriodMonth(m).
-				SetStatus(StatusDraft).
-				SetTotalAmount(total).
-				Save(ctx)
-			if err != nil {
-				continue
-			}
-			for _, lc := range lines {
-				if _, err := lc.SetInvoiceID(inv.ID).Save(ctx); err != nil {
-					fmt.Printf("InvoiceLine save failed (student %d, period %04d-%02d): %v\n", st.ID, y, m, err)
-				}
-			}
-			res.Created++
-
-		case existing.Status == StatusDraft:
-			// rebuild existing draft
-			_, _ = s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx)
-			for _, lc := range lines {
-				if _, err := lc.SetInvoiceID(existing.ID).Save(ctx); err != nil {
-					fmt.Printf("InvoiceLine save failed (rebuild, invoice %d): %v\n", existing.ID, err)
-				}
-			}
-			_, _ = existing.Update().SetTotalAmount(total).Save(ctx)
-			res.Updated++
-
-		default:
-			// already issued/paid/canceled — skip
-			res.SkippedHasInvoice++
-		}
+		mergeGenerateResult(&res, studentRes)
 	}
 
 	return res, nil
+}
+
+// RebuildStudentDraft rebuilds or removes the draft invoice for one student in the given month.
+// Issued, paid, and canceled invoices are left untouched.
+func (s *Service) RebuildStudentDraft(ctx context.Context, studentID, y, m int) (GenerateResult, error) {
+	return s.rebuildDraftForStudent(ctx, studentID, y, m)
 }
 
 // ListDrafts returns a list of draft invoices for the given year and month.

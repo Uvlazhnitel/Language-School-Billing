@@ -10,6 +10,7 @@ import {
   issueOne,
   issueAll,
   reopenToDraft,
+  rebuildStudentDraft,
   ensurePdfAndOpen,
   InvoiceListItem,
   InvoiceDTO,
@@ -1000,6 +1001,16 @@ export default function App() {
           x.enrollmentId === r.enrollmentId ? { ...x, count: n, hasRecord: true } : x
         )
       );
+      try {
+        await rebuildStudentDraft(r.studentId, year, month);
+      } catch (invoiceError: any) {
+        showMessage(
+          `Attendance saved, but draft invoice was not updated: ${String(
+            invoiceError?.message ?? invoiceError
+          )}`,
+          "error"
+        );
+      }
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     } finally {

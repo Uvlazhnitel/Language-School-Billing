@@ -6,6 +6,7 @@ import {
   InvoiceReopenDraft,
   InvoiceIssue,
   InvoiceIssueAll,
+  InvoiceRebuildStudentDraft,
   InvoiceEnsurePDF,
   OpenFile,
 } from "../../wailsjs/go/main/App";
@@ -85,6 +86,10 @@ export async function issueOne(id: number) {
 
 export async function issueAll(year: number, month: number) {
   return (await InvoiceIssueAll(year, month)) as IssueAllResult;
+}
+
+export async function rebuildStudentDraft(studentId: number, year: number, month: number) {
+  return (await InvoiceRebuildStudentDraft(studentId, year, month)) as GenerateResult;
 }
 
 export async function ensurePdfAndOpen(invoiceId: number) {
