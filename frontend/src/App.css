@@ -106,13 +106,6 @@ a {
   line-height: 1.5;
 }
 
-.workspaceStats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
-  gap: 10px;
-  flex: 1 1 540px;
-}
-
 .workspaceActions {
   display: flex;
   flex-wrap: wrap;
@@ -163,37 +156,6 @@ a {
 
 .workspaceActionButtonPrimary:hover:not(:disabled) {
   background: linear-gradient(135deg, var(--accent-strong), #a94b1d);
-}
-
-.workspaceStat {
-  min-height: 100%;
-  padding: 12px 14px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(133, 102, 69, 0.12);
-  box-shadow: 0 10px 20px rgba(94, 72, 47, 0.05);
-}
-
-.workspaceStat span {
-  display: block;
-  margin-bottom: 6px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.workspaceStat strong {
-  display: block;
-  font-size: 1.25rem;
-  line-height: 1;
-  letter-spacing: -0.05em;
-}
-
-.workspaceStatFocus {
-  background: linear-gradient(135deg, #fff4e6, #fffdfa);
-  border-color: rgba(212, 109, 53, 0.16);
 }
 
 .workspaceCard {
@@ -776,10 +738,6 @@ tfoot td {
     padding-bottom: 10px;
   }
 
-  .workspaceStats {
-    grid-template-columns: 1fr;
-  }
-
   .workspaceActions {
     justify-content: stretch;
   }
@@ -840,7 +798,6 @@ tfoot td {
 
 @media (max-width: 1100px) {
   .workspaceHeading,
-  .workspaceStats,
   .workspaceActions {
     flex-basis: 100%;
   }

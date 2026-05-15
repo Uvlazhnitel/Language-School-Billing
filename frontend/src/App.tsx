@@ -1361,11 +1361,6 @@ export default function App() {
   // ---------------- Render ----------------
   const showMonthPicker = tab === "attendance" || tab === "invoice";
   const currentMeta = TAB_META[tab];
-  const dashboardStats = [
-    { label: "Students", value: studentList.length },
-    { label: "Courses", value: courseList.length },
-    { label: "Open debtors", value: debtors.length },
-  ];
 
   return (
     <div className="container">
@@ -1479,24 +1474,6 @@ export default function App() {
               <h1>{currentMeta.title}</h1>
               <p>{currentMeta.description}</p>
             </div>
-
-            <div className="workspaceStats" aria-label="Application overview">
-              {(tab === "attendance" || tab === "invoice") && (
-                <div className="workspaceStat workspaceStatFocus">
-                  <span>Focus</span>
-                  <strong>
-                    {months[month - 1]} {year}
-                  </strong>
-                </div>
-              )}
-              {dashboardStats.map((stat) => (
-                <div key={stat.label} className="workspaceStat">
-                  <span>{stat.label}</span>
-                  <strong>{stat.value}</strong>
-                </div>
-              ))}
-            </div>
-
             <div className="workspaceActions" aria-label="File and backup actions">
               <button
                 type="button"
