@@ -13,6 +13,7 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
 	"langschool/internal/app"
+	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/app/utils"
 )
 
@@ -63,6 +64,19 @@ func lockReason(invoiceStatus string) bool {
 	return invoiceStatus != "" && invoiceStatus != app.InvoiceStatusDraft
 }
 
+func canDeleteEnrollmentWithInvoiceHistory(ctx context.Context, db *ent.Client, enrollmentID int) (bool, error) {
+	hasProtectedInvoiceHistory, err := db.InvoiceLine.Query().
+		Where(
+			invoiceline.EnrollmentIDEQ(enrollmentID),
+			invoiceline.HasInvoiceWith(invoice.StatusNEQ(app.InvoiceStatusDraft)),
+		).
+		Exist(ctx)
+	if err != nil {
+		return false, err
+	}
+	return !hasProtectedInvoiceHistory, nil
+}
+
 // ListPerLesson retrieves attendance sheet rows for all enrollments
 // for the specified year and month. Optionally filters by courseID.
 // Returns a list of rows with student, course, and attendance information.
@@ -104,9 +118,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			hasRecord = true
 		}
 
-		hasInvoiceHistory, err := s.db.InvoiceLine.Query().
-			Where(invoiceline.EnrollmentIDEQ(e.ID)).
-			Exist(ctx)
+		canDelete, err := canDeleteEnrollmentWithInvoiceHistory(ctx, s.db, e.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -127,7 +139,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			LessonPrice:      utils.Round2(c.LessonPrice),
 			Count:            cnt,
 			HasRecord:        hasRecord,
-			CanDelete:        !hasInvoiceHistory,
+			CanDelete:        canDelete,
 			AttendanceLocked: lockReason(invoiceStatus),
 			InvoiceStatus:    invoiceStatus,
 		})
@@ -193,20 +205,66 @@ func (s *Service) AddOneForFilter(ctx context.Context, y, m int, courseID *int) 
 // This ensures that when an enrollment is removed, all attendance history
 // for that student-course pair is also cleaned up.
 func (s *Service) DeleteEnrollment(ctx context.Context, enrollmentID int) error {
-	en, err := s.db.Enrollment.Get(ctx, enrollmentID)
+	tx, err := s.db.Tx(ctx)
 	if err != nil {
 		return err
 	}
-	hasInvoiceHistory, err := s.db.InvoiceLine.Query().
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	en, err := tx.Enrollment.Get(ctx, enrollmentID)
+	if err != nil {
+		return err
+	}
+
+	canDelete, err := canDeleteEnrollmentWithInvoiceHistory(ctx, tx.Client(), enrollmentID)
+	if err != nil {
+		return err
+	}
+	if !canDelete {
+		return errors.New("can't delete enrollment: used in issued, paid, or canceled invoices")
+	}
+
+	draftLinks, err := tx.InvoiceLine.Query().
 		Where(invoiceline.EnrollmentIDEQ(enrollmentID)).
-		Exist(ctx)
+		WithInvoice().
+		All(ctx)
 	if err != nil {
 		return err
 	}
-	if hasInvoiceHistory {
-		return errors.New("can't delete enrollment: used in invoices")
+
+	type affectedDraft struct {
+		studentID int
+		year      int
+		month     int
 	}
-	if _, err := s.db.AttendanceMonth.
+	affectedDrafts := make(map[string]affectedDraft, len(draftLinks))
+	for _, line := range draftLinks {
+		if line.Edges.Invoice == nil {
+			continue
+		}
+		iv := line.Edges.Invoice
+		key := fmt.Sprintf("%d-%04d-%02d", iv.StudentID, iv.PeriodYear, iv.PeriodMonth)
+		affectedDrafts[key] = affectedDraft{
+			studentID: iv.StudentID,
+			year:      iv.PeriodYear,
+			month:     iv.PeriodMonth,
+		}
+	}
+
+	if len(draftLinks) > 0 {
+		if _, err := tx.InvoiceLine.Delete().
+			Where(invoiceline.EnrollmentIDEQ(enrollmentID)).
+			Exec(ctx); err != nil {
+			return err
+		}
+	}
+
+	if _, err := tx.AttendanceMonth.
 		Delete().
 		Where(
 			attendancemonth.StudentIDEQ(en.StudentID),
@@ -214,5 +272,20 @@ func (s *Service) DeleteEnrollment(ctx context.Context, enrollmentID int) error 
 		).Exec(ctx); err != nil {
 		return err
 	}
-	return s.db.Enrollment.DeleteOneID(enrollmentID).Exec(ctx)
+	if err := tx.Enrollment.DeleteOneID(enrollmentID).Exec(ctx); err != nil {
+		return err
+	}
+
+	invoiceService := invsvc.New(tx.Client())
+	for _, draft := range affectedDrafts {
+		if _, err := invoiceService.RebuildStudentDraft(ctx, draft.studentID, draft.year, draft.month); err != nil {
+			return err
+		}
+	}
+
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+	return nil
 }

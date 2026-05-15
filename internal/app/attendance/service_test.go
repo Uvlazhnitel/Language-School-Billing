@@ -12,7 +12,10 @@ import (
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
 	"langschool/ent/enttest"
+	"langschool/ent/invoice"
+	"langschool/ent/invoiceline"
 	"langschool/internal/app"
+	invsvc "langschool/internal/app/invoice"
 )
 
 func TestListPerLessonIncludesSubscriptionRows(t *testing.T) {
@@ -313,5 +316,302 @@ func TestUpsertAllowsDraftOrMissingInvoice(t *testing.T) {
 	}
 	if am.LessonsCount != 5 {
 		t.Fatalf("lessons count = %d, want 5", am.LessonsCount)
+	}
+}
+
+func TestListPerLessonAllowsDeleteAfterReopenToDraft(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:attendance-delete-reopened?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+	invoiceSvc := invsvc.New(client)
+
+	st, err := client.Student.Create().SetFullName("Reopened Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Group E").
+		SetType(course.TypeGroup).
+		SetLessonPrice(30).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(8).
+		SetLessonsCount(2).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(8).
+		SetStatus(app.InvoiceStatusIssued).
+		SetNumber("LS-202608-001").
+		SetTotalAmount(60).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	if _, err := client.InvoiceLine.Create().
+		SetInvoiceID(iv.ID).
+		SetEnrollmentID(enr.ID).
+		SetDescription("Dalības maksa par Group E").
+		SetQty(2).
+		SetUnitPrice(30).
+		SetAmount(60).
+		Save(ctx); err != nil {
+		t.Fatalf("InvoiceLine.Create: %v", err)
+	}
+
+	if err := invoiceSvc.ReopenDraft(ctx, iv.ID, t.TempDir()); err != nil {
+		t.Fatalf("ReopenDraft: %v", err)
+	}
+
+	rows, err := svc.ListPerLesson(ctx, 2026, 8, &crs.ID)
+	if err != nil {
+		t.Fatalf("ListPerLesson: %v", err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("row count = %d, want 1", len(rows))
+	}
+	if !rows[0].CanDelete {
+		t.Fatalf("expected enrollment to be deletable after reopen to draft, got %+v", rows[0])
+	}
+
+	if err := svc.DeleteEnrollment(ctx, enr.ID); err != nil {
+		t.Fatalf("DeleteEnrollment: %v", err)
+	}
+
+	invoiceCount, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(8)).
+		Count(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Count: %v", err)
+	}
+	if invoiceCount != 0 {
+		t.Fatalf("invoice count = %d, want 0", invoiceCount)
+	}
+}
+
+func TestDeleteEnrollmentRejectsNonDraftInvoiceUsage(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:attendance-delete-issued?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().SetFullName("Protected Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Group F").
+		SetType(course.TypeGroup).
+		SetLessonPrice(18).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(9).
+		SetStatus(app.InvoiceStatusIssued).
+		SetNumber("LS-202609-001").
+		SetTotalAmount(18).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	if _, err := client.InvoiceLine.Create().
+		SetInvoiceID(iv.ID).
+		SetEnrollmentID(enr.ID).
+		SetDescription("Dalības maksa par Group F").
+		SetQty(1).
+		SetUnitPrice(18).
+		SetAmount(18).
+		Save(ctx); err != nil {
+		t.Fatalf("InvoiceLine.Create: %v", err)
+	}
+
+	rows, err := svc.ListPerLesson(ctx, 2026, 9, &crs.ID)
+	if err != nil {
+		t.Fatalf("ListPerLesson: %v", err)
+	}
+	if len(rows) != 1 || rows[0].CanDelete {
+		t.Fatalf("expected non-draft invoice usage to block delete, got %+v", rows)
+	}
+
+	err = svc.DeleteEnrollment(ctx, enr.ID)
+	if err == nil {
+		t.Fatalf("expected DeleteEnrollment to reject issued invoice usage")
+	}
+	if !strings.Contains(err.Error(), "issued, paid, or canceled") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestDeleteEnrollmentRebuildsRemainingDraftInvoice(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:attendance-delete-rebuild-draft?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+	invoiceSvc := invsvc.New(client)
+
+	st, err := client.Student.Create().SetFullName("Draft Rebuild Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	courseA, err := client.Course.Create().
+		SetName("Group G1").
+		SetType(course.TypeGroup).
+		SetLessonPrice(20).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("CourseA.Create: %v", err)
+	}
+	courseB, err := client.Course.Create().
+		SetName("Group G2").
+		SetType(course.TypeGroup).
+		SetLessonPrice(15).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("CourseB.Create: %v", err)
+	}
+
+	enrA, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(courseA.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("EnrollmentA.Create: %v", err)
+	}
+	_, err = client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(courseB.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("EnrollmentB.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(courseA.ID).
+		SetYear(2026).
+		SetMonth(10).
+		SetLessonsCount(2).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonthA.Create: %v", err)
+	}
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(courseB.ID).
+		SetYear(2026).
+		SetMonth(10).
+		SetLessonsCount(1).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonthB.Create: %v", err)
+	}
+
+	res, err := invoiceSvc.GenerateDrafts(ctx, 2026, 10)
+	if err != nil {
+		t.Fatalf("GenerateDrafts: %v", err)
+	}
+	if res.Created != 1 {
+		t.Fatalf("Created = %d, want 1", res.Created)
+	}
+
+	rows, err := svc.ListPerLesson(ctx, 2026, 10, nil)
+	if err != nil {
+		t.Fatalf("ListPerLesson: %v", err)
+	}
+	for _, row := range rows {
+		if row.EnrollmentID == enrA.ID && !row.CanDelete {
+			t.Fatalf("expected draft-only enrollment to be deletable, got %+v", row)
+		}
+	}
+
+	if err := svc.DeleteEnrollment(ctx, enrA.ID); err != nil {
+		t.Fatalf("DeleteEnrollment: %v", err)
+	}
+
+	iv, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(10)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Query: %v", err)
+	}
+	if iv.Status != app.InvoiceStatusDraft {
+		t.Fatalf("invoice status = %q, want draft", iv.Status)
+	}
+	if iv.TotalAmount != 20 {
+		t.Fatalf("invoice total = %v, want 20", iv.TotalAmount)
+	}
+
+	lines, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(iv.ID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query: %v", err)
+	}
+	if len(lines) != 2 {
+		t.Fatalf("invoice line count = %d, want 2", len(lines))
+	}
+	for _, line := range lines {
+		if line.EnrollmentID == enrA.ID {
+			t.Fatalf("deleted enrollment line still present: %+v", line)
+		}
 	}
 }
