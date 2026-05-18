@@ -131,6 +131,7 @@ function payerRoleLabel(relation: string): string {
 }
 
 type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
+type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 
 const TAB_META: Record<Tab, { eyebrow: string; title: string }> = {
   students: {
@@ -1059,6 +1060,8 @@ export default function App() {
   const [invQ, setInvQ] = useState("");
   const [invSummary, setInvSummary] = useState<InvoiceSummaryDTO | null>(null);
   const pendingInvoiceScrollRestoreRef = useRef<number | null>(null);
+  const [openInvoiceMenu, setOpenInvoiceMenu] = useState<InvoiceMenuTarget | null>(null);
+  const invoiceMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Payment modal state
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -1139,6 +1142,21 @@ export default function App() {
       window.scrollTo({ top: scrollY, behavior: "auto" });
     });
   }, [invItems]);
+
+  useEffect(() => {
+    if (!openInvoiceMenu) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!invoiceMenuRef.current?.contains(event.target as Node)) {
+        setOpenInvoiceMenu(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [openInvoiceMenu]);
 
   // ---------------- Debtors ----------------
   const [debtors, setDebtors] = useState<DebtorDTO[]>([]);
@@ -1227,11 +1245,22 @@ export default function App() {
 
   const onOpenInvoice = async (id: number) => {
     try {
+      setOpenInvoiceMenu(null);
       await loadInvoiceDetails(id);
       setInvoiceDetailsOpen(true);
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
+  };
+
+  const toggleInvoiceMenu = (kind: InvoiceMenuTarget["kind"], invoiceId: number) => {
+    setOpenInvoiceMenu((current) =>
+      current?.kind === kind && current.invoiceId === invoiceId ? null : { kind, invoiceId }
+    );
+  };
+
+  const closeInvoiceMenu = () => {
+    setOpenInvoiceMenu(null);
   };
 
   const openPaymentModal = (inv?: InvoiceDTO, summary?: InvoiceSummaryDTO | null) => {
@@ -1246,6 +1275,15 @@ export default function App() {
     setPaymentMethod("cash");
     setPaymentNote("");
     setPaymentModalOpen(true);
+  };
+
+  const openPaymentModalForInvoice = async (id: number) => {
+    try {
+      const { invoice, summary } = await loadInvoiceDetails(id);
+      openPaymentModal(invoice, summary);
+    } catch (e: any) {
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+    }
   };
 
   const openDebtorPaymentModal = (debtor: DebtorDTO, returnToDebtDetails = false) => {
@@ -1350,6 +1388,7 @@ export default function App() {
 
   const onIssueOne = async (id: number) => {
     try {
+      closeInvoiceMenu();
       const scrollY = window.scrollY;
       const res = await issueOne(id);
       pendingInvoiceScrollRestoreRef.current = scrollY;
@@ -1364,6 +1403,7 @@ export default function App() {
   };
 
   const onReopenToDraft = async (id: number) => {
+    closeInvoiceMenu();
     showConfirm(
       "Reopen this issued invoice to draft? This is allowed only when it has no payments. The old invoice number will be cleared.",
       async () => {
@@ -1384,6 +1424,7 @@ export default function App() {
 
   const onGeneratePdf = async (id: number) => {
     try {
+      closeInvoiceMenu();
       const path = await ensurePdf(id);
       setInvItems((prev) =>
         prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
@@ -1393,6 +1434,65 @@ export default function App() {
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
+  };
+
+  const renderInvoiceActionsMenu = (
+    invoice: Pick<InvoiceDTO, "id" | "status">,
+    options?: { kind?: InvoiceMenuTarget["kind"]; onRecordPayment?: () => void }
+  ) => {
+    const kind = options?.kind ?? "row";
+    const isOpen = openInvoiceMenu?.kind === kind && openInvoiceMenu.invoiceId === invoice.id;
+    const menuItems: Array<{ label: string; onClick: () => void }> = [];
+
+    if (invoice.status === "issued") {
+      menuItems.push({
+        label: "Reopen to draft",
+        onClick: () => void onReopenToDraft(invoice.id),
+      });
+    }
+    if (invoice.status !== "draft") {
+      menuItems.push({
+        label: "Generate PDF",
+        onClick: () => void onGeneratePdf(invoice.id),
+      });
+    }
+
+    if (menuItems.length === 0) return null;
+
+    return (
+      <div
+        className="invoiceActionsMenu"
+        ref={isOpen ? invoiceMenuRef : null}
+      >
+        <button
+          type="button"
+          className="invoiceActionsMenuTrigger"
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={() => toggleInvoiceMenu(kind, invoice.id)}
+        >
+          More
+        </button>
+        {isOpen && (
+          <div className="invoiceActionsMenuPanel" role="menu">
+            {menuItems.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                className="invoiceActionsMenuItem"
+                role="menuitem"
+                onClick={() => {
+                  closeInvoiceMenu();
+                  item.onClick();
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const openAppFolder = async (path: string | undefined, label: string) => {
@@ -2326,32 +2426,18 @@ export default function App() {
                           )}
                         </td>
                         <td>
-                          <button onClick={() => onOpenInvoice(it.id)}>Open</button>
-                          {it.status === "draft" && (
-                            <button onClick={() => onIssueOne(it.id)}>Issue</button>
-                          )}
-                          {it.status === "issued" && (
-                            <button onClick={() => void onReopenToDraft(it.id)}>
-                              Reopen to draft
-                            </button>
-                          )}
-                          {it.status !== "draft" && (
-                            <button onClick={() => onGeneratePdf(it.id)}>Generate PDF</button>
-                          )}
-                          {it.status !== "draft" && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const { invoice, summary } = await loadInvoiceDetails(it.id);
-                                  openPaymentModal(invoice, summary);
-                                } catch (e: any) {
-                                  showMessage(`Error: ${String(e?.message ?? e)}`, "error");
-                                }
-                              }}
-                            >
-                              Record Payment
-                            </button>
-                          )}
+                          <div className="invoiceRowActions">
+                            <button onClick={() => onOpenInvoice(it.id)}>Open</button>
+                            {it.status === "draft" && (
+                              <button onClick={() => onIssueOne(it.id)}>Issue</button>
+                            )}
+                            {it.status !== "draft" && (
+                              <button onClick={() => void openPaymentModalForInvoice(it.id)}>
+                                Record Payment
+                              </button>
+                            )}
+                            {renderInvoiceActionsMenu(it)}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -2567,15 +2653,12 @@ export default function App() {
               {selectedInv.status === "draft" && (
                 <button onClick={() => onIssueOne(selectedInv.id)}>Issue</button>
               )}
-              {selectedInv.status === "issued" && (
-                <button onClick={() => void onReopenToDraft(selectedInv.id)}>Reopen to draft</button>
-              )}
-              {selectedInv.status !== "draft" && (
-                <button onClick={() => onGeneratePdf(selectedInv.id)}>Generate PDF</button>
-              )}
               {selectedInv.status !== "draft" && (
                 <button onClick={() => openPaymentModal(selectedInv, invSummary)}>Record Payment</button>
               )}
+              {renderInvoiceActionsMenu(selectedInv, {
+                kind: "modal",
+              })}
               <button onClick={() => setInvoiceDetailsOpen(false)}>Close</button>
             </div>
           </div>
