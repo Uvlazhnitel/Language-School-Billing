@@ -486,7 +486,7 @@ func TestDeleteEnrollmentRejectsNonDraftInvoiceUsage(t *testing.T) {
 	if err == nil {
 		t.Fatalf("expected DeleteEnrollment to reject issued invoice usage")
 	}
-	if !strings.Contains(err.Error(), "issued, paid, or canceled") {
+	if !strings.Contains(err.Error(), "выставленных, оплаченных или отменённых счетах") {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }

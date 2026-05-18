@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
 
 import { fetchRows, saveCount, deleteEnrollment, Row } from "./lib/attendance";
@@ -8,11 +8,11 @@ import {
   getInvoice,
   genDrafts,
   issueOne,
-  issueAll,
   reopenToDraft,
   rebuildStudentDraft,
-  ensurePdfAndOpen,
-  InvoiceListItem,
+  ensurePdf,
+  hasPdf,
+  InvoiceListItemView,
   InvoiceDTO,
 } from "./lib/invoices";
 
@@ -181,6 +181,7 @@ function invoiceStatusLabel(status: string): string {
 }
 
 type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
+type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 
 const TAB_META: Record<Tab, { eyebrow: string; title: string }> = {
   students: {
@@ -1102,12 +1103,15 @@ export default function App() {
 
   // ---------------- Invoices ----------------
   const [invStatus, setInvStatus] = useState<string>("all");
-  const [invItems, setInvItems] = useState<InvoiceListItem[]>([]);
+  const [invItems, setInvItems] = useState<InvoiceListItemView[]>([]);
   const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
   const [invoiceDetailsOpen, setInvoiceDetailsOpen] = useState(false);
   const [loadingInv, setLoadingInv] = useState(false);
   const [invQ, setInvQ] = useState("");
   const [invSummary, setInvSummary] = useState<InvoiceSummaryDTO | null>(null);
+  const pendingInvoiceScrollRestoreRef = useRef<number | null>(null);
+  const [openInvoiceMenu, setOpenInvoiceMenu] = useState<InvoiceMenuTarget | null>(null);
+  const invoiceMenuRef = useRef<HTMLDivElement | null>(null);
 
   // Payment modal state
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -1120,22 +1124,89 @@ export default function App() {
   const [returnToDebtDetailsAfterPayment, setReturnToDebtDetailsAfterPayment] = useState(false);
   const [returnToStudentCardAfterPayment, setReturnToStudentCardAfterPayment] = useState(false);
 
-  const loadInvoices = useCallback(async () => {
+  const syncDraftInvoices = useCallback(
+    async (showFeedback = true) => {
+      const beforeDrafts = await listInvoices(year, month, "draft");
+      const res = await genDrafts(year, month);
+      const afterDrafts = await listInvoices(year, month, "draft");
+
+      const afterIds = new Set(afterDrafts.map((item) => item.id));
+      const removed = beforeDrafts.filter((item) => !afterIds.has(item.id)).length;
+
+      if (showFeedback && (res.created > 0 || res.updated > 0 || removed > 0)) {
+        const parts = [];
+        if (res.created > 0) parts.push(`создано ${res.created}`);
+        if (res.updated > 0) parts.push(`обновлено ${res.updated}`);
+        if (removed > 0) parts.push(`удалено ${removed}`);
+        showMessage(`Черновики синхронизированы: ${parts.join(", ")}`);
+      }
+    },
+    [year, month, showMessage]
+  );
+
+  const loadInvoices = useCallback(async (options?: { syncDrafts?: boolean; showSyncFeedback?: boolean }) => {
     setLoadingInv(true);
     try {
       await ensureStudentsLoaded();
+      if (options?.syncDrafts !== false) {
+        await syncDraftInvoices(options?.showSyncFeedback ?? true);
+      }
       const li = await listInvoices(year, month, invStatus);
-      setInvItems(li);
+      const pdfReadyById = new Map<number, boolean>();
+      await Promise.all(
+        li
+          .filter((item) => item.status !== "draft")
+          .map(async (item) => {
+            try {
+              pdfReadyById.set(item.id, await hasPdf(item.id));
+            } catch {
+              pdfReadyById.set(item.id, false);
+            }
+          })
+      );
+      setInvItems(
+        li.map((item) => ({
+          ...item,
+          pdfReady: item.status !== "draft" ? (pdfReadyById.get(item.id) ?? false) : false,
+        }))
+      );
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     } finally {
       setLoadingInv(false);
     }
-  }, [year, month, invStatus, ensureStudentsLoaded, showMessage]);
+  }, [year, month, invStatus, ensureStudentsLoaded, showMessage, syncDraftInvoices]);
 
   useEffect(() => {
-    if (tab === "invoice") loadInvoices();
+    if (tab === "invoice") {
+      void loadInvoices();
+    }
   }, [tab, loadInvoices]);
+
+  useLayoutEffect(() => {
+    const scrollY = pendingInvoiceScrollRestoreRef.current;
+    if (scrollY === null) return;
+
+    pendingInvoiceScrollRestoreRef.current = null;
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY, behavior: "auto" });
+    });
+  }, [invItems]);
+
+  useEffect(() => {
+    if (!openInvoiceMenu) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!invoiceMenuRef.current?.contains(event.target as Node)) {
+        setOpenInvoiceMenu(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+    };
+  }, [openInvoiceMenu]);
 
   // ---------------- Debtors ----------------
   const [debtors, setDebtors] = useState<DebtorDTO[]>([]);
@@ -1224,11 +1295,22 @@ export default function App() {
 
   const onOpenInvoice = async (id: number) => {
     try {
+      setOpenInvoiceMenu(null);
       await loadInvoiceDetails(id);
       setInvoiceDetailsOpen(true);
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
+  };
+
+  const toggleInvoiceMenu = (kind: InvoiceMenuTarget["kind"], invoiceId: number) => {
+    setOpenInvoiceMenu((current) =>
+      current?.kind === kind && current.invoiceId === invoiceId ? null : { kind, invoiceId }
+    );
+  };
+
+  const closeInvoiceMenu = () => {
+    setOpenInvoiceMenu(null);
   };
 
   const openPaymentModal = (inv?: InvoiceDTO, summary?: InvoiceSummaryDTO | null) => {
@@ -1243,6 +1325,15 @@ export default function App() {
     setPaymentMethod("cash");
     setPaymentNote("");
     setPaymentModalOpen(true);
+  };
+
+  const openPaymentModalForInvoice = async (id: number) => {
+    try {
+      const { invoice, summary } = await loadInvoiceDetails(id);
+      openPaymentModal(invoice, summary);
+    } catch (e: any) {
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+    }
   };
 
   const openDebtorPaymentModal = (debtor: DebtorDTO, returnToDebtDetails = false) => {
@@ -1307,7 +1398,7 @@ export default function App() {
       showMessage("Оплата записана");
 
       if (paymentInvoiceId) {
-        await loadInvoices();
+        await loadInvoices({ syncDrafts: false });
         if (invoiceDetailsOpen && selectedInv?.id === paymentInvoiceId) {
           await loadInvoiceDetails(paymentInvoiceId);
         }
@@ -1345,38 +1436,30 @@ export default function App() {
     }
   };
 
-  const onGenerateDrafts = async () => {
-    try {
-      const res = await genDrafts(year, month);
-      showMessage(
-        `Черновики сформированы: создано ${res.created}, обновлено ${res.updated}, пропущено ${res.skippedHasInvoice} (уже выставлены), пропущено ${res.skippedNoLines} (нет строк)`
-      );
-      await loadInvoices();
-    } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
-    }
-  };
-
   const onIssueOne = async (id: number) => {
     try {
+      closeInvoiceMenu();
+      const scrollY = window.scrollY;
       const res = await issueOne(id);
-      showMessage(`Счёт выставлен: #${res.number}`);
-      await loadInvoices();
+      pendingInvoiceScrollRestoreRef.current = scrollY;
+      await loadInvoices({ syncDrafts: false });
       if (invoiceDetailsOpen && selectedInv?.id === id) {
         await loadInvoiceDetails(id);
       }
+      showMessage(`Счёт выставлен: #${res.number}`);
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   };
 
   const onReopenToDraft = async (id: number) => {
+    closeInvoiceMenu();
     showConfirm(
       "Вернуть этот выставленный счёт в черновик? Это разрешено только если по нему нет оплат. Старый номер счёта будет очищен.",
       async () => {
         try {
           await reopenToDraft(id);
-          await loadInvoices();
+          await loadInvoices({ syncDrafts: false });
           if (invoiceDetailsOpen && selectedInv?.id === id) {
             await loadInvoiceDetails(id);
           }
@@ -1389,24 +1472,99 @@ export default function App() {
     );
   };
 
-  const onIssueAll = async () => {
+  const onGeneratePdf = async (id: number) => {
     try {
-      const res = await issueAll(year, month);
-      showMessage(`Выставлено счетов: ${res.count}. PDF-файлов создано: ${res.pdfPaths.length}`);
-      await loadInvoices();
+      closeInvoiceMenu();
+      const path = await ensurePdf(id);
+      setInvItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
+      );
+      showMessage(`PDF готов: ${path}`);
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   };
 
-  const onOpenPdf = async (id: number) => {
+  const onRevealInvoiceFile = async (id: number) => {
     try {
-      const path = await ensurePdfAndOpen(id);
-      console.log("Открыт PDF:", path);
-      showMessage("PDF-файл открыт");
+      closeInvoiceMenu();
+      const path = await ensurePdf(id);
+      await OpenFile(path);
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
+  };
+
+  const renderInvoiceActionsMenu = (
+    invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
+    options?: {
+      kind?: InvoiceMenuTarget["kind"];
+      onRecordPayment?: () => void;
+      openUpward?: boolean;
+    }
+  ) => {
+    const kind = options?.kind ?? "row";
+    const isOpen = openInvoiceMenu?.kind === kind && openInvoiceMenu.invoiceId === invoice.id;
+    const menuItems: Array<{ label: string; onClick: () => void }> = [];
+
+    if (invoice.status === "issued") {
+      menuItems.push({
+        label: "Вернуть в черновик",
+        onClick: () => void onReopenToDraft(invoice.id),
+      });
+    }
+    if (invoice.status !== "draft") {
+      menuItems.push({
+        label: "Показать в папке",
+        onClick: () => void onRevealInvoiceFile(invoice.id),
+      });
+      if (!invoice.pdfReady) {
+        menuItems.push({
+          label: "Создать PDF",
+          onClick: () => void onGeneratePdf(invoice.id),
+        });
+      }
+    }
+
+    if (menuItems.length === 0) return null;
+
+    return (
+      <div
+        className="invoiceActionsMenu"
+        ref={isOpen ? invoiceMenuRef : null}
+      >
+        <button
+          type="button"
+          className="invoiceActionsMenuTrigger"
+          aria-haspopup="menu"
+          aria-expanded={isOpen}
+          onClick={() => toggleInvoiceMenu(kind, invoice.id)}
+        >
+          Ещё
+        </button>
+        {isOpen && (
+          <div
+            className={`invoiceActionsMenuPanel ${options?.openUpward ? "invoiceActionsMenuPanelUpward" : ""}`}
+            role="menu"
+          >
+            {menuItems.map((item) => (
+              <button
+                key={item.label}
+                type="button"
+                className="invoiceActionsMenuItem"
+                role="menuitem"
+                onClick={() => {
+                  closeInvoiceMenu();
+                  item.onClick();
+                }}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    );
   };
 
   const openAppFolder = async (path: string | undefined, label: string) => {
@@ -1436,6 +1594,9 @@ export default function App() {
   // ---------------- Render ----------------
   const showMonthPicker = tab === "attendance" || tab === "invoice";
   const currentMeta = TAB_META[tab];
+  const selectedInvPdfReady = selectedInv
+    ? (invItems.find((item) => item.id === selectedInv.id)?.pdfReady ?? false)
+    : false;
 
   return (
     <div className="container">
@@ -2285,9 +2446,6 @@ export default function App() {
           {tab === "invoice" && (
             <>
               <div className="controls">
-                <button onClick={onGenerateDrafts}>Сформировать черновики</button>
-                <button onClick={onIssueAll}>Выставить все</button>
-
                 <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
                   <option value="draft">черновик</option>
                   <option value="issued">выставлен</option>
@@ -2302,7 +2460,7 @@ export default function App() {
                   onChange={(e) => setInvQ(e.target.value)}
                 />
 
-                <button onClick={loadInvoices}>Обновить</button>
+                <button onClick={() => void loadInvoices()}>Обновить</button>
               </div>
 
               {loadingInv ? (
@@ -2322,7 +2480,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredInvItems.map((it) => (
+                    {filteredInvItems.map((it, index) => (
                       <tr key={it.id}>
                         <td>
                           <button className="linkButton" onClick={() => void openStudentCardById(it.studentId)}>
@@ -2334,34 +2492,29 @@ export default function App() {
                         </td>
                         <td style={{ textAlign: "right" }}>{formatEUR(it.total)}</td>
                         <td>{invoiceStatusLabel(it.status)}</td>
-                        <td>{it.number ?? ""}</td>
                         <td>
-                          <button onClick={() => onOpenInvoice(it.id)}>Открыть</button>
-                          {it.status === "draft" && (
-                            <button onClick={() => onIssueOne(it.id)}>Выставить</button>
+                          {it.number ?? ""}
+                          {it.pdfReady && (
+                            <div className="badgeRow">
+                              <span className="attBadge attBadge--pdfReady">PDF готов</span>
+                            </div>
                           )}
-                          {it.status === "issued" && (
-                            <button onClick={() => void onReopenToDraft(it.id)}>
-                              Вернуть в черновик
-                            </button>
-                          )}
-                          {it.status !== "draft" && (
-                            <button onClick={() => onOpenPdf(it.id)}>PDF</button>
-                          )}
-                          {it.status !== "draft" && (
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const { invoice, summary } = await loadInvoiceDetails(it.id);
-                                  openPaymentModal(invoice, summary);
-                                } catch (e: any) {
-                                  showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
-                                }
-                              }}
-                            >
-                              Записать оплату
-                            </button>
-                          )}
+                        </td>
+                        <td>
+                          <div className="invoiceRowActions">
+                            <button onClick={() => onOpenInvoice(it.id)}>Открыть</button>
+                            {it.status === "draft" && (
+                              <button onClick={() => onIssueOne(it.id)}>Выставить</button>
+                            )}
+                            {it.status !== "draft" && (
+                              <button onClick={() => void openPaymentModalForInvoice(it.id)}>
+                                Записать оплату
+                              </button>
+                            )}
+                            {renderInvoiceActionsMenu(it, {
+                              openUpward: index >= filteredInvItems.length - 2,
+                            })}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -2576,14 +2729,17 @@ export default function App() {
               {selectedInv.status === "draft" && (
                 <button onClick={() => onIssueOne(selectedInv.id)}>Выставить</button>
               )}
+              {selectedInv.status !== "draft" && (
+                <button onClick={() => openPaymentModal(selectedInv, invSummary)}>Записать оплату</button>
+              )}
               {selectedInv.status === "issued" && (
                 <button onClick={() => void onReopenToDraft(selectedInv.id)}>Вернуть в черновик</button>
               )}
               {selectedInv.status !== "draft" && (
-                <button onClick={() => onOpenPdf(selectedInv.id)}>PDF</button>
+                <button onClick={() => void onRevealInvoiceFile(selectedInv.id)}>Показать в папке</button>
               )}
-              {selectedInv.status !== "draft" && (
-                <button onClick={() => openPaymentModal(selectedInv, invSummary)}>Записать оплату</button>
+              {selectedInv.status !== "draft" && !selectedInvPdfReady && (
+                <button onClick={() => onGeneratePdf(selectedInv.id)}>Создать PDF</button>
               )}
               <button onClick={() => setInvoiceDetailsOpen(false)}>Закрыть</button>
             </div>

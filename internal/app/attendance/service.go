@@ -155,7 +155,7 @@ func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count i
 		return err
 	}
 	if lockReason(invoiceStatus) {
-		return fmt.Errorf("attendance is locked because the invoice for %04d-%02d is %s; reopen it to draft first", y, m, invoiceStatus)
+		return fmt.Errorf("посещаемость заблокирована, потому что счёт за %04d-%02d имеет статус %s; сначала верните его в черновик", y, m, invoiceStatus)
 	}
 
 	am, err := s.db.AttendanceMonth.
@@ -226,7 +226,7 @@ func (s *Service) DeleteEnrollment(ctx context.Context, enrollmentID int) error 
 		return err
 	}
 	if !canDelete {
-		return errors.New("can't delete enrollment: used in issued, paid, or canceled invoices")
+		return errors.New("нельзя удалить зачисление: оно используется в выставленных, оплаченных или отменённых счетах")
 	}
 
 	draftLinks, err := tx.InvoiceLine.Query().

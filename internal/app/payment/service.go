@@ -129,17 +129,17 @@ func parseDate(s string) (time.Time, error) {
 func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
 	amount = utils.Round2(amount)
 	if studentID <= 0 {
-		return nil, errors.New("studentID must be > 0")
+		return nil, errors.New("studentID должен быть больше 0")
 	}
 	if amount <= 0 {
-		return nil, errors.New("amount must be > 0")
+		return nil, errors.New("сумма должна быть больше 0")
 	}
 	if method != app.PaymentMethodCash && method != app.PaymentMethodBank {
-		return nil, errors.New("method must be 'cash' or 'bank'")
+		return nil, errors.New("способ оплаты должен быть 'cash' или 'bank'")
 	}
 	t, err := parseDate(paidAt)
 	if err != nil {
-		return nil, fmt.Errorf("invalid paidAt: %w", err)
+		return nil, fmt.Errorf("некорректная дата оплаты paidAt: %w", err)
 	}
 
 	// Ensure student exists.
@@ -154,13 +154,13 @@ func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amo
 			return nil, err
 		}
 		if iv.StudentID != studentID {
-			return nil, errors.New("invoice does not belong to student")
+			return nil, errors.New("счёт не принадлежит этому ученику")
 		}
 		if iv.Status == app.InvoiceStatusDraft {
-			return nil, errors.New("cannot attach payment to a draft invoice; issue it first")
+			return nil, errors.New("нельзя привязать оплату к черновику счёта; сначала выставьте счёт")
 		}
 		if iv.Status == app.InvoiceStatusCanceled {
-			return nil, errors.New("cannot attach payment to a canceled invoice")
+			return nil, errors.New("нельзя привязать оплату к отменённому счёту")
 		}
 	}
 

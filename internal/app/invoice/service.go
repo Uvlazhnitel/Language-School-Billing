@@ -466,7 +466,7 @@ func (s *Service) DeleteDraft(ctx context.Context, id int) error {
 		return err
 	}
 	if iv.Status != StatusDraft {
-		return fmt.Errorf("can delete only draft invoices")
+		return fmt.Errorf("можно удалять только счета в статусе черновика")
 	}
 	if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(iv.ID)).Exec(ctx); err != nil {
 		return err
@@ -483,7 +483,7 @@ func (s *Service) ReopenDraft(ctx context.Context, id int, outBaseDir string) er
 		return err
 	}
 	if iv.Status != StatusIssued {
-		return fmt.Errorf("can reopen only issued invoices")
+		return fmt.Errorf("вернуть в черновик можно только выставленные счета")
 	}
 
 	paymentCount, err := s.db.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).Count(ctx)
@@ -491,7 +491,7 @@ func (s *Service) ReopenDraft(ctx context.Context, id int, outBaseDir string) er
 		return err
 	}
 	if paymentCount > 0 {
-		return fmt.Errorf("cannot reopen an invoice that has payments")
+		return fmt.Errorf("нельзя вернуть в черновик счёт, по которому уже есть оплаты")
 	}
 
 	oldNumber := ""
@@ -559,7 +559,7 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 		if iv.Number != nil && *iv.Number != "" {
 			return *iv.Number, nil
 		}
-		return "", fmt.Errorf("invoice %d is not draft", id)
+		return "", fmt.Errorf("счёт %d не находится в статусе черновика", id)
 	}
 
 	st, err := s.getSettings(ctx)
@@ -600,6 +600,13 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 
 // Issue issues a single draft invoice and generates its PDF.
 // This combines issueOne (assigning number and status) with PDF generation.
+// Returns the invoice number and the path to the generated PDF file.
+func (s *Service) IssueOne(ctx context.Context, id int) (string, error) {
+	return s.issueOne(ctx, id)
+}
+
+// Issue issues a single invoice and generates its PDF.
+// Draft invoices are issued first; already-issued invoices keep their number.
 // Returns the invoice number and the path to the generated PDF file.
 func (s *Service) Issue(ctx context.Context, id int, outBaseDir, fontsDir string) (string, string, error) {
 	number, err := s.issueOne(ctx, id)

@@ -423,8 +423,7 @@ func (a *App) InvoiceReopenDraft(id int) error {
 
 // IssueResult contains the result of issuing a single invoice.
 type IssueResult struct {
-	Number  string `json:"number"`  // The assigned invoice number
-	PdfPath string `json:"pdfPath"` // Path to the generated PDF file
+	Number string `json:"number"` // The assigned invoice number
 }
 
 // IssueAllResult contains the result of issuing all draft invoices for a period.
@@ -439,15 +438,11 @@ func (a *App) InvoiceList(year, month int, status string) ([]invsvc.ListItem, er
 	return a.inv.List(a.ctx, year, month, status)
 }
 
-// InvoiceIssue issues a single draft invoice by assigning it a number,
-// changing its status to "issued", and generating a PDF file.
-// Returns the invoice number and path to the generated PDF.
+// InvoiceIssue issues a single draft invoice by assigning it a number
+// and changing its status to "issued". PDF generation is handled separately
+// by InvoiceEnsurePDF when the user explicitly requests a document.
 func (a *App) InvoiceIssue(id int) (IssueResult, error) {
-	fonts, err := a.resolveFontsDir()
-	if err != nil {
-		return IssueResult{}, err
-	}
-	num, path, err := a.inv.Issue(a.ctx, id, a.dirs.Invoices, fonts)
+	num, err := a.inv.IssueOne(a.ctx, id)
 	if err != nil {
 		return IssueResult{}, err
 	}
@@ -458,7 +453,7 @@ func (a *App) InvoiceIssue(id int) (IssueResult, error) {
 	if err := a.pay.ApplyCreditToOldestInvoices(a.ctx, dto.StudentID); err != nil {
 		return IssueResult{}, err
 	}
-	return IssueResult{Number: num, PdfPath: path}, nil
+	return IssueResult{Number: num}, nil
 }
 
 // InvoiceIssueAll issues all draft invoices for the specified year and month.
@@ -491,8 +486,8 @@ func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 	return IssueAllResult{Count: cnt, PdfPaths: paths}, nil
 }
 
-// Open file (PDF) in OS
-// Only allows opening files within the LangSchool directory tree to prevent path traversal attacks.
+// OpenFile opens a directory or reveals a file in the OS file manager.
+// Only allows paths within the LangSchool directory tree to prevent path traversal attacks.
 func (a *App) OpenFile(path string) error {
 	// Normalize the path
 	if abs, err := filepath.Abs(path); err == nil {
@@ -505,22 +500,37 @@ func (a *App) OpenFile(path string) error {
 
 	// Check if the path is within the LangSchool directory
 	if !strings.HasPrefix(cleanPath, allowedBase) {
-		return fmt.Errorf("access denied: file must be within %s directory", allowedBase)
+		return fmt.Errorf("доступ запрещён: файл должен находиться внутри каталога %s", allowedBase)
 	}
 
-	// Verify file exists
-	if _, err := os.Stat(path); err != nil {
+	info, err := os.Stat(path)
+	if err != nil {
 		return err
 	}
 
 	var cmd *exec.Cmd
+
+	if info.IsDir() {
+		switch rt.GOOS {
+		case "darwin":
+			cmd = exec.Command("open", path)
+		case "windows":
+			cmd = exec.Command("cmd", "/C", "start", "", path)
+		default:
+			cmd = exec.Command("xdg-open", path)
+		}
+		return cmd.Start()
+	}
+
 	switch rt.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", path)
+		cmd = exec.Command("open", "-R", path)
 	case "windows":
-		cmd = exec.Command("cmd", "/C", "start", "", path)
+		cmd = exec.Command("explorer", "/select,"+path)
 	default:
-		cmd = exec.Command("xdg-open", path)
+		// Linux file-manager support for selecting a file is inconsistent,
+		// so fall back to opening the containing directory.
+		cmd = exec.Command("xdg-open", filepath.Dir(path))
 	}
 	return cmd.Start()
 }
@@ -534,16 +544,9 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 		return "", err
 	}
 	if dto.Number == nil || *dto.Number == "" {
-		return "", fmt.Errorf("invoice not issued yet")
+		return "", fmt.Errorf("счёт ещё не выставлен")
 	}
-	subjectName := dto.StudentName
-	if dto.IsMinor && strings.TrimSpace(dto.ChildName) != "" {
-		subjectName = dto.ChildName
-	}
-	paths := []string{
-		invsvc.PDFPathByNumberAndName(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number, subjectName),
-		invsvc.PDFPathByNumber(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number),
-	}
+	paths := a.invoicePDFPaths(dto)
 	for _, path := range paths {
 		log.Printf("EnsurePDF: invoice=%d number=%s want=%s", id, *dto.Number, path)
 		if _, err := os.Stat(path); err == nil {
@@ -560,6 +563,39 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 		return "", err
 	}
 	return p, nil
+}
+
+// InvoiceHasPDF reports whether an issued invoice already has a PDF file on disk.
+// It checks both the current named file convention and the legacy number-only path.
+func (a *App) InvoiceHasPDF(id int) (bool, error) {
+	dto, err := a.inv.Get(a.ctx, id)
+	if err != nil {
+		return false, err
+	}
+	if dto.Number == nil || *dto.Number == "" {
+		return false, nil
+	}
+
+	for _, path := range a.invoicePDFPaths(dto) {
+		if _, err := os.Stat(path); err == nil {
+			return true, nil
+		} else if !os.IsNotExist(err) {
+			return false, err
+		}
+	}
+
+	return false, nil
+}
+
+func (a *App) invoicePDFPaths(dto *invsvc.InvoiceDTO) []string {
+	subjectName := dto.StudentName
+	if dto.IsMinor && strings.TrimSpace(dto.ChildName) != "" {
+		subjectName = dto.ChildName
+	}
+	return []string{
+		invsvc.PDFPathByNumberAndName(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number, subjectName),
+		invsvc.PDFPathByNumber(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number),
+	}
 }
 
 // SettingsSetLocale updates the application locale setting.

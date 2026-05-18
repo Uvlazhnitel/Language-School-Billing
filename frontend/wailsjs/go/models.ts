@@ -241,7 +241,6 @@ export namespace main {
 	}
 	export class IssueResult {
 	    number: string;
-	    pdfPath: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new IssueResult(source);
@@ -250,7 +249,6 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.number = source["number"];
-	        this.pdfPath = source["pdfPath"];
 	    }
 	}
 	export class StudentDTO {
