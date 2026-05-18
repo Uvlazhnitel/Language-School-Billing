@@ -1448,7 +1448,11 @@ export default function App() {
 
   const renderInvoiceActionsMenu = (
     invoice: Pick<InvoiceDTO, "id" | "status">,
-    options?: { kind?: InvoiceMenuTarget["kind"]; onRecordPayment?: () => void }
+    options?: {
+      kind?: InvoiceMenuTarget["kind"];
+      onRecordPayment?: () => void;
+      openUpward?: boolean;
+    }
   ) => {
     const kind = options?.kind ?? "row";
     const isOpen = openInvoiceMenu?.kind === kind && openInvoiceMenu.invoiceId === invoice.id;
@@ -1488,7 +1492,10 @@ export default function App() {
           More
         </button>
         {isOpen && (
-          <div className="invoiceActionsMenuPanel" role="menu">
+          <div
+            className={`invoiceActionsMenuPanel ${options?.openUpward ? "invoiceActionsMenuPanelUpward" : ""}`}
+            role="menu"
+          >
             {menuItems.map((item) => (
               <button
                 key={item.label}
@@ -2419,7 +2426,7 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredInvItems.map((it) => (
+                    {filteredInvItems.map((it, index) => (
                       <tr key={it.id}>
                         <td>
                           <button className="linkButton" onClick={() => void openStudentCardById(it.studentId)}>
@@ -2450,7 +2457,9 @@ export default function App() {
                                 Record Payment
                               </button>
                             )}
-                            {renderInvoiceActionsMenu(it)}
+                            {renderInvoiceActionsMenu(it, {
+                              openUpward: index >= filteredInvItems.length - 2,
+                            })}
                           </div>
                         </td>
                       </tr>
