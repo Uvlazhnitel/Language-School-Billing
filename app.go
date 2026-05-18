@@ -536,10 +536,19 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 	if dto.Number == nil || *dto.Number == "" {
 		return "", fmt.Errorf("invoice not issued yet")
 	}
-	path := invsvc.PDFPathByNumber(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number)
-	log.Printf("EnsurePDF: invoice=%d number=%s want=%s", id, *dto.Number, path)
-	if _, err := os.Stat(path); err == nil {
-		return path, nil
+	subjectName := dto.StudentName
+	if dto.IsMinor && strings.TrimSpace(dto.ChildName) != "" {
+		subjectName = dto.ChildName
+	}
+	paths := []string{
+		invsvc.PDFPathByNumberAndName(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number, subjectName),
+		invsvc.PDFPathByNumber(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number),
+	}
+	for _, path := range paths {
+		log.Printf("EnsurePDF: invoice=%d number=%s want=%s", id, *dto.Number, path)
+		if _, err := os.Stat(path); err == nil {
+			return path, nil
+		}
 	}
 	fonts, err := a.resolveFontsDir()
 	if err != nil {

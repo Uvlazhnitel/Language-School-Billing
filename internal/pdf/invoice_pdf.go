@@ -114,12 +114,12 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 		return "", fmt.Errorf("create dir %s: %w", dir, err)
 	}
 
-	outPath := filepath.Join(dir, fmt.Sprintf("%s.pdf", safeFileName(*iv.Number)))
-
 	recipientInfo, err := recipient.ResolveInvoiceRecipient(ctx, db, iv.StudentID)
 	if err != nil {
 		return "", err
 	}
+	subjectName := recipientInfo.InvoiceSubjectName()
+	outPath := filepath.Join(dir, fmt.Sprintf("%s.pdf", invoiceFileStem(*iv.Number, subjectName)))
 
 	invoiceDate := time.Now()
 	dueDate := invoiceDate.AddDate(0, 0, 14)
@@ -128,7 +128,7 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 	periodEnd := periodStart.AddDate(0, 1, -1)
 
 	p := fpdf.New("P", "mm", "A4", "")
-	p.SetTitle(fmt.Sprintf("Rēķins %s", *iv.Number), false)
+	p.SetTitle(fmt.Sprintf("Rēķins %s — %s", *iv.Number, subjectName), false)
 	p.SetAuthor(provider.DisplayName, false)
 	p.SetMargins(10, 10, 10)
 	p.SetAutoPageBreak(true, 18)
@@ -584,6 +584,14 @@ func safeFileName(name string) string {
 	)
 
 	return replacer.Replace(name)
+}
+
+func invoiceFileStem(number, subjectName string) string {
+	subjectName = strings.TrimSpace(subjectName)
+	if subjectName == "" {
+		return safeFileName(number)
+	}
+	return safeFileName(fmt.Sprintf("%s - %s", number, subjectName))
 }
 
 func capitalizeFirst(s string) string {

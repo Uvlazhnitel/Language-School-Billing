@@ -2,14 +2,22 @@ package main
 
 import (
 	"context"
+	"strings"
 	"testing"
+	"time"
 
 	_ "github.com/ncruces/go-sqlite3/embed"
 
 	"langschool/ent"
+	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
+	"langschool/ent/enrollment"
 	"langschool/ent/enttest"
+	"langschool/ent/invoice"
+	"langschool/ent/payment"
+	"langschool/ent/student"
 	"langschool/ent/teacher"
+	appconst "langschool/internal/app"
 	"langschool/internal/infra"
 )
 
@@ -255,5 +263,176 @@ func TestStudentCreateMinorRequiresPayerFields(t *testing.T) {
 
 	if _, err := app.StudentCreate("Minor Bad Role", "", "", "", "", true, "Anna Parent", "uncle"); err == nil {
 		t.Fatalf("expected StudentCreate to fail for invalid payerRole")
+	}
+}
+
+func TestStudentDeleteAllowsDraftInvoices(t *testing.T) {
+	app, client := newCRUDTestApp(t, "crudstudentdelete-draft")
+	defer client.Close()
+
+	ctx := app.ctx
+
+	st, err := app.StudentCreate("Draft Student", "", "", "", "", false, "", "")
+	if err != nil {
+		t.Fatalf("StudentCreate: %v", err)
+	}
+
+	if err := app.StudentSetActive(st.ID, false); err != nil {
+		t.Fatalf("StudentSetActive: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Draft Course").
+		SetType(course.TypeGroup).
+		SetLessonPrice(20).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(5).
+		SetLessonsCount(2).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(5).
+		SetStatus(appconst.InvoiceStatusDraft).
+		SetTotalAmount(40).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	if _, err := client.InvoiceLine.Create().
+		SetInvoiceID(iv.ID).
+		SetEnrollmentID(enr.ID).
+		SetDescription("Draft invoice line").
+		SetQty(2).
+		SetUnitPrice(20).
+		SetAmount(40).
+		Save(ctx); err != nil {
+		t.Fatalf("InvoiceLine.Create: %v", err)
+	}
+
+	if err := app.StudentDelete(st.ID); err != nil {
+		t.Fatalf("StudentDelete: %v", err)
+	}
+
+	if exists, err := client.Student.Query().Where(student.IDEQ(st.ID)).Exist(ctx); err != nil {
+		t.Fatalf("Student.Exists: %v", err)
+	} else if exists {
+		t.Fatalf("student still exists after delete")
+	}
+
+	if count, err := client.Invoice.Query().Where(invoice.StudentIDEQ(st.ID)).Count(ctx); err != nil {
+		t.Fatalf("Invoice.Count: %v", err)
+	} else if count != 0 {
+		t.Fatalf("invoice count = %d, want 0", count)
+	}
+
+	if count, err := client.InvoiceLine.Query().Count(ctx); err != nil {
+		t.Fatalf("InvoiceLine.Count: %v", err)
+	} else if count != 0 {
+		t.Fatalf("invoice line count = %d, want 0", count)
+	}
+
+	if count, err := client.Enrollment.Query().Where(enrollment.StudentIDEQ(st.ID)).Count(ctx); err != nil {
+		t.Fatalf("Enrollment.Count: %v", err)
+	} else if count != 0 {
+		t.Fatalf("enrollment count = %d, want 0", count)
+	}
+
+	if count, err := client.AttendanceMonth.Query().Where(attendancemonth.StudentIDEQ(st.ID)).Count(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Count: %v", err)
+	} else if count != 0 {
+		t.Fatalf("attendance count = %d, want 0", count)
+	}
+}
+
+func TestStudentDeleteRejectsIssuedInvoices(t *testing.T) {
+	app, client := newCRUDTestApp(t, "crudstudentdelete-issued")
+	defer client.Close()
+
+	ctx := app.ctx
+
+	st, err := app.StudentCreate("Issued Student", "", "", "", "", false, "", "")
+	if err != nil {
+		t.Fatalf("StudentCreate: %v", err)
+	}
+	if err := app.StudentSetActive(st.ID, false); err != nil {
+		t.Fatalf("StudentSetActive: %v", err)
+	}
+
+	if _, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(6).
+		SetStatus(appconst.InvoiceStatusIssued).
+		SetNumber("LS-202606-001").
+		SetTotalAmount(10).
+		Save(ctx); err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	err = app.StudentDelete(st.ID)
+	if err == nil {
+		t.Fatalf("expected StudentDelete to fail for issued invoice")
+	}
+	if !strings.Contains(err.Error(), "issued, paid, or canceled") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestStudentDeleteRejectsPayments(t *testing.T) {
+	app, client := newCRUDTestApp(t, "crudstudentdelete-payment")
+	defer client.Close()
+
+	ctx := app.ctx
+
+	st, err := app.StudentCreate("Paid Student", "", "", "", "", false, "", "")
+	if err != nil {
+		t.Fatalf("StudentCreate: %v", err)
+	}
+	if err := app.StudentSetActive(st.ID, false); err != nil {
+		t.Fatalf("StudentSetActive: %v", err)
+	}
+
+	if _, err := client.Payment.Create().
+		SetStudentID(st.ID).
+		SetAmount(15).
+		SetMethod(payment.MethodCash).
+		SetPaidAt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)).
+		SetNote("").
+		Save(ctx); err != nil {
+		t.Fatalf("Payment.Create: %v", err)
+	}
+
+	err = app.StudentDelete(st.ID)
+	if err == nil {
+		t.Fatalf("expected StudentDelete to fail for payment history")
+	}
+	if !strings.Contains(err.Error(), "has payments") {
+		t.Fatalf("unexpected error: %v", err)
 	}
 }

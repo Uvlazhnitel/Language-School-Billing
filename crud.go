@@ -17,6 +17,7 @@ import (
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
+	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
 	"langschool/ent/student"
 	"langschool/ent/teacher"
@@ -387,11 +388,13 @@ func (a *App) StudentSetActive(id int, active bool) error {
 	return err
 }
 
-// StudentDelete deletes a student. If inactive, automatically removes enrollments and attendance.
-// Prevents deletion if student has invoices or payments (financial records).
+// StudentDelete deletes a student. If inactive, automatically removes enrollments,
+// attendance, and draft-only invoice history.
+// Prevents deletion if the student has protected financial records.
 // StudentDelete permanently removes a student and associated data.
 // The student must be deactivated (isActive=false) before deletion.
-// The student must not have any invoices or payments (to preserve financial records).
+// The student must not have issued/paid/canceled invoices or any payments
+// (to preserve financial records).
 // This operation also deletes all enrollments and attendance records for the student.
 func (a *App) StudentDelete(id int) error {
 	ctx := a.ctx
@@ -405,17 +408,6 @@ func (a *App) StudentDelete(id int) error {
 		return errors.New("cannot delete active student; deactivate first")
 	}
 
-	// Check for invoices - these are financial records and should not be auto-deleted
-	hasInvoices, err := a.db.Ent.Invoice.Query().
-		Where(invoice.StudentIDEQ(id)).
-		Exist(ctx)
-	if err != nil {
-		return err
-	}
-	if hasInvoices {
-		return errors.New("cannot delete student: has invoices (financial records)")
-	}
-
 	// Check for payments - these are financial records and should not be auto-deleted
 	hasPayments, err := a.db.Ent.Payment.Query().
 		Where(payment.StudentIDEQ(id)).
@@ -427,6 +419,21 @@ func (a *App) StudentDelete(id int) error {
 		return errors.New("cannot delete student: has payments (financial records)")
 	}
 
+	// Draft invoices can be discarded together with the student, but non-draft
+	// invoices must be preserved as part of financial history.
+	hasProtectedInvoices, err := a.db.Ent.Invoice.Query().
+		Where(
+			invoice.StudentIDEQ(id),
+			invoice.StatusNEQ(app.InvoiceStatusDraft),
+		).
+		Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if hasProtectedInvoices {
+		return errors.New("cannot delete student: has issued, paid, or canceled invoices")
+	}
+
 	// Use a transaction to ensure all deletions succeed or fail together
 	tx, err := a.db.Ent.Tx(ctx)
 	if err != nil {
@@ -434,6 +441,31 @@ func (a *App) StudentDelete(id int) error {
 	}
 	// Defer rollback - will be a no-op if commit succeeds
 	defer tx.Rollback()
+
+	draftInvoiceIDs, err := tx.Invoice.Query().
+		Where(
+			invoice.StudentIDEQ(id),
+			invoice.StatusEQ(app.InvoiceStatusDraft),
+		).
+		IDs(ctx)
+	if err != nil {
+		return err
+	}
+	if len(draftInvoiceIDs) > 0 {
+		_, err = tx.InvoiceLine.Delete().
+			Where(invoiceline.InvoiceIDIn(draftInvoiceIDs...)).
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+
+		_, err = tx.Invoice.Delete().
+			Where(invoice.IDIn(draftInvoiceIDs...)).
+			Exec(ctx)
+		if err != nil {
+			return err
+		}
+	}
 
 	// Auto-delete attendance records (these are draft data that can be safely removed)
 	_, err = tx.AttendanceMonth.Delete().

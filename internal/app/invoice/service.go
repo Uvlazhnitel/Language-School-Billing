@@ -498,6 +498,10 @@ func (s *Service) ReopenDraft(ctx context.Context, id int, outBaseDir string) er
 	if iv.Number != nil {
 		oldNumber = *iv.Number
 	}
+	recipientInfo, err := recipient.ResolveInvoiceRecipient(ctx, s.db, iv.StudentID)
+	if err != nil {
+		return err
+	}
 
 	if _, err := s.db.Invoice.UpdateOneID(iv.ID).
 		SetStatus(StatusDraft).
@@ -507,9 +511,14 @@ func (s *Service) ReopenDraft(ctx context.Context, id int, outBaseDir string) er
 	}
 
 	if oldNumber != "" && outBaseDir != "" {
-		pdfPath := PDFPathByNumber(outBaseDir, iv.PeriodYear, iv.PeriodMonth, oldNumber)
-		if err := os.Remove(pdfPath); err != nil && !os.IsNotExist(err) {
-			return err
+		paths := []string{
+			PDFPathByNumberAndName(outBaseDir, iv.PeriodYear, iv.PeriodMonth, oldNumber, recipientInfo.InvoiceSubjectName()),
+			PDFPathByNumber(outBaseDir, iv.PeriodYear, iv.PeriodMonth, oldNumber),
+		}
+		for _, pdfPath := range paths {
+			if err := os.Remove(pdfPath); err != nil && !os.IsNotExist(err) {
+				return err
+			}
 		}
 	}
 
@@ -651,6 +660,41 @@ func (s *Service) IssueAll(ctx context.Context, y, m int, outBaseDir, fontsDir s
 // The path structure is: outBaseDir/YYYY/MM/number.pdf
 func PDFPathByNumber(outBaseDir string, y, m int, number string) string {
 	return filepath.Join(outBaseDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), number+".pdf")
+}
+
+// PDFPathByNumberAndName generates the file path for an invoice PDF based on
+// its number and student-facing subject name.
+func PDFPathByNumberAndName(outBaseDir string, y, m int, number, subjectName string) string {
+	return filepath.Join(
+		outBaseDir,
+		fmt.Sprintf("%04d", y),
+		fmt.Sprintf("%02d", m),
+		fmt.Sprintf("%s.pdf", invoiceFileStem(number, subjectName)),
+	)
+}
+
+func invoiceFileStem(number, subjectName string) string {
+	subjectName = strings.TrimSpace(subjectName)
+	if subjectName == "" {
+		return sanitizeInvoiceFileName(number)
+	}
+	return sanitizeInvoiceFileName(fmt.Sprintf("%s - %s", number, subjectName))
+}
+
+func sanitizeInvoiceFileName(name string) string {
+	name = strings.TrimSpace(name)
+	replacer := strings.NewReplacer(
+		"/", "-",
+		"\\", "-",
+		":", "-",
+		"*", "-",
+		"?", "-",
+		"\"", "-",
+		"<", "-",
+		">", "-",
+		"|", "-",
+	)
+	return replacer.Replace(name)
 }
 
 // List returns invoices for a given period with optional status filter.

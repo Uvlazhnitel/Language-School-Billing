@@ -651,7 +651,7 @@ func TestReopenDraft(t *testing.T) {
 			t.Fatalf("InvoiceLine.Create: %v", err)
 		}
 
-		pdfPath := PDFPathByNumber(tmpDir, iv.PeriodYear, iv.PeriodMonth, number)
+		pdfPath := PDFPathByNumberAndName(tmpDir, iv.PeriodYear, iv.PeriodMonth, number, "Invoice Student")
 		if err := os.MkdirAll(filepath.Dir(pdfPath), 0o755); err != nil {
 			t.Fatalf("MkdirAll: %v", err)
 		}

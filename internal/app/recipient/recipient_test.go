@@ -46,6 +46,9 @@ func TestResolveInvoiceRecipient(t *testing.T) {
 		if got.IsMinor {
 			t.Fatalf("IsMinor = true, want false")
 		}
+		if got.InvoiceSubjectName() != "Adult Student" {
+			t.Fatalf("InvoiceSubjectName = %q, want %q", got.InvoiceSubjectName(), "Adult Student")
+		}
 	})
 
 	t.Run("minor uses payer fields", func(t *testing.T) {
@@ -81,6 +84,9 @@ func TestResolveInvoiceRecipient(t *testing.T) {
 		if !got.IsMinor {
 			t.Fatalf("IsMinor = false, want true")
 		}
+		if got.InvoiceSubjectName() != "Child One" {
+			t.Fatalf("InvoiceSubjectName = %q, want %q", got.InvoiceSubjectName(), "Child One")
+		}
 	})
 
 	t.Run("minor without payer falls back to child", func(t *testing.T) {
@@ -104,6 +110,9 @@ func TestResolveInvoiceRecipient(t *testing.T) {
 		}
 		if got.StudentPersonalCode != "333333-33333" {
 			t.Fatalf("StudentPersonalCode = %q, want %q", got.StudentPersonalCode, "333333-33333")
+		}
+		if got.InvoiceSubjectName() != "Child Three" {
+			t.Fatalf("InvoiceSubjectName = %q, want %q", got.InvoiceSubjectName(), "Child Three")
 		}
 	})
 }
