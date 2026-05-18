@@ -1071,10 +1071,33 @@ export default function App() {
   const [returnToDebtDetailsAfterPayment, setReturnToDebtDetailsAfterPayment] = useState(false);
   const [returnToStudentCardAfterPayment, setReturnToStudentCardAfterPayment] = useState(false);
 
-  const loadInvoices = useCallback(async () => {
+  const syncDraftInvoices = useCallback(
+    async (showFeedback = true) => {
+      const beforeDrafts = await listInvoices(year, month, "draft");
+      const res = await genDrafts(year, month);
+      const afterDrafts = await listInvoices(year, month, "draft");
+
+      const afterIds = new Set(afterDrafts.map((item) => item.id));
+      const removed = beforeDrafts.filter((item) => !afterIds.has(item.id)).length;
+
+      if (showFeedback && (res.created > 0 || res.updated > 0 || removed > 0)) {
+        const parts = [];
+        if (res.created > 0) parts.push(`${res.created} created`);
+        if (res.updated > 0) parts.push(`${res.updated} updated`);
+        if (removed > 0) parts.push(`${removed} removed`);
+        showMessage(`Drafts synced: ${parts.join(", ")}`);
+      }
+    },
+    [year, month, showMessage]
+  );
+
+  const loadInvoices = useCallback(async (options?: { syncDrafts?: boolean; showSyncFeedback?: boolean }) => {
     setLoadingInv(true);
     try {
       await ensureStudentsLoaded();
+      if (options?.syncDrafts !== false) {
+        await syncDraftInvoices(options?.showSyncFeedback ?? true);
+      }
       const li = await listInvoices(year, month, invStatus);
       const pdfReadyById = new Map<number, boolean>();
       await Promise.all(
@@ -1099,10 +1122,12 @@ export default function App() {
     } finally {
       setLoadingInv(false);
     }
-  }, [year, month, invStatus, ensureStudentsLoaded, showMessage]);
+  }, [year, month, invStatus, ensureStudentsLoaded, showMessage, syncDraftInvoices]);
 
   useEffect(() => {
-    if (tab === "invoice") loadInvoices();
+    if (tab === "invoice") {
+      void loadInvoices();
+    }
   }, [tab, loadInvoices]);
 
   useLayoutEffect(() => {
@@ -1285,7 +1310,7 @@ export default function App() {
       showMessage("Payment recorded successfully!");
 
       if (paymentInvoiceId) {
-        await loadInvoices();
+        await loadInvoices({ syncDrafts: false });
         if (invoiceDetailsOpen && selectedInv?.id === paymentInvoiceId) {
           await loadInvoiceDetails(paymentInvoiceId);
         }
@@ -1323,24 +1348,12 @@ export default function App() {
     }
   };
 
-  const onGenerateDrafts = async () => {
-    try {
-      const res = await genDrafts(year, month);
-      showMessage(
-        `Drafts generated: ${res.created} created, ${res.updated} updated, ${res.skippedHasInvoice} skipped (already issued), ${res.skippedNoLines} skipped (no lines)`
-      );
-      await loadInvoices();
-    } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
-    }
-  };
-
   const onIssueOne = async (id: number) => {
     try {
       const scrollY = window.scrollY;
       const res = await issueOne(id);
       pendingInvoiceScrollRestoreRef.current = scrollY;
-      await loadInvoices();
+      await loadInvoices({ syncDrafts: false });
       if (invoiceDetailsOpen && selectedInv?.id === id) {
         await loadInvoiceDetails(id);
       }
@@ -1356,7 +1369,7 @@ export default function App() {
       async () => {
         try {
           await reopenToDraft(id);
-          await loadInvoices();
+          await loadInvoices({ syncDrafts: false });
           if (invoiceDetailsOpen && selectedInv?.id === id) {
             await loadInvoiceDetails(id);
           }
@@ -2258,8 +2271,6 @@ export default function App() {
           {tab === "invoice" && (
             <>
               <div className="controls">
-                <button onClick={onGenerateDrafts}>Generate drafts</button>
-
                 <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
                   <option value="draft">draft</option>
                   <option value="issued">issued</option>
@@ -2274,7 +2285,7 @@ export default function App() {
                   onChange={(e) => setInvQ(e.target.value)}
                 />
 
-                <button onClick={loadInvoices}>Refresh</button>
+                <button onClick={() => void loadInvoices()}>Refresh</button>
               </div>
 
               {loadingInv ? (
