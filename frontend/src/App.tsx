@@ -1447,7 +1447,7 @@ export default function App() {
   };
 
   const renderInvoiceActionsMenu = (
-    invoice: Pick<InvoiceDTO, "id" | "status">,
+    invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
     options?: {
       kind?: InvoiceMenuTarget["kind"];
       onRecordPayment?: () => void;
@@ -1469,10 +1469,12 @@ export default function App() {
         label: "Show in folder",
         onClick: () => void onRevealInvoiceFile(invoice.id),
       });
-      menuItems.push({
-        label: "Generate PDF",
-        onClick: () => void onGeneratePdf(invoice.id),
-      });
+      if (!invoice.pdfReady) {
+        menuItems.push({
+          label: "Generate PDF",
+          onClick: () => void onGeneratePdf(invoice.id),
+        });
+      }
     }
 
     if (menuItems.length === 0) return null;
@@ -1543,6 +1545,9 @@ export default function App() {
   // ---------------- Render ----------------
   const showMonthPicker = tab === "attendance" || tab === "invoice";
   const currentMeta = TAB_META[tab];
+  const selectedInvPdfReady = selectedInv
+    ? (invItems.find((item) => item.id === selectedInv.id)?.pdfReady ?? false)
+    : false;
 
   return (
     <div className="container">
@@ -2679,9 +2684,15 @@ export default function App() {
               {selectedInv.status !== "draft" && (
                 <button onClick={() => openPaymentModal(selectedInv, invSummary)}>Record Payment</button>
               )}
-              {renderInvoiceActionsMenu(selectedInv, {
-                kind: "modal",
-              })}
+              {selectedInv.status === "issued" && (
+                <button onClick={() => void onReopenToDraft(selectedInv.id)}>Reopen to draft</button>
+              )}
+              {selectedInv.status !== "draft" && (
+                <button onClick={() => void onRevealInvoiceFile(selectedInv.id)}>Show in folder</button>
+              )}
+              {selectedInv.status !== "draft" && !selectedInvPdfReady && (
+                <button onClick={() => onGeneratePdf(selectedInv.id)}>Generate PDF</button>
+              )}
               <button onClick={() => setInvoiceDetailsOpen(false)}>Close</button>
             </div>
           </div>
