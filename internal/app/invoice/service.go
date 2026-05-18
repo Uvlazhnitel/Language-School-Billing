@@ -601,6 +601,13 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 // Issue issues a single draft invoice and generates its PDF.
 // This combines issueOne (assigning number and status) with PDF generation.
 // Returns the invoice number and the path to the generated PDF file.
+func (s *Service) IssueOne(ctx context.Context, id int) (string, error) {
+	return s.issueOne(ctx, id)
+}
+
+// Issue issues a single invoice and generates its PDF.
+// Draft invoices are issued first; already-issued invoices keep their number.
+// Returns the invoice number and the path to the generated PDF file.
 func (s *Service) Issue(ctx context.Context, id int, outBaseDir, fontsDir string) (string, string, error) {
 	number, err := s.issueOne(ctx, id)
 	if err != nil {

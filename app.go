@@ -423,8 +423,7 @@ func (a *App) InvoiceReopenDraft(id int) error {
 
 // IssueResult contains the result of issuing a single invoice.
 type IssueResult struct {
-	Number  string `json:"number"`  // The assigned invoice number
-	PdfPath string `json:"pdfPath"` // Path to the generated PDF file
+	Number string `json:"number"` // The assigned invoice number
 }
 
 // IssueAllResult contains the result of issuing all draft invoices for a period.
@@ -439,15 +438,11 @@ func (a *App) InvoiceList(year, month int, status string) ([]invsvc.ListItem, er
 	return a.inv.List(a.ctx, year, month, status)
 }
 
-// InvoiceIssue issues a single draft invoice by assigning it a number,
-// changing its status to "issued", and generating a PDF file.
-// Returns the invoice number and path to the generated PDF.
+// InvoiceIssue issues a single draft invoice by assigning it a number
+// and changing its status to "issued". PDF generation is handled separately
+// by InvoiceEnsurePDF when the user explicitly requests a document.
 func (a *App) InvoiceIssue(id int) (IssueResult, error) {
-	fonts, err := a.resolveFontsDir()
-	if err != nil {
-		return IssueResult{}, err
-	}
-	num, path, err := a.inv.Issue(a.ctx, id, a.dirs.Invoices, fonts)
+	num, err := a.inv.IssueOne(a.ctx, id)
 	if err != nil {
 		return IssueResult{}, err
 	}
@@ -458,7 +453,7 @@ func (a *App) InvoiceIssue(id int) (IssueResult, error) {
 	if err := a.pay.ApplyCreditToOldestInvoices(a.ctx, dto.StudentID); err != nil {
 		return IssueResult{}, err
 	}
-	return IssueResult{Number: num, PdfPath: path}, nil
+	return IssueResult{Number: num}, nil
 }
 
 // InvoiceIssueAll issues all draft invoices for the specified year and month.

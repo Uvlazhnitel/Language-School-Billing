@@ -5,7 +5,6 @@ import {
   InvoiceDeleteDraft,
   InvoiceReopenDraft,
   InvoiceIssue,
-  InvoiceIssueAll,
   InvoiceRebuildStudentDraft,
   InvoiceEnsurePDF,
   OpenFile,
@@ -57,7 +56,7 @@ export type GenerateResult = {
   skippedNoLines: number;
 };
 
-export type IssueResult = { number: string; pdfPath: string };
+export type IssueResult = { number: string };
 export type IssueAllResult = { count: number; pdfPaths: string[] };
 
 export async function genDrafts(year: number, month: number) {
@@ -82,10 +81,6 @@ export async function reopenToDraft(id: number) {
 
 export async function issueOne(id: number) {
   return (await InvoiceIssue(id)) as IssueResult;
-}
-
-export async function issueAll(year: number, month: number) {
-  return (await InvoiceIssueAll(year, month)) as IssueAllResult;
 }
 
 export async function rebuildStudentDraft(studentId: number, year: number, month: number) {

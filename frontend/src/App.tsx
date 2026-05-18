@@ -8,7 +8,6 @@ import {
   getInvoice,
   genDrafts,
   issueOne,
-  issueAll,
   reopenToDraft,
   rebuildStudentDraft,
   ensurePdfAndOpen,
@@ -1339,16 +1338,6 @@ export default function App() {
     );
   };
 
-  const onIssueAll = async () => {
-    try {
-      const res = await issueAll(year, month);
-      showMessage(`Issued: ${res.count}. PDFs: ${res.pdfPaths.length}`);
-      await loadInvoices();
-    } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
-    }
-  };
-
   const onOpenPdf = async (id: number) => {
     try {
       const path = await ensurePdfAndOpen(id);
@@ -2236,7 +2225,6 @@ export default function App() {
             <>
               <div className="controls">
                 <button onClick={onGenerateDrafts}>Generate drafts</button>
-                <button onClick={onIssueAll}>Issue all</button>
 
                 <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
                   <option value="draft">draft</option>
