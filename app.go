@@ -9,8 +9,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	rt "runtime"
+	"sort"
 	"strings"
 	"time"
 
@@ -389,6 +389,20 @@ func (a *App) InvoiceGenerateDrafts(year, month int) (invsvc.GenerateResult, err
 	return res, nil
 }
 
+// InvoiceRebuildStudentDraft rebuilds the draft invoice for a single student
+// in the specified year and month. Issued, paid, and canceled invoices are skipped.
+func (a *App) InvoiceRebuildStudentDraft(studentID, year, month int) (invsvc.GenerateResult, error) {
+	log.Printf("InvoiceRebuildStudentDraft called for student=%d period=%04d-%02d", studentID, year, month)
+	res, err := a.inv.RebuildStudentDraft(a.ctx, studentID, year, month)
+	if err != nil {
+		log.Printf("InvoiceRebuildStudentDraft error: %v", err)
+		return res, err
+	}
+	log.Printf("InvoiceRebuildStudentDraft result: created=%d updated=%d skippedHasInvoice=%d skippedNoLines=%d",
+		res.Created, res.Updated, res.SkippedHasInvoice, res.SkippedNoLines)
+	return res, nil
+}
+
 // InvoiceGet retrieves a single invoice by ID with all its line items.
 // Works for invoices in any status (draft, issued, paid, canceled).
 func (a *App) InvoiceGet(id int) (*InvoiceDTO, error) {
@@ -522,10 +536,19 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 	if dto.Number == nil || *dto.Number == "" {
 		return "", fmt.Errorf("invoice not issued yet")
 	}
-	path := invsvc.PDFPathByNumber(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number)
-	log.Printf("EnsurePDF: invoice=%d number=%s want=%s", id, *dto.Number, path)
-	if _, err := os.Stat(path); err == nil {
-		return path, nil
+	subjectName := dto.StudentName
+	if dto.IsMinor && strings.TrimSpace(dto.ChildName) != "" {
+		subjectName = dto.ChildName
+	}
+	paths := []string{
+		invsvc.PDFPathByNumberAndName(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number, subjectName),
+		invsvc.PDFPathByNumber(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number),
+	}
+	for _, path := range paths {
+		log.Printf("EnsurePDF: invoice=%d number=%s want=%s", id, *dto.Number, path)
+		if _, err := os.Stat(path); err == nil {
+			return path, nil
+		}
 	}
 	fonts, err := a.resolveFontsDir()
 	if err != nil {

@@ -51,6 +51,8 @@ export function InvoiceList(arg1:number,arg2:number,arg3:string):Promise<Array<i
 
 export function InvoicePaymentSummary(arg1:number):Promise<payment.InvoiceSummaryDTO>;
 
+export function InvoiceRebuildStudentDraft(arg1:number,arg2:number,arg3:number):Promise<invoice.GenerateResult>;
+
 export function InvoiceReopenDraft(arg1:number):Promise<void>;
 
 export function MonthOverview(arg1:number,arg2:number):Promise<payment.MonthOverviewDTO>;

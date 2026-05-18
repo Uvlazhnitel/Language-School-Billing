@@ -7,10 +7,13 @@ export namespace attendance {
 	    courseId: number;
 	    courseName: string;
 	    courseType: string;
+	    billingMode: string;
 	    lessonPrice: number;
 	    count: number;
 	    hasRecord: boolean;
 	    canDelete: boolean;
+	    attendanceLocked: boolean;
+	    invoiceStatus: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Row(source);
@@ -24,10 +27,13 @@ export namespace attendance {
 	        this.courseId = source["courseId"];
 	        this.courseName = source["courseName"];
 	        this.courseType = source["courseType"];
+	        this.billingMode = source["billingMode"];
 	        this.lessonPrice = source["lessonPrice"];
 	        this.count = source["count"];
 	        this.hasRecord = source["hasRecord"];
 	        this.canDelete = source["canDelete"];
+	        this.attendanceLocked = source["attendanceLocked"];
+	        this.invoiceStatus = source["invoiceStatus"];
 	    }
 	}
 

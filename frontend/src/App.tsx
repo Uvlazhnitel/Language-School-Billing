@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
 
-import { fetchRows, saveCount, addOneMass, deleteEnrollment, Row } from "./lib/attendance";
+import { fetchRows, saveCount, deleteEnrollment, Row } from "./lib/attendance";
 
 import {
   listInvoices,
@@ -10,6 +10,7 @@ import {
   issueOne,
   issueAll,
   reopenToDraft,
+  rebuildStudentDraft,
   ensurePdfAndOpen,
   InvoiceListItem,
   InvoiceDTO,
@@ -28,6 +29,13 @@ import {
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
 import { AppDirs, BackupNow, OpenFile } from "../wailsjs/go/main/App";
+import {
+  BillingModePerLesson,
+  BillingModeSubscription,
+  InvoiceStatusCanceled,
+  InvoiceStatusIssued,
+  InvoiceStatusPaid,
+} from "./lib/constants";
 
 import {
   listEnrollments,
@@ -174,36 +182,30 @@ function invoiceStatusLabel(status: string): string {
 
 type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
 
-const TAB_META: Record<Tab, { eyebrow: string; title: string; description: string }> = {
+const TAB_META: Record<Tab, { eyebrow: string; title: string }> = {
   students: {
     eyebrow: "Люди",
     title: "Ученики",
-    description: "Управляйте базой учеников, контактами и активным списком в одном месте.",
   },
   courses: {
     eyebrow: "Программы",
     title: "Курсы и цены",
-    description: "Настраивайте предложения, держите цены в порядке и удобно редактируйте каталог.",
   },
   enrollments: {
     eyebrow: "Связи",
     title: "Зачисления",
-    description: "Привязывайте учеников к курсам, задавайте скидки и не путайтесь в режимах оплаты.",
   },
   attendance: {
     eyebrow: "Учёт",
     title: "Посещаемость",
-    description: "Быстро отмечайте количество занятий и готовьте точное начисление за месяц.",
   },
   invoice: {
     eyebrow: "Счета",
     title: "Счета и сводка",
-    description: "Создавайте, выставляйте, проверяйте и оплачивайте счета в понятном помесячном потоке.",
   },
   debtors: {
     eyebrow: "Долги",
     title: "Должники",
-    description: "Смотрите, кто ещё должен оплату, и записывайте платежи без потери истории.",
   },
 };
 
@@ -352,7 +354,7 @@ export default function App() {
       })
       .catch((e: any) => {
         if (!cancelled) {
-          showMessage(`Failed to load app folders: ${String(e?.message ?? e)}`, "error");
+          showMessage(`Не удалось загрузить папки приложения: ${String(e?.message ?? e)}`, "error");
         }
       });
 
@@ -998,7 +1000,11 @@ export default function App() {
   }, [tab, loadAttendance]);
 
   const perLessonTotal = useMemo(
-    () => rows.reduce((s, r) => s + r.count * r.lessonPrice, 0),
+    () =>
+      rows.reduce(
+        (s, r) => s + (r.billingMode === BillingModePerLesson ? r.count * r.lessonPrice : 0),
+        0
+      ),
     [rows]
   );
 
@@ -1017,24 +1023,35 @@ export default function App() {
     }
 
     if (attFilter === "missing") {
-      filtered = filtered.filter((r) => !r.hasRecord);
+      filtered = filtered.filter((r) => r.billingMode === BillingModePerLesson && !r.hasRecord);
     } else if (attFilter === "filled") {
-      filtered = filtered.filter((r) => r.hasRecord);
+      filtered = filtered.filter((r) => r.billingMode === BillingModePerLesson && r.hasRecord);
     } else if (attFilter === "zero") {
-      filtered = filtered.filter((r) => r.hasRecord && r.count === 0);
+      filtered = filtered.filter(
+        (r) => r.billingMode === BillingModePerLesson && r.hasRecord && r.count === 0
+      );
     }
 
     return filtered;
   }, [rows, attQ, attFilter, studentIndex]);
 
   const attendanceSummary = useMemo(() => {
-    const filled = rows.filter((r) => r.hasRecord).length;
-    const missing = rows.filter((r) => !r.hasRecord).length;
-    const zero = rows.filter((r) => r.hasRecord && r.count === 0).length;
-    return { filled, missing, zero, total: rows.length };
+    const editableRows = rows.filter((r) => r.billingMode === BillingModePerLesson);
+    const filled = editableRows.filter((r) => r.hasRecord).length;
+    const missing = editableRows.filter((r) => !r.hasRecord).length;
+    const zero = editableRows.filter((r) => r.hasRecord && r.count === 0).length;
+    return { filled, missing, zero, total: editableRows.length };
   }, [rows]);
 
   const onChangeCount = async (r: Row, v: number) => {
+    if (r.billingMode !== BillingModePerLesson) return;
+    if (r.attendanceLocked) {
+      showMessage(
+        `Посещаемость за этот месяц заблокирована, потому что счёт имеет статус ${invoiceStatusLabel(r.invoiceStatus ?? "issued")}. Сначала верните его в черновик.`,
+        "error"
+      );
+      return;
+    }
     if (!Number.isFinite(v)) return;
     const n = v < 0 ? 0 : Math.trunc(v);
     if (attendanceSavingRows[r.enrollmentId]) return;
@@ -1047,6 +1064,16 @@ export default function App() {
           x.enrollmentId === r.enrollmentId ? { ...x, count: n, hasRecord: true } : x
         )
       );
+      try {
+        await rebuildStudentDraft(r.studentId, year, month);
+      } catch (invoiceError: any) {
+        showMessage(
+          `Посещаемость сохранена, но черновик счёта не обновлён: ${String(
+            invoiceError?.message ?? invoiceError
+          )}`,
+          "error"
+        );
+      }
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     } finally {
@@ -1055,16 +1082,6 @@ export default function App() {
         delete next[r.enrollmentId];
         return next;
       });
-    }
-  };
-
-  const onAddAll = async () => {
-    try {
-      await addOneMass(year, month, courseFilter);
-      await loadAttendance();
-      showMessage("Ко всем видимым строкам добавлено +1");
-    } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   };
 
@@ -1087,7 +1104,7 @@ export default function App() {
   const [invStatus, setInvStatus] = useState<string>("all");
   const [invItems, setInvItems] = useState<InvoiceListItem[]>([]);
   const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
-  const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+  const [invoiceDetailsOpen, setInvoiceDetailsOpen] = useState(false);
   const [loadingInv, setLoadingInv] = useState(false);
   const [invQ, setInvQ] = useState("");
   const [invSummary, setInvSummary] = useState<InvoiceSummaryDTO | null>(null);
@@ -1109,8 +1126,6 @@ export default function App() {
       await ensureStudentsLoaded();
       const li = await listInvoices(year, month, invStatus);
       setInvItems(li);
-      setSelectedInv(null);
-      setInvoiceModalOpen(false);
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     } finally {
@@ -1194,27 +1209,26 @@ export default function App() {
     });
   }, [invItems, invQ, studentIndex]);
 
-  const onOpenInvoice = async (id: number) => {
-    try {
-      const iv = await getInvoice(id);
-      setSelectedInv(iv);
-      setInvoiceModalOpen(true);
-      // Load payment summary
-      if (iv.status !== "draft") {
-        const summary = await invoiceSummary(id);
-        setInvSummary(summary);
-      } else {
-        setInvSummary(null);
-      }
-    } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+  const loadInvoiceDetails = async (id: number) => {
+    const iv = await getInvoice(id);
+    setSelectedInv(iv);
+    if (iv.status !== "draft") {
+      const summary = await invoiceSummary(id);
+      setInvSummary(summary);
+      return { invoice: iv, summary };
+    } else {
+      setInvSummary(null);
+      return { invoice: iv, summary: null };
     }
   };
 
-  const closeInvoiceModal = () => {
-    setInvoiceModalOpen(false);
-    setSelectedInv(null);
-    setInvSummary(null);
+  const onOpenInvoice = async (id: number) => {
+    try {
+      await loadInvoiceDetails(id);
+      setInvoiceDetailsOpen(true);
+    } catch (e: any) {
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+    }
   };
 
   const openPaymentModal = (inv?: InvoiceDTO, summary?: InvoiceSummaryDTO | null) => {
@@ -1293,8 +1307,10 @@ export default function App() {
       showMessage("Оплата записана");
 
       if (paymentInvoiceId) {
-        await onOpenInvoice(paymentInvoiceId);
         await loadInvoices();
+        if (invoiceDetailsOpen && selectedInv?.id === paymentInvoiceId) {
+          await loadInvoiceDetails(paymentInvoiceId);
+        }
       }
       const updatedDebtors = await loadDebtors();
 
@@ -1346,6 +1362,9 @@ export default function App() {
       const res = await issueOne(id);
       showMessage(`Счёт выставлен: #${res.number}`);
       await loadInvoices();
+      if (invoiceDetailsOpen && selectedInv?.id === id) {
+        await loadInvoiceDetails(id);
+      }
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
@@ -1357,10 +1376,10 @@ export default function App() {
       async () => {
         try {
           await reopenToDraft(id);
-          if (selectedInv?.id === id) {
-            await onOpenInvoice(id);
-          }
           await loadInvoices();
+          if (invoiceDetailsOpen && selectedInv?.id === id) {
+            await loadInvoiceDetails(id);
+          }
           showMessage("Счёт возвращён в черновик");
         } catch (e: any) {
           showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
@@ -1417,11 +1436,6 @@ export default function App() {
   // ---------------- Render ----------------
   const showMonthPicker = tab === "attendance" || tab === "invoice";
   const currentMeta = TAB_META[tab];
-  const dashboardStats = [
-    { label: "Ученики", value: studentList.length },
-    { label: "Курсы", value: courseList.length },
-    { label: "Открытые долги", value: debtors.length },
-  ];
 
   return (
     <div className="container">
@@ -1533,27 +1547,26 @@ export default function App() {
             <div className="workspaceHeading">
               <div className="workspaceEyebrow">{currentMeta.eyebrow}</div>
               <h1>{currentMeta.title}</h1>
-              <p>{currentMeta.description}</p>
             </div>
-
-            <div className="workspaceStats" aria-label="Обзор приложения">
-              {(tab === "attendance" || tab === "invoice") && (
-                <div className="workspaceStat workspaceStatFocus">
-                  <span>Фокус</span>
-                  <strong>
-                    {months[month - 1]} {year}
-                  </strong>
-                </div>
-              )}
-              {dashboardStats.map((stat) => (
-                <div key={stat.label} className="workspaceStat">
-                  <span>{stat.label}</span>
-                  <strong>{stat.value}</strong>
-                </div>
-              ))}
-            </div>
-
-            <div className="workspaceActions" aria-label="File and backup actions">
+            {showMonthPicker && (
+              <div className="monthpickers monthpickersTopbar">
+                <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))}>
+                  {months.map((m, i) => (
+                    <option key={m} value={i + 1}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
+                  {[year - 1, year, year + 1].map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            <div className="workspaceActions" aria-label="Действия с файлами и резервными копиями">
               <button
                 type="button"
                 className="workspaceActionButton workspaceActionButtonPrimary"
@@ -1609,27 +1622,6 @@ export default function App() {
             <button className={tab === "debtors" ? "active" : ""} onClick={() => setTab("debtors")}>
               Должники
             </button>
-
-            <div className="spacer" />
-
-            {showMonthPicker && (
-              <div className="monthpickers">
-                <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))}>
-                  {months.map((m, i) => (
-                    <option key={m} value={i + 1}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
-                  {[year - 1, year, year + 1].map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
           </nav>
 
           {/* ---------------- Students ---------------- */}
@@ -1961,7 +1953,7 @@ export default function App() {
                   <option value="">Все курсы</option>
                   {allCourses.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
                     </option>
                   ))}
                 </select>
@@ -2117,8 +2109,6 @@ export default function App() {
           {tab === "attendance" && (
             <>
               <div className="controls">
-                <button onClick={onAddAll}>+1 всем</button>
-
                 <select
                   value={courseFilter ?? ""}
                   onChange={(e) => setCourseFilter(intOrUndef(e.target.value))}
@@ -2126,7 +2116,7 @@ export default function App() {
                   <option value="">Все группы</option>
                   {allCourses.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
                     </option>
                   ))}
                 </select>
@@ -2189,48 +2179,75 @@ export default function App() {
                         </td>
                         <td>
                           {r.courseName} ({courseTypeLabel(r.courseType)})
+                          {r.billingMode === BillingModeSubscription && (
+                            <>
+                              {" "}
+                              <span className="attBadge attBadge--subscription">Абонемент</span>
+                            </>
+                          )}
                         </td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(r.lessonPrice)}</td>
                         <td style={{ textAlign: "right" }}>
-                          {!r.hasRecord && (
+                          {r.billingMode === BillingModePerLesson ? formatEUR(r.lessonPrice) : "—"}
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          {r.billingMode === BillingModePerLesson && !r.hasRecord && (
                             <span className="attBadge attBadge--missing">Не заполнено</span>
                           )}
-                          {r.hasRecord && r.count === 0 && (
+                          {r.billingMode === BillingModePerLesson && r.hasRecord && r.count === 0 && (
                             <span className="attBadge attBadge--zero">0 занятий</span>
                           )}
-                          <div className="attendanceStepper">
-                            <button
-                              type="button"
-                              className="attendanceStepperButton"
-                              onClick={() => onChangeCount(r, r.count - 1)}
-                              disabled={attendanceSavingRows[r.enrollmentId] || r.count <= 0}
-                              aria-label={`Уменьшить количество занятий для ${r.studentName}`}
-                            >
-                              −
-                            </button>
-                            <input
-                              type="number"
-                              min={0}
-                              value={r.count}
-                              disabled={attendanceSavingRows[r.enrollmentId]}
-                              onChange={(e) => onChangeCount(r, Number(e.target.value))}
-                              className="attendanceStepperInput"
-                              aria-label={`Количество занятий для ${r.studentName}`}
-                            />
-                            <button
-                              type="button"
-                              className="attendanceStepperButton"
-                              onClick={() => onChangeCount(r, r.count + 1)}
-                              disabled={attendanceSavingRows[r.enrollmentId]}
-                              aria-label={`Увеличить количество занятий для ${r.studentName}`}
-                            >
-                              +
-                            </button>
-                          </div>
+                          {r.billingMode === BillingModePerLesson && !r.attendanceLocked ? (
+                            <div className="attendanceStepper">
+                              <button
+                                type="button"
+                                className="attendanceStepperButton"
+                                onClick={() => onChangeCount(r, r.count - 1)}
+                                disabled={attendanceSavingRows[r.enrollmentId] || r.count <= 0}
+                                aria-label={`Уменьшить количество занятий для ${r.studentName}`}
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                min={0}
+                                value={r.count}
+                                disabled={attendanceSavingRows[r.enrollmentId]}
+                                onChange={(e) => onChangeCount(r, Number(e.target.value))}
+                                className="attendanceStepperInput"
+                                aria-label={`Количество занятий для ${r.studentName}`}
+                              />
+                              <button
+                                type="button"
+                                className="attendanceStepperButton"
+                                onClick={() => onChangeCount(r, r.count + 1)}
+                                disabled={attendanceSavingRows[r.enrollmentId]}
+                                aria-label={`Увеличить количество занятий для ${r.studentName}`}
+                              >
+                                +
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="attendanceReadOnly">
+                              <span className="attBadge attBadge--subscription">Только чтение</span>
+                              <span className="mutedInline">
+                                {r.billingMode === BillingModeSubscription
+                                  ? "Ученик с абонементом"
+                                  : r.invoiceStatus === InvoiceStatusIssued
+                                    ? "Заблокировано выставленным счётом"
+                                    : r.invoiceStatus === InvoiceStatusPaid
+                                      ? "Заблокировано оплаченным счётом"
+                                      : r.invoiceStatus === InvoiceStatusCanceled
+                                        ? "Заблокировано отменённым счётом"
+                                        : "Заблокировано, пока счёт не возвращён в черновик"}
+                              </span>
+                            </div>
+                          )}
                         </td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(r.count * r.lessonPrice)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          {r.billingMode === BillingModePerLesson ? formatEUR(r.count * r.lessonPrice) : "—"}
+                        </td>
                         <td>
-                          {!r.hasRecord && (
+                          {r.billingMode === BillingModePerLesson && !r.attendanceLocked && !r.hasRecord && (
                             <button
                               onClick={() => onChangeCount(r, 0)}
                               disabled={attendanceSavingRows[r.enrollmentId]}
@@ -2244,7 +2261,7 @@ export default function App() {
                               Удалить зачисление
                             </button>
                           ) : (
-                            <span className="mutedInline">Использовано в истории счёта</span>
+                            <span className="mutedInline">Нельзя удалить: используется в счетах</span>
                           )}
                         </td>
                       </tr>
@@ -2335,11 +2352,8 @@ export default function App() {
                             <button
                               onClick={async () => {
                                 try {
-                                  const iv = await getInvoice(it.id);
-                                  setSelectedInv(iv);
-                                  const summary = await invoiceSummary(it.id);
-                                  setInvSummary(summary);
-                                  openPaymentModal(iv, summary);
+                                  const { invoice, summary } = await loadInvoiceDetails(it.id);
+                                  openPaymentModal(invoice, summary);
                                 } catch (e: any) {
                                   showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
                                 }
@@ -2418,122 +2432,6 @@ export default function App() {
         </section>
       </div>
 
-      {/* Global Payment Modal */}
-      {invoiceModalOpen && selectedInv && (
-        <div className="modal" onClick={closeInvoiceModal}>
-          <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
-            <h3>
-              Счёт {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
-              <button
-                className="linkButton"
-                onClick={() => void openStudentCardById(selectedInv.studentId)}
-              >
-                {selectedInv.studentName}
-              </button>{" "}
-              — {months[selectedInv.month - 1]} {selectedInv.year}
-            </h3>
-
-            {invSummary && selectedInv.status !== "draft" && (
-              <div className="invSummary">
-                <div className="invSummaryRow">
-                  <span>Получатель:</span>
-                  <span>{selectedInv.recipientName || selectedInv.studentName}</span>
-                </div>
-                {selectedInv.studentPersonalCode && (
-                  <div className="invSummaryRow">
-                    <span>{selectedInv.isMinor ? "Персональный код ребёнка:" : "Персональный код:"}</span>
-                    <span>{selectedInv.studentPersonalCode}</span>
-                  </div>
-                )}
-                {selectedInv.isMinor && (
-                  <div className="invSummaryRow">
-                    <span>За ребёнка:</span>
-                    <span>{selectedInv.childName}</span>
-                  </div>
-                )}
-                <div className="invSummaryRow">
-                  <span>Сумма:</span>
-                  <span className="money">{formatEUR(invSummary.total)}</span>
-                </div>
-                <div className="invSummaryRow">
-                  <span>Оплачено:</span>
-                  <span className="money good">{formatEUR(invSummary.paid)}</span>
-                </div>
-                <div className="invSummaryRow">
-                  <span>Осталось:</span>
-                  <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
-                    {formatEUR(invSummary.remaining)}
-                  </span>
-                </div>
-                <div className="invSummaryRow">
-                  <span>Статус:</span>
-                  <span className="money">{invoiceStatusLabel(invSummary.status)}</span>
-                </div>
-              </div>
-            )}
-
-            <div style={{ overflowX: "auto" }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Описание</th>
-                    <th style={{ textAlign: "right" }}>Кол-во</th>
-                    <th style={{ textAlign: "right" }}>Цена (EUR)</th>
-                    <th style={{ textAlign: "right" }}>Сумма (EUR)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedInv.lines.map((l, idx) => (
-                    <tr key={idx}>
-                      <td>{l.description}</td>
-                      <td style={{ textAlign: "right" }}>{l.qty}</td>
-                      <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
-                      <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={3} style={{ textAlign: "right" }}>
-                      Итого (EUR):
-                    </td>
-                    <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            <div className="modalActions">
-              {selectedInv.status === "draft" && (
-                <button
-                  onClick={async () => {
-                    await onIssueOne(selectedInv.id);
-                  }}
-                >
-                  Выставить
-                </button>
-              )}
-              {selectedInv.status === "issued" && (
-                <button
-                  onClick={async () => {
-                    await onReopenToDraft(selectedInv.id);
-                  }}
-                >
-                  Вернуть в черновик
-                </button>
-              )}
-              {selectedInv.status !== "draft" && (
-                <>
-                  <button onClick={() => onOpenPdf(selectedInv.id)}>PDF</button>
-                  <button onClick={() => openPaymentModal()}>Записать оплату</button>
-                </>
-              )}
-              <button onClick={closeInvoiceModal}>Закрыть</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {paymentModalOpen && paymentStudentId > 0 && (
         <div className="modal" onClick={() => setPaymentModalOpen(false)}>
           <div className="modalBody" onClick={(e) => e.stopPropagation()}>
@@ -2580,6 +2478,114 @@ export default function App() {
             <div className="modalActions">
               <button onClick={closePaymentModal}>Отмена</button>
               <button onClick={handleCreatePayment}>Записать оплату</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {invoiceDetailsOpen && selectedInv && (
+        <div className="modal" onClick={() => setInvoiceDetailsOpen(false)}>
+          <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
+            <div style={{ marginBottom: "1rem" }}>
+              <h3>
+                Счёт {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
+                <button
+                  className="linkButton"
+                  onClick={() => void openStudentCardById(selectedInv.studentId)}
+                >
+                  {selectedInv.studentName}
+                </button>{" "}
+                — {months[selectedInv.month - 1]} {selectedInv.year}
+              </h3>
+            </div>
+
+            {invSummary && selectedInv.status !== "draft" && (
+              <div className="invSummary">
+                <div className="invSummaryRow">
+                  <span>Получатель:</span>
+                  <span>{selectedInv.recipientName || selectedInv.studentName}</span>
+                </div>
+                {selectedInv.studentPersonalCode && (
+                  <div className="invSummaryRow">
+                    <span>{selectedInv.isMinor ? "Персональный код ребёнка:" : "Персональный код:"}</span>
+                    <span>{selectedInv.studentPersonalCode}</span>
+                  </div>
+                )}
+                {selectedInv.isMinor && (
+                  <div className="invSummaryRow">
+                    <span>За ребёнка:</span>
+                    <span>{selectedInv.childName}</span>
+                  </div>
+                )}
+                <div className="invSummaryRow">
+                  <span>Сумма:</span>
+                  <span className="money">{formatEUR(invSummary.total)}</span>
+                </div>
+
+                <div className="invSummaryRow">
+                  <span>Оплачено:</span>
+                  <span className="money good">{formatEUR(invSummary.paid)}</span>
+                </div>
+
+                <div className="invSummaryRow">
+                  <span>Осталось:</span>
+                  <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
+                    {formatEUR(invSummary.remaining)}
+                  </span>
+                </div>
+
+                <div className="invSummaryRow">
+                  <span>Статус:</span>
+                  <span className="money">{invoiceStatusLabel(invSummary.status)}</span>
+                </div>
+              </div>
+            )}
+
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Описание</th>
+                    <th style={{ textAlign: "right" }}>Кол-во</th>
+                    <th style={{ textAlign: "right" }}>Цена (EUR)</th>
+                    <th style={{ textAlign: "right" }}>Сумма (EUR)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedInv.lines.map((l, idx) => (
+                    <tr key={idx}>
+                      <td>{l.description}</td>
+                      <td style={{ textAlign: "right" }}>{l.qty}</td>
+                      <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
+                      <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: "right" }}>
+                      Итого (EUR):
+                    </td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className="modalActions">
+              {selectedInv.status === "draft" && (
+                <button onClick={() => onIssueOne(selectedInv.id)}>Выставить</button>
+              )}
+              {selectedInv.status === "issued" && (
+                <button onClick={() => void onReopenToDraft(selectedInv.id)}>Вернуть в черновик</button>
+              )}
+              {selectedInv.status !== "draft" && (
+                <button onClick={() => onOpenPdf(selectedInv.id)}>PDF</button>
+              )}
+              {selectedInv.status !== "draft" && (
+                <button onClick={() => openPaymentModal(selectedInv, invSummary)}>Записать оплату</button>
+              )}
+              <button onClick={() => setInvoiceDetailsOpen(false)}>Закрыть</button>
             </div>
           </div>
         </div>

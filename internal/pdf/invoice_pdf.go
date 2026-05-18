@@ -114,12 +114,12 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 		return "", fmt.Errorf("create dir %s: %w", dir, err)
 	}
 
-	outPath := filepath.Join(dir, fmt.Sprintf("%s.pdf", safeFileName(*iv.Number)))
-
 	recipientInfo, err := recipient.ResolveInvoiceRecipient(ctx, db, iv.StudentID)
 	if err != nil {
 		return "", err
 	}
+	subjectName := recipientInfo.InvoiceSubjectName()
+	outPath := filepath.Join(dir, fmt.Sprintf("%s.pdf", invoiceFileStem(*iv.Number, subjectName)))
 
 	invoiceDate := time.Now()
 	dueDate := invoiceDate.AddDate(0, 0, 14)
@@ -128,7 +128,7 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 	periodEnd := periodStart.AddDate(0, 1, -1)
 
 	p := fpdf.New("P", "mm", "A4", "")
-	p.SetTitle(fmt.Sprintf("Rēķins %s", *iv.Number), false)
+	p.SetTitle(fmt.Sprintf("Rēķins %s — %s", *iv.Number, subjectName), false)
 	p.SetAuthor(provider.DisplayName, false)
 	p.SetMargins(10, 10, 10)
 	p.SetAutoPageBreak(true, 18)
@@ -305,8 +305,8 @@ func drawServiceTable(p *fpdf.Fpdf, currency string, lines []*ent.InvoiceLine, p
 
 	x := 10.0
 	wNo := 11.0
-	wName := 72.0
-	wTerm := 32.0
+	wName := 67.0
+	wTerm := 37.0
 	wUnit := 20.0
 	wQty := 18.0
 	wPrice := 19.0
@@ -351,8 +351,8 @@ func drawServiceRow(p *fpdf.Fpdf, no int, name, term, unit string, qty int, pric
 	y0 := p.GetY()
 
 	wNo := 11.0
-	wName := 72.0
-	wTerm := 32.0
+	wName := 67.0
+	wTerm := 37.0
 	wUnit := 20.0
 	wQty := 18.0
 	wPrice := 19.0
@@ -532,11 +532,6 @@ func normalizeInvoiceDescription(description string, periodStart time.Time) stri
 		return fmt.Sprintf("Mācību pakalpojumi — %s", latvianMonthName(periodStart.Month()))
 	}
 
-	description = strings.ReplaceAll(description, "lessons", "nodarbības")
-	description = strings.ReplaceAll(description, "Lessons", "Nodarbības")
-	description = strings.ReplaceAll(description, "subscription", "abonements")
-	description = strings.ReplaceAll(description, "Subscription", "Abonements")
-
 	return description
 }
 
@@ -589,6 +584,14 @@ func safeFileName(name string) string {
 	)
 
 	return replacer.Replace(name)
+}
+
+func invoiceFileStem(number, subjectName string) string {
+	subjectName = strings.TrimSpace(subjectName)
+	if subjectName == "" {
+		return safeFileName(number)
+	}
+	return safeFileName(fmt.Sprintf("%s - %s", number, subjectName))
 }
 
 func capitalizeFirst(s string) string {
