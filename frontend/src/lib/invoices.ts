@@ -7,7 +7,7 @@ import {
   InvoiceIssue,
   InvoiceRebuildStudentDraft,
   InvoiceEnsurePDF,
-  OpenFile,
+  InvoiceHasPDF,
 } from "../../wailsjs/go/main/App";
 import { InvoiceStatus } from "./constants";
 
@@ -21,6 +21,10 @@ export type InvoiceListItem = {
   status: InvoiceStatus;
   linesCount: number;
   number?: string;
+};
+
+export type InvoiceListItemView = InvoiceListItem & {
+  pdfReady?: boolean;
 };
 
 export type InvoiceLine = {
@@ -87,8 +91,10 @@ export async function rebuildStudentDraft(studentId: number, year: number, month
   return (await InvoiceRebuildStudentDraft(studentId, year, month)) as GenerateResult;
 }
 
-export async function ensurePdfAndOpen(invoiceId: number) {
-  const path = await InvoiceEnsurePDF(invoiceId);
-  await OpenFile(path);
-  return path;
+export async function ensurePdf(invoiceId: number) {
+  return (await InvoiceEnsurePDF(invoiceId)) as string;
+}
+
+export async function hasPdf(invoiceId: number) {
+  return (await InvoiceHasPDF(invoiceId)) as boolean;
 }

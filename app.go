@@ -531,14 +531,7 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 	if dto.Number == nil || *dto.Number == "" {
 		return "", fmt.Errorf("invoice not issued yet")
 	}
-	subjectName := dto.StudentName
-	if dto.IsMinor && strings.TrimSpace(dto.ChildName) != "" {
-		subjectName = dto.ChildName
-	}
-	paths := []string{
-		invsvc.PDFPathByNumberAndName(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number, subjectName),
-		invsvc.PDFPathByNumber(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number),
-	}
+	paths := a.invoicePDFPaths(dto)
 	for _, path := range paths {
 		log.Printf("EnsurePDF: invoice=%d number=%s want=%s", id, *dto.Number, path)
 		if _, err := os.Stat(path); err == nil {
@@ -555,6 +548,39 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 		return "", err
 	}
 	return p, nil
+}
+
+// InvoiceHasPDF reports whether an issued invoice already has a PDF file on disk.
+// It checks both the current named file convention and the legacy number-only path.
+func (a *App) InvoiceHasPDF(id int) (bool, error) {
+	dto, err := a.inv.Get(a.ctx, id)
+	if err != nil {
+		return false, err
+	}
+	if dto.Number == nil || *dto.Number == "" {
+		return false, nil
+	}
+
+	for _, path := range a.invoicePDFPaths(dto) {
+		if _, err := os.Stat(path); err == nil {
+			return true, nil
+		} else if !os.IsNotExist(err) {
+			return false, err
+		}
+	}
+
+	return false, nil
+}
+
+func (a *App) invoicePDFPaths(dto *invsvc.InvoiceDTO) []string {
+	subjectName := dto.StudentName
+	if dto.IsMinor && strings.TrimSpace(dto.ChildName) != "" {
+		subjectName = dto.ChildName
+	}
+	return []string{
+		invsvc.PDFPathByNumberAndName(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number, subjectName),
+		invsvc.PDFPathByNumber(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number),
+	}
 }
 
 // SettingsSetLocale updates the application locale setting.

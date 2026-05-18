@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
 
 import { fetchRows, saveCount, deleteEnrollment, Row } from "./lib/attendance";
@@ -10,8 +10,9 @@ import {
   issueOne,
   reopenToDraft,
   rebuildStudentDraft,
-  ensurePdfAndOpen,
-  InvoiceListItem,
+  ensurePdf,
+  hasPdf,
+  InvoiceListItemView,
   InvoiceDTO,
 } from "./lib/invoices";
 
@@ -1051,12 +1052,13 @@ export default function App() {
 
   // ---------------- Invoices ----------------
   const [invStatus, setInvStatus] = useState<string>("all");
-  const [invItems, setInvItems] = useState<InvoiceListItem[]>([]);
+  const [invItems, setInvItems] = useState<InvoiceListItemView[]>([]);
   const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
   const [invoiceDetailsOpen, setInvoiceDetailsOpen] = useState(false);
   const [loadingInv, setLoadingInv] = useState(false);
   const [invQ, setInvQ] = useState("");
   const [invSummary, setInvSummary] = useState<InvoiceSummaryDTO | null>(null);
+  const pendingInvoiceScrollRestoreRef = useRef<number | null>(null);
 
   // Payment modal state
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -1074,7 +1076,24 @@ export default function App() {
     try {
       await ensureStudentsLoaded();
       const li = await listInvoices(year, month, invStatus);
-      setInvItems(li);
+      const pdfReadyById = new Map<number, boolean>();
+      await Promise.all(
+        li
+          .filter((item) => item.status !== "draft")
+          .map(async (item) => {
+            try {
+              pdfReadyById.set(item.id, await hasPdf(item.id));
+            } catch {
+              pdfReadyById.set(item.id, false);
+            }
+          })
+      );
+      setInvItems(
+        li.map((item) => ({
+          ...item,
+          pdfReady: item.status !== "draft" ? (pdfReadyById.get(item.id) ?? false) : false,
+        }))
+      );
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     } finally {
@@ -1085,6 +1104,16 @@ export default function App() {
   useEffect(() => {
     if (tab === "invoice") loadInvoices();
   }, [tab, loadInvoices]);
+
+  useLayoutEffect(() => {
+    const scrollY = pendingInvoiceScrollRestoreRef.current;
+    if (scrollY === null) return;
+
+    pendingInvoiceScrollRestoreRef.current = null;
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: scrollY, behavior: "auto" });
+    });
+  }, [invItems]);
 
   // ---------------- Debtors ----------------
   const [debtors, setDebtors] = useState<DebtorDTO[]>([]);
@@ -1308,12 +1337,14 @@ export default function App() {
 
   const onIssueOne = async (id: number) => {
     try {
+      const scrollY = window.scrollY;
       const res = await issueOne(id);
-      showMessage(`Invoice issued: #${res.number}`);
+      pendingInvoiceScrollRestoreRef.current = scrollY;
       await loadInvoices();
       if (invoiceDetailsOpen && selectedInv?.id === id) {
         await loadInvoiceDetails(id);
       }
+      showMessage(`Invoice issued: #${res.number}`);
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
@@ -1338,11 +1369,14 @@ export default function App() {
     );
   };
 
-  const onOpenPdf = async (id: number) => {
+  const onGeneratePdf = async (id: number) => {
     try {
-      const path = await ensurePdfAndOpen(id);
-      console.log("Opened PDF:", path);
-      showMessage("PDF opened");
+      const path = await ensurePdf(id);
+      setInvItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
+      );
+      console.log("PDF ready:", path);
+      showMessage(`PDF ready: ${path}`);
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
@@ -2272,7 +2306,14 @@ export default function App() {
                         </td>
                         <td style={{ textAlign: "right" }}>{formatEUR(it.total)}</td>
                         <td>{it.status}</td>
-                        <td>{it.number ?? ""}</td>
+                        <td>
+                          {it.number ?? ""}
+                          {it.pdfReady && (
+                            <div className="badgeRow">
+                              <span className="attBadge attBadge--pdfReady">PDF ready</span>
+                            </div>
+                          )}
+                        </td>
                         <td>
                           <button onClick={() => onOpenInvoice(it.id)}>Open</button>
                           {it.status === "draft" && (
@@ -2284,7 +2325,7 @@ export default function App() {
                             </button>
                           )}
                           {it.status !== "draft" && (
-                            <button onClick={() => onOpenPdf(it.id)}>PDF</button>
+                            <button onClick={() => onGeneratePdf(it.id)}>Generate PDF</button>
                           )}
                           {it.status !== "draft" && (
                             <button
@@ -2519,7 +2560,7 @@ export default function App() {
                 <button onClick={() => void onReopenToDraft(selectedInv.id)}>Reopen to draft</button>
               )}
               {selectedInv.status !== "draft" && (
-                <button onClick={() => onOpenPdf(selectedInv.id)}>PDF</button>
+                <button onClick={() => onGeneratePdf(selectedInv.id)}>Generate PDF</button>
               )}
               {selectedInv.status !== "draft" && (
                 <button onClick={() => openPaymentModal(selectedInv, invSummary)}>Record Payment</button>

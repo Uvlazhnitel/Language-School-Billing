@@ -78,6 +78,10 @@ export function InvoiceGet(arg1) {
   return window['go']['main']['App']['InvoiceGet'](arg1);
 }
 
+export function InvoiceHasPDF(arg1) {
+  return window['go']['main']['App']['InvoiceHasPDF'](arg1);
+}
+
 export function InvoiceIssue(arg1) {
   return window['go']['main']['App']['InvoiceIssue'](arg1);
 }

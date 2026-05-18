@@ -935,6 +935,12 @@ tfoot td {
   color: var(--good);
 }
 
+.attBadge--pdfReady {
+  background: rgba(33, 131, 95, 0.12);
+  border: 1px solid rgba(33, 131, 95, 0.28);
+  color: var(--good);
+}
+
 .attSummary {
   font-size: 13px;
   color: var(--text-secondary);

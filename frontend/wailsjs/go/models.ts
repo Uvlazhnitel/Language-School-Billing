@@ -460,3 +460,4 @@ export namespace payment {
 	}
 
 }
+

@@ -43,6 +43,8 @@ export function InvoiceGenerateDrafts(arg1:number,arg2:number):Promise<invoice.G
 
 export function InvoiceGet(arg1:number):Promise<invoice.InvoiceDTO>;
 
+export function InvoiceHasPDF(arg1:number):Promise<boolean>;
+
 export function InvoiceIssue(arg1:number):Promise<main.IssueResult>;
 
 export function InvoiceIssueAll(arg1:number,arg2:number):Promise<main.IssueAllResult>;
