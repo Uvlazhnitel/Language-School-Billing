@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
 
-import { fetchRows, saveCount, addOneMass, deleteEnrollment, Row } from "./lib/attendance";
+import { fetchRows, saveCount, deleteEnrollment, Row } from "./lib/attendance";
 
 import {
   listInvoices,
@@ -10,6 +10,7 @@ import {
   issueOne,
   issueAll,
   reopenToDraft,
+  rebuildStudentDraft,
   ensurePdfAndOpen,
   InvoiceListItem,
   InvoiceDTO,
@@ -28,6 +29,13 @@ import {
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
 import { AppDirs, BackupNow, OpenFile } from "../wailsjs/go/main/App";
+import {
+  BillingModePerLesson,
+  BillingModeSubscription,
+  InvoiceStatusCanceled,
+  InvoiceStatusIssued,
+  InvoiceStatusPaid,
+} from "./lib/constants";
 
 import {
   listEnrollments,
@@ -124,39 +132,30 @@ function payerRoleLabel(relation: string): string {
 
 type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
 
-const TAB_META: Record<Tab, { eyebrow: string; title: string; description: string }> = {
+const TAB_META: Record<Tab, { eyebrow: string; title: string }> = {
   students: {
     eyebrow: "People",
     title: "Students workspace",
-    description: "Manage your student base, contacts, and active roster in one clean place.",
   },
   courses: {
     eyebrow: "Programs",
     title: "Courses and pricing",
-    description:
-      "Shape your offers, keep prices consistent, and edit the catalog without friction.",
   },
   enrollments: {
     eyebrow: "Links",
     title: "Enrollment flow",
-    description: "Connect students to courses, apply discounts, and keep billing modes clear.",
   },
   attendance: {
     eyebrow: "Operations",
     title: "Attendance overview",
-    description: "Track lesson counts fast and prepare accurate monthly billing with less clutter.",
   },
   invoice: {
     eyebrow: "Billing",
     title: "Invoices and summaries",
-    description:
-      "Generate, issue, review, and pay invoices with a clearer month-by-month workflow.",
   },
   debtors: {
     eyebrow: "Follow-up",
     title: "Debtors snapshot",
-    description:
-      "See who still owes money and record payments without losing the historical trail.",
   },
 };
 
@@ -951,7 +950,11 @@ export default function App() {
   }, [tab, loadAttendance]);
 
   const perLessonTotal = useMemo(
-    () => rows.reduce((s, r) => s + r.count * r.lessonPrice, 0),
+    () =>
+      rows.reduce(
+        (s, r) => s + (r.billingMode === BillingModePerLesson ? r.count * r.lessonPrice : 0),
+        0
+      ),
     [rows]
   );
 
@@ -970,24 +973,35 @@ export default function App() {
     }
 
     if (attFilter === "missing") {
-      filtered = filtered.filter((r) => !r.hasRecord);
+      filtered = filtered.filter((r) => r.billingMode === BillingModePerLesson && !r.hasRecord);
     } else if (attFilter === "filled") {
-      filtered = filtered.filter((r) => r.hasRecord);
+      filtered = filtered.filter((r) => r.billingMode === BillingModePerLesson && r.hasRecord);
     } else if (attFilter === "zero") {
-      filtered = filtered.filter((r) => r.hasRecord && r.count === 0);
+      filtered = filtered.filter(
+        (r) => r.billingMode === BillingModePerLesson && r.hasRecord && r.count === 0
+      );
     }
 
     return filtered;
   }, [rows, attQ, attFilter, studentIndex]);
 
   const attendanceSummary = useMemo(() => {
-    const filled = rows.filter((r) => r.hasRecord).length;
-    const missing = rows.filter((r) => !r.hasRecord).length;
-    const zero = rows.filter((r) => r.hasRecord && r.count === 0).length;
-    return { filled, missing, zero, total: rows.length };
+    const editableRows = rows.filter((r) => r.billingMode === BillingModePerLesson);
+    const filled = editableRows.filter((r) => r.hasRecord).length;
+    const missing = editableRows.filter((r) => !r.hasRecord).length;
+    const zero = editableRows.filter((r) => r.hasRecord && r.count === 0).length;
+    return { filled, missing, zero, total: editableRows.length };
   }, [rows]);
 
   const onChangeCount = async (r: Row, v: number) => {
+    if (r.billingMode !== BillingModePerLesson) return;
+    if (r.attendanceLocked) {
+      showMessage(
+        `Attendance is locked for this month because the invoice is ${r.invoiceStatus ?? "not draft"}. Reopen it to draft first.`,
+        "error"
+      );
+      return;
+    }
     if (!Number.isFinite(v)) return;
     const n = v < 0 ? 0 : Math.trunc(v);
     if (attendanceSavingRows[r.enrollmentId]) return;
@@ -1000,6 +1014,16 @@ export default function App() {
           x.enrollmentId === r.enrollmentId ? { ...x, count: n, hasRecord: true } : x
         )
       );
+      try {
+        await rebuildStudentDraft(r.studentId, year, month);
+      } catch (invoiceError: any) {
+        showMessage(
+          `Attendance saved, but draft invoice was not updated: ${String(
+            invoiceError?.message ?? invoiceError
+          )}`,
+          "error"
+        );
+      }
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     } finally {
@@ -1008,16 +1032,6 @@ export default function App() {
         delete next[r.enrollmentId];
         return next;
       });
-    }
-  };
-
-  const onAddAll = async () => {
-    try {
-      await addOneMass(year, month, courseFilter);
-      await loadAttendance();
-      showMessage("Added +1 to all visible rows");
-    } catch (e: any) {
-      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
   };
 
@@ -1040,6 +1054,7 @@ export default function App() {
   const [invStatus, setInvStatus] = useState<string>("all");
   const [invItems, setInvItems] = useState<InvoiceListItem[]>([]);
   const [selectedInv, setSelectedInv] = useState<InvoiceDTO | null>(null);
+  const [invoiceDetailsOpen, setInvoiceDetailsOpen] = useState(false);
   const [loadingInv, setLoadingInv] = useState(false);
   const [invQ, setInvQ] = useState("");
   const [invSummary, setInvSummary] = useState<InvoiceSummaryDTO | null>(null);
@@ -1061,7 +1076,6 @@ export default function App() {
       await ensureStudentsLoaded();
       const li = await listInvoices(year, month, invStatus);
       setInvItems(li);
-      setSelectedInv(null);
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     } finally {
@@ -1145,17 +1159,23 @@ export default function App() {
     });
   }, [invItems, invQ, studentIndex]);
 
+  const loadInvoiceDetails = async (id: number) => {
+    const iv = await getInvoice(id);
+    setSelectedInv(iv);
+    if (iv.status !== "draft") {
+      const summary = await invoiceSummary(id);
+      setInvSummary(summary);
+      return { invoice: iv, summary };
+    } else {
+      setInvSummary(null);
+      return { invoice: iv, summary: null };
+    }
+  };
+
   const onOpenInvoice = async (id: number) => {
     try {
-      const iv = await getInvoice(id);
-      setSelectedInv(iv);
-      // Load payment summary
-      if (iv.status !== "draft") {
-        const summary = await invoiceSummary(id);
-        setInvSummary(summary);
-      } else {
-        setInvSummary(null);
-      }
+      await loadInvoiceDetails(id);
+      setInvoiceDetailsOpen(true);
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
@@ -1237,8 +1257,10 @@ export default function App() {
       showMessage("Payment recorded successfully!");
 
       if (paymentInvoiceId) {
-        await onOpenInvoice(paymentInvoiceId);
         await loadInvoices();
+        if (invoiceDetailsOpen && selectedInv?.id === paymentInvoiceId) {
+          await loadInvoiceDetails(paymentInvoiceId);
+        }
       }
       const updatedDebtors = await loadDebtors();
 
@@ -1290,6 +1312,9 @@ export default function App() {
       const res = await issueOne(id);
       showMessage(`Invoice issued: #${res.number}`);
       await loadInvoices();
+      if (invoiceDetailsOpen && selectedInv?.id === id) {
+        await loadInvoiceDetails(id);
+      }
     } catch (e: any) {
       showMessage(`Error: ${String(e?.message ?? e)}`, "error");
     }
@@ -1301,10 +1326,10 @@ export default function App() {
       async () => {
         try {
           await reopenToDraft(id);
-          if (selectedInv?.id === id) {
-            await onOpenInvoice(id);
-          }
           await loadInvoices();
+          if (invoiceDetailsOpen && selectedInv?.id === id) {
+            await loadInvoiceDetails(id);
+          }
           showMessage("Invoice reopened to draft");
         } catch (e: any) {
           showMessage(`Error: ${String(e?.message ?? e)}`, "error");
@@ -1361,11 +1386,6 @@ export default function App() {
   // ---------------- Render ----------------
   const showMonthPicker = tab === "attendance" || tab === "invoice";
   const currentMeta = TAB_META[tab];
-  const dashboardStats = [
-    { label: "Students", value: studentList.length },
-    { label: "Courses", value: courseList.length },
-    { label: "Open debtors", value: debtors.length },
-  ];
 
   return (
     <div className="container">
@@ -1477,26 +1497,25 @@ export default function App() {
             <div className="workspaceHeading">
               <div className="workspaceEyebrow">{currentMeta.eyebrow}</div>
               <h1>{currentMeta.title}</h1>
-              <p>{currentMeta.description}</p>
             </div>
-
-            <div className="workspaceStats" aria-label="Application overview">
-              {(tab === "attendance" || tab === "invoice") && (
-                <div className="workspaceStat workspaceStatFocus">
-                  <span>Focus</span>
-                  <strong>
-                    {months[month - 1]} {year}
-                  </strong>
-                </div>
-              )}
-              {dashboardStats.map((stat) => (
-                <div key={stat.label} className="workspaceStat">
-                  <span>{stat.label}</span>
-                  <strong>{stat.value}</strong>
-                </div>
-              ))}
-            </div>
-
+            {showMonthPicker && (
+              <div className="monthpickers monthpickersTopbar">
+                <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))}>
+                  {months.map((m, i) => (
+                    <option key={m} value={i + 1}>
+                      {m}
+                    </option>
+                  ))}
+                </select>
+                <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
+                  {[year - 1, year, year + 1].map((y) => (
+                    <option key={y} value={y}>
+                      {y}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="workspaceActions" aria-label="File and backup actions">
               <button
                 type="button"
@@ -1553,27 +1572,6 @@ export default function App() {
             <button className={tab === "debtors" ? "active" : ""} onClick={() => setTab("debtors")}>
               Debtors
             </button>
-
-            <div className="spacer" />
-
-            {showMonthPicker && (
-              <div className="monthpickers">
-                <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))}>
-                  {months.map((m, i) => (
-                    <option key={m} value={i + 1}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
-                  {[year - 1, year, year + 1].map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
           </nav>
 
           {/* ---------------- Students ---------------- */}
@@ -1905,7 +1903,7 @@ export default function App() {
                   <option value="">All courses</option>
                   {allCourses.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
                     </option>
                   ))}
                 </select>
@@ -2061,8 +2059,6 @@ export default function App() {
           {tab === "attendance" && (
             <>
               <div className="controls">
-                <button onClick={onAddAll}>+1 all</button>
-
                 <select
                   value={courseFilter ?? ""}
                   onChange={(e) => setCourseFilter(intOrUndef(e.target.value))}
@@ -2070,7 +2066,7 @@ export default function App() {
                   <option value="">All groups</option>
                   {allCourses.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
                     </option>
                   ))}
                 </select>
@@ -2109,7 +2105,7 @@ export default function App() {
                 <div className="empty">
                   {attQ.trim() || attFilter !== "all"
                     ? "No matches found for your search."
-                    : "No per-lesson rows. Create enrollments first."}
+                    : "No attendance rows for this selection. Create enrollments first."}
                 </div>
               ) : (
                 <table>
@@ -2133,48 +2129,75 @@ export default function App() {
                         </td>
                         <td>
                           {r.courseName} ({r.courseType})
+                          {r.billingMode === BillingModeSubscription && (
+                            <>
+                              {" "}
+                              <span className="attBadge attBadge--subscription">Subscription</span>
+                            </>
+                          )}
                         </td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(r.lessonPrice)}</td>
                         <td style={{ textAlign: "right" }}>
-                          {!r.hasRecord && (
+                          {r.billingMode === BillingModePerLesson ? formatEUR(r.lessonPrice) : "—"}
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          {r.billingMode === BillingModePerLesson && !r.hasRecord && (
                             <span className="attBadge attBadge--missing">Not filled</span>
                           )}
-                          {r.hasRecord && r.count === 0 && (
+                          {r.billingMode === BillingModePerLesson && r.hasRecord && r.count === 0 && (
                             <span className="attBadge attBadge--zero">0 lessons</span>
                           )}
-                          <div className="attendanceStepper">
-                            <button
-                              type="button"
-                              className="attendanceStepperButton"
-                              onClick={() => onChangeCount(r, r.count - 1)}
-                              disabled={attendanceSavingRows[r.enrollmentId] || r.count <= 0}
-                              aria-label={`Decrease lesson count for ${r.studentName}`}
-                            >
-                              −
-                            </button>
-                            <input
-                              type="number"
-                              min={0}
-                              value={r.count}
-                              disabled={attendanceSavingRows[r.enrollmentId]}
-                              onChange={(e) => onChangeCount(r, Number(e.target.value))}
-                              className="attendanceStepperInput"
-                              aria-label={`Lesson count for ${r.studentName}`}
-                            />
-                            <button
-                              type="button"
-                              className="attendanceStepperButton"
-                              onClick={() => onChangeCount(r, r.count + 1)}
-                              disabled={attendanceSavingRows[r.enrollmentId]}
-                              aria-label={`Increase lesson count for ${r.studentName}`}
-                            >
-                              +
-                            </button>
-                          </div>
+                          {r.billingMode === BillingModePerLesson && !r.attendanceLocked ? (
+                            <div className="attendanceStepper">
+                              <button
+                                type="button"
+                                className="attendanceStepperButton"
+                                onClick={() => onChangeCount(r, r.count - 1)}
+                                disabled={attendanceSavingRows[r.enrollmentId] || r.count <= 0}
+                                aria-label={`Decrease lesson count for ${r.studentName}`}
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                min={0}
+                                value={r.count}
+                                disabled={attendanceSavingRows[r.enrollmentId]}
+                                onChange={(e) => onChangeCount(r, Number(e.target.value))}
+                                className="attendanceStepperInput"
+                                aria-label={`Lesson count for ${r.studentName}`}
+                              />
+                              <button
+                                type="button"
+                                className="attendanceStepperButton"
+                                onClick={() => onChangeCount(r, r.count + 1)}
+                                disabled={attendanceSavingRows[r.enrollmentId]}
+                                aria-label={`Increase lesson count for ${r.studentName}`}
+                              >
+                                +
+                              </button>
+                            </div>
+                          ) : (
+                            <div className="attendanceReadOnly">
+                              <span className="attBadge attBadge--subscription">Read-only</span>
+                              <span className="mutedInline">
+                                {r.billingMode === BillingModeSubscription
+                                  ? "Subscription student"
+                                  : r.invoiceStatus === InvoiceStatusIssued
+                                    ? "Locked by issued invoice"
+                                    : r.invoiceStatus === InvoiceStatusPaid
+                                      ? "Locked by paid invoice"
+                                      : r.invoiceStatus === InvoiceStatusCanceled
+                                        ? "Locked by canceled invoice"
+                                        : "Locked until invoice is reopened to draft"}
+                              </span>
+                            </div>
+                          )}
                         </td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(r.count * r.lessonPrice)}</td>
+                        <td style={{ textAlign: "right" }}>
+                          {r.billingMode === BillingModePerLesson ? formatEUR(r.count * r.lessonPrice) : "—"}
+                        </td>
                         <td>
-                          {!r.hasRecord && (
+                          {r.billingMode === BillingModePerLesson && !r.attendanceLocked && !r.hasRecord && (
                             <button
                               onClick={() => onChangeCount(r, 0)}
                               disabled={attendanceSavingRows[r.enrollmentId]}
@@ -2188,7 +2211,7 @@ export default function App() {
                               Delete enrollment
                             </button>
                           ) : (
-                            <span className="mutedInline">Used in invoice history</span>
+                            <span className="mutedInline">Can't delete: used in invoices</span>
                           )}
                         </td>
                       </tr>
@@ -2279,11 +2302,8 @@ export default function App() {
                             <button
                               onClick={async () => {
                                 try {
-                                  const iv = await getInvoice(it.id);
-                                  setSelectedInv(iv);
-                                  const summary = await invoiceSummary(it.id);
-                                  setInvSummary(summary);
-                                  openPaymentModal(iv, summary);
+                                  const { invoice, summary } = await loadInvoiceDetails(it.id);
+                                  openPaymentModal(invoice, summary);
                                 } catch (e: any) {
                                   showMessage(`Error: ${String(e?.message ?? e)}`, "error");
                                 }
@@ -2299,93 +2319,6 @@ export default function App() {
                 </table>
               )}
 
-              {selectedInv && (
-                <div className="panel">
-                  <div style={{ marginBottom: "1rem" }}>
-                    <h3>
-                      Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
-                      <button
-                        className="linkButton"
-                        onClick={() => void openStudentCardById(selectedInv.studentId)}
-                      >
-                        {selectedInv.studentName}
-                      </button>{" "}
-                      — {months[selectedInv.month - 1]} {selectedInv.year}
-                    </h3>
-                  </div>
-
-                  {invSummary && selectedInv.status !== "draft" && (
-                    <div className="invSummary">
-                      <div className="invSummaryRow">
-                        <span>Recipient:</span>
-                        <span>{selectedInv.recipientName || selectedInv.studentName}</span>
-                      </div>
-                      {selectedInv.studentPersonalCode && (
-                        <div className="invSummaryRow">
-                          <span>{selectedInv.isMinor ? "Child personal code:" : "Personal code:"}</span>
-                          <span>{selectedInv.studentPersonalCode}</span>
-                        </div>
-                      )}
-                      {selectedInv.isMinor && (
-                        <div className="invSummaryRow">
-                          <span>For child:</span>
-                          <span>{selectedInv.childName}</span>
-                        </div>
-                      )}
-                      <div className="invSummaryRow">
-                        <span>Total:</span>
-                        <span className="money">{formatEUR(invSummary.total)}</span>
-                      </div>
-
-                      <div className="invSummaryRow">
-                        <span>Paid:</span>
-                        <span className="money good">{formatEUR(invSummary.paid)}</span>
-                      </div>
-
-                      <div className="invSummaryRow">
-                        <span>Remaining:</span>
-                        <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
-                          {formatEUR(invSummary.remaining)}
-                        </span>
-                      </div>
-
-                      <div className="invSummaryRow">
-                        <span>Status:</span>
-                        <span className="money">{invSummary.status}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Description</th>
-                        <th style={{ textAlign: "right" }}>Qty</th>
-                        <th style={{ textAlign: "right" }}>Unit (EUR)</th>
-                        <th style={{ textAlign: "right" }}>Amount (EUR)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedInv.lines.map((l, idx) => (
-                        <tr key={idx}>
-                          <td>{l.description}</td>
-                          <td style={{ textAlign: "right" }}>{l.qty}</td>
-                          <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
-                          <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                    <tfoot>
-                      <tr>
-                        <td colSpan={3} style={{ textAlign: "right" }}>
-                          Total (EUR):
-                        </td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              )}
             </>
           )}
 
@@ -2496,6 +2429,114 @@ export default function App() {
             <div className="modalActions">
               <button onClick={closePaymentModal}>Cancel</button>
               <button onClick={handleCreatePayment}>Record Payment</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {invoiceDetailsOpen && selectedInv && (
+        <div className="modal" onClick={() => setInvoiceDetailsOpen(false)}>
+          <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
+            <div style={{ marginBottom: "1rem" }}>
+              <h3>
+                Invoice {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
+                <button
+                  className="linkButton"
+                  onClick={() => void openStudentCardById(selectedInv.studentId)}
+                >
+                  {selectedInv.studentName}
+                </button>{" "}
+                — {months[selectedInv.month - 1]} {selectedInv.year}
+              </h3>
+            </div>
+
+            {invSummary && selectedInv.status !== "draft" && (
+              <div className="invSummary">
+                <div className="invSummaryRow">
+                  <span>Recipient:</span>
+                  <span>{selectedInv.recipientName || selectedInv.studentName}</span>
+                </div>
+                {selectedInv.studentPersonalCode && (
+                  <div className="invSummaryRow">
+                    <span>{selectedInv.isMinor ? "Child personal code:" : "Personal code:"}</span>
+                    <span>{selectedInv.studentPersonalCode}</span>
+                  </div>
+                )}
+                {selectedInv.isMinor && (
+                  <div className="invSummaryRow">
+                    <span>For child:</span>
+                    <span>{selectedInv.childName}</span>
+                  </div>
+                )}
+                <div className="invSummaryRow">
+                  <span>Total:</span>
+                  <span className="money">{formatEUR(invSummary.total)}</span>
+                </div>
+
+                <div className="invSummaryRow">
+                  <span>Paid:</span>
+                  <span className="money good">{formatEUR(invSummary.paid)}</span>
+                </div>
+
+                <div className="invSummaryRow">
+                  <span>Remaining:</span>
+                  <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
+                    {formatEUR(invSummary.remaining)}
+                  </span>
+                </div>
+
+                <div className="invSummaryRow">
+                  <span>Status:</span>
+                  <span className="money">{invSummary.status}</span>
+                </div>
+              </div>
+            )}
+
+            <div style={{ overflowX: "auto" }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Description</th>
+                    <th style={{ textAlign: "right" }}>Qty</th>
+                    <th style={{ textAlign: "right" }}>Unit (EUR)</th>
+                    <th style={{ textAlign: "right" }}>Amount (EUR)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedInv.lines.map((l, idx) => (
+                    <tr key={idx}>
+                      <td>{l.description}</td>
+                      <td style={{ textAlign: "right" }}>{l.qty}</td>
+                      <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
+                      <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr>
+                    <td colSpan={3} style={{ textAlign: "right" }}>
+                      Total (EUR):
+                    </td>
+                    <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            <div className="modalActions">
+              {selectedInv.status === "draft" && (
+                <button onClick={() => onIssueOne(selectedInv.id)}>Issue</button>
+              )}
+              {selectedInv.status === "issued" && (
+                <button onClick={() => void onReopenToDraft(selectedInv.id)}>Reopen to draft</button>
+              )}
+              {selectedInv.status !== "draft" && (
+                <button onClick={() => onOpenPdf(selectedInv.id)}>PDF</button>
+              )}
+              {selectedInv.status !== "draft" && (
+                <button onClick={() => openPaymentModal(selectedInv, invSummary)}>Record Payment</button>
+              )}
+              <button onClick={() => setInvoiceDetailsOpen(false)}>Close</button>
             </div>
           </div>
         </div>

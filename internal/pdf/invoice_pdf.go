@@ -305,8 +305,8 @@ func drawServiceTable(p *fpdf.Fpdf, currency string, lines []*ent.InvoiceLine, p
 
 	x := 10.0
 	wNo := 11.0
-	wName := 72.0
-	wTerm := 32.0
+	wName := 67.0
+	wTerm := 37.0
 	wUnit := 20.0
 	wQty := 18.0
 	wPrice := 19.0
@@ -351,8 +351,8 @@ func drawServiceRow(p *fpdf.Fpdf, no int, name, term, unit string, qty int, pric
 	y0 := p.GetY()
 
 	wNo := 11.0
-	wName := 72.0
-	wTerm := 32.0
+	wName := 67.0
+	wTerm := 37.0
 	wUnit := 20.0
 	wQty := 18.0
 	wPrice := 19.0
@@ -531,11 +531,6 @@ func normalizeInvoiceDescription(description string, periodStart time.Time) stri
 	if description == "" {
 		return fmt.Sprintf("Mācību pakalpojumi — %s", latvianMonthName(periodStart.Month()))
 	}
-
-	description = strings.ReplaceAll(description, "lessons", "nodarbības")
-	description = strings.ReplaceAll(description, "Lessons", "Nodarbības")
-	description = strings.ReplaceAll(description, "subscription", "abonements")
-	description = strings.ReplaceAll(description, "Subscription", "Abonements")
 
 	return description
 }
