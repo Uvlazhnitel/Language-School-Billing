@@ -486,8 +486,8 @@ func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 	return IssueAllResult{Count: cnt, PdfPaths: paths}, nil
 }
 
-// Open file (PDF) in OS
-// Only allows opening files within the LangSchool directory tree to prevent path traversal attacks.
+// OpenFile opens a directory or reveals a file in the OS file manager.
+// Only allows paths within the LangSchool directory tree to prevent path traversal attacks.
 func (a *App) OpenFile(path string) error {
 	// Normalize the path
 	if abs, err := filepath.Abs(path); err == nil {
@@ -503,19 +503,34 @@ func (a *App) OpenFile(path string) error {
 		return fmt.Errorf("access denied: file must be within %s directory", allowedBase)
 	}
 
-	// Verify file exists
-	if _, err := os.Stat(path); err != nil {
+	info, err := os.Stat(path)
+	if err != nil {
 		return err
 	}
 
 	var cmd *exec.Cmd
+
+	if info.IsDir() {
+		switch rt.GOOS {
+		case "darwin":
+			cmd = exec.Command("open", path)
+		case "windows":
+			cmd = exec.Command("cmd", "/C", "start", "", path)
+		default:
+			cmd = exec.Command("xdg-open", path)
+		}
+		return cmd.Start()
+	}
+
 	switch rt.GOOS {
 	case "darwin":
-		cmd = exec.Command("open", path)
+		cmd = exec.Command("open", "-R", path)
 	case "windows":
-		cmd = exec.Command("cmd", "/C", "start", "", path)
+		cmd = exec.Command("explorer", "/select,"+path)
 	default:
-		cmd = exec.Command("xdg-open", path)
+		// Linux file-manager support for selecting a file is inconsistent,
+		// so fall back to opening the containing directory.
+		cmd = exec.Command("xdg-open", filepath.Dir(path))
 	}
 	return cmd.Start()
 }

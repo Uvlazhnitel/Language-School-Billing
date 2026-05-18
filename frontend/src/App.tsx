@@ -1436,6 +1436,16 @@ export default function App() {
     }
   };
 
+  const onRevealInvoiceFile = async (id: number) => {
+    try {
+      closeInvoiceMenu();
+      const path = await ensurePdf(id);
+      await OpenFile(path);
+    } catch (e: any) {
+      showMessage(`Error: ${String(e?.message ?? e)}`, "error");
+    }
+  };
+
   const renderInvoiceActionsMenu = (
     invoice: Pick<InvoiceDTO, "id" | "status">,
     options?: { kind?: InvoiceMenuTarget["kind"]; onRecordPayment?: () => void }
@@ -1451,6 +1461,10 @@ export default function App() {
       });
     }
     if (invoice.status !== "draft") {
+      menuItems.push({
+        label: "Show in folder",
+        onClick: () => void onRevealInvoiceFile(invoice.id),
+      });
       menuItems.push({
         label: "Generate PDF",
         onClick: () => void onGeneratePdf(invoice.id),
