@@ -182,6 +182,7 @@ function invoiceStatusLabel(status: string): string {
 
 type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
 type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
+type InvoiceMenuPosition = { top: number; left: number; openUpward: boolean };
 
 const TAB_META: Record<Tab, { eyebrow: string; title: string }> = {
   students: {
@@ -1112,6 +1113,8 @@ export default function App() {
   const pendingInvoiceScrollRestoreRef = useRef<number | null>(null);
   const [openInvoiceMenu, setOpenInvoiceMenu] = useState<InvoiceMenuTarget | null>(null);
   const invoiceMenuRef = useRef<HTMLDivElement | null>(null);
+  const activeInvoiceMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const [invoiceMenuPosition, setInvoiceMenuPosition] = useState<InvoiceMenuPosition | null>(null);
 
   // Payment modal state
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -1192,21 +1195,6 @@ export default function App() {
       window.scrollTo({ top: scrollY, behavior: "auto" });
     });
   }, [invItems]);
-
-  useEffect(() => {
-    if (!openInvoiceMenu) return;
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!invoiceMenuRef.current?.contains(event.target as Node)) {
-        setOpenInvoiceMenu(null);
-      }
-    };
-
-    document.addEventListener("mousedown", handlePointerDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-    };
-  }, [openInvoiceMenu]);
 
   // ---------------- Debtors ----------------
   const [debtors, setDebtors] = useState<DebtorDTO[]>([]);
@@ -1303,15 +1291,11 @@ export default function App() {
     }
   };
 
-  const toggleInvoiceMenu = (kind: InvoiceMenuTarget["kind"], invoiceId: number) => {
-    setOpenInvoiceMenu((current) =>
-      current?.kind === kind && current.invoiceId === invoiceId ? null : { kind, invoiceId }
-    );
-  };
-
-  const closeInvoiceMenu = () => {
+  const closeInvoiceMenu = useCallback(() => {
+    activeInvoiceMenuTriggerRef.current = null;
     setOpenInvoiceMenu(null);
-  };
+    setInvoiceMenuPosition(null);
+  }, []);
 
   const openPaymentModal = (inv?: InvoiceDTO, summary?: InvoiceSummaryDTO | null) => {
     const currentInv = inv ?? selectedInv;
@@ -1495,74 +1479,131 @@ export default function App() {
     }
   };
 
+  const buildInvoiceMenuItems = useCallback(
+    (invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean }) => {
+      const menuItems: Array<{ label: string; onClick: () => void }> = [];
+
+      if (invoice.status === "issued") {
+        menuItems.push({
+          label: "Вернуть в черновик",
+          onClick: () => void onReopenToDraft(invoice.id),
+        });
+      }
+      if (invoice.status !== "draft") {
+        menuItems.push({
+          label: "Показать в папке",
+          onClick: () => void onRevealInvoiceFile(invoice.id),
+        });
+        if (!invoice.pdfReady) {
+          menuItems.push({
+            label: "Создать PDF",
+            onClick: () => void onGeneratePdf(invoice.id),
+          });
+        }
+      }
+
+      return menuItems;
+    },
+    [onGeneratePdf, onReopenToDraft, onRevealInvoiceFile]
+  );
+
+  const openInvoiceMenuAtTrigger = useCallback(
+    (
+      kind: InvoiceMenuTarget["kind"],
+      invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
+      trigger: HTMLButtonElement
+    ) => {
+      const menuItems = buildInvoiceMenuItems(invoice);
+      if (menuItems.length === 0) {
+        closeInvoiceMenu();
+        return;
+      }
+
+      const triggerRect = trigger.getBoundingClientRect();
+      const menuWidth = 190;
+      const menuGap = 8;
+      const menuHeight = menuItems.length * 48 + 16;
+      const openUpward =
+        window.innerHeight - triggerRect.bottom < menuHeight + menuGap &&
+        triggerRect.top > menuHeight + menuGap;
+      const top = openUpward ? triggerRect.top - menuGap : triggerRect.bottom + menuGap;
+      const left = Math.min(
+        window.innerWidth - menuWidth - 12,
+        Math.max(12, triggerRect.right - menuWidth)
+      );
+
+      activeInvoiceMenuTriggerRef.current = trigger;
+      setInvoiceMenuPosition({ top, left, openUpward });
+      setOpenInvoiceMenu({ kind, invoiceId: invoice.id });
+    },
+    [buildInvoiceMenuItems, closeInvoiceMenu]
+  );
+
+  const toggleInvoiceMenu = useCallback(
+    (
+      kind: InvoiceMenuTarget["kind"],
+      invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
+      trigger: HTMLButtonElement
+    ) => {
+      if (openInvoiceMenu?.kind === kind && openInvoiceMenu.invoiceId === invoice.id) {
+        closeInvoiceMenu();
+        return;
+      }
+      openInvoiceMenuAtTrigger(kind, invoice, trigger);
+    },
+    [closeInvoiceMenu, openInvoiceMenu, openInvoiceMenuAtTrigger]
+  );
+
+  useEffect(() => {
+    if (!openInvoiceMenu) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (invoiceMenuRef.current?.contains(target)) return;
+      if (activeInvoiceMenuTriggerRef.current?.contains(target)) return;
+      closeInvoiceMenu();
+    };
+
+    const handleViewportChange = () => {
+      closeInvoiceMenu();
+    };
+
+    document.addEventListener("mousedown", handlePointerDown);
+    window.addEventListener("resize", handleViewportChange);
+    window.addEventListener("scroll", handleViewportChange, true);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      window.removeEventListener("resize", handleViewportChange);
+      window.removeEventListener("scroll", handleViewportChange, true);
+    };
+  }, [closeInvoiceMenu, openInvoiceMenu]);
+
+  useEffect(() => {
+    if (!openInvoiceMenu) return;
+    closeInvoiceMenu();
+  }, [closeInvoiceMenu, invoiceDetailsOpen, tab]);
+
   const renderInvoiceActionsMenu = (
     invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
-    options?: {
-      kind?: InvoiceMenuTarget["kind"];
-      onRecordPayment?: () => void;
-      openUpward?: boolean;
-    }
+    options?: { kind?: InvoiceMenuTarget["kind"] }
   ) => {
     const kind = options?.kind ?? "row";
     const isOpen = openInvoiceMenu?.kind === kind && openInvoiceMenu.invoiceId === invoice.id;
-    const menuItems: Array<{ label: string; onClick: () => void }> = [];
-
-    if (invoice.status === "issued") {
-      menuItems.push({
-        label: "Вернуть в черновик",
-        onClick: () => void onReopenToDraft(invoice.id),
-      });
-    }
-    if (invoice.status !== "draft") {
-      menuItems.push({
-        label: "Показать в папке",
-        onClick: () => void onRevealInvoiceFile(invoice.id),
-      });
-      if (!invoice.pdfReady) {
-        menuItems.push({
-          label: "Создать PDF",
-          onClick: () => void onGeneratePdf(invoice.id),
-        });
-      }
-    }
+    const menuItems = buildInvoiceMenuItems(invoice);
 
     if (menuItems.length === 0) return null;
 
     return (
-      <div
-        className="invoiceActionsMenu"
-        ref={isOpen ? invoiceMenuRef : null}
-      >
+      <div className="invoiceActionsMenu">
         <button
           type="button"
           className="invoiceActionsMenuTrigger"
           aria-haspopup="menu"
           aria-expanded={isOpen}
-          onClick={() => toggleInvoiceMenu(kind, invoice.id)}
+          onClick={(event) => toggleInvoiceMenu(kind, invoice, event.currentTarget)}
         >
           Ещё
         </button>
-        {isOpen && (
-          <div
-            className={`invoiceActionsMenuPanel ${options?.openUpward ? "invoiceActionsMenuPanelUpward" : ""}`}
-            role="menu"
-          >
-            {menuItems.map((item) => (
-              <button
-                key={item.label}
-                type="button"
-                className="invoiceActionsMenuItem"
-                role="menuitem"
-                onClick={() => {
-                  closeInvoiceMenu();
-                  item.onClick();
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
     );
   };
@@ -1597,6 +1638,16 @@ export default function App() {
   const selectedInvPdfReady = selectedInv
     ? (invItems.find((item) => item.id === selectedInv.id)?.pdfReady ?? false)
     : false;
+  const openInvoiceMenuItems = useMemo(() => {
+    if (!openInvoiceMenu) return [];
+
+    if (openInvoiceMenu.kind === "modal" && selectedInv) {
+      return buildInvoiceMenuItems({ ...selectedInv, pdfReady: selectedInvPdfReady });
+    }
+
+    const rowInvoice = invItems.find((item) => item.id === openInvoiceMenu.invoiceId);
+    return rowInvoice ? buildInvoiceMenuItems(rowInvoice) : [];
+  }, [buildInvoiceMenuItems, invItems, openInvoiceMenu, selectedInv, selectedInvPdfReady]);
 
   return (
     <div className="container">
@@ -2511,9 +2562,7 @@ export default function App() {
                                 Записать оплату
                               </button>
                             )}
-                            {renderInvoiceActionsMenu(it, {
-                              openUpward: index >= filteredInvItems.length - 2,
-                            })}
+                            {renderInvoiceActionsMenu(it)}
                           </div>
                         </td>
                       </tr>
@@ -3070,6 +3119,34 @@ export default function App() {
               <button onClick={() => setStudentCardOpen(false)}>Закрыть</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {openInvoiceMenu && invoiceMenuPosition && openInvoiceMenuItems.length > 0 && (
+        <div
+          ref={invoiceMenuRef}
+          className={`invoiceActionsMenuPanel ${invoiceMenuPosition.openUpward ? "invoiceActionsMenuPanelUpward" : ""}`}
+          role="menu"
+          style={{
+            position: "fixed",
+            top: invoiceMenuPosition.top,
+            left: invoiceMenuPosition.left,
+          }}
+        >
+          {openInvoiceMenuItems.map((item) => (
+            <button
+              key={item.label}
+              type="button"
+              className="invoiceActionsMenuItem"
+              role="menuitem"
+              onClick={() => {
+                closeInvoiceMenu();
+                item.onClick();
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       )}
 
