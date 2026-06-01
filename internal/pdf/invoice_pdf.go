@@ -337,8 +337,8 @@ func drawServiceTable(p *fpdf.Fpdf, currency string, lines []*ent.InvoiceLine, p
 
 	for i, line := range lines {
 		unit := "gab."
-		if line.Qty > 1 {
-			unit = "nod."
+		if line.Qty != 1 {
+			unit = "st."
 		}
 
 		description := normalizeInvoiceDescription(line.Description, periodStart)
@@ -346,7 +346,7 @@ func drawServiceTable(p *fpdf.Fpdf, currency string, lines []*ent.InvoiceLine, p
 	}
 }
 
-func drawServiceRow(p *fpdf.Fpdf, no int, name, term, unit string, qty int, price, amount float64, currency string) {
+func drawServiceRow(p *fpdf.Fpdf, no int, name, term, unit string, qty float64, price, amount float64, currency string) {
 	x0 := 10.0
 	y0 := p.GetY()
 
@@ -392,7 +392,7 @@ func drawServiceRow(p *fpdf.Fpdf, no int, name, term, unit string, qty int, pric
 	p.CellFormat(wUnit, 4, unit, "", 0, "C", false, 0, "")
 
 	p.SetXY(x0+wNo+wName+wTerm+wUnit, y0+(rowH/2)-2)
-	p.CellFormat(wQty, 4, fmt.Sprintf("%d", qty), "", 0, "C", false, 0, "")
+	p.CellFormat(wQty, 4, formatInvoiceQty(qty), "", 0, "C", false, 0, "")
 
 	p.SetXY(x0+wNo+wName+wTerm+wUnit+wQty, y0+(rowH/2)-2)
 	p.CellFormat(wPrice-1.5, 4, moneyNoCurrency(price), "", 0, "R", false, 0, "")
@@ -402,6 +402,16 @@ func drawServiceRow(p *fpdf.Fpdf, no int, name, term, unit string, qty int, pric
 
 	p.SetY(y0 + rowH)
 	_ = currency
+}
+
+func formatInvoiceQty(qty float64) string {
+	if math.Abs(qty-math.Round(qty)) < 0.0001 {
+		return fmt.Sprintf("%.0f", qty)
+	}
+	if math.Abs(qty*4-math.Round(qty*4)) < 0.0001 {
+		return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.2f", qty), "0"), ".")
+	}
+	return fmt.Sprintf("%.2f", qty)
 }
 
 func drawTotalAndPayment(p *fpdf.Fpdf, provider artlabProvider, total float64, dueDate time.Time, invoiceNumber string) {

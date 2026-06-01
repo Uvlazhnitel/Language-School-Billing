@@ -14,7 +14,7 @@ func (AttendanceMonth) Fields() []ent.Field {
 		field.Int("course_id"),
 		field.Int("year"),
 		field.Int("month"),
-		field.Int("lessons_count").Default(0),
+		field.Float("hours").StorageKey("lessons_count").Default(0),
 	}
 }
 

@@ -349,18 +349,18 @@ func copyFile(src, dst string) error {
 
 // AttendanceListPerLesson retrieves attendance records for per-lesson billing
 // enrollments for the specified year, month, and optionally filtered by course.
-// Returns a list of rows containing student, course, and attendance count information.
+// Returns a list of rows containing student, course, and tracked hours information.
 func (a *App) AttendanceListPerLesson(year, month int, courseID *int) ([]attendance.Row, error) {
 	return a.att.ListPerLesson(a.ctx, year, month, courseID)
 }
 
 // AttendanceUpsert creates or updates an attendance record for a student-course
 // pair for a specific month.
-func (a *App) AttendanceUpsert(studentID, courseID, year, month, count int) error {
-	return a.att.Upsert(a.ctx, studentID, courseID, year, month, count)
+func (a *App) AttendanceUpsert(studentID, courseID, year, month int, hours float64) error {
+	return a.att.Upsert(a.ctx, studentID, courseID, year, month, hours)
 }
 
-// AttendanceAddOne increments the lesson count by 1 for all attendance
+// AttendanceAddOne increments tracked hours by 0.25 for all attendance
 // records matching the filter (year, month, optional courseID).
 // Returns the number of records that were successfully updated.
 func (a *App) AttendanceAddOne(year, month int, courseID *int) (int, error) {

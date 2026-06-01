@@ -36,3 +36,15 @@ func ValidateDiscountPct(discountPct float64) error {
 	}
 	return nil
 }
+
+// ValidateQuarterHours checks that hours are non-negative and use 0.25h steps.
+func ValidateQuarterHours(hours float64) error {
+	if hours < 0 {
+		return errors.New("hours must be non-negative")
+	}
+	quarters := hours * 4
+	if quarters != float64(int(quarters+0.5)) {
+		return errors.New("hours must use 0.25 increments")
+	}
+	return nil
+}

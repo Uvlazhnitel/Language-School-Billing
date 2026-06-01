@@ -15,7 +15,7 @@ var (
 		{Name: "course_id", Type: field.TypeInt},
 		{Name: "year", Type: field.TypeInt},
 		{Name: "month", Type: field.TypeInt},
-		{Name: "lessons_count", Type: field.TypeInt, Default: 0},
+		{Name: "lessons_count", Type: field.TypeFloat64, Default: 0},
 	}
 	// AttendanceMonthsTable holds the schema information for the "attendance_months" table.
 	AttendanceMonthsTable = &schema.Table{
@@ -126,7 +126,7 @@ var (
 	InvoiceLinesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "description", Type: field.TypeString},
-		{Name: "qty", Type: field.TypeInt},
+		{Name: "qty", Type: field.TypeFloat64},
 		{Name: "unit_price", Type: field.TypeFloat64},
 		{Name: "amount", Type: field.TypeFloat64},
 		{Name: "enrollment_id", Type: field.TypeInt},

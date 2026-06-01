@@ -24,8 +24,8 @@ type AttendanceMonth struct {
 	Year int `json:"year,omitempty"`
 	// Month holds the value of the "month" field.
 	Month int `json:"month,omitempty"`
-	// LessonsCount holds the value of the "lessons_count" field.
-	LessonsCount int `json:"lessons_count,omitempty"`
+	// Hours holds the value of the "hours" field.
+	Hours        float64 `json:"hours,omitempty"`
 	selectValues sql.SelectValues
 }
 
@@ -34,7 +34,9 @@ func (*AttendanceMonth) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case attendancemonth.FieldID, attendancemonth.FieldStudentID, attendancemonth.FieldCourseID, attendancemonth.FieldYear, attendancemonth.FieldMonth, attendancemonth.FieldLessonsCount:
+		case attendancemonth.FieldHours:
+			values[i] = new(sql.NullFloat64)
+		case attendancemonth.FieldID, attendancemonth.FieldStudentID, attendancemonth.FieldCourseID, attendancemonth.FieldYear, attendancemonth.FieldMonth:
 			values[i] = new(sql.NullInt64)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -81,11 +83,11 @@ func (_m *AttendanceMonth) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Month = int(value.Int64)
 			}
-		case attendancemonth.FieldLessonsCount:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field lessons_count", values[i])
+		case attendancemonth.FieldHours:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field hours", values[i])
 			} else if value.Valid {
-				_m.LessonsCount = int(value.Int64)
+				_m.Hours = value.Float64
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -135,8 +137,8 @@ func (_m *AttendanceMonth) String() string {
 	builder.WriteString("month=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Month))
 	builder.WriteString(", ")
-	builder.WriteString("lessons_count=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LessonsCount))
+	builder.WriteString("hours=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Hours))
 	builder.WriteByte(')')
 	return builder.String()
 }

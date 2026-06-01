@@ -579,7 +579,7 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		Where(
 			attendancemonth.YearEQ(year),
 			attendancemonth.MonthEQ(month),
-			attendancemonth.LessonsCountGT(0),
+			attendancemonth.HoursGT(0),
 		).
 		All(ctx)
 	if err != nil {

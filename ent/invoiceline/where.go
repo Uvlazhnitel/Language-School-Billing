@@ -70,7 +70,7 @@ func Description(v string) predicate.InvoiceLine {
 }
 
 // Qty applies equality check predicate on the "qty" field. It's identical to QtyEQ.
-func Qty(v int) predicate.InvoiceLine {
+func Qty(v float64) predicate.InvoiceLine {
 	return predicate.InvoiceLine(sql.FieldEQ(FieldQty, v))
 }
 
@@ -190,42 +190,42 @@ func DescriptionContainsFold(v string) predicate.InvoiceLine {
 }
 
 // QtyEQ applies the EQ predicate on the "qty" field.
-func QtyEQ(v int) predicate.InvoiceLine {
+func QtyEQ(v float64) predicate.InvoiceLine {
 	return predicate.InvoiceLine(sql.FieldEQ(FieldQty, v))
 }
 
 // QtyNEQ applies the NEQ predicate on the "qty" field.
-func QtyNEQ(v int) predicate.InvoiceLine {
+func QtyNEQ(v float64) predicate.InvoiceLine {
 	return predicate.InvoiceLine(sql.FieldNEQ(FieldQty, v))
 }
 
 // QtyIn applies the In predicate on the "qty" field.
-func QtyIn(vs ...int) predicate.InvoiceLine {
+func QtyIn(vs ...float64) predicate.InvoiceLine {
 	return predicate.InvoiceLine(sql.FieldIn(FieldQty, vs...))
 }
 
 // QtyNotIn applies the NotIn predicate on the "qty" field.
-func QtyNotIn(vs ...int) predicate.InvoiceLine {
+func QtyNotIn(vs ...float64) predicate.InvoiceLine {
 	return predicate.InvoiceLine(sql.FieldNotIn(FieldQty, vs...))
 }
 
 // QtyGT applies the GT predicate on the "qty" field.
-func QtyGT(v int) predicate.InvoiceLine {
+func QtyGT(v float64) predicate.InvoiceLine {
 	return predicate.InvoiceLine(sql.FieldGT(FieldQty, v))
 }
 
 // QtyGTE applies the GTE predicate on the "qty" field.
-func QtyGTE(v int) predicate.InvoiceLine {
+func QtyGTE(v float64) predicate.InvoiceLine {
 	return predicate.InvoiceLine(sql.FieldGTE(FieldQty, v))
 }
 
 // QtyLT applies the LT predicate on the "qty" field.
-func QtyLT(v int) predicate.InvoiceLine {
+func QtyLT(v float64) predicate.InvoiceLine {
 	return predicate.InvoiceLine(sql.FieldLT(FieldQty, v))
 }
 
 // QtyLTE applies the LTE predicate on the "qty" field.
-func QtyLTE(v int) predicate.InvoiceLine {
+func QtyLTE(v float64) predicate.InvoiceLine {
 	return predicate.InvoiceLine(sql.FieldLTE(FieldQty, v))
 }
 

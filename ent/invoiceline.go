@@ -25,7 +25,7 @@ type InvoiceLine struct {
 	// Description holds the value of the "description" field.
 	Description string `json:"description,omitempty"`
 	// Qty holds the value of the "qty" field.
-	Qty int `json:"qty,omitempty"`
+	Qty float64 `json:"qty,omitempty"`
 	// UnitPrice holds the value of the "unit_price" field.
 	UnitPrice float64 `json:"unit_price,omitempty"`
 	// Amount holds the value of the "amount" field.
@@ -74,9 +74,9 @@ func (*InvoiceLine) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case invoiceline.FieldUnitPrice, invoiceline.FieldAmount:
+		case invoiceline.FieldQty, invoiceline.FieldUnitPrice, invoiceline.FieldAmount:
 			values[i] = new(sql.NullFloat64)
-		case invoiceline.FieldID, invoiceline.FieldInvoiceID, invoiceline.FieldEnrollmentID, invoiceline.FieldQty:
+		case invoiceline.FieldID, invoiceline.FieldInvoiceID, invoiceline.FieldEnrollmentID:
 			values[i] = new(sql.NullInt64)
 		case invoiceline.FieldDescription:
 			values[i] = new(sql.NullString)
@@ -120,10 +120,10 @@ func (_m *InvoiceLine) assignValues(columns []string, values []any) error {
 				_m.Description = value.String
 			}
 		case invoiceline.FieldQty:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
 				return fmt.Errorf("unexpected type %T for field qty", values[i])
 			} else if value.Valid {
-				_m.Qty = int(value.Int64)
+				_m.Qty = value.Float64
 			}
 		case invoiceline.FieldUnitPrice:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {

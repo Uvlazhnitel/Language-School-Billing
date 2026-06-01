@@ -14,7 +14,7 @@ func (InvoiceLine) Fields() []ent.Field {
 		field.Int("invoice_id"),
 		field.Int("enrollment_id"),
 		field.String("description"),
-		field.Int("qty"),
+		field.Float("qty"),
 		field.Float("unit_price"),
 		field.Float("amount"),
 	}

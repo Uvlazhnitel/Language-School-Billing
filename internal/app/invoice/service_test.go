@@ -152,7 +152,7 @@ func TestGenerateDraftsPerLessonDescriptionIsLatvian(t *testing.T) {
 		SetCourseID(crs.ID).
 		SetYear(2026).
 		SetMonth(5).
-		SetLessonsCount(4).
+		SetHours(4).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonth.Create: %v", err)
 	}
@@ -190,6 +190,98 @@ func TestGenerateDraftsPerLessonDescriptionIsLatvian(t *testing.T) {
 	}
 	if lines[0].Description != "Dalības maksa par Zīmēšana" {
 		t.Fatalf("service description = %q, want %q", lines[0].Description, "Dalības maksa par Zīmēšana")
+	}
+	if lines[0].Qty != 4 {
+		t.Fatalf("service qty = %v, want 4", lines[0].Qty)
+	}
+	if lines[1].Description != materialsLineDescription {
+		t.Fatalf("materials description = %q, want %q", lines[1].Description, materialsLineDescription)
+	}
+}
+
+func TestGenerateDraftsPerLessonSupportsFractionalHours(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-generate-fractional-hours?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Fractional Hours Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Skicēšana").
+		SetType(course.TypeGroup).
+		SetLessonPrice(20).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(5).
+		SetHours(1.5).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	res, err := svc.GenerateDrafts(ctx, 2026, 5)
+	if err != nil {
+		t.Fatalf("GenerateDrafts: %v", err)
+	}
+	if res.Created != 1 {
+		t.Fatalf("Created = %d, want 1", res.Created)
+	}
+
+	iv, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(5)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Query: %v", err)
+	}
+	if iv.TotalAmount != 35 {
+		t.Fatalf("invoice total = %v, want 35", iv.TotalAmount)
+	}
+
+	lines, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(iv.ID)).
+		Order(ent.Asc(invoiceline.FieldID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query: %v", err)
+	}
+	if len(lines) != 2 {
+		t.Fatalf("invoice line count = %d, want 2", len(lines))
+	}
+	if lines[0].EnrollmentID != enr.ID {
+		t.Fatalf("service enrollment_id = %d, want %d", lines[0].EnrollmentID, enr.ID)
+	}
+	if lines[0].Qty != 1.5 {
+		t.Fatalf("service qty = %v, want 1.5", lines[0].Qty)
+	}
+	if lines[0].Amount != 30 {
+		t.Fatalf("service amount = %v, want 30", lines[0].Amount)
 	}
 	if lines[1].Description != materialsLineDescription {
 		t.Fatalf("materials description = %q, want %q", lines[1].Description, materialsLineDescription)
@@ -398,7 +490,7 @@ func TestRebuildStudentDraft(t *testing.T) {
 		SetCourseID(crs.ID).
 		SetYear(2026).
 		SetMonth(8).
-		SetLessonsCount(2).
+		SetHours(2).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonth.Create: %v", err)
 	}
@@ -438,7 +530,7 @@ func TestRebuildStudentDraft(t *testing.T) {
 			attendancemonth.YearEQ(2026),
 			attendancemonth.MonthEQ(8),
 		).
-		SetLessonsCount(3).
+		SetHours(3).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonth.Update: %v", err)
 	}
@@ -480,7 +572,7 @@ func TestRebuildStudentDraft(t *testing.T) {
 			attendancemonth.YearEQ(2026),
 			attendancemonth.MonthEQ(8),
 		).
-		SetLessonsCount(0).
+		SetHours(0).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonth.Update to zero: %v", err)
 	}
@@ -569,7 +661,7 @@ func TestRebuildStudentDraftSkipsIssuedInvoice(t *testing.T) {
 		SetCourseID(crs.ID).
 		SetYear(2026).
 		SetMonth(9).
-		SetLessonsCount(4).
+		SetHours(4).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonth.Create: %v", err)
 	}

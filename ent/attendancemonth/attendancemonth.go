@@ -19,8 +19,8 @@ const (
 	FieldYear = "year"
 	// FieldMonth holds the string denoting the month field in the database.
 	FieldMonth = "month"
-	// FieldLessonsCount holds the string denoting the lessons_count field in the database.
-	FieldLessonsCount = "lessons_count"
+	// FieldHours holds the string denoting the hours field in the database.
+	FieldHours = "lessons_count"
 	// Table holds the table name of the attendancemonth in the database.
 	Table = "attendance_months"
 )
@@ -32,7 +32,7 @@ var Columns = []string{
 	FieldCourseID,
 	FieldYear,
 	FieldMonth,
-	FieldLessonsCount,
+	FieldHours,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -46,8 +46,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// DefaultLessonsCount holds the default value on creation for the "lessons_count" field.
-	DefaultLessonsCount int
+	// DefaultHours holds the default value on creation for the "hours" field.
+	DefaultHours float64
 )
 
 // OrderOption defines the ordering options for the AttendanceMonth queries.
@@ -78,7 +78,7 @@ func ByMonth(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldMonth, opts...).ToFunc()
 }
 
-// ByLessonsCount orders the results by the lessons_count field.
-func ByLessonsCount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLessonsCount, opts...).ToFunc()
+// ByHours orders the results by the hours field.
+func ByHours(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldHours, opts...).ToFunc()
 }

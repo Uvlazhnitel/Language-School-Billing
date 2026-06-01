@@ -62,7 +62,7 @@ type ListItem struct {
 type LineDTO struct {
 	EnrollmentID int     `json:"enrollmentId"` // ID of the enrollment this line is for
 	Description  string  `json:"description"`  // Line item description
-	Qty          int     `json:"qty"`          // Quantity (e.g., number of lessons)
+	Qty          float64 `json:"qty"`          // Quantity (e.g., number of hours)
 	UnitPrice    float64 `json:"unitPrice"`    // Price per unit
 	Amount       float64 `json:"amount"`       // Total amount for this line (qty * unitPrice)
 }
@@ -123,7 +123,7 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 		attendancemonth.MonthEQ(m),
 	).Only(ctx)
 
-	qty := 0
+	qty := 0.0
 	if err != nil {
 		if !ent.IsNotFound(err) {
 			fmt.Printf("AttendanceMonth query error (student %d, course %d, %04d-%02d): %v\n",
@@ -131,10 +131,10 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 		}
 		// NotFound => qty remains 0
 	} else {
-		qty = am.LessonsCount
+		qty = am.Hours
 	}
 
-	amount := utils.Round2(float64(qty) * lessonPrice)
+	amount := utils.Round2(qty * lessonPrice)
 	courseName := ""
 	if c, err := s.db.Course.Get(ctx, en.CourseID); err == nil {
 		courseName = c.Name
@@ -224,7 +224,7 @@ func (s *Service) hasAnyLessonsInMonth(ctx context.Context, ens []*ent.Enrollmen
 				attendancemonth.CourseIDEQ(en.CourseID),
 				attendancemonth.YearEQ(y),
 				attendancemonth.MonthEQ(m),
-				attendancemonth.LessonsCountGT(0),
+				attendancemonth.HoursGT(0),
 			).
 			Count(ctx)
 		if err == nil && count > 0 {

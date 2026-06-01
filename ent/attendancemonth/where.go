@@ -73,9 +73,9 @@ func Month(v int) predicate.AttendanceMonth {
 	return predicate.AttendanceMonth(sql.FieldEQ(FieldMonth, v))
 }
 
-// LessonsCount applies equality check predicate on the "lessons_count" field. It's identical to LessonsCountEQ.
-func LessonsCount(v int) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldEQ(FieldLessonsCount, v))
+// Hours applies equality check predicate on the "hours" field. It's identical to HoursEQ.
+func Hours(v float64) predicate.AttendanceMonth {
+	return predicate.AttendanceMonth(sql.FieldEQ(FieldHours, v))
 }
 
 // StudentIDEQ applies the EQ predicate on the "student_id" field.
@@ -238,44 +238,44 @@ func MonthLTE(v int) predicate.AttendanceMonth {
 	return predicate.AttendanceMonth(sql.FieldLTE(FieldMonth, v))
 }
 
-// LessonsCountEQ applies the EQ predicate on the "lessons_count" field.
-func LessonsCountEQ(v int) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldEQ(FieldLessonsCount, v))
+// HoursEQ applies the EQ predicate on the "hours" field.
+func HoursEQ(v float64) predicate.AttendanceMonth {
+	return predicate.AttendanceMonth(sql.FieldEQ(FieldHours, v))
 }
 
-// LessonsCountNEQ applies the NEQ predicate on the "lessons_count" field.
-func LessonsCountNEQ(v int) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldNEQ(FieldLessonsCount, v))
+// HoursNEQ applies the NEQ predicate on the "hours" field.
+func HoursNEQ(v float64) predicate.AttendanceMonth {
+	return predicate.AttendanceMonth(sql.FieldNEQ(FieldHours, v))
 }
 
-// LessonsCountIn applies the In predicate on the "lessons_count" field.
-func LessonsCountIn(vs ...int) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldIn(FieldLessonsCount, vs...))
+// HoursIn applies the In predicate on the "hours" field.
+func HoursIn(vs ...float64) predicate.AttendanceMonth {
+	return predicate.AttendanceMonth(sql.FieldIn(FieldHours, vs...))
 }
 
-// LessonsCountNotIn applies the NotIn predicate on the "lessons_count" field.
-func LessonsCountNotIn(vs ...int) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldNotIn(FieldLessonsCount, vs...))
+// HoursNotIn applies the NotIn predicate on the "hours" field.
+func HoursNotIn(vs ...float64) predicate.AttendanceMonth {
+	return predicate.AttendanceMonth(sql.FieldNotIn(FieldHours, vs...))
 }
 
-// LessonsCountGT applies the GT predicate on the "lessons_count" field.
-func LessonsCountGT(v int) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldGT(FieldLessonsCount, v))
+// HoursGT applies the GT predicate on the "hours" field.
+func HoursGT(v float64) predicate.AttendanceMonth {
+	return predicate.AttendanceMonth(sql.FieldGT(FieldHours, v))
 }
 
-// LessonsCountGTE applies the GTE predicate on the "lessons_count" field.
-func LessonsCountGTE(v int) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldGTE(FieldLessonsCount, v))
+// HoursGTE applies the GTE predicate on the "hours" field.
+func HoursGTE(v float64) predicate.AttendanceMonth {
+	return predicate.AttendanceMonth(sql.FieldGTE(FieldHours, v))
 }
 
-// LessonsCountLT applies the LT predicate on the "lessons_count" field.
-func LessonsCountLT(v int) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldLT(FieldLessonsCount, v))
+// HoursLT applies the LT predicate on the "hours" field.
+func HoursLT(v float64) predicate.AttendanceMonth {
+	return predicate.AttendanceMonth(sql.FieldLT(FieldHours, v))
 }
 
-// LessonsCountLTE applies the LTE predicate on the "lessons_count" field.
-func LessonsCountLTE(v int) predicate.AttendanceMonth {
-	return predicate.AttendanceMonth(sql.FieldLTE(FieldLessonsCount, v))
+// HoursLTE applies the LTE predicate on the "hours" field.
+func HoursLTE(v float64) predicate.AttendanceMonth {
+	return predicate.AttendanceMonth(sql.FieldLTE(FieldHours, v))
 }
 
 // And groups predicates with the AND operator between them.

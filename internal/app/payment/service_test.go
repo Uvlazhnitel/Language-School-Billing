@@ -601,14 +601,14 @@ func createTestEnrollment(t *testing.T, ctx context.Context, client *ent.Client,
 	return enr
 }
 
-func createTestAttendanceMonth(t *testing.T, ctx context.Context, client *ent.Client, studentID, courseID, year, month, lessonsCount int) *ent.AttendanceMonth {
+func createTestAttendanceMonth(t *testing.T, ctx context.Context, client *ent.Client, studentID, courseID, year, month int, hours float64) *ent.AttendanceMonth {
 	t.Helper()
 	am, err := client.AttendanceMonth.Create().
 		SetStudentID(studentID).
 		SetCourseID(courseID).
 		SetYear(year).
 		SetMonth(month).
-		SetLessonsCount(lessonsCount).
+		SetHours(hours).
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("create attendance month: %v", err)

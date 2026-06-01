@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
 
-import { fetchRows, saveCount, deleteEnrollment, Row } from "./lib/attendance";
+import { fetchRows, saveHours, deleteEnrollment, Row } from "./lib/attendance";
 
 import {
   listInvoices,
@@ -265,6 +265,18 @@ function normalizeMoneyInput(value: string): string | null {
 
 function formatEUR(value: number): string {
   return `€${value.toFixed(2)}`;
+}
+
+function normalizeQuarterHours(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.round(value * 4) / 4;
+}
+
+function formatHoursValue(value: number): string {
+  if (Math.abs(value - Math.round(value)) < 0.0001) {
+    return String(Math.round(value));
+  }
+  return value.toFixed(2).replace(/\.?0+$/, "");
 }
 
 function debtMonthLabel(month: number, year: number, locale: "ru" | "lv"): string {
@@ -1163,7 +1175,7 @@ export default function App() {
   const perLessonTotal = useMemo(
     () =>
       rows.reduce(
-        (s, r) => s + (r.billingMode === BillingModePerLesson ? r.count * r.lessonPrice : 0),
+        (s, r) => s + (r.billingMode === BillingModePerLesson ? r.hours * r.lessonPrice : 0),
         0
       ),
     [rows]
@@ -1189,7 +1201,7 @@ export default function App() {
       filtered = filtered.filter((r) => r.billingMode === BillingModePerLesson && r.hasRecord);
     } else if (attFilter === "zero") {
       filtered = filtered.filter(
-        (r) => r.billingMode === BillingModePerLesson && r.hasRecord && r.count === 0
+        (r) => r.billingMode === BillingModePerLesson && r.hasRecord && r.hours === 0
       );
     }
 
@@ -1200,11 +1212,11 @@ export default function App() {
     const editableRows = rows.filter((r) => r.billingMode === BillingModePerLesson);
     const filled = editableRows.filter((r) => r.hasRecord).length;
     const missing = editableRows.filter((r) => !r.hasRecord).length;
-    const zero = editableRows.filter((r) => r.hasRecord && r.count === 0).length;
+    const zero = editableRows.filter((r) => r.hasRecord && r.hours === 0).length;
     return { filled, missing, zero, total: editableRows.length };
   }, [rows]);
 
-  const onChangeCount = async (r: Row, v: number) => {
+  const onChangeHours = async (r: Row, v: number) => {
     if (r.billingMode !== BillingModePerLesson) return;
     if (r.attendanceLocked) {
       showMessage(
@@ -1216,15 +1228,15 @@ export default function App() {
       return;
     }
     if (!Number.isFinite(v)) return;
-    const n = v < 0 ? 0 : Math.trunc(v);
+    const n = normalizeQuarterHours(v);
     if (attendanceSavingRows[r.enrollmentId]) return;
 
     try {
       setAttendanceSavingRows((prev) => ({ ...prev, [r.enrollmentId]: true }));
-      await saveCount(r.studentId, r.courseId, year, month, n);
+      await saveHours(r.studentId, r.courseId, year, month, n);
       setRows((prev) =>
         prev.map((x) =>
-          x.enrollmentId === r.enrollmentId ? { ...x, count: n, hasRecord: true } : x
+          x.enrollmentId === r.enrollmentId ? { ...x, hours: n, hasRecord: true } : x
         )
       );
       try {
@@ -2637,59 +2649,60 @@ export default function App() {
                           )}
                           {r.billingMode === BillingModePerLesson &&
                             r.hasRecord &&
-                            r.count === 0 && (
-                              <span className="attBadge attBadge--zero">0 занятий</span>
+                            r.hours === 0 && (
+                              <span className="attBadge attBadge--zero">0h</span>
                             )}
                           {r.billingMode === BillingModePerLesson && !r.attendanceLocked ? (
                             <div className="attendanceStepper">
                               <button
                                 type="button"
                                 className="attendanceStepperButton"
-                                onClick={() => onChangeCount(r, r.count - 1)}
-                                disabled={attendanceSavingRows[r.enrollmentId] || r.count <= 0}
-                                aria-label={`Уменьшить количество занятий для ${r.studentName}`}
+                                onClick={() => onChangeHours(r, r.hours - 0.25)}
+                                disabled={attendanceSavingRows[r.enrollmentId] || r.hours <= 0}
+                                aria-label={`Decrease hours for ${r.studentName}`}
                               >
                                 −
                               </button>
                               <input
                                 type="number"
                                 min={0}
-                                value={r.count}
+                                step={0.25}
+                                value={formatHoursValue(r.hours)}
                                 disabled={attendanceSavingRows[r.enrollmentId]}
-                                onChange={(e) => onChangeCount(r, Number(e.target.value))}
+                                onChange={(e) => onChangeHours(r, Number(e.target.value))}
                                 className="attendanceStepperInput"
-                                aria-label={`Количество занятий для ${r.studentName}`}
+                                aria-label={`Hours for ${r.studentName}`}
                               />
                               <button
                                 type="button"
                                 className="attendanceStepperButton"
-                                onClick={() => onChangeCount(r, r.count + 1)}
+                                onClick={() => onChangeHours(r, r.hours + 0.25)}
                                 disabled={attendanceSavingRows[r.enrollmentId]}
-                                aria-label={`Увеличить количество занятий для ${r.studentName}`}
+                                aria-label={`Increase hours for ${r.studentName}`}
                               >
                                 +
                               </button>
                             </div>
                           ) : (
                             <div className="attendanceReadOnly">
-                              <span className="attBadge attBadge--subscription">Read only</span>
+                              <span className="attBadge attBadge--subscription">{t("msg.readOnly")}</span>
                               <span className="mutedInline">
                                 {r.billingMode === BillingModeSubscription
-                                  ? "Subscription student"
+                                  ? t("msg.subscriptionStudent")
                                   : r.invoiceStatus === InvoiceStatusIssued
-                                    ? "Locked by issued invoice"
+                                    ? t("msg.lockedIssuedInvoice")
                                     : r.invoiceStatus === InvoiceStatusPaid
-                                      ? "Locked by paid invoice"
+                                      ? t("msg.lockedPaidInvoice")
                                       : r.invoiceStatus === InvoiceStatusCanceled
-                                        ? "Locked by canceled invoice"
-                                        : "Locked until invoice returns to draft"}
+                                        ? t("msg.lockedCanceledInvoice")
+                                        : t("msg.lockedUntilDraft")}
                               </span>
                             </div>
                           )}
                         </td>
                         <td style={{ textAlign: "right" }}>
                           {r.billingMode === BillingModePerLesson
-                            ? formatEUR(r.count * r.lessonPrice)
+                            ? formatEUR(r.hours * r.lessonPrice)
                             : "—"}
                         </td>
                         <td>
@@ -2697,20 +2710,20 @@ export default function App() {
                             !r.attendanceLocked &&
                             !r.hasRecord && (
                               <button
-                                onClick={() => onChangeCount(r, 0)}
+                                onClick={() => onChangeHours(r, 0)}
                                 disabled={attendanceSavingRows[r.enrollmentId]}
                                 style={{ marginRight: "0.5rem" }}
                               >
-                                Отметить 0
+                                {t("msg.setZeroHours")}
                               </button>
                             )}
                           {r.canDelete ? (
                             <button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>
-                              Удалить зачисление
+                              {t("msg.deleteEnrollment")}
                             </button>
                           ) : (
                             <span className="mutedInline">
-                              Нельзя удалить: используется в счетах
+                              {t("msg.deleteEnrollmentBlocked")}
                             </span>
                           )}
                         </td>
@@ -2720,7 +2733,7 @@ export default function App() {
                   <tfoot>
                     <tr>
                       <td colSpan={4} style={{ textAlign: "right" }}>
-                        Итого по занятиям (EUR):
+                        {t("msg.lessonsTotalEur")}:
                       </td>
                       <td style={{ textAlign: "right" }}>{formatEUR(perLessonTotal)}</td>
                       <td></td>
@@ -3172,7 +3185,7 @@ export default function App() {
                   {selectedInv.lines.map((l, idx) => (
                     <tr key={idx}>
                       <td>{l.description}</td>
-                      <td style={{ textAlign: "right" }}>{l.qty}</td>
+                      <td style={{ textAlign: "right" }}>{formatHoursValue(l.qty)}</td>
                       <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
                       <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
                     </tr>

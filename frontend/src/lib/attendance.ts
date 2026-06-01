@@ -14,7 +14,7 @@ export type Row = {
   courseType: CourseType;
   billingMode: BillingMode;
   lessonPrice: number;
-  count: number;
+  hours: number;
   hasRecord: boolean;
   canDelete: boolean;
   attendanceLocked: boolean;
@@ -30,14 +30,14 @@ export async function fetchRows(year: number, month: number, courseId?: number):
   return (await AttendanceListPerLesson(year, month, cid)) as Row[];
 }
 
-export function saveCount(
+export function saveHours(
   studentId: number,
   courseId: number,
   year: number,
   month: number,
-  count: number
+  hours: number
 ): Promise<void> {
-  return AttendanceUpsert(studentId, courseId, year, month, count);
+  return AttendanceUpsert(studentId, courseId, year, month, hours);
 }
 
 export function deleteEnrollment(enrollmentId: number) {

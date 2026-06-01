@@ -111,24 +111,24 @@ func (_u *AttendanceMonthUpdate) AddMonth(v int) *AttendanceMonthUpdate {
 	return _u
 }
 
-// SetLessonsCount sets the "lessons_count" field.
-func (_u *AttendanceMonthUpdate) SetLessonsCount(v int) *AttendanceMonthUpdate {
-	_u.mutation.ResetLessonsCount()
-	_u.mutation.SetLessonsCount(v)
+// SetHours sets the "hours" field.
+func (_u *AttendanceMonthUpdate) SetHours(v float64) *AttendanceMonthUpdate {
+	_u.mutation.ResetHours()
+	_u.mutation.SetHours(v)
 	return _u
 }
 
-// SetNillableLessonsCount sets the "lessons_count" field if the given value is not nil.
-func (_u *AttendanceMonthUpdate) SetNillableLessonsCount(v *int) *AttendanceMonthUpdate {
+// SetNillableHours sets the "hours" field if the given value is not nil.
+func (_u *AttendanceMonthUpdate) SetNillableHours(v *float64) *AttendanceMonthUpdate {
 	if v != nil {
-		_u.SetLessonsCount(*v)
+		_u.SetHours(*v)
 	}
 	return _u
 }
 
-// AddLessonsCount adds value to the "lessons_count" field.
-func (_u *AttendanceMonthUpdate) AddLessonsCount(v int) *AttendanceMonthUpdate {
-	_u.mutation.AddLessonsCount(v)
+// AddHours adds value to the "hours" field.
+func (_u *AttendanceMonthUpdate) AddHours(v float64) *AttendanceMonthUpdate {
+	_u.mutation.AddHours(v)
 	return _u
 }
 
@@ -197,11 +197,11 @@ func (_u *AttendanceMonthUpdate) sqlSave(ctx context.Context) (_node int, err er
 	if value, ok := _u.mutation.AddedMonth(); ok {
 		_spec.AddField(attendancemonth.FieldMonth, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.LessonsCount(); ok {
-		_spec.SetField(attendancemonth.FieldLessonsCount, field.TypeInt, value)
+	if value, ok := _u.mutation.Hours(); ok {
+		_spec.SetField(attendancemonth.FieldHours, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedLessonsCount(); ok {
-		_spec.AddField(attendancemonth.FieldLessonsCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedHours(); ok {
+		_spec.AddField(attendancemonth.FieldHours, field.TypeFloat64, value)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -307,24 +307,24 @@ func (_u *AttendanceMonthUpdateOne) AddMonth(v int) *AttendanceMonthUpdateOne {
 	return _u
 }
 
-// SetLessonsCount sets the "lessons_count" field.
-func (_u *AttendanceMonthUpdateOne) SetLessonsCount(v int) *AttendanceMonthUpdateOne {
-	_u.mutation.ResetLessonsCount()
-	_u.mutation.SetLessonsCount(v)
+// SetHours sets the "hours" field.
+func (_u *AttendanceMonthUpdateOne) SetHours(v float64) *AttendanceMonthUpdateOne {
+	_u.mutation.ResetHours()
+	_u.mutation.SetHours(v)
 	return _u
 }
 
-// SetNillableLessonsCount sets the "lessons_count" field if the given value is not nil.
-func (_u *AttendanceMonthUpdateOne) SetNillableLessonsCount(v *int) *AttendanceMonthUpdateOne {
+// SetNillableHours sets the "hours" field if the given value is not nil.
+func (_u *AttendanceMonthUpdateOne) SetNillableHours(v *float64) *AttendanceMonthUpdateOne {
 	if v != nil {
-		_u.SetLessonsCount(*v)
+		_u.SetHours(*v)
 	}
 	return _u
 }
 
-// AddLessonsCount adds value to the "lessons_count" field.
-func (_u *AttendanceMonthUpdateOne) AddLessonsCount(v int) *AttendanceMonthUpdateOne {
-	_u.mutation.AddLessonsCount(v)
+// AddHours adds value to the "hours" field.
+func (_u *AttendanceMonthUpdateOne) AddHours(v float64) *AttendanceMonthUpdateOne {
+	_u.mutation.AddHours(v)
 	return _u
 }
 
@@ -423,11 +423,11 @@ func (_u *AttendanceMonthUpdateOne) sqlSave(ctx context.Context) (_node *Attenda
 	if value, ok := _u.mutation.AddedMonth(); ok {
 		_spec.AddField(attendancemonth.FieldMonth, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.LessonsCount(); ok {
-		_spec.SetField(attendancemonth.FieldLessonsCount, field.TypeInt, value)
+	if value, ok := _u.mutation.Hours(); ok {
+		_spec.SetField(attendancemonth.FieldHours, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedLessonsCount(); ok {
-		_spec.AddField(attendancemonth.FieldLessonsCount, field.TypeInt, value)
+	if value, ok := _u.mutation.AddedHours(); ok {
+		_spec.AddField(attendancemonth.FieldHours, field.TypeFloat64, value)
 	}
 	_node = &AttendanceMonth{config: _u.config}
 	_spec.Assign = _node.assignValues

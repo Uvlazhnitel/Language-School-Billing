@@ -72,7 +72,7 @@ func TestListPerLessonIncludesSubscriptionRows(t *testing.T) {
 		SetCourseID(crs.ID).
 		SetYear(2026).
 		SetMonth(5).
-		SetLessonsCount(3).
+		SetHours(3).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonth.Create: %v", err)
 	}
@@ -98,10 +98,10 @@ func TestListPerLessonIncludesSubscriptionRows(t *testing.T) {
 	if gotPerLesson == nil || gotSubscription == nil {
 		t.Fatalf("expected both rows, got %+v", rows)
 	}
-	if gotPerLesson.BillingMode != app.BillingModePerLesson || gotPerLesson.Count != 3 || !gotPerLesson.HasRecord {
+	if gotPerLesson.BillingMode != app.BillingModePerLesson || gotPerLesson.Hours != 3 || !gotPerLesson.HasRecord {
 		t.Fatalf("unexpected per_lesson row: %+v", *gotPerLesson)
 	}
-	if gotSubscription.BillingMode != app.BillingModeSubscription || gotSubscription.Count != 0 || gotSubscription.HasRecord {
+	if gotSubscription.BillingMode != app.BillingModeSubscription || gotSubscription.Hours != 0 || gotSubscription.HasRecord {
 		t.Fatalf("unexpected subscription row: %+v", *gotSubscription)
 	}
 }
@@ -145,7 +145,7 @@ func TestListPerLessonLocksNonDraftInvoiceMonths(t *testing.T) {
 		SetCourseID(crs.ID).
 		SetYear(2026).
 		SetMonth(5).
-		SetLessonsCount(2).
+		SetHours(2).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonth.Create: %v", err)
 	}
@@ -213,7 +213,7 @@ func TestUpsertRejectsNonDraftInvoiceMonths(t *testing.T) {
 		SetCourseID(crs.ID).
 		SetYear(2026).
 		SetMonth(6).
-		SetLessonsCount(1).
+		SetHours(1).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonth.Create: %v", err)
 	}
@@ -247,8 +247,8 @@ func TestUpsertRejectsNonDraftInvoiceMonths(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AttendanceMonth.Query: %v", err)
 	}
-	if am.LessonsCount != 1 {
-		t.Fatalf("lessons count = %d, want 1", am.LessonsCount)
+	if am.Hours != 1 {
+		t.Fatalf("hours = %v, want 1", am.Hours)
 	}
 }
 
@@ -314,8 +314,8 @@ func TestUpsertAllowsDraftOrMissingInvoice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AttendanceMonth.Query: %v", err)
 	}
-	if am.LessonsCount != 5 {
-		t.Fatalf("lessons count = %d, want 5", am.LessonsCount)
+	if am.Hours != 5 {
+		t.Fatalf("hours = %v, want 5", am.Hours)
 	}
 }
 
@@ -359,7 +359,7 @@ func TestListPerLessonAllowsDeleteAfterReopenToDraft(t *testing.T) {
 		SetCourseID(crs.ID).
 		SetYear(2026).
 		SetMonth(8).
-		SetLessonsCount(2).
+		SetHours(2).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonth.Create: %v", err)
 	}
@@ -551,7 +551,7 @@ func TestDeleteEnrollmentRebuildsRemainingDraftInvoice(t *testing.T) {
 		SetCourseID(courseA.ID).
 		SetYear(2026).
 		SetMonth(10).
-		SetLessonsCount(2).
+		SetHours(2).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonthA.Create: %v", err)
 	}
@@ -560,7 +560,7 @@ func TestDeleteEnrollmentRebuildsRemainingDraftInvoice(t *testing.T) {
 		SetCourseID(courseB.ID).
 		SetYear(2026).
 		SetMonth(10).
-		SetLessonsCount(1).
+		SetHours(1).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonthB.Create: %v", err)
 	}
@@ -613,5 +613,96 @@ func TestDeleteEnrollmentRebuildsRemainingDraftInvoice(t *testing.T) {
 		if line.EnrollmentID == enrA.ID {
 			t.Fatalf("deleted enrollment line still present: %+v", line)
 		}
+	}
+}
+
+func TestUpsertAcceptsQuarterHours(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:attendance-quarter-hours?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().SetFullName("Quarter Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Quarter Group").
+		SetType(course.TypeGroup).
+		SetLessonPrice(24).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	if _, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx); err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if err := svc.Upsert(ctx, st.ID, crs.ID, 2026, 11, 1.5); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+
+	am, err := client.AttendanceMonth.Query().
+		Where(
+			attendancemonth.StudentIDEQ(st.ID),
+			attendancemonth.CourseIDEQ(crs.ID),
+			attendancemonth.YearEQ(2026),
+			attendancemonth.MonthEQ(11),
+		).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("AttendanceMonth.Query: %v", err)
+	}
+	if am.Hours != 1.5 {
+		t.Fatalf("hours = %v, want 1.5", am.Hours)
+	}
+}
+
+func TestUpsertRejectsNonQuarterHours(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:attendance-non-quarter-hours?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().SetFullName("Invalid Quarter Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Invalid Quarter Group").
+		SetType(course.TypeGroup).
+		SetLessonPrice(24).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	if _, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx); err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if err := svc.Upsert(ctx, st.ID, crs.ID, 2026, 11, 1.2); err == nil {
+		t.Fatalf("expected quarter-hour validation error")
 	}
 }

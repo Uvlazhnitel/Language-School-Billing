@@ -21,10 +21,10 @@ import (
 func init() {
 	attendancemonthFields := schema.AttendanceMonth{}.Fields()
 	_ = attendancemonthFields
-	// attendancemonthDescLessonsCount is the schema descriptor for lessons_count field.
-	attendancemonthDescLessonsCount := attendancemonthFields[4].Descriptor()
-	// attendancemonth.DefaultLessonsCount holds the default value on creation for the lessons_count field.
-	attendancemonth.DefaultLessonsCount = attendancemonthDescLessonsCount.Default.(int)
+	// attendancemonthDescHours is the schema descriptor for hours field.
+	attendancemonthDescHours := attendancemonthFields[4].Descriptor()
+	// attendancemonth.DefaultHours holds the default value on creation for the hours field.
+	attendancemonth.DefaultHours = attendancemonthDescHours.Default.(float64)
 	courseFields := schema.Course{}.Fields()
 	_ = courseFields
 	// courseDescTeacherName is the schema descriptor for teacher_name field.

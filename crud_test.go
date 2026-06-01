@@ -308,7 +308,7 @@ func TestStudentDeleteAllowsDraftInvoices(t *testing.T) {
 		SetCourseID(crs.ID).
 		SetYear(2026).
 		SetMonth(5).
-		SetLessonsCount(2).
+		SetHours(2).
 		Save(ctx); err != nil {
 		t.Fatalf("AttendanceMonth.Create: %v", err)
 	}

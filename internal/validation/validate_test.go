@@ -122,6 +122,32 @@ func TestValidateDiscountPct(t *testing.T) {
 	}
 }
 
+func TestValidateQuarterHours(t *testing.T) {
+	tests := []struct {
+		name      string
+		hours     float64
+		wantError bool
+	}{
+		{"zero", 0, false},
+		{"whole hour", 1, false},
+		{"quarter hour", 1.25, false},
+		{"half hour", 1.5, false},
+		{"three quarters", 2.75, false},
+		{"negative", -0.25, true},
+		{"invalid increment", 1.2, true},
+		{"invalid increment 2", 2.3, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := ValidateQuarterHours(tt.hours)
+			if (err != nil) != tt.wantError {
+				t.Errorf("ValidateQuarterHours(%v) error = %v, wantError %v", tt.hours, err, tt.wantError)
+			}
+		})
+	}
+}
+
 // TestSanitizeInputNotOverwrittenByTrimSpace verifies that SanitizeInput produces
 // a different result than strings.TrimSpace for HTML-containing input.
 // This documents the StudentUpdate bug where SetNote(sanitizeInput(note)) was

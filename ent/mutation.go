@@ -46,23 +46,23 @@ const (
 // AttendanceMonthMutation represents an operation that mutates the AttendanceMonth nodes in the graph.
 type AttendanceMonthMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *int
-	student_id       *int
-	addstudent_id    *int
-	course_id        *int
-	addcourse_id     *int
-	year             *int
-	addyear          *int
-	month            *int
-	addmonth         *int
-	lessons_count    *int
-	addlessons_count *int
-	clearedFields    map[string]struct{}
-	done             bool
-	oldValue         func(context.Context) (*AttendanceMonth, error)
-	predicates       []predicate.AttendanceMonth
+	op            Op
+	typ           string
+	id            *int
+	student_id    *int
+	addstudent_id *int
+	course_id     *int
+	addcourse_id  *int
+	year          *int
+	addyear       *int
+	month         *int
+	addmonth      *int
+	hours         *float64
+	addhours      *float64
+	clearedFields map[string]struct{}
+	done          bool
+	oldValue      func(context.Context) (*AttendanceMonth, error)
+	predicates    []predicate.AttendanceMonth
 }
 
 var _ ent.Mutation = (*AttendanceMonthMutation)(nil)
@@ -387,60 +387,60 @@ func (m *AttendanceMonthMutation) ResetMonth() {
 	m.addmonth = nil
 }
 
-// SetLessonsCount sets the "lessons_count" field.
-func (m *AttendanceMonthMutation) SetLessonsCount(i int) {
-	m.lessons_count = &i
-	m.addlessons_count = nil
+// SetHours sets the "hours" field.
+func (m *AttendanceMonthMutation) SetHours(f float64) {
+	m.hours = &f
+	m.addhours = nil
 }
 
-// LessonsCount returns the value of the "lessons_count" field in the mutation.
-func (m *AttendanceMonthMutation) LessonsCount() (r int, exists bool) {
-	v := m.lessons_count
+// Hours returns the value of the "hours" field in the mutation.
+func (m *AttendanceMonthMutation) Hours() (r float64, exists bool) {
+	v := m.hours
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldLessonsCount returns the old "lessons_count" field's value of the AttendanceMonth entity.
+// OldHours returns the old "hours" field's value of the AttendanceMonth entity.
 // If the AttendanceMonth object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *AttendanceMonthMutation) OldLessonsCount(ctx context.Context) (v int, err error) {
+func (m *AttendanceMonthMutation) OldHours(ctx context.Context) (v float64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldLessonsCount is only allowed on UpdateOne operations")
+		return v, errors.New("OldHours is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldLessonsCount requires an ID field in the mutation")
+		return v, errors.New("OldHours requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldLessonsCount: %w", err)
+		return v, fmt.Errorf("querying old value for OldHours: %w", err)
 	}
-	return oldValue.LessonsCount, nil
+	return oldValue.Hours, nil
 }
 
-// AddLessonsCount adds i to the "lessons_count" field.
-func (m *AttendanceMonthMutation) AddLessonsCount(i int) {
-	if m.addlessons_count != nil {
-		*m.addlessons_count += i
+// AddHours adds f to the "hours" field.
+func (m *AttendanceMonthMutation) AddHours(f float64) {
+	if m.addhours != nil {
+		*m.addhours += f
 	} else {
-		m.addlessons_count = &i
+		m.addhours = &f
 	}
 }
 
-// AddedLessonsCount returns the value that was added to the "lessons_count" field in this mutation.
-func (m *AttendanceMonthMutation) AddedLessonsCount() (r int, exists bool) {
-	v := m.addlessons_count
+// AddedHours returns the value that was added to the "hours" field in this mutation.
+func (m *AttendanceMonthMutation) AddedHours() (r float64, exists bool) {
+	v := m.addhours
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetLessonsCount resets all changes to the "lessons_count" field.
-func (m *AttendanceMonthMutation) ResetLessonsCount() {
-	m.lessons_count = nil
-	m.addlessons_count = nil
+// ResetHours resets all changes to the "hours" field.
+func (m *AttendanceMonthMutation) ResetHours() {
+	m.hours = nil
+	m.addhours = nil
 }
 
 // Where appends a list predicates to the AttendanceMonthMutation builder.
@@ -490,8 +490,8 @@ func (m *AttendanceMonthMutation) Fields() []string {
 	if m.month != nil {
 		fields = append(fields, attendancemonth.FieldMonth)
 	}
-	if m.lessons_count != nil {
-		fields = append(fields, attendancemonth.FieldLessonsCount)
+	if m.hours != nil {
+		fields = append(fields, attendancemonth.FieldHours)
 	}
 	return fields
 }
@@ -509,8 +509,8 @@ func (m *AttendanceMonthMutation) Field(name string) (ent.Value, bool) {
 		return m.Year()
 	case attendancemonth.FieldMonth:
 		return m.Month()
-	case attendancemonth.FieldLessonsCount:
-		return m.LessonsCount()
+	case attendancemonth.FieldHours:
+		return m.Hours()
 	}
 	return nil, false
 }
@@ -528,8 +528,8 @@ func (m *AttendanceMonthMutation) OldField(ctx context.Context, name string) (en
 		return m.OldYear(ctx)
 	case attendancemonth.FieldMonth:
 		return m.OldMonth(ctx)
-	case attendancemonth.FieldLessonsCount:
-		return m.OldLessonsCount(ctx)
+	case attendancemonth.FieldHours:
+		return m.OldHours(ctx)
 	}
 	return nil, fmt.Errorf("unknown AttendanceMonth field %s", name)
 }
@@ -567,12 +567,12 @@ func (m *AttendanceMonthMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetMonth(v)
 		return nil
-	case attendancemonth.FieldLessonsCount:
-		v, ok := value.(int)
+	case attendancemonth.FieldHours:
+		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetLessonsCount(v)
+		m.SetHours(v)
 		return nil
 	}
 	return fmt.Errorf("unknown AttendanceMonth field %s", name)
@@ -594,8 +594,8 @@ func (m *AttendanceMonthMutation) AddedFields() []string {
 	if m.addmonth != nil {
 		fields = append(fields, attendancemonth.FieldMonth)
 	}
-	if m.addlessons_count != nil {
-		fields = append(fields, attendancemonth.FieldLessonsCount)
+	if m.addhours != nil {
+		fields = append(fields, attendancemonth.FieldHours)
 	}
 	return fields
 }
@@ -613,8 +613,8 @@ func (m *AttendanceMonthMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedYear()
 	case attendancemonth.FieldMonth:
 		return m.AddedMonth()
-	case attendancemonth.FieldLessonsCount:
-		return m.AddedLessonsCount()
+	case attendancemonth.FieldHours:
+		return m.AddedHours()
 	}
 	return nil, false
 }
@@ -652,12 +652,12 @@ func (m *AttendanceMonthMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddMonth(v)
 		return nil
-	case attendancemonth.FieldLessonsCount:
-		v, ok := value.(int)
+	case attendancemonth.FieldHours:
+		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddLessonsCount(v)
+		m.AddHours(v)
 		return nil
 	}
 	return fmt.Errorf("unknown AttendanceMonth numeric field %s", name)
@@ -698,8 +698,8 @@ func (m *AttendanceMonthMutation) ResetField(name string) error {
 	case attendancemonth.FieldMonth:
 		m.ResetMonth()
 		return nil
-	case attendancemonth.FieldLessonsCount:
-		m.ResetLessonsCount()
+	case attendancemonth.FieldHours:
+		m.ResetHours()
 		return nil
 	}
 	return fmt.Errorf("unknown AttendanceMonth field %s", name)
@@ -3345,8 +3345,8 @@ type InvoiceLineMutation struct {
 	typ               string
 	id                *int
 	description       *string
-	qty               *int
-	addqty            *int
+	qty               *float64
+	addqty            *float64
 	unit_price        *float64
 	addunit_price     *float64
 	amount            *float64
@@ -3568,13 +3568,13 @@ func (m *InvoiceLineMutation) ResetDescription() {
 }
 
 // SetQty sets the "qty" field.
-func (m *InvoiceLineMutation) SetQty(i int) {
-	m.qty = &i
+func (m *InvoiceLineMutation) SetQty(f float64) {
+	m.qty = &f
 	m.addqty = nil
 }
 
 // Qty returns the value of the "qty" field in the mutation.
-func (m *InvoiceLineMutation) Qty() (r int, exists bool) {
+func (m *InvoiceLineMutation) Qty() (r float64, exists bool) {
 	v := m.qty
 	if v == nil {
 		return
@@ -3585,7 +3585,7 @@ func (m *InvoiceLineMutation) Qty() (r int, exists bool) {
 // OldQty returns the old "qty" field's value of the InvoiceLine entity.
 // If the InvoiceLine object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *InvoiceLineMutation) OldQty(ctx context.Context) (v int, err error) {
+func (m *InvoiceLineMutation) OldQty(ctx context.Context) (v float64, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldQty is only allowed on UpdateOne operations")
 	}
@@ -3599,17 +3599,17 @@ func (m *InvoiceLineMutation) OldQty(ctx context.Context) (v int, err error) {
 	return oldValue.Qty, nil
 }
 
-// AddQty adds i to the "qty" field.
-func (m *InvoiceLineMutation) AddQty(i int) {
+// AddQty adds f to the "qty" field.
+func (m *InvoiceLineMutation) AddQty(f float64) {
 	if m.addqty != nil {
-		*m.addqty += i
+		*m.addqty += f
 	} else {
-		m.addqty = &i
+		m.addqty = &f
 	}
 }
 
 // AddedQty returns the value that was added to the "qty" field in this mutation.
-func (m *InvoiceLineMutation) AddedQty() (r int, exists bool) {
+func (m *InvoiceLineMutation) AddedQty() (r float64, exists bool) {
 	v := m.addqty
 	if v == nil {
 		return
@@ -3914,7 +3914,7 @@ func (m *InvoiceLineMutation) SetField(name string, value ent.Value) error {
 		m.SetDescription(v)
 		return nil
 	case invoiceline.FieldQty:
-		v, ok := value.(int)
+		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
@@ -3975,7 +3975,7 @@ func (m *InvoiceLineMutation) AddedField(name string) (ent.Value, bool) {
 func (m *InvoiceLineMutation) AddField(name string, value ent.Value) error {
 	switch name {
 	case invoiceline.FieldQty:
-		v, ok := value.(int)
+		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}

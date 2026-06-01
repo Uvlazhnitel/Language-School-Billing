@@ -43,16 +43,16 @@ func (_c *AttendanceMonthCreate) SetMonth(v int) *AttendanceMonthCreate {
 	return _c
 }
 
-// SetLessonsCount sets the "lessons_count" field.
-func (_c *AttendanceMonthCreate) SetLessonsCount(v int) *AttendanceMonthCreate {
-	_c.mutation.SetLessonsCount(v)
+// SetHours sets the "hours" field.
+func (_c *AttendanceMonthCreate) SetHours(v float64) *AttendanceMonthCreate {
+	_c.mutation.SetHours(v)
 	return _c
 }
 
-// SetNillableLessonsCount sets the "lessons_count" field if the given value is not nil.
-func (_c *AttendanceMonthCreate) SetNillableLessonsCount(v *int) *AttendanceMonthCreate {
+// SetNillableHours sets the "hours" field if the given value is not nil.
+func (_c *AttendanceMonthCreate) SetNillableHours(v *float64) *AttendanceMonthCreate {
 	if v != nil {
-		_c.SetLessonsCount(*v)
+		_c.SetHours(*v)
 	}
 	return _c
 }
@@ -92,9 +92,9 @@ func (_c *AttendanceMonthCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *AttendanceMonthCreate) defaults() {
-	if _, ok := _c.mutation.LessonsCount(); !ok {
-		v := attendancemonth.DefaultLessonsCount
-		_c.mutation.SetLessonsCount(v)
+	if _, ok := _c.mutation.Hours(); !ok {
+		v := attendancemonth.DefaultHours
+		_c.mutation.SetHours(v)
 	}
 }
 
@@ -112,8 +112,8 @@ func (_c *AttendanceMonthCreate) check() error {
 	if _, ok := _c.mutation.Month(); !ok {
 		return &ValidationError{Name: "month", err: errors.New(`ent: missing required field "AttendanceMonth.month"`)}
 	}
-	if _, ok := _c.mutation.LessonsCount(); !ok {
-		return &ValidationError{Name: "lessons_count", err: errors.New(`ent: missing required field "AttendanceMonth.lessons_count"`)}
+	if _, ok := _c.mutation.Hours(); !ok {
+		return &ValidationError{Name: "hours", err: errors.New(`ent: missing required field "AttendanceMonth.hours"`)}
 	}
 	return nil
 }
@@ -157,9 +157,9 @@ func (_c *AttendanceMonthCreate) createSpec() (*AttendanceMonth, *sqlgraph.Creat
 		_spec.SetField(attendancemonth.FieldMonth, field.TypeInt, value)
 		_node.Month = value
 	}
-	if value, ok := _c.mutation.LessonsCount(); ok {
-		_spec.SetField(attendancemonth.FieldLessonsCount, field.TypeInt, value)
-		_node.LessonsCount = value
+	if value, ok := _c.mutation.Hours(); ok {
+		_spec.SetField(attendancemonth.FieldHours, field.TypeFloat64, value)
+		_node.Hours = value
 	}
 	return _node, _spec
 }

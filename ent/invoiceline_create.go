@@ -40,7 +40,7 @@ func (_c *InvoiceLineCreate) SetDescription(v string) *InvoiceLineCreate {
 }
 
 // SetQty sets the "qty" field.
-func (_c *InvoiceLineCreate) SetQty(v int) *InvoiceLineCreate {
+func (_c *InvoiceLineCreate) SetQty(v float64) *InvoiceLineCreate {
 	_c.mutation.SetQty(v)
 	return _c
 }
@@ -156,7 +156,7 @@ func (_c *InvoiceLineCreate) createSpec() (*InvoiceLine, *sqlgraph.CreateSpec) {
 		_node.Description = value
 	}
 	if value, ok := _c.mutation.Qty(); ok {
-		_spec.SetField(invoiceline.FieldQty, field.TypeInt, value)
+		_spec.SetField(invoiceline.FieldQty, field.TypeFloat64, value)
 		_node.Qty = value
 	}
 	if value, ok := _c.mutation.UnitPrice(); ok {

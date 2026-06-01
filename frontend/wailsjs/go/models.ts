@@ -9,7 +9,7 @@ export namespace attendance {
 	    courseType: string;
 	    billingMode: string;
 	    lessonPrice: number;
-	    count: number;
+	    hours: number;
 	    hasRecord: boolean;
 	    canDelete: boolean;
 	    attendanceLocked: boolean;
@@ -29,7 +29,7 @@ export namespace attendance {
 	        this.courseType = source["courseType"];
 	        this.billingMode = source["billingMode"];
 	        this.lessonPrice = source["lessonPrice"];
-	        this.count = source["count"];
+	        this.hours = source["hours"];
 	        this.hasRecord = source["hasRecord"];
 	        this.canDelete = source["canDelete"];
 	        this.attendanceLocked = source["attendanceLocked"];

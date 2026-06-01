@@ -72,14 +72,14 @@ func (_u *InvoiceLineUpdate) SetNillableDescription(v *string) *InvoiceLineUpdat
 }
 
 // SetQty sets the "qty" field.
-func (_u *InvoiceLineUpdate) SetQty(v int) *InvoiceLineUpdate {
+func (_u *InvoiceLineUpdate) SetQty(v float64) *InvoiceLineUpdate {
 	_u.mutation.ResetQty()
 	_u.mutation.SetQty(v)
 	return _u
 }
 
 // SetNillableQty sets the "qty" field if the given value is not nil.
-func (_u *InvoiceLineUpdate) SetNillableQty(v *int) *InvoiceLineUpdate {
+func (_u *InvoiceLineUpdate) SetNillableQty(v *float64) *InvoiceLineUpdate {
 	if v != nil {
 		_u.SetQty(*v)
 	}
@@ -87,7 +87,7 @@ func (_u *InvoiceLineUpdate) SetNillableQty(v *int) *InvoiceLineUpdate {
 }
 
 // AddQty adds value to the "qty" field.
-func (_u *InvoiceLineUpdate) AddQty(v int) *InvoiceLineUpdate {
+func (_u *InvoiceLineUpdate) AddQty(v float64) *InvoiceLineUpdate {
 	_u.mutation.AddQty(v)
 	return _u
 }
@@ -215,10 +215,10 @@ func (_u *InvoiceLineUpdate) sqlSave(ctx context.Context) (_node int, err error)
 		_spec.SetField(invoiceline.FieldDescription, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Qty(); ok {
-		_spec.SetField(invoiceline.FieldQty, field.TypeInt, value)
+		_spec.SetField(invoiceline.FieldQty, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.AddedQty(); ok {
-		_spec.AddField(invoiceline.FieldQty, field.TypeInt, value)
+		_spec.AddField(invoiceline.FieldQty, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.UnitPrice(); ok {
 		_spec.SetField(invoiceline.FieldUnitPrice, field.TypeFloat64, value)
@@ -353,14 +353,14 @@ func (_u *InvoiceLineUpdateOne) SetNillableDescription(v *string) *InvoiceLineUp
 }
 
 // SetQty sets the "qty" field.
-func (_u *InvoiceLineUpdateOne) SetQty(v int) *InvoiceLineUpdateOne {
+func (_u *InvoiceLineUpdateOne) SetQty(v float64) *InvoiceLineUpdateOne {
 	_u.mutation.ResetQty()
 	_u.mutation.SetQty(v)
 	return _u
 }
 
 // SetNillableQty sets the "qty" field if the given value is not nil.
-func (_u *InvoiceLineUpdateOne) SetNillableQty(v *int) *InvoiceLineUpdateOne {
+func (_u *InvoiceLineUpdateOne) SetNillableQty(v *float64) *InvoiceLineUpdateOne {
 	if v != nil {
 		_u.SetQty(*v)
 	}
@@ -368,7 +368,7 @@ func (_u *InvoiceLineUpdateOne) SetNillableQty(v *int) *InvoiceLineUpdateOne {
 }
 
 // AddQty adds value to the "qty" field.
-func (_u *InvoiceLineUpdateOne) AddQty(v int) *InvoiceLineUpdateOne {
+func (_u *InvoiceLineUpdateOne) AddQty(v float64) *InvoiceLineUpdateOne {
 	_u.mutation.AddQty(v)
 	return _u
 }
@@ -526,10 +526,10 @@ func (_u *InvoiceLineUpdateOne) sqlSave(ctx context.Context) (_node *InvoiceLine
 		_spec.SetField(invoiceline.FieldDescription, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Qty(); ok {
-		_spec.SetField(invoiceline.FieldQty, field.TypeInt, value)
+		_spec.SetField(invoiceline.FieldQty, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.AddedQty(); ok {
-		_spec.AddField(invoiceline.FieldQty, field.TypeInt, value)
+		_spec.AddField(invoiceline.FieldQty, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.UnitPrice(); ok {
 		_spec.SetField(invoiceline.FieldUnitPrice, field.TypeFloat64, value)

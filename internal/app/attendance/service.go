@@ -15,6 +15,7 @@ import (
 	"langschool/internal/app"
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/app/utils"
+	"langschool/internal/validation"
 )
 
 // Service provides attendance tracking functionality.
@@ -26,7 +27,7 @@ func New(db *ent.Client) *Service { return &Service{db: db} }
 
 // Row represents a single attendance record in the attendance sheet.
 // It combines enrollment, student, and course information with the
-// attendance count for a specific month.
+// tracked hours for a specific month.
 type Row struct {
 	EnrollmentID     int     `json:"enrollmentId"`     // ID of the enrollment
 	StudentID        int     `json:"studentId"`        // ID of the student
@@ -35,8 +36,8 @@ type Row struct {
 	CourseName       string  `json:"courseName"`       // Course name
 	CourseType       string  `json:"courseType"`       // Course type: "group" or "individual"
 	BillingMode      string  `json:"billingMode"`      // Enrollment billing mode
-	LessonPrice      float64 `json:"lessonPrice"`      // Price per lesson for this enrollment
-	Count            int     `json:"count"`            // Number of lessons attended in the month
+	LessonPrice      float64 `json:"lessonPrice"`      // Hourly rate for this enrollment
+	Hours            float64 `json:"hours"`            // Hours attended in the month
 	HasRecord        bool    `json:"hasRecord"`        // Whether an AttendanceMonth record exists for this month
 	CanDelete        bool    `json:"canDelete"`        // Whether enrollment can be safely deleted
 	AttendanceLocked bool    `json:"attendanceLocked"` // Whether attendance is locked by a non-draft invoice
@@ -80,7 +81,7 @@ func canDeleteEnrollmentWithInvoiceHistory(ctx context.Context, db *ent.Client, 
 // ListPerLesson retrieves attendance sheet rows for all enrollments
 // for the specified year and month. Optionally filters by courseID.
 // Returns a list of rows with student, course, and attendance information.
-// If no attendance record exists for a student-course pair, the count defaults to 0.
+// If no attendance record exists for a student-course pair, the hours default to 0.
 func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([]Row, error) {
 	q := s.db.Enrollment.
 		Query().
@@ -111,10 +112,10 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 				attendancemonth.MonthEQ(m),
 			).Only(ctx)
 
-		cnt := 0
+		hours := 0.0
 		hasRecord := false
 		if am != nil {
-			cnt = am.LessonsCount
+			hours = am.Hours
 			hasRecord = true
 		}
 
@@ -137,7 +138,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			CourseType:       string(c.Type),
 			BillingMode:      string(e.BillingMode),
 			LessonPrice:      utils.Round2(c.LessonPrice),
-			Count:            cnt,
+			Hours:            hours,
 			HasRecord:        hasRecord,
 			CanDelete:        canDelete,
 			AttendanceLocked: lockReason(invoiceStatus),
@@ -149,9 +150,12 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 
 // Upsert creates or updates an attendance record for a student-course pair
 // for a specific month. If no record exists, a new one is created. If a record exists, it is updated.
-func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count int) error {
+func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m int, hours float64) error {
 	invoiceStatus, _, err := s.getMonthInvoiceStatus(ctx, studentID, y, m)
 	if err != nil {
+		return err
+	}
+	if err := validation.ValidateQuarterHours(hours); err != nil {
 		return err
 	}
 	if lockReason(invoiceStatus) {
@@ -167,7 +171,7 @@ func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count i
 			attendancemonth.MonthEQ(m),
 		).Only(ctx)
 	if err == nil {
-		_, err = am.Update().SetLessonsCount(count).Save(ctx)
+		_, err = am.Update().SetHours(hours).Save(ctx)
 		return err
 	}
 	if !ent.IsNotFound(err) {
@@ -178,14 +182,14 @@ func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m, count i
 		SetStudentID(studentID).
 		SetCourseID(courseID).
 		SetYear(y).SetMonth(m).
-		SetLessonsCount(count).
+		SetHours(hours).
 		Save(ctx)
 	return err
 }
 
-// AddOneForFilter increments the lesson count by 1 for all attendance
+// AddOneForFilter increments tracked hours by 0.25 for all attendance
 // records matching the filter (year, month, optional courseID).
-// This is useful for bulk operations like "add one lesson to all students in a course".
+// This is useful for bulk operations like "add 0.25h to all students in a course".
 // Returns the number of records that were successfully updated.
 func (s *Service) AddOneForFilter(ctx context.Context, y, m int, courseID *int) (int, error) {
 	rows, err := s.ListPerLesson(ctx, y, m, courseID)
@@ -194,7 +198,7 @@ func (s *Service) AddOneForFilter(ctx context.Context, y, m int, courseID *int) 
 	}
 	changed := 0
 	for _, r := range rows {
-		if err := s.Upsert(ctx, r.StudentID, r.CourseID, y, m, r.Count+1); err == nil {
+		if err := s.Upsert(ctx, r.StudentID, r.CourseID, y, m, utils.Round2(r.Hours+0.25)); err == nil {
 			changed++
 		}
 	}
