@@ -130,6 +130,10 @@ export function PaymentQuickCash(arg1, arg2, arg3) {
   return window['go']['main']['App']['PaymentQuickCash'](arg1, arg2, arg3);
 }
 
+export function RecentPayments(arg1) {
+  return window['go']['main']['App']['RecentPayments'](arg1);
+}
+
 export function SettingsSetLocale(arg1) {
   return window['go']['main']['App']['SettingsSetLocale'](arg1);
 }

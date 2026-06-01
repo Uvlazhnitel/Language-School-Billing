@@ -104,6 +104,18 @@ type MonthOverviewDTO struct {
 	TotalDebt    float64 `json:"totalDebt"`
 }
 
+// RecentPaymentDTO represents a recent payment for dashboard activity feeds.
+type RecentPaymentDTO struct {
+	ID          int     `json:"id"`
+	StudentID   int     `json:"studentId"`
+	StudentName string  `json:"studentName"`
+	InvoiceID   *int    `json:"invoiceId,omitempty"`
+	Amount      float64 `json:"amount"`
+	Method      string  `json:"method"`
+	PaidAt      string  `json:"paidAt"`
+	Note        string  `json:"note"`
+}
+
 // eps returns the epsilon value used for floating-point comparisons.
 // The value 0.009 is chosen to account for rounding errors in currency calculations
 // where amounts are rounded to 2 decimal places (0.01). This epsilon is slightly
@@ -422,6 +434,47 @@ func (s *Service) ListForStudent(ctx context.Context, studentID int) ([]PaymentD
 	for _, p := range ps {
 		out = append(out, *toDTO(p))
 	}
+	return out, nil
+}
+
+// ListRecent returns the most recent payments across all students for dashboard feeds.
+func (s *Service) ListRecent(ctx context.Context, limit int) ([]RecentPaymentDTO, error) {
+	if limit <= 0 {
+		limit = 8
+	}
+
+	ps, err := s.db.Payment.Query().
+		WithStudent().
+		Order(ent.Desc(payment.FieldPaidAt), ent.Desc(payment.FieldID)).
+		Limit(limit).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]RecentPaymentDTO, 0, len(ps))
+	for _, p := range ps {
+		studentName := ""
+		if p.Edges.Student != nil {
+			studentName = p.Edges.Student.FullName
+		}
+		var invoiceID *int
+		if p.InvoiceID != nil {
+			id := *p.InvoiceID
+			invoiceID = &id
+		}
+		out = append(out, RecentPaymentDTO{
+			ID:          p.ID,
+			StudentID:   p.StudentID,
+			StudentName: studentName,
+			InvoiceID:   invoiceID,
+			Amount:      utils.Round2(p.Amount),
+			Method:      string(p.Method),
+			PaidAt:      p.PaidAt.Format(time.RFC3339),
+			Note:        p.Note,
+		})
+	}
+
 	return out, nil
 }
 

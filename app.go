@@ -617,6 +617,7 @@ type DebtorDTO = paysvc.DebtorDTO
 type InvoiceSummaryDTO = paysvc.InvoiceSummaryDTO
 type DebtInvoiceDTO = paysvc.DebtInvoiceDTO
 type MonthOverviewDTO = paysvc.MonthOverviewDTO
+type RecentPaymentDTO = paysvc.RecentPaymentDTO
 
 // PaymentCreate creates a new payment record. The paidAt parameter accepts
 // either "YYYY-MM-DD" format or RFC3339. If invoiceID is provided, the payment
@@ -652,6 +653,11 @@ func (a *App) DebtorsList() ([]DebtorDTO, error) {
 // MonthOverview returns a read-only monthly dashboard snapshot.
 func (a *App) MonthOverview(year, month int) (*MonthOverviewDTO, error) {
 	return a.pay.MonthOverview(a.ctx, year, month)
+}
+
+// RecentPayments returns the latest payments for dashboard activity feeds.
+func (a *App) RecentPayments(limit int) ([]RecentPaymentDTO, error) {
+	return a.pay.ListRecent(a.ctx, limit)
 }
 
 // StudentDebtDetails returns open invoice debt details for one student.

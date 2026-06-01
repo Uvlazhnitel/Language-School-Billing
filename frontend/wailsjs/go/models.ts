@@ -458,6 +458,32 @@ export namespace payment {
 	        this.createdAt = source["createdAt"];
 	    }
 	}
+	export class RecentPaymentDTO {
+	    id: number;
+	    studentId: number;
+	    studentName: string;
+	    invoiceId?: number;
+	    amount: number;
+	    method: string;
+	    paidAt: string;
+	    note: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RecentPaymentDTO(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.studentId = source["studentId"];
+	        this.studentName = source["studentName"];
+	        this.invoiceId = source["invoiceId"];
+	        this.amount = source["amount"];
+	        this.method = source["method"];
+	        this.paidAt = source["paidAt"];
+	        this.note = source["note"];
+	    }
+	}
 
 }
 

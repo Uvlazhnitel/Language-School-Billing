@@ -69,6 +69,8 @@ export function PaymentListForStudent(arg1:number):Promise<Array<payment.Payment
 
 export function PaymentQuickCash(arg1:number,arg2:number,arg3:string):Promise<payment.PaymentDTO>;
 
+export function RecentPayments(arg1:number):Promise<Array<payment.RecentPaymentDTO>>;
+
 export function SettingsSetLocale(arg1:string):Promise<void>;
 
 export function StudentBalance(arg1:number):Promise<payment.BalanceDTO>;

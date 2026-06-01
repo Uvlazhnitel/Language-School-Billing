@@ -58,6 +58,23 @@ import {
   paymentListForStudent,
   PaymentDTO,
 } from "./lib/payments";
+import {
+  loadMonthOverview,
+  loadRecentPayments,
+  MonthOverviewDTO,
+  RecentPaymentDTO,
+} from "./lib/dashboard";
+import { DashboardOverview } from "./components/DashboardOverview";
+import { StudentWorkspace } from "./components/StudentWorkspace";
+import { StudentDetailPanel } from "./components/StudentDetailPanel";
+import {
+  buildDebtorActionQueue,
+  buildStudentActivity,
+  buildStudentNextAction,
+  DebtorActionQueueItem,
+  StudentActivityItem,
+  StudentNextAction,
+} from "./lib/studentActivity";
 
 const months = [
   "Январь",
@@ -111,7 +128,7 @@ const payerRoleOptions = [
   "grandfather",
   "guardian",
   "other",
- ] as const;
+] as const;
 
 function payerRoleLabel(relation: string): string {
   switch (relation) {
@@ -180,11 +197,23 @@ function invoiceStatusLabel(status: string): string {
   }
 }
 
-type Tab = "students" | "courses" | "enrollments" | "attendance" | "invoice" | "debtors";
+type Tab =
+  | "dashboard"
+  | "students"
+  | "courses"
+  | "enrollments"
+  | "attendance"
+  | "invoice"
+  | "debtors"
+  | "settings";
 type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 type InvoiceMenuPosition = { top: number; left: number; openUpward: boolean };
 
 const TAB_META: Record<Tab, { eyebrow: string; title: string }> = {
+  dashboard: {
+    eyebrow: "Обзор",
+    title: "Панель месяца",
+  },
   students: {
     eyebrow: "Люди",
     title: "Ученики",
@@ -208,6 +237,10 @@ const TAB_META: Record<Tab, { eyebrow: string; title: string }> = {
   debtors: {
     eyebrow: "Долги",
     title: "Должники",
+  },
+  settings: {
+    eyebrow: "Сервис",
+    title: "Файлы и резервные копии",
   },
 };
 
@@ -280,7 +313,7 @@ function buildDebtReminderMessage(
 
 export default function App() {
   const now = new Date();
-  const [tab, setTab] = useState<Tab>("students");
+  const [tab, setTab] = useState<Tab>("dashboard");
   const [appDirs, setAppDirs] = useState<Record<string, string> | null>(null);
   const [creatingBackup, setCreatingBackup] = useState(false);
 
@@ -368,6 +401,9 @@ export default function App() {
   // Shared month/year for Attendance + Invoices
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const [overview, setOverview] = useState<MonthOverviewDTO | null>(null);
+  const [overviewLoading, setOverviewLoading] = useState(false);
+  const [recentPayments, setRecentPayments] = useState<RecentPaymentDTO[]>([]);
 
   // ---------------- Students ----------------
   const [studentList, setStudentList] = useState<StudentDTO[]>([]);
@@ -395,7 +431,15 @@ export default function App() {
   const [studentCardBalance, setStudentCardBalance] = useState<BalanceDTO | null>(null);
   const [studentCardDebts, setStudentCardDebts] = useState<DebtInvoiceDTO[]>([]);
   const [studentCardPayments, setStudentCardPayments] = useState<PaymentDTO[]>([]);
-  const [studentCardDeletingPaymentId, setStudentCardDeletingPaymentId] = useState<number | null>(null);
+  const [studentCardMonthInvoices, setStudentCardMonthInvoices] = useState<InvoiceListItemView[]>(
+    []
+  );
+  const [studentCardDeletingPaymentId, setStudentCardDeletingPaymentId] = useState<number | null>(
+    null
+  );
+  const [studentNextAction, setStudentNextAction] = useState<StudentNextAction | null>(null);
+  const [studentActivity, setStudentActivity] = useState<StudentActivityItem[]>([]);
+  const [debtorActionQueue, setDebtorActionQueue] = useState<DebtorActionQueueItem[]>([]);
 
   const loadStudents = useCallback(async () => {
     setStudentLoading(true);
@@ -418,8 +462,43 @@ export default function App() {
   }, [tab, loadStudents]);
 
   useEffect(() => {
+    if (tab !== "students" || studentLoading || studentList.length === 0) return;
+    if (
+      !selectedStudentCard ||
+      !studentList.some((student) => student.id === selectedStudentCard.id)
+    ) {
+      void openStudentCard(studentList[0], { inline: true });
+    }
+  }, [tab, studentLoading, studentList, selectedStudentCard]);
+
+  useEffect(() => {
     void loadAllStudents();
   }, [loadAllStudents]);
+
+  const loadDashboard = useCallback(async () => {
+    setOverviewLoading(true);
+    try {
+      const [snapshot, payments, debtorsSnapshot] = await Promise.all([
+        loadMonthOverview(year, month),
+        loadRecentPayments(8),
+        listDebtors(),
+      ]);
+      setOverview(snapshot);
+      setRecentPayments(payments);
+      setDebtors(debtorsSnapshot);
+      setDebtorActionQueue(buildDebtorActionQueue(debtorsSnapshot, payments));
+    } catch (e: any) {
+      showMessage(`Ошибка загрузки обзора: ${String(e?.message ?? e)}`, "error");
+    } finally {
+      setOverviewLoading(false);
+    }
+  }, [month, showMessage, year]);
+
+  useEffect(() => {
+    if (tab === "dashboard") {
+      void loadDashboard();
+    }
+  }, [loadDashboard, tab]);
 
   function openAddStudent() {
     setEditingStudent(null);
@@ -489,9 +568,7 @@ export default function App() {
       }
       setStudentModalOpen(false);
       await Promise.all([loadStudents(), loadAllStudents()]);
-      showMessage(
-        editingStudent ? "Ученик успешно обновлён" : "Ученик успешно создан"
-      );
+      showMessage(editingStudent ? "Ученик успешно обновлён" : "Ученик успешно создан");
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
@@ -524,29 +601,55 @@ export default function App() {
 
   async function refreshStudentCardData(studentId: number) {
     try {
-      const [enr, bal, debts, payments] = await Promise.all([
+      const [enr, bal, debts, payments, monthInvoices] = await Promise.all([
         listEnrollments(studentId, undefined),
         studentBalance(studentId),
         studentDebtDetails(studentId),
         paymentListForStudent(studentId),
+        listInvoices(year, month, "all"),
       ]);
+      const studentMonthInvoices = monthInvoices.filter(
+        (invoice) => invoice.studentId === studentId
+      );
       setStudentCardEnrollments(enr);
       setStudentCardBalance(bal);
       setStudentCardDebts(debts);
       setStudentCardPayments(payments);
+      setStudentCardMonthInvoices(studentMonthInvoices);
+      setStudentNextAction(
+        buildStudentNextAction({
+          debt: bal?.debt ?? 0,
+          enrollments: enr,
+          debts,
+          payments,
+          monthInvoices: studentMonthInvoices,
+        })
+      );
+      setStudentActivity(
+        buildStudentActivity({
+          enrollments: enr,
+          payments,
+          debts,
+          monthInvoices: studentMonthInvoices,
+          months,
+        })
+      );
     } catch (e: any) {
       showMessage(`Ошибка загрузки карточки ученика: ${String(e?.message ?? e)}`, "error");
     }
   }
 
-  async function openStudentCard(s: StudentDTO) {
+  async function openStudentCard(s: StudentDTO, options?: { inline?: boolean }) {
     setSelectedStudentCard(s);
-    setStudentCardOpen(true);
+    setStudentCardOpen(!(options?.inline || tab === "students"));
     setStudentCardLoading(true);
     setStudentCardEnrollments([]);
     setStudentCardBalance(null);
     setStudentCardDebts([]);
     setStudentCardPayments([]);
+    setStudentCardMonthInvoices([]);
+    setStudentNextAction(null);
+    setStudentActivity([]);
     try {
       await refreshStudentCardData(s.id);
     } finally {
@@ -558,11 +661,31 @@ export default function App() {
     const existing = allStudents.find((s) => s.id === studentId);
     try {
       const student = existing ?? (await getStudent(studentId));
+      if (tab !== "students") {
+        setStudentCardOpen(true);
+      }
       await openStudentCard(student);
     } catch (e: any) {
       showMessage(`Ошибка загрузки карточки ученика: ${String(e?.message ?? e)}`, "error");
     }
   }
+
+  async function openStudentInWorkspaceById(studentId: number) {
+    const existing = allStudents.find((s) => s.id === studentId);
+    try {
+      const student = existing ?? (await getStudent(studentId));
+      setTab("students");
+      await openStudentCard(student, { inline: true });
+    } catch (e: any) {
+      showMessage(`Ошибка загрузки карточки ученика: ${String(e?.message ?? e)}`, "error");
+    }
+  }
+
+  useEffect(() => {
+    if (!selectedStudentCard) return;
+    if (tab !== "students" && !studentCardOpen) return;
+    void refreshStudentCardData(selectedStudentCard.id);
+  }, [month, selectedStudentCard, studentCardOpen, tab, year]);
 
   async function resolveDebtReminderRecipient(studentId: number, studentName: string) {
     const student =
@@ -585,14 +708,11 @@ export default function App() {
         selectedStudentCard.id,
         selectedStudentCard.fullName
       );
-      const text = buildDebtReminderMessage(
-        locale,
-        debtorLike,
-        studentCardDebts,
-        recipientName
-      );
+      const text = buildDebtReminderMessage(locale, debtorLike, studentCardDebts, recipientName);
       await navigator.clipboard.writeText(text);
-      showMessage(locale === "ru" ? "Русское напоминание скопировано" : "Латышское напоминание скопировано");
+      showMessage(
+        locale === "ru" ? "Русское напоминание скопировано" : "Латышское напоминание скопировано"
+      );
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
@@ -803,15 +923,18 @@ export default function App() {
   }
 
   async function removeCourse(id: number) {
-    showConfirm("Удалить курс? Если по нему есть зачисления, удаление будет заблокировано.", async () => {
-      try {
-        await deleteCourse(id);
-        await Promise.all([loadCourses(), loadAllCourses()]);
-        showMessage("Курс удалён");
-      } catch (e: any) {
-        showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+    showConfirm(
+      "Удалить курс? Если по нему есть зачисления, удаление будет заблокировано.",
+      async () => {
+        try {
+          await deleteCourse(id);
+          await Promise.all([loadCourses(), loadAllCourses()]);
+          showMessage("Курс удалён");
+        } catch (e: any) {
+          showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+        }
       }
-    });
+    );
   }
 
   // ---------------- Enrollments ----------------
@@ -1147,38 +1270,41 @@ export default function App() {
     [year, month, showMessage]
   );
 
-  const loadInvoices = useCallback(async (options?: { syncDrafts?: boolean; showSyncFeedback?: boolean }) => {
-    setLoadingInv(true);
-    try {
-      await ensureStudentsLoaded();
-      if (options?.syncDrafts !== false) {
-        await syncDraftInvoices(options?.showSyncFeedback ?? true);
+  const loadInvoices = useCallback(
+    async (options?: { syncDrafts?: boolean; showSyncFeedback?: boolean }) => {
+      setLoadingInv(true);
+      try {
+        await ensureStudentsLoaded();
+        if (options?.syncDrafts !== false) {
+          await syncDraftInvoices(options?.showSyncFeedback ?? true);
+        }
+        const li = await listInvoices(year, month, invStatus);
+        const pdfReadyById = new Map<number, boolean>();
+        await Promise.all(
+          li
+            .filter((item) => item.status !== "draft")
+            .map(async (item) => {
+              try {
+                pdfReadyById.set(item.id, await hasPdf(item.id));
+              } catch {
+                pdfReadyById.set(item.id, false);
+              }
+            })
+        );
+        setInvItems(
+          li.map((item) => ({
+            ...item,
+            pdfReady: item.status !== "draft" ? (pdfReadyById.get(item.id) ?? false) : false,
+          }))
+        );
+      } catch (e: any) {
+        showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      } finally {
+        setLoadingInv(false);
       }
-      const li = await listInvoices(year, month, invStatus);
-      const pdfReadyById = new Map<number, boolean>();
-      await Promise.all(
-        li
-          .filter((item) => item.status !== "draft")
-          .map(async (item) => {
-            try {
-              pdfReadyById.set(item.id, await hasPdf(item.id));
-            } catch {
-              pdfReadyById.set(item.id, false);
-            }
-          })
-      );
-      setInvItems(
-        li.map((item) => ({
-          ...item,
-          pdfReady: item.status !== "draft" ? (pdfReadyById.get(item.id) ?? false) : false,
-        }))
-      );
-    } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
-    } finally {
-      setLoadingInv(false);
-    }
-  }, [year, month, invStatus, ensureStudentsLoaded, showMessage, syncDraftInvoices]);
+    },
+    [year, month, invStatus, ensureStudentsLoaded, showMessage, syncDraftInvoices]
+  );
 
   useEffect(() => {
     if (tab === "invoice") {
@@ -1209,6 +1335,7 @@ export default function App() {
     try {
       const data = await listDebtors();
       setDebtors(data);
+      setDebtorActionQueue(buildDebtorActionQueue(data, recentPayments));
       return data;
     } catch (e: any) {
       showMessage(`Ошибка загрузки должников: ${String(e?.message ?? e)}`, "error");
@@ -1216,11 +1343,15 @@ export default function App() {
     } finally {
       setDebtorsLoading(false);
     }
-  }, [showMessage]);
+  }, [recentPayments, showMessage]);
 
   useEffect(() => {
     if (tab === "debtors") loadDebtors();
   }, [tab, loadDebtors]);
+
+  useEffect(() => {
+    setDebtorActionQueue(buildDebtorActionQueue(debtors, recentPayments));
+  }, [debtors, recentPayments]);
 
   async function openDebtDetails(debtor: DebtorDTO) {
     setSelectedDebtor(debtor);
@@ -1248,10 +1379,42 @@ export default function App() {
       );
       const text = buildDebtReminderMessage(locale, selectedDebtor, debtDetails, recipientName);
       await navigator.clipboard.writeText(text);
-      showMessage(locale === "ru" ? "Русское напоминание скопировано" : "Латышское напоминание скопировано");
+      showMessage(
+        locale === "ru" ? "Русское напоминание скопировано" : "Латышское напоминание скопировано"
+      );
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
+  }
+
+  async function copyDebtMessageForDebtor(debtor: DebtorDTO, locale: "ru" | "lv") {
+    try {
+      const [details, recipientName] = await Promise.all([
+        studentDebtDetails(debtor.studentId),
+        resolveDebtReminderRecipient(debtor.studentId, debtor.studentName),
+      ]);
+      if (details.length === 0) {
+        showMessage("У этого ученика больше нет открытых долгов", "error");
+        return;
+      }
+      const text = buildDebtReminderMessage(locale, debtor, details, recipientName);
+      await navigator.clipboard.writeText(text);
+      showMessage(locale === "ru" ? "Напоминание RU скопировано" : "Напоминание LV скопировано");
+    } catch (e: any) {
+      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+    }
+  }
+
+  function openDebtorPaymentModalByStudentId(studentId: number) {
+    const debtor = debtors.find((item) => item.studentId === studentId);
+    if (!debtor) return;
+    openDebtorPaymentModal(debtor);
+  }
+
+  async function copyDebtMessageForStudentId(studentId: number, locale: "ru" | "lv") {
+    const debtor = debtors.find((item) => item.studentId === studentId);
+    if (!debtor) return;
+    await copyDebtMessageForDebtor(debtor, locale);
   }
 
   const filteredInvItems = useMemo(() => {
@@ -1633,8 +1796,9 @@ export default function App() {
   };
 
   // ---------------- Render ----------------
-  const showMonthPicker = tab === "attendance" || tab === "invoice";
+  const showMonthPicker = tab === "dashboard" || tab === "attendance" || tab === "invoice";
   const currentMeta = TAB_META[tab];
+  const currentMonthLabel = `${months[month - 1]} ${year}`;
   const selectedInvPdfReady = selectedInv
     ? (invItems.find((item) => item.id === selectedInv.id)?.pdfReady ?? false)
     : false;
@@ -1778,35 +1942,24 @@ export default function App() {
                 </select>
               </div>
             )}
-            <div className="workspaceActions" aria-label="Действия с файлами и резервными копиями">
-              <button
-                type="button"
-                className="workspaceActionButton workspaceActionButtonPrimary"
-                onClick={() => void createManualBackup()}
-                disabled={creatingBackup}
-              >
-                {creatingBackup ? "Создание копии..." : "Создать резервную копию"}
-              </button>
+            <div className="workspaceActions" aria-label="Навигация по системным разделам">
               <button
                 type="button"
                 className="workspaceActionButton"
-                onClick={() => void openAppFolder(appDirs?.backups, "резервных копий")}
-                disabled={!appDirs?.backups}
+                onClick={() => setTab("settings")}
               >
-                Открыть папку резервных копий
-              </button>
-              <button
-                type="button"
-                className="workspaceActionButton"
-                onClick={() => void openAppFolder(appDirs?.invoices, "счетов")}
-                disabled={!appDirs?.invoices}
-              >
-                Открыть папку счетов
+                Файлы и копии
               </button>
             </div>
           </div>
 
           <nav className="tabs">
+            <button
+              className={tab === "dashboard" ? "active" : ""}
+              onClick={() => setTab("dashboard")}
+            >
+              Обзор
+            </button>
             <button
               className={tab === "students" ? "active" : ""}
               onClick={() => setTab("students")}
@@ -1815,12 +1968,6 @@ export default function App() {
             </button>
             <button className={tab === "courses" ? "active" : ""} onClick={() => setTab("courses")}>
               Курсы
-            </button>
-            <button
-              className={tab === "enrollments" ? "active" : ""}
-              onClick={() => setTab("enrollments")}
-            >
-              Зачисления
             </button>
             <button
               className={tab === "attendance" ? "active" : ""}
@@ -1834,75 +1981,75 @@ export default function App() {
             <button className={tab === "debtors" ? "active" : ""} onClick={() => setTab("debtors")}>
               Должники
             </button>
+            <button
+              className={tab === "settings" ? "active" : ""}
+              onClick={() => setTab("settings")}
+            >
+              Файлы
+            </button>
           </nav>
+
+          {tab === "dashboard" && (
+            <DashboardOverview
+              overview={overview}
+              loading={overviewLoading}
+              monthLabel={currentMonthLabel}
+              formatEUR={formatEUR}
+              paymentMethodLabel={paymentMethodLabel}
+              onOpenAttendance={() => setTab("attendance")}
+              onOpenInvoices={() => setTab("invoice")}
+              onOpenDebtors={() => setTab("debtors")}
+              onOpenStudents={() => setTab("students")}
+              onOpenStudent={(studentId) => void openStudentInWorkspaceById(studentId)}
+              onOpenPaymentQueueStudent={(studentId) =>
+                openDebtorPaymentModalByStudentId(studentId)
+              }
+              onCopyDebtQueueRu={(studentId) => void copyDebtMessageForStudentId(studentId, "ru")}
+              onCopyDebtQueueLv={(studentId) => void copyDebtMessageForStudentId(studentId, "lv")}
+              recentPayments={recentPayments}
+              actionQueue={debtorActionQueue}
+            />
+          )}
 
           {/* ---------------- Students ---------------- */}
           {tab === "students" && (
             <>
-              <div className="controls">
-                <button onClick={openAddStudent}>Добавить ученика</button>
-                <input
-                  className="searchField"
-                  placeholder="Поиск по имени / телефону / эл. почте…"
-                  value={studentQ}
-                  onChange={(e) => setStudentQ(e.target.value)}
-                />
-                <label className="inline">
-                  <input
-                    type="checkbox"
-                    checked={includeInactive}
-                    onChange={(e) => setIncludeInactive(e.target.checked)}
-                  />
-                  Показывать неактивных
-                </label>
-                <button onClick={loadStudents}>Обновить</button>
-              </div>
-
-              {studentLoading ? (
-                <div>Загрузка…</div>
-              ) : studentList.length === 0 ? (
-                <div className="empty">Учеников пока нет.</div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Имя</th>
-                      <th>Телефон</th>
-                      <th>Эл. почта</th>
-                      <th>Активен</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {studentList.map((s) => (
-                      <tr key={s.id}>
-                        <td>
-                          <button
-                            className="linkButton"
-                            onClick={() => openStudentCard(s)}
-                            title="Открыть карточку ученика"
-                          >
-                            {s.fullName}
-                          </button>
-                        </td>
-                        <td>{s.phone}</td>
-                        <td>{s.email}</td>
-                        <td>{s.isActive ? "да" : "нет"}</td>
-                        <td>
-                          <button onClick={() => openStudentCard(s)}>Карточка</button>
-                          <button onClick={() => openEditStudent(s)}>Редактировать</button>
-                          <button onClick={() => toggleStudentActive(s)}>
-                            {s.isActive ? "Деактивировать" : "Активировать"}
-                          </button>
-                          {!s.isActive && (
-                            <button onClick={() => removeStudent(s.id)}>Удалить</button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
+              <StudentWorkspace
+                students={studentList}
+                loading={studentLoading}
+                query={studentQ}
+                includeInactive={includeInactive}
+                selectedStudent={selectedStudentCard}
+                detailLoading={studentCardLoading}
+                detailEnrollments={studentCardEnrollments}
+                detailBalance={studentCardBalance}
+                detailDebts={studentCardDebts}
+                detailPayments={studentCardPayments}
+                detailMonthInvoices={studentCardMonthInvoices}
+                detailNextAction={studentNextAction}
+                detailActivity={studentActivity}
+                deletingPaymentId={studentCardDeletingPaymentId}
+                onQueryChange={setStudentQ}
+                onIncludeInactiveChange={setIncludeInactive}
+                onRefresh={() => void loadStudents()}
+                onAddStudent={openAddStudent}
+                onSelectStudent={(student) => void openStudentCard(student, { inline: true })}
+                onEditStudent={openEditStudent}
+                onToggleActive={(student) => void toggleStudentActive(student)}
+                onDeleteStudent={(studentId) => void removeStudent(studentId)}
+                onAddPayment={openStudentCardPaymentModal}
+                onCopyDebtRu={() => void copyStudentCardDebtMessage("ru")}
+                onCopyDebtLv={() => void copyStudentCardDebtMessage("lv")}
+                onDeletePayment={deleteStudentPayment}
+                onManageEnrollments={() => setTab("enrollments")}
+                onOpenInvoices={() => setTab("invoice")}
+                payerRoleLabel={payerRoleLabel}
+                billingModeLabel={billingModeLabel}
+                paymentMethodLabel={paymentMethodLabel}
+                invoiceStatusLabel={invoiceStatusLabel}
+                formatEUR={formatEUR}
+                months={months}
+              />
 
               {studentModalOpen && (
                 <div className="modal">
@@ -2193,7 +2340,10 @@ export default function App() {
                     {enrollments.map((e) => (
                       <tr key={e.id}>
                         <td>
-                          <button className="linkButton" onClick={() => void openStudentCardById(e.studentId)}>
+                          <button
+                            className="linkButton"
+                            onClick={() => void openStudentCardById(e.studentId)}
+                          >
                             {e.studentName}
                           </button>
                         </td>
@@ -2320,6 +2470,31 @@ export default function App() {
           {/* ---------------- Attendance ---------------- */}
           {tab === "attendance" && (
             <>
+              <div className="sectionBanner">
+                <div>
+                  <div className="dashboardCardEyebrow">Статус месяца</div>
+                  <strong>
+                    {attendanceSummary.missing > 0
+                      ? `Есть незаполненные строки: ${attendanceSummary.missing}`
+                      : attendanceSummary.total > 0
+                        ? "Всё заполнено, можно переходить к счетам"
+                        : "Пока нет строк для учёта"}
+                  </strong>
+                </div>
+                <div className="sectionBannerActions">
+                  <button className="workspaceActionButton" onClick={() => void loadAttendance()}>
+                    Обновить лист
+                  </button>
+                  <button
+                    className="workspaceActionButton workspaceActionButtonPrimary"
+                    onClick={() => setTab("invoice")}
+                    disabled={attendanceSummary.total === 0}
+                  >
+                    К счетам месяца
+                  </button>
+                </div>
+              </div>
+
               <div className="controls">
                 <select
                   value={courseFilter ?? ""}
@@ -2385,7 +2560,10 @@ export default function App() {
                     {filteredAttendanceRows.map((r) => (
                       <tr key={r.enrollmentId}>
                         <td>
-                          <button className="linkButton" onClick={() => void openStudentCardById(r.studentId)}>
+                          <button
+                            className="linkButton"
+                            onClick={() => void openStudentCardById(r.studentId)}
+                          >
                             {r.studentName}
                           </button>
                         </td>
@@ -2405,9 +2583,11 @@ export default function App() {
                           {r.billingMode === BillingModePerLesson && !r.hasRecord && (
                             <span className="attBadge attBadge--missing">Не заполнено</span>
                           )}
-                          {r.billingMode === BillingModePerLesson && r.hasRecord && r.count === 0 && (
-                            <span className="attBadge attBadge--zero">0 занятий</span>
-                          )}
+                          {r.billingMode === BillingModePerLesson &&
+                            r.hasRecord &&
+                            r.count === 0 && (
+                              <span className="attBadge attBadge--zero">0 занятий</span>
+                            )}
                           {r.billingMode === BillingModePerLesson && !r.attendanceLocked ? (
                             <div className="attendanceStepper">
                               <button
@@ -2456,24 +2636,30 @@ export default function App() {
                           )}
                         </td>
                         <td style={{ textAlign: "right" }}>
-                          {r.billingMode === BillingModePerLesson ? formatEUR(r.count * r.lessonPrice) : "—"}
+                          {r.billingMode === BillingModePerLesson
+                            ? formatEUR(r.count * r.lessonPrice)
+                            : "—"}
                         </td>
                         <td>
-                          {r.billingMode === BillingModePerLesson && !r.attendanceLocked && !r.hasRecord && (
-                            <button
-                              onClick={() => onChangeCount(r, 0)}
-                              disabled={attendanceSavingRows[r.enrollmentId]}
-                              style={{ marginRight: "0.5rem" }}
-                            >
-                              Отметить 0
-                            </button>
-                          )}
+                          {r.billingMode === BillingModePerLesson &&
+                            !r.attendanceLocked &&
+                            !r.hasRecord && (
+                              <button
+                                onClick={() => onChangeCount(r, 0)}
+                                disabled={attendanceSavingRows[r.enrollmentId]}
+                                style={{ marginRight: "0.5rem" }}
+                              >
+                                Отметить 0
+                              </button>
+                            )}
                           {r.canDelete ? (
                             <button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>
                               Удалить зачисление
                             </button>
                           ) : (
-                            <span className="mutedInline">Нельзя удалить: используется в счетах</span>
+                            <span className="mutedInline">
+                              Нельзя удалить: используется в счетах
+                            </span>
                           )}
                         </td>
                       </tr>
@@ -2496,6 +2682,21 @@ export default function App() {
           {/* ---------------- Invoices ---------------- */}
           {tab === "invoice" && (
             <>
+              <div className="sectionBanner">
+                <div>
+                  <div className="dashboardCardEyebrow">Биллинг</div>
+                  <strong>{currentMonthLabel}</strong>
+                  <span className="mutedInline">
+                    Черновики, выставление и оплаты за выбранный месяц.
+                  </span>
+                </div>
+                <div className="sectionBannerActions">
+                  <button className="workspaceActionButton" onClick={() => void loadInvoices()}>
+                    Синхронизировать
+                  </button>
+                </div>
+              </div>
+
               <div className="controls">
                 <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
                   <option value="draft">черновик</option>
@@ -2531,10 +2732,13 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredInvItems.map((it, index) => (
+                    {filteredInvItems.map((it) => (
                       <tr key={it.id}>
                         <td>
-                          <button className="linkButton" onClick={() => void openStudentCardById(it.studentId)}>
+                          <button
+                            className="linkButton"
+                            onClick={() => void openStudentCardById(it.studentId)}
+                          >
                             {it.studentName}
                           </button>
                         </td>
@@ -2542,7 +2746,11 @@ export default function App() {
                           {months[it.month - 1]} {it.year}
                         </td>
                         <td style={{ textAlign: "right" }}>{formatEUR(it.total)}</td>
-                        <td>{invoiceStatusLabel(it.status)}</td>
+                        <td>
+                          <span className={`statusPill statusPill--${it.status}`}>
+                            {invoiceStatusLabel(it.status)}
+                          </span>
+                        </td>
                         <td>
                           {it.number ?? ""}
                           {it.pdfReady && (
@@ -2555,7 +2763,12 @@ export default function App() {
                           <div className="invoiceRowActions">
                             <button onClick={() => onOpenInvoice(it.id)}>Открыть</button>
                             {it.status === "draft" && (
-                              <button onClick={() => onIssueOne(it.id)}>Выставить</button>
+                              <button
+                                className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
+                                onClick={() => onIssueOne(it.id)}
+                              >
+                                Выставить
+                              </button>
                             )}
                             {it.status !== "draft" && (
                               <button onClick={() => void openPaymentModalForInvoice(it.id)}>
@@ -2570,23 +2783,78 @@ export default function App() {
                   </tbody>
                 </table>
               )}
-
             </>
           )}
 
           {/* ---------------- Debtors ---------------- */}
           {tab === "debtors" && (
             <>
-              <div className="controls">
-                <button onClick={loadDebtors}>Обновить</button>
+              <div className="sectionBanner">
+                <div>
+                  <div className="dashboardCardEyebrow">Коллекшн</div>
+                  <strong>
+                    Самые большие долги сверху, рядом быстрые напоминания и приём оплаты.
+                  </strong>
+                </div>
+                <div className="sectionBannerActions">
+                  <button className="workspaceActionButton" onClick={loadDebtors}>
+                    Обновить
+                  </button>
+                </div>
               </div>
+
+              {debtorActionQueue.length > 0 && (
+                <div className="detailCard detailCard--wide actionQueuePanel">
+                  <div className="detailCardHeader">
+                    <h3>Требуют действия сейчас</h3>
+                    <span className="statusPill warning">{debtorActionQueue.length} в очереди</span>
+                  </div>
+                  <div className="actionQueueList">
+                    {debtorActionQueue.map((item) => (
+                      <div key={item.studentId} className="actionQueueItem">
+                        <div>
+                          <strong>{item.studentName}</strong>
+                          <span>{item.subtitle}</span>
+                        </div>
+                        <div className="actionQueueMeta">
+                          <strong>{formatEUR(item.debt)}</strong>
+                          <div className="inlineActions">
+                            <button
+                              className="workspaceActionButton workspaceActionButtonPrimary"
+                              onClick={() => openDebtorPaymentModalByStudentId(item.studentId)}
+                            >
+                              Принять оплату
+                            </button>
+                            <button
+                              className="secondaryActionButton"
+                              onClick={() => void openStudentInWorkspaceById(item.studentId)}
+                            >
+                              Карточка
+                            </button>
+                            <button
+                              className="secondaryActionButton"
+                              onClick={() => void copyDebtMessageForStudentId(item.studentId, "ru")}
+                            >
+                              RU
+                            </button>
+                            <button
+                              className="secondaryActionButton"
+                              onClick={() => void copyDebtMessageForStudentId(item.studentId, "lv")}
+                            >
+                              LV
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {debtorsLoading ? (
                 <div>Загрузка…</div>
               ) : debtors.length === 0 ? (
-                <div className="empty">
-                  Должников не найдено. Все ученики оплатили вовремя.
-                </div>
+                <div className="empty">Должников не найдено. Все ученики оплатили вовремя.</div>
               ) : (
                 <table>
                   <thead>
@@ -2602,7 +2870,10 @@ export default function App() {
                     {debtors.map((d) => (
                       <tr key={d.studentId}>
                         <td>
-                          <button className="linkButton" onClick={() => void openStudentCardById(d.studentId)}>
+                          <button
+                            className="linkButton"
+                            onClick={() => void openStudentCardById(d.studentId)}
+                          >
                             {d.studentName}
                           </button>
                         </td>
@@ -2612,8 +2883,19 @@ export default function App() {
                         <td style={{ textAlign: "right" }}>{formatEUR(d.totalInvoiced)}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(d.totalPaid)}</td>
                         <td>
-                          <button onClick={() => openDebtorPaymentModal(d)}>Записать оплату</button>
+                          <button
+                            className="workspaceActionButton workspaceActionButtonPrimary"
+                            onClick={() => openDebtorPaymentModal(d)}
+                          >
+                            Принять оплату
+                          </button>
                           <button onClick={() => openDebtDetails(d)}>Расшифровка долга</button>
+                          <button onClick={() => void copyDebtMessageForDebtor(d, "ru")}>
+                            Напомнить RU
+                          </button>
+                          <button onClick={() => void copyDebtMessageForDebtor(d, "lv")}>
+                            Напомнить LV
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -2630,6 +2912,70 @@ export default function App() {
                 </table>
               )}
             </>
+          )}
+
+          {tab === "settings" && (
+            <div className="settingsGrid">
+              <section className="detailCard">
+                <div className="detailCardHeader">
+                  <h3>Резервные копии</h3>
+                </div>
+                <p className="mutedInline">
+                  Ручное создание копии базы и быстрый доступ к архиву приложения.
+                </p>
+                <div className="settingsActions">
+                  <button
+                    type="button"
+                    className="workspaceActionButton workspaceActionButtonPrimary"
+                    onClick={() => void createManualBackup()}
+                    disabled={creatingBackup}
+                  >
+                    {creatingBackup ? "Создание копии..." : "Создать резервную копию"}
+                  </button>
+                  <button
+                    type="button"
+                    className="workspaceActionButton"
+                    onClick={() => void openAppFolder(appDirs?.backups, "резервных копий")}
+                    disabled={!appDirs?.backups}
+                  >
+                    Открыть папку резервных копий
+                  </button>
+                </div>
+              </section>
+
+              <section className="detailCard">
+                <div className="detailCardHeader">
+                  <h3>Рабочие файлы</h3>
+                </div>
+                <p className="mutedInline">Счета, exports и служебные папки приложения.</p>
+                <div className="settingsActions">
+                  <button
+                    type="button"
+                    className="workspaceActionButton"
+                    onClick={() => void openAppFolder(appDirs?.invoices, "счетов")}
+                    disabled={!appDirs?.invoices}
+                  >
+                    Открыть папку счетов
+                  </button>
+                  <button
+                    type="button"
+                    className="workspaceActionButton"
+                    onClick={() => void openAppFolder(appDirs?.exports, "экспортов")}
+                    disabled={!appDirs?.exports}
+                  >
+                    Открыть exports
+                  </button>
+                  <button
+                    type="button"
+                    className="workspaceActionButton"
+                    onClick={() => void openAppFolder(appDirs?.data, "данных")}
+                    disabled={!appDirs?.data}
+                  >
+                    Открыть data
+                  </button>
+                </div>
+              </section>
+            </div>
           )}
         </section>
       </div>
@@ -2709,7 +3055,9 @@ export default function App() {
                 </div>
                 {selectedInv.studentPersonalCode && (
                   <div className="invSummaryRow">
-                    <span>{selectedInv.isMinor ? "Персональный код ребёнка:" : "Персональный код:"}</span>
+                    <span>
+                      {selectedInv.isMinor ? "Персональный код ребёнка:" : "Персональный код:"}
+                    </span>
                     <span>{selectedInv.studentPersonalCode}</span>
                   </div>
                 )}
@@ -2779,13 +3127,19 @@ export default function App() {
                 <button onClick={() => onIssueOne(selectedInv.id)}>Выставить</button>
               )}
               {selectedInv.status !== "draft" && (
-                <button onClick={() => openPaymentModal(selectedInv, invSummary)}>Записать оплату</button>
+                <button onClick={() => openPaymentModal(selectedInv, invSummary)}>
+                  Записать оплату
+                </button>
               )}
               {selectedInv.status === "issued" && (
-                <button onClick={() => void onReopenToDraft(selectedInv.id)}>Вернуть в черновик</button>
+                <button onClick={() => void onReopenToDraft(selectedInv.id)}>
+                  Вернуть в черновик
+                </button>
               )}
               {selectedInv.status !== "draft" && (
-                <button onClick={() => void onRevealInvoiceFile(selectedInv.id)}>Показать в папке</button>
+                <button onClick={() => void onRevealInvoiceFile(selectedInv.id)}>
+                  Показать в папке
+                </button>
               )}
               {selectedInv.status !== "draft" && !selectedInvPdfReady && (
                 <button onClick={() => onGeneratePdf(selectedInv.id)}>Создать PDF</button>
@@ -2859,7 +3213,9 @@ export default function App() {
                 <>
                   <button onClick={openPaymentFromDebtDetails}>Записать оплату</button>
                   <button onClick={() => void copyDebtMessage("ru")}>Скопировать по-русски</button>
-                  <button onClick={() => void copyDebtMessage("lv")}>Скопировать по-латышски</button>
+                  <button onClick={() => void copyDebtMessage("lv")}>
+                    Скопировать по-латышски
+                  </button>
                 </>
               )}
               <button onClick={() => setDebtDetailsOpen(false)}>Закрыть</button>
@@ -2872,252 +3228,45 @@ export default function App() {
       {studentCardOpen && selectedStudentCard && (
         <div className="modal" onClick={() => setStudentCardOpen(false)}>
           <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
-            <h3>Карточка ученика</h3>
-
-            {studentCardLoading ? (
-              <div style={{ padding: "24px 0", textAlign: "center" }}>Загрузка…</div>
-            ) : (
-              <>
-                {/* Basic info */}
-                <div className="cardSection">
-                  <div className="cardSectionTitle">Основная информация</div>
-                  <div className="invSummary">
-                    <div className="invSummaryRow">
-                      <span>Имя</span>
-                      <span style={{ fontWeight: 700 }}>{selectedStudentCard.fullName}</span>
-                    </div>
-                    {selectedStudentCard.phone && (
-                      <div className="invSummaryRow">
-                        <span>{selectedStudentCard.isMinor ? "Телефон родителя" : "Телефон"}</span>
-                        <span>{selectedStudentCard.phone}</span>
-                      </div>
-                    )}
-                    {selectedStudentCard.personalCode && (
-                      <div className="invSummaryRow">
-                        <span>Персональный код</span>
-                        <span>{selectedStudentCard.personalCode}</span>
-                      </div>
-                    )}
-                    {selectedStudentCard.email && (
-                      <div className="invSummaryRow">
-                        <span>{selectedStudentCard.isMinor ? "Эл. почта родителя" : "Эл. почта"}</span>
-                        <span>{selectedStudentCard.email}</span>
-                      </div>
-                    )}
-                    {selectedStudentCard.note && (
-                      <div className="invSummaryRow">
-                        <span>Заметка</span>
-                        <span>{selectedStudentCard.note}</span>
-                      </div>
-                    )}
-                    <div className="invSummaryRow">
-                      <span>Статус</span>
-                      <span className={`money ${selectedStudentCard.isActive ? "good" : ""}`}>
-                        {selectedStudentCard.isActive ? "Активен" : "Неактивен"}
-                      </span>
-                    </div>
-                    <div className="invSummaryRow">
-                      <span>Тип ученика</span>
-                      <span>{selectedStudentCard.isMinor ? "Ребёнок / несовершеннолетний" : "Взрослый"}</span>
-                    </div>
-                  </div>
-                  <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-                    <button
-                      onClick={() => {
-                        setStudentCardOpen(false);
-                        openEditStudent(selectedStudentCard);
-                      }}
-                    >
-                      Редактировать ученика
-                    </button>
-                    <button onClick={openStudentCardPaymentModal}>Записать оплату</button>
-                  </div>
+            <StudentDetailPanel
+              student={selectedStudentCard}
+              loading={studentCardLoading}
+              enrollments={studentCardEnrollments}
+              balance={studentCardBalance}
+              debts={studentCardDebts}
+              payments={studentCardPayments}
+              monthInvoices={studentCardMonthInvoices}
+              nextAction={studentNextAction}
+              activity={studentActivity}
+              payerRoleLabel={payerRoleLabel}
+              billingModeLabel={billingModeLabel}
+              paymentMethodLabel={paymentMethodLabel}
+              invoiceStatusLabel={invoiceStatusLabel}
+              formatEUR={formatEUR}
+              months={months}
+              deletingPaymentId={studentCardDeletingPaymentId}
+              onEditStudent={() => {
+                setStudentCardOpen(false);
+                openEditStudent(selectedStudentCard);
+              }}
+              onAddPayment={openStudentCardPaymentModal}
+              onCopyDebtRu={() => void copyStudentCardDebtMessage("ru")}
+              onCopyDebtLv={() => void copyStudentCardDebtMessage("lv")}
+              onDeletePayment={deleteStudentPayment}
+              onManageEnrollments={() => {
+                setStudentCardOpen(false);
+                setTab("enrollments");
+              }}
+              onOpenInvoices={() => {
+                setStudentCardOpen(false);
+                setTab("invoice");
+              }}
+              footer={
+                <div className="modalActions">
+                  <button onClick={() => setStudentCardOpen(false)}>Закрыть</button>
                 </div>
-
-                {selectedStudentCard.isMinor && (
-                  <div className="cardSection">
-                    <div className="cardSectionTitle">Плательщик</div>
-                    <div className="invSummary">
-                      <div className="invSummaryRow">
-                        <span>Имя плательщика</span>
-                        <span>{selectedStudentCard.payerName || "—"}</span>
-                      </div>
-                      <div className="invSummaryRow">
-                        <span>Кем приходится</span>
-                        <span>
-                          {selectedStudentCard.payerRole
-                            ? payerRoleLabel(selectedStudentCard.payerRole)
-                            : "—"}
-                        </span>
-                      </div>
-                      <div className="invSummaryRow">
-                        <span>Телефон</span>
-                        <span>{selectedStudentCard.phone || "—"}</span>
-                      </div>
-                      <div className="invSummaryRow">
-                        <span>Эл. почта</span>
-                        <span>{selectedStudentCard.email || "—"}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Enrollments */}
-                <div className="cardSection">
-                  <div className="cardSectionTitle">Курсы</div>
-                  {studentCardEnrollments.length === 0 ? (
-                    <div className="empty">Зачислений нет.</div>
-                  ) : (
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Курс</th>
-                          <th>Учитель</th>
-                          <th>Оплата</th>
-                          <th style={{ textAlign: "right" }}>Скидка</th>
-                          <th>Заметка</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {studentCardEnrollments.map((e) => (
-                          <tr key={e.id}>
-                            <td>{e.courseName}</td>
-                            <td>{e.teacherName || "—"}</td>
-                            <td>{billingModeLabel(e.billingMode)}</td>
-                            <td style={{ textAlign: "right" }}>{e.discountPct.toFixed(1)}%</td>
-                            <td>{e.note}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
-                </div>
-
-                {/* Balance */}
-                <div className="cardSection">
-                  <div className="cardSectionTitle">Баланс</div>
-                  {studentCardBalance ? (
-                    <div className="invSummary">
-                      <div className="invSummaryRow">
-                        <span>Выставлено</span>
-                        <span className="money">{formatEUR(studentCardBalance.totalInvoiced)}</span>
-                      </div>
-                      <div className="invSummaryRow">
-                        <span>Оплачено</span>
-                        <span className="money good">{formatEUR(studentCardBalance.totalPaid)}</span>
-                      </div>
-                      <div className="invSummaryRow">
-                        <span>Текущий долг</span>
-                        <span className={`money ${studentCardBalance.debt > 0 ? "bad" : "good"}`}>
-                          {studentCardBalance.debt > 0
-                            ? formatEUR(studentCardBalance.debt)
-                            : "Долга нет"}
-                        </span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="empty">Баланс недоступен.</div>
-                  )}
-                </div>
-
-                {/* Open debts */}
-                <div className="cardSection">
-                  <div className="cardSectionTitle">Открытые долги</div>
-                  {studentCardDebts.length === 0 ? (
-                    <div className="empty">Всё оплачено — открытых долгов нет.</div>
-                  ) : (
-                    <div style={{ overflowX: "auto" }}>
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Месяц</th>
-                            <th>Счёт</th>
-                            <th style={{ textAlign: "right" }}>Сумма</th>
-                            <th style={{ textAlign: "right" }}>Оплачено</th>
-                            <th style={{ textAlign: "right" }}>Осталось</th>
-                            <th>Статус</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {studentCardDebts.map((x) => (
-                            <tr key={x.invoiceId}>
-                              <td>
-                                {months[x.month - 1]} {x.year}
-                              </td>
-                              <td>{x.number ?? "Без номера"}</td>
-                              <td style={{ textAlign: "right" }}>{formatEUR(x.total)}</td>
-                              <td style={{ textAlign: "right" }}>{formatEUR(x.paid)}</td>
-                              <td style={{ textAlign: "right" }}>
-                                <strong className="money bad">{formatEUR(x.remaining)}</strong>
-                              </td>
-                              <td>{invoiceStatusLabel(x.status)}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                {/* Recent payments */}
-                <div className="cardSection">
-                  <div className="cardSectionTitle">Последние оплаты</div>
-                  {studentCardPayments.length === 0 ? (
-                    <div className="empty">Оплат пока нет.</div>
-                  ) : (
-                    <>
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Дата</th>
-                            <th style={{ textAlign: "right" }}>Сумма</th>
-                            <th>Способ</th>
-                            <th>Заметка</th>
-                            <th>Действия</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {studentCardPayments.slice(0, 10).map((p) => (
-                            <tr key={p.id}>
-                              <td>{p.paidAt.slice(0, 10)}</td>
-                              <td style={{ textAlign: "right" }}>
-                                <span className="money good">{formatEUR(p.amount)}</span>
-                              </td>
-                              <td>{paymentMethodLabel(p.method)}</td>
-                              <td>{p.note}</td>
-                              <td>
-                                <button
-                                  onClick={() => deleteStudentPayment(p)}
-                                  disabled={studentCardDeletingPaymentId === p.id}
-                                >
-                                  {studentCardDeletingPaymentId === p.id ? "Удаление..." : "Удалить"}
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                      {studentCardPayments.length > 10 && (
-                        <p className="mutedInline" style={{ marginTop: 8, textAlign: "right" }}>
-                          Показаны 10 последних оплат из {studentCardPayments.length}.
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
-              </>
-            )}
-
-            <div className="modalActions">
-              {!studentCardLoading && studentCardDebts.length > 0 && (
-                <>
-                  <button onClick={openStudentCardPaymentModal}>Записать оплату</button>
-                  <button onClick={() => void copyStudentCardDebtMessage("ru")}>Скопировать по-русски</button>
-                  <button onClick={() => void copyStudentCardDebtMessage("lv")}>Скопировать по-латышски</button>
-                </>
-              )}
-              <button onClick={() => setStudentCardOpen(false)}>Закрыть</button>
-            </div>
+              }
+            />
           </div>
         </div>
       )}
@@ -3149,7 +3298,6 @@ export default function App() {
           ))}
         </div>
       )}
-
     </div>
   );
 }
