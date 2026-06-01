@@ -28,7 +28,13 @@ import {
 
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
-import { AppDirs, BackupNow, OpenFile } from "../wailsjs/go/main/App";
+import {
+  AppDirs,
+  BackupNow,
+  OpenFile,
+  SettingsGetLocale,
+  SettingsSetLocale,
+} from "../wailsjs/go/main/App";
 import {
   BillingModePerLesson,
   BillingModeSubscription,
@@ -75,21 +81,7 @@ import {
   StudentActivityItem,
   StudentNextAction,
 } from "./lib/studentActivity";
-
-const months = [
-  "Январь",
-  "Февраль",
-  "Март",
-  "Апрель",
-  "Май",
-  "Июнь",
-  "Июль",
-  "Август",
-  "Сентябрь",
-  "Октябрь",
-  "Ноябрь",
-  "Декабрь",
-];
+import { createTranslator, getMonthNames, normalizeLocale, TranslateFn, UiLocale } from "./lib/i18n";
 
 const monthsRu = [
   "Январь",
@@ -130,68 +122,68 @@ const payerRoleOptions = [
   "other",
 ] as const;
 
-function payerRoleLabel(relation: string): string {
+function payerRoleLabel(relation: string, t: TranslateFn): string {
   switch (relation) {
     case "mother":
-      return "Мама";
+      return t("student.mother");
     case "father":
-      return "Папа";
+      return t("student.father");
     case "grandmother":
-      return "Бабушка";
+      return t("student.grandmother");
     case "grandfather":
-      return "Дедушка";
+      return t("student.grandfather");
     case "guardian":
-      return "Опекун";
+      return t("student.guardian");
     default:
-      return "Другое";
+      return t("student.other");
   }
 }
 
-function courseTypeLabel(type: string): string {
+function courseTypeLabel(type: string, t: TranslateFn): string {
   switch (type) {
     case "group":
-      return "группа";
+      return t("course.group");
     case "individual":
-      return "индивидуально";
+      return t("course.individual");
     default:
       return type;
   }
 }
 
-function billingModeLabel(mode: string): string {
+function billingModeLabel(mode: string, t: TranslateFn): string {
   switch (mode) {
     case "per_lesson":
-      return "по занятиям";
+      return t("billing.perLesson");
     case "subscription":
-      return "абонемент";
+      return t("billing.subscription");
     default:
       return mode;
   }
 }
 
-function paymentMethodLabel(method: string): string {
+function paymentMethodLabel(method: string, t: TranslateFn): string {
   switch (method) {
     case "cash":
-      return "Наличные";
+      return t("payment.cash");
     case "bank":
-      return "Банк";
+      return t("payment.bank");
     default:
       return method;
   }
 }
 
-function invoiceStatusLabel(status: string): string {
+function invoiceStatusLabel(status: string, t: TranslateFn): string {
   switch (status) {
     case "draft":
-      return "черновик";
+      return t("status.draft");
     case "issued":
-      return "выставлен";
+      return t("status.issued");
     case "paid":
-      return "оплачен";
+      return t("status.paid");
     case "canceled":
-      return "отменён";
+      return t("status.canceled");
     case "all":
-      return "все";
+      return t("status.all");
     default:
       return status;
   }
@@ -209,40 +201,42 @@ type Tab =
 type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 type InvoiceMenuPosition = { top: number; left: number; openUpward: boolean };
 
-const TAB_META: Record<Tab, { eyebrow: string; title: string }> = {
-  dashboard: {
-    eyebrow: "Обзор",
-    title: "Панель месяца",
-  },
-  students: {
-    eyebrow: "Люди",
-    title: "Ученики",
-  },
-  courses: {
-    eyebrow: "Программы",
-    title: "Курсы и цены",
-  },
-  enrollments: {
-    eyebrow: "Связи",
-    title: "Зачисления",
-  },
-  attendance: {
-    eyebrow: "Учёт",
-    title: "Посещаемость",
-  },
-  invoice: {
-    eyebrow: "Счета",
-    title: "Счета и сводка",
-  },
-  debtors: {
-    eyebrow: "Долги",
-    title: "Должники",
-  },
-  settings: {
-    eyebrow: "Сервис",
-    title: "Файлы и резервные копии",
-  },
-};
+function buildTabMeta(t: TranslateFn): Record<Tab, { eyebrow: string; title: string }> {
+  return {
+    dashboard: {
+      eyebrow: t("eyebrow.dashboard"),
+      title: t("title.dashboard"),
+    },
+    students: {
+      eyebrow: t("eyebrow.students"),
+      title: t("title.students"),
+    },
+    courses: {
+      eyebrow: t("eyebrow.courses"),
+      title: t("title.courses"),
+    },
+    enrollments: {
+      eyebrow: t("eyebrow.students"),
+      title: t("button.manageEnrollments"),
+    },
+    attendance: {
+      eyebrow: t("eyebrow.attendance"),
+      title: t("title.attendance"),
+    },
+    invoice: {
+      eyebrow: t("eyebrow.invoice"),
+      title: t("title.invoice"),
+    },
+    debtors: {
+      eyebrow: t("eyebrow.debtors"),
+      title: t("title.debtors"),
+    },
+    settings: {
+      eyebrow: t("eyebrow.settings"),
+      title: t("title.settings"),
+    },
+  };
+}
 
 function numOrZero(s: string): number {
   if (s.trim() === "") return 0;
@@ -314,6 +308,7 @@ function buildDebtReminderMessage(
 export default function App() {
   const now = new Date();
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [uiLocale, setUiLocale] = useState<UiLocale>("en-US");
   const [appDirs, setAppDirs] = useState<Record<string, string> | null>(null);
   const [creatingBackup, setCreatingBackup] = useState(false);
 
@@ -383,13 +378,20 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
-    void AppDirs()
-      .then((dirs) => {
-        if (!cancelled) setAppDirs(dirs);
+    void Promise.all([AppDirs(), SettingsGetLocale().catch(() => "en-US")])
+      .then(([dirs, locale]) => {
+        if (cancelled) return;
+        setAppDirs(dirs);
+        setUiLocale(normalizeLocale(locale));
       })
       .catch((e: any) => {
         if (!cancelled) {
-          showMessage(`Не удалось загрузить папки приложения: ${String(e?.message ?? e)}`, "error");
+          showMessage(
+            createTranslator("en-US")("msg.loadingFoldersError", {
+              message: String(e?.message ?? e),
+            }),
+            "error"
+          );
         }
       });
 
@@ -398,9 +400,33 @@ export default function App() {
     };
   }, [showMessage]);
 
+  const t = useMemo(() => createTranslator(uiLocale), [uiLocale]);
+  const uiMonths = useMemo(() => getMonthNames(uiLocale), [uiLocale]);
+  const tabMeta = useMemo(() => buildTabMeta(t), [t]);
+
+  const localizedPayerRoleLabel = useCallback(
+    (relation: string) => payerRoleLabel(relation, t),
+    [t]
+  );
+  const localizedCourseTypeLabel = useCallback((type: string) => courseTypeLabel(type, t), [t]);
+  const localizedBillingModeLabel = useCallback(
+    (mode: string) => billingModeLabel(mode, t),
+    [t]
+  );
+  const localizedPaymentMethodLabel = useCallback(
+    (method: string) => paymentMethodLabel(method, t),
+    [t]
+  );
+  const localizedInvoiceStatusLabel = useCallback(
+    (status: string) => invoiceStatusLabel(status, t),
+    [t]
+  );
+
   // Shared month/year for Attendance + Invoices
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
+  const currentMeta = tabMeta[tab];
+  const currentMonthLabel = `${uiMonths[month - 1]} ${year}`;
   const [overview, setOverview] = useState<MonthOverviewDTO | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [recentPayments, setRecentPayments] = useState<RecentPaymentDTO[]>([]);
@@ -486,13 +512,13 @@ export default function App() {
       setOverview(snapshot);
       setRecentPayments(payments);
       setDebtors(debtorsSnapshot);
-      setDebtorActionQueue(buildDebtorActionQueue(debtorsSnapshot, payments));
+      setDebtorActionQueue(buildDebtorActionQueue(debtorsSnapshot, payments, t));
     } catch (e: any) {
-      showMessage(`Ошибка загрузки обзора: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.dashboardLoadError", { message: String(e?.message ?? e) }), "error");
     } finally {
       setOverviewLoading(false);
     }
-  }, [month, showMessage, year]);
+  }, [month, showMessage, t, year]);
 
   useEffect(() => {
     if (tab === "dashboard") {
@@ -528,15 +554,15 @@ export default function App() {
 
   async function saveStudent() {
     if (!sfName.trim()) {
-      showMessage("Введите имя ученика", "error");
+      showMessage(t("msg.studentNameRequired"), "error");
       return;
     }
     if (sfIsMinor && !sfPayerName.trim()) {
-      showMessage("Для несовершеннолетнего ученика нужно указать имя плательщика", "error");
+      showMessage(t("msg.studentPayerRequired"), "error");
       return;
     }
     if (sfIsMinor && !sfPayerRole) {
-      showMessage("Для несовершеннолетнего ученика нужно выбрать роль плательщика", "error");
+      showMessage(t("msg.studentPayerRoleRequired"), "error");
       return;
     }
     try {
@@ -568,9 +594,9 @@ export default function App() {
       }
       setStudentModalOpen(false);
       await Promise.all([loadStudents(), loadAllStudents()]);
-      showMessage(editingStudent ? "Ученик успешно обновлён" : "Ученик успешно создан");
+      showMessage(editingStudent ? t("msg.studentUpdated") : t("msg.studentCreated"));
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   }
 
@@ -578,22 +604,22 @@ export default function App() {
     try {
       await setStudentActive(s.id, !s.isActive);
       await Promise.all([loadStudents(), loadAllStudents()]);
-      showMessage(s.isActive ? "Ученик деактивирован" : "Ученик активирован");
+      showMessage(s.isActive ? t("msg.studentDeactivated") : t("msg.studentActivated"));
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   }
 
   async function removeStudent(id: number) {
     showConfirm(
-      "Удалить ученика? Вместе с ним будут удалены зачисления и записи посещаемости. Удаление не сработает, если у ученика уже есть счета или оплаты. Это действие нельзя отменить.",
+      t("msg.studentDeleteConfirm"),
       async () => {
         try {
           await deleteStudent(id);
           await Promise.all([loadStudents(), loadAllStudents()]);
-          showMessage("Ученик удалён");
+          showMessage(t("msg.studentDeleted"));
         } catch (e: any) {
-          showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
         }
       }
     );
@@ -623,6 +649,7 @@ export default function App() {
           debts,
           payments,
           monthInvoices: studentMonthInvoices,
+          t,
         })
       );
       setStudentActivity(
@@ -631,11 +658,14 @@ export default function App() {
           payments,
           debts,
           monthInvoices: studentMonthInvoices,
-          months,
+          months: uiMonths,
+          t,
+          paymentMethodLabel: localizedPaymentMethodLabel,
+          billingModeLabel: localizedBillingModeLabel,
         })
       );
     } catch (e: any) {
-      showMessage(`Ошибка загрузки карточки ученика: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.studentCardLoadError", { message: String(e?.message ?? e) }), "error");
     }
   }
 
@@ -666,7 +696,7 @@ export default function App() {
       }
       await openStudentCard(student);
     } catch (e: any) {
-      showMessage(`Ошибка загрузки карточки ученика: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.studentCardLoadError", { message: String(e?.message ?? e) }), "error");
     }
   }
 
@@ -710,11 +740,9 @@ export default function App() {
       );
       const text = buildDebtReminderMessage(locale, debtorLike, studentCardDebts, recipientName);
       await navigator.clipboard.writeText(text);
-      showMessage(
-        locale === "ru" ? "Русское напоминание скопировано" : "Латышское напоминание скопировано"
-      );
+      showMessage(locale === "ru" ? t("msg.debtReminderRuCopied") : t("msg.debtReminderLvCopied"));
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   }
 
@@ -725,15 +753,15 @@ export default function App() {
     const dateLabel = payment.paidAt.slice(0, 10);
 
     showConfirm(
-      `Удалить оплату ${amountLabel} от ${dateLabel}? Остаток по связанному счёту будет восстановлен. Это действие нельзя отменить.`,
+      t("msg.paymentDeleteConfirm", { amount: amountLabel, date: dateLabel }),
       async () => {
         try {
           setStudentCardDeletingPaymentId(payment.id);
           await deletePayment(payment.id);
           await Promise.all([refreshStudentCardData(selectedStudentCard.id), loadDebtors()]);
-          showMessage("Оплата удалена");
+          showMessage(t("msg.paymentDeleted"));
         } catch (e: any) {
-          showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
         } finally {
           setStudentCardDeletingPaymentId(null);
         }
@@ -869,9 +897,9 @@ export default function App() {
       setCfTeacherId(created.id);
       setCfTeacherSearch(created.fullName);
       setCfTeacherPickerOpen(false);
-      showMessage("Учитель добавлен");
+      showMessage(t("msg.teacherAdded"));
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     } finally {
       setCfTeacherCreating(false);
     }
@@ -883,11 +911,11 @@ export default function App() {
     const trimmedTeacherSearch = cfTeacherSearch.trim();
 
     if (!cfName.trim()) {
-      showMessage("Введите название курса", "error");
+      showMessage(t("msg.courseNameRequired"), "error");
       return;
     }
     if (lessonPrice < 0 || subscriptionPrice < 0) {
-      showMessage("Цены должны быть не меньше 0", "error");
+      showMessage(t("msg.coursePricesNonNegative"), "error");
       return;
     }
 
@@ -896,7 +924,7 @@ export default function App() {
       teacherId = exactTeacherMatch.id;
     }
     if (trimmedTeacherSearch && !teacherId) {
-      showMessage("Выберите существующего учителя или добавьте нового", "error");
+      showMessage(t("msg.courseTeacherRequired"), "error");
       return;
     }
 
@@ -916,22 +944,22 @@ export default function App() {
 
       setCourseModalOpen(false);
       await Promise.all([loadCourses(), loadAllCourses()]);
-      showMessage(editingCourse ? "Курс успешно обновлён" : "Курс успешно создан");
+      showMessage(editingCourse ? t("msg.courseUpdated") : t("msg.courseCreated"));
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   }
 
   async function removeCourse(id: number) {
     showConfirm(
-      "Удалить курс? Если по нему есть зачисления, удаление будет заблокировано.",
+      t("msg.courseDeleteConfirm"),
       async () => {
         try {
           await deleteCourse(id);
           await Promise.all([loadCourses(), loadAllCourses()]);
-          showMessage("Курс удалён");
+          showMessage(t("msg.courseDeleted"));
         } catch (e: any) {
-          showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
         }
       }
     );
@@ -1010,12 +1038,12 @@ export default function App() {
 
   function openAddEnrollment() {
     if (activeStudents.length === 0) {
-      showMessage("Нет активных учеников. Сначала добавьте или активируйте ученика.", "error");
+      showMessage(t("msg.noActiveStudents"), "error");
       setTab("students");
       return;
     }
     if (allCourses.length === 0) {
-      showMessage("Нет доступных курсов. Сначала добавьте курс.", "error");
+      showMessage(t("msg.noAvailableCourses"), "error");
       setTab("courses");
       return;
     }
@@ -1047,11 +1075,11 @@ export default function App() {
 
   async function saveEnrollment() {
     if (efStudentId <= 0 || efCourseId <= 0) {
-      showMessage("Выберите ученика и курс", "error");
+      showMessage(t("msg.chooseStudentAndCourse"), "error");
       return;
     }
     if (efDiscount < 0 || efDiscount > 100) {
-      showMessage("Скидка должна быть от 0 до 100", "error");
+      showMessage(t("msg.discountRange"), "error");
       return;
     }
 
@@ -1059,7 +1087,7 @@ export default function App() {
       let result: EnrollmentDTO;
       if (editingEnr) {
         result = await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
-        showMessage("Зачисление обновлено");
+        showMessage(t("msg.enrollmentUpdated"));
       } else {
         result = await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
 
@@ -1068,10 +1096,18 @@ export default function App() {
           (enrCourseFilter === undefined || enrCourseFilter === result.courseId);
 
         if (matchesFilters) {
-          showMessage(`Зачисление создано: ${result.studentName} → ${result.courseName}`);
+          showMessage(
+            t("msg.enrollmentCreated", {
+              student: result.studentName,
+              course: result.courseName,
+            })
+          );
         } else {
           showMessage(
-            `Зачисление создано: ${result.studentName} → ${result.courseName}. Очистите фильтры, чтобы увидеть его в списке.`
+            t("msg.enrollmentCreatedFiltered", {
+              student: result.studentName,
+              course: result.courseName,
+            })
           );
         }
       }
@@ -1079,7 +1115,7 @@ export default function App() {
       setEnrModalOpen(false);
       await loadEnrollments();
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   }
 
@@ -1172,7 +1208,9 @@ export default function App() {
     if (r.billingMode !== BillingModePerLesson) return;
     if (r.attendanceLocked) {
       showMessage(
-        `Посещаемость за этот месяц заблокирована, потому что счёт имеет статус ${invoiceStatusLabel(r.invoiceStatus ?? "issued")}. Сначала верните его в черновик.`,
+        t("msg.attendanceLocked", {
+          status: localizedInvoiceStatusLabel(r.invoiceStatus ?? "issued"),
+        }),
         "error"
       );
       return;
@@ -1193,14 +1231,14 @@ export default function App() {
         await rebuildStudentDraft(r.studentId, year, month);
       } catch (invoiceError: any) {
         showMessage(
-          `Посещаемость сохранена, но черновик счёта не обновлён: ${String(
-            invoiceError?.message ?? invoiceError
-          )}`,
+          t("msg.attendanceSavedDraftError", {
+            message: String(invoiceError?.message ?? invoiceError),
+          }),
           "error"
         );
       }
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     } finally {
       setAttendanceSavingRows((prev) => {
         const next = { ...prev };
@@ -1212,14 +1250,14 @@ export default function App() {
 
   const onDeleteEnrollmentFromSheet = async (id: number) => {
     showConfirm(
-      "Удалить зачисление? Вместе с ним будут удалены связанные записи посещаемости. Это действие нельзя отменить.",
+      t("msg.enrollmentDeleteConfirm"),
       async () => {
         try {
           await deleteEnrollment(id);
           await loadAttendance();
-          showMessage("Зачисление удалено");
+          showMessage(t("msg.enrollmentDeleted"));
         } catch (e: any) {
-          showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
         }
       }
     );
@@ -1261,13 +1299,13 @@ export default function App() {
 
       if (showFeedback && (res.created > 0 || res.updated > 0 || removed > 0)) {
         const parts = [];
-        if (res.created > 0) parts.push(`создано ${res.created}`);
-        if (res.updated > 0) parts.push(`обновлено ${res.updated}`);
-        if (removed > 0) parts.push(`удалено ${removed}`);
-        showMessage(`Черновики синхронизированы: ${parts.join(", ")}`);
+        if (res.created > 0) parts.push(t("msg.createdCount", { count: res.created }));
+        if (res.updated > 0) parts.push(t("msg.updatedCount", { count: res.updated }));
+        if (removed > 0) parts.push(t("msg.deletedCount", { count: removed }));
+        showMessage(t("msg.invoiceSyncSummary", { parts: parts.join(", ") }));
       }
     },
-    [year, month, showMessage]
+    [year, month, showMessage, t]
   );
 
   const loadInvoices = useCallback(
@@ -1298,7 +1336,7 @@ export default function App() {
           }))
         );
       } catch (e: any) {
-        showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       } finally {
         setLoadingInv(false);
       }
@@ -1335,23 +1373,23 @@ export default function App() {
     try {
       const data = await listDebtors();
       setDebtors(data);
-      setDebtorActionQueue(buildDebtorActionQueue(data, recentPayments));
+      setDebtorActionQueue(buildDebtorActionQueue(data, recentPayments, t));
       return data;
     } catch (e: any) {
-      showMessage(`Ошибка загрузки должников: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       return [];
     } finally {
       setDebtorsLoading(false);
     }
-  }, [recentPayments, showMessage]);
+  }, [recentPayments, showMessage, t]);
 
   useEffect(() => {
     if (tab === "debtors") loadDebtors();
   }, [tab, loadDebtors]);
 
   useEffect(() => {
-    setDebtorActionQueue(buildDebtorActionQueue(debtors, recentPayments));
-  }, [debtors, recentPayments]);
+    setDebtorActionQueue(buildDebtorActionQueue(debtors, recentPayments, t));
+  }, [debtors, recentPayments, t]);
 
   async function openDebtDetails(debtor: DebtorDTO) {
     setSelectedDebtor(debtor);
@@ -1363,7 +1401,7 @@ export default function App() {
       const details = await studentDebtDetails(debtor.studentId);
       setDebtDetails(details);
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     } finally {
       setDebtDetailsLoading(false);
     }
@@ -1379,11 +1417,9 @@ export default function App() {
       );
       const text = buildDebtReminderMessage(locale, selectedDebtor, debtDetails, recipientName);
       await navigator.clipboard.writeText(text);
-      showMessage(
-        locale === "ru" ? "Русское напоминание скопировано" : "Латышское напоминание скопировано"
-      );
+      showMessage(locale === "ru" ? t("msg.debtReminderRuCopied") : t("msg.debtReminderLvCopied"));
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   }
 
@@ -1394,14 +1430,14 @@ export default function App() {
         resolveDebtReminderRecipient(debtor.studentId, debtor.studentName),
       ]);
       if (details.length === 0) {
-        showMessage("У этого ученика больше нет открытых долгов", "error");
+        showMessage(t("msg.noOpenDebtsStudent"), "error");
         return;
       }
       const text = buildDebtReminderMessage(locale, debtor, details, recipientName);
       await navigator.clipboard.writeText(text);
-      showMessage(locale === "ru" ? "Напоминание RU скопировано" : "Напоминание LV скопировано");
+      showMessage(locale === "ru" ? t("msg.copyRu") : t("msg.copyLv"));
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   }
 
@@ -1450,7 +1486,7 @@ export default function App() {
       await loadInvoiceDetails(id);
       setInvoiceDetailsOpen(true);
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   };
 
@@ -1479,7 +1515,7 @@ export default function App() {
       const { invoice, summary } = await loadInvoiceDetails(id);
       openPaymentModal(invoice, summary);
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   };
 
@@ -1522,11 +1558,11 @@ export default function App() {
   const handleCreatePayment = async () => {
     const amount = parseFloat(paymentAmount);
     if (paymentStudentId <= 0) {
-      showMessage("Для оплаты не выбран ученик", "error");
+      showMessage(t("msg.paymentStudentMissing"), "error");
       return;
     }
     if (isNaN(amount) || amount <= 0) {
-      showMessage("Введите корректную сумму", "error");
+      showMessage(t("msg.paymentAmountInvalid"), "error");
       return;
     }
 
@@ -1542,7 +1578,7 @@ export default function App() {
       );
 
       setPaymentModalOpen(false);
-      showMessage("Оплата записана");
+      showMessage(t("msg.paymentRecorded"));
 
       if (paymentInvoiceId) {
         await loadInvoices({ syncDrafts: false });
@@ -1593,7 +1629,7 @@ export default function App() {
       if (invoiceDetailsOpen && selectedInv?.id === id) {
         await loadInvoiceDetails(id);
       }
-      showMessage(`Счёт выставлен: #${res.number}`);
+      showMessage(t("msg.invoiceIssued", { number: res.number }));
     } catch (e: any) {
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
@@ -1602,7 +1638,7 @@ export default function App() {
   const onReopenToDraft = async (id: number) => {
     closeInvoiceMenu();
     showConfirm(
-      "Вернуть этот выставленный счёт в черновик? Это разрешено только если по нему нет оплат. Старый номер счёта будет очищен.",
+      t("msg.invoiceReopenConfirm"),
       async () => {
         try {
           await reopenToDraft(id);
@@ -1610,12 +1646,12 @@ export default function App() {
           if (invoiceDetailsOpen && selectedInv?.id === id) {
             await loadInvoiceDetails(id);
           }
-          showMessage("Счёт возвращён в черновик");
+          showMessage(t("msg.invoiceReopened"));
         } catch (e: any) {
-          showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
         }
       },
-      "Вернуть"
+      t("button.reopenDraft")
     );
   };
 
@@ -1626,9 +1662,9 @@ export default function App() {
       setInvItems((prev) =>
         prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
       );
-      showMessage(`PDF готов: ${path}`);
+      showMessage(t("msg.pdfReady", { path }));
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   };
 
@@ -1638,7 +1674,7 @@ export default function App() {
       const path = await ensurePdf(id);
       await OpenFile(path);
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   };
 
@@ -1648,18 +1684,18 @@ export default function App() {
 
       if (invoice.status === "issued") {
         menuItems.push({
-          label: "Вернуть в черновик",
+          label: t("button.reopenDraft"),
           onClick: () => void onReopenToDraft(invoice.id),
         });
       }
       if (invoice.status !== "draft") {
         menuItems.push({
-          label: "Показать в папке",
+          label: t("button.showInFolder"),
           onClick: () => void onRevealInvoiceFile(invoice.id),
         });
         if (!invoice.pdfReady) {
           menuItems.push({
-            label: "Создать PDF",
+            label: t("button.createPdf"),
             onClick: () => void onGeneratePdf(invoice.id),
           });
         }
@@ -1667,7 +1703,7 @@ export default function App() {
 
       return menuItems;
     },
-    [onGeneratePdf, onReopenToDraft, onRevealInvoiceFile]
+    [onGeneratePdf, onReopenToDraft, onRevealInvoiceFile, t]
   );
 
   const openInvoiceMenuAtTrigger = useCallback(
@@ -1765,7 +1801,7 @@ export default function App() {
           aria-expanded={isOpen}
           onClick={(event) => toggleInvoiceMenu(kind, invoice, event.currentTarget)}
         >
-          Ещё
+          {t("msg.more")}
         </button>
       </div>
     );
@@ -1773,13 +1809,16 @@ export default function App() {
 
   const openAppFolder = async (path: string | undefined, label: string) => {
     if (!path) {
-      showMessage(`Папка «${label}» недоступна`, "error");
+      showMessage(t("msg.folderUnavailable", { label }), "error");
       return;
     }
     try {
       await OpenFile(path);
     } catch (e: any) {
-      showMessage(`Не удалось открыть папку «${label}»: ${String(e?.message ?? e)}`, "error");
+      showMessage(
+        t("msg.folderOpenError", { label, message: String(e?.message ?? e) }),
+        "error"
+      );
     }
   };
 
@@ -1787,18 +1826,30 @@ export default function App() {
     try {
       setCreatingBackup(true);
       const backupPath = await BackupNow();
-      showMessage(`Резервная копия создана: ${backupPath}`);
+      showMessage(t("msg.backupCreated", { path: backupPath }));
     } catch (e: any) {
-      showMessage(`Не удалось создать резервную копию: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.backupCreateError", { message: String(e?.message ?? e) }), "error");
     } finally {
       setCreatingBackup(false);
     }
   };
 
+  const handleLocaleChange = async (nextLocale: UiLocale) => {
+    setUiLocale(nextLocale);
+    try {
+      await SettingsSetLocale(nextLocale);
+      showMessage(createTranslator(nextLocale)("settings.languageSaved"));
+    } catch (e: any) {
+      showMessage(
+        createTranslator(nextLocale)("settings.languageSaveError") +
+          `: ${String(e?.message ?? e)}`,
+        "error"
+      );
+    }
+  };
+
   // ---------------- Render ----------------
   const showMonthPicker = tab === "dashboard" || tab === "attendance" || tab === "invoice";
-  const currentMeta = TAB_META[tab];
-  const currentMonthLabel = `${months[month - 1]} ${year}`;
   const selectedInvPdfReady = selectedInv
     ? (invItems.find((item) => item.id === selectedInv.id)?.pdfReady ?? false)
     : false;
@@ -1846,12 +1897,12 @@ export default function App() {
             }}
           >
             <span>{message.text}</span>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setMessage(null);
-              }}
-              aria-label="Закрыть уведомление"
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMessage(null);
+                }}
+              aria-label={t("msg.closeNotification")}
               style={{
                 background: "none",
                 border: "none",
@@ -1893,11 +1944,11 @@ export default function App() {
               boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
             }}
           >
-            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>Подтверждение</h3>
+            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>{t("modal.confirm")}</h3>
             <p style={{ marginBottom: "24px", lineHeight: "1.5" }}>{confirmDialog.message}</p>
             <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
               <button onClick={handleConfirmNo} style={{ padding: "8px 16px" }}>
-                Отмена
+                {t("button.cancel")}
               </button>
               <button
                 onClick={handleConfirmYes}
@@ -1910,7 +1961,7 @@ export default function App() {
                   cursor: "pointer",
                 }}
               >
-                {confirmDialog.confirmButtonLabel ?? "Удалить"}
+                {confirmDialog.confirmButtonLabel ?? t("msg.confirmDelete")}
               </button>
             </div>
           </div>
@@ -1927,7 +1978,7 @@ export default function App() {
             {showMonthPicker && (
               <div className="monthpickers monthpickersTopbar">
                 <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))}>
-                  {months.map((m, i) => (
+                  {uiMonths.map((m, i) => (
                     <option key={m} value={i + 1}>
                       {m}
                     </option>
@@ -1942,13 +1993,13 @@ export default function App() {
                 </select>
               </div>
             )}
-            <div className="workspaceActions" aria-label="Навигация по системным разделам">
+            <div className="workspaceActions" aria-label={t("msg.systemSectionsNav")}>
               <button
                 type="button"
                 className="workspaceActionButton"
                 onClick={() => setTab("settings")}
               >
-                Файлы и копии
+                {t("button.filesAndCopies")}
               </button>
             </div>
           </div>
@@ -1958,34 +2009,34 @@ export default function App() {
               className={tab === "dashboard" ? "active" : ""}
               onClick={() => setTab("dashboard")}
             >
-              Обзор
+              {t("tabs.dashboard")}
             </button>
             <button
               className={tab === "students" ? "active" : ""}
               onClick={() => setTab("students")}
             >
-              Ученики
+              {t("tabs.students")}
             </button>
             <button className={tab === "courses" ? "active" : ""} onClick={() => setTab("courses")}>
-              Курсы
+              {t("tabs.courses")}
             </button>
             <button
               className={tab === "attendance" ? "active" : ""}
               onClick={() => setTab("attendance")}
             >
-              Посещаемость
+              {t("tabs.attendance")}
             </button>
             <button className={tab === "invoice" ? "active" : ""} onClick={() => setTab("invoice")}>
-              Счета
+              {t("tabs.invoice")}
             </button>
             <button className={tab === "debtors" ? "active" : ""} onClick={() => setTab("debtors")}>
-              Должники
+              {t("tabs.debtors")}
             </button>
             <button
               className={tab === "settings" ? "active" : ""}
               onClick={() => setTab("settings")}
             >
-              Файлы
+              {t("tabs.settings")}
             </button>
           </nav>
 
@@ -1994,8 +2045,9 @@ export default function App() {
               overview={overview}
               loading={overviewLoading}
               monthLabel={currentMonthLabel}
+              t={t}
               formatEUR={formatEUR}
-              paymentMethodLabel={paymentMethodLabel}
+              paymentMethodLabel={localizedPaymentMethodLabel}
               onOpenAttendance={() => setTab("attendance")}
               onOpenInvoices={() => setTab("invoice")}
               onOpenDebtors={() => setTab("debtors")}
@@ -2029,6 +2081,7 @@ export default function App() {
                 detailNextAction={studentNextAction}
                 detailActivity={studentActivity}
                 deletingPaymentId={studentCardDeletingPaymentId}
+                t={t}
                 onQueryChange={setStudentQ}
                 onIncludeInactiveChange={setIncludeInactive}
                 onRefresh={() => void loadStudents()}
@@ -2043,72 +2096,71 @@ export default function App() {
                 onDeletePayment={deleteStudentPayment}
                 onManageEnrollments={() => setTab("enrollments")}
                 onOpenInvoices={() => setTab("invoice")}
-                payerRoleLabel={payerRoleLabel}
-                billingModeLabel={billingModeLabel}
-                paymentMethodLabel={paymentMethodLabel}
-                invoiceStatusLabel={invoiceStatusLabel}
+                payerRoleLabel={localizedPayerRoleLabel}
+                billingModeLabel={localizedBillingModeLabel}
+                paymentMethodLabel={localizedPaymentMethodLabel}
+                invoiceStatusLabel={localizedInvoiceStatusLabel}
                 formatEUR={formatEUR}
-                months={months}
+                months={uiMonths}
               />
 
               {studentModalOpen && (
                 <div className="modal">
                   <div className="modalBody">
-                    <h3>{editingStudent ? "Редактировать ученика" : "Добавить ученика"}</h3>
-
+                    <h3>{editingStudent ? t("modal.editStudent") : t("modal.addStudent")}</h3>
                     <div className="formRow">
-                      <label>Полное имя</label>
+                      <label>{t("field.name")}</label>
                       <input value={sfName} onChange={(e) => setSfName(e.target.value)} />
                     </div>
                     <div className="formRow">
-                      <label>Персональный код</label>
+                      <label>{t("field.personalCode")}</label>
                       <input
                         value={sfPersonalCode}
                         onChange={(e) => setSfPersonalCode(e.target.value)}
                       />
                     </div>
                     <div className="formRow">
-                      <label>{sfIsMinor ? "Телефон родителя" : "Телефон"}</label>
+                      <label>{sfIsMinor ? t("student.parentPhone") : t("field.phone")}</label>
                       <input value={sfPhone} onChange={(e) => setSfPhone(e.target.value)} />
                     </div>
                     <div className="formRow">
-                      <label>{sfIsMinor ? "Эл. почта родителя" : "Эл. почта"}</label>
+                      <label>{sfIsMinor ? t("student.parentEmail") : t("field.email")}</label>
                       <input value={sfEmail} onChange={(e) => setSfEmail(e.target.value)} />
                     </div>
                     <div className="formRow">
-                      <label>Заметка</label>
+                      <label>{t("field.note")}</label>
                       <input value={sfNote} onChange={(e) => setSfNote(e.target.value)} />
                     </div>
                     <div className="formRow">
-                      <label>Несовершеннолетний ученик</label>
+                      <label>{t("field.studentType")}</label>
                       <label className="inline">
                         <input
                           type="checkbox"
                           checked={sfIsMinor}
                           onChange={(e) => setSfIsMinor(e.target.checked)}
                         />
-                        Да
+                        {t("student.minor")}
                       </label>
                     </div>
                     {sfIsMinor && (
                       <>
                         <div className="formRow">
-                          <label>Имя плательщика</label>
+                          <label>{t("field.payerName")}</label>
                           <input
                             value={sfPayerName}
                             onChange={(e) => setSfPayerName(e.target.value)}
                           />
                         </div>
                         <div className="formRow">
-                          <label>Кем приходится плательщик</label>
+                          <label>{t("field.payerRole")}</label>
                           <select
                             value={sfPayerRole}
                             onChange={(e) => setSfPayerRole(e.target.value)}
                           >
-                            <option value="">Выберите роль…</option>
+                            <option value="">{t("filter.selectRole")}</option>
                             {payerRoleOptions.map((role) => (
                               <option key={role} value={role}>
-                                {payerRoleLabel(role)}
+                                {localizedPayerRoleLabel(role)}
                               </option>
                             ))}
                           </select>
@@ -2117,8 +2169,8 @@ export default function App() {
                     )}
 
                     <div className="modalActions">
-                      <button onClick={saveStudent}>Сохранить</button>
-                      <button onClick={() => setStudentModalOpen(false)}>Отмена</button>
+                      <button onClick={saveStudent}>{t("button.save")}</button>
+                      <button onClick={() => setStudentModalOpen(false)}>{t("button.cancel")}</button>
                     </div>
                   </div>
                 </div>
@@ -2130,29 +2182,29 @@ export default function App() {
           {tab === "courses" && (
             <>
               <div className="controls">
-                <button onClick={openAddCourse}>Добавить курс</button>
+                <button onClick={openAddCourse}>{t("button.addCourse")}</button>
                 <input
                   className="searchField"
-                  placeholder="Поиск по курсу или учителю…"
+                  placeholder={t("msg.searchPlaceholderCourse")}
                   value={courseQ}
                   onChange={(e) => setCourseQ(e.target.value)}
                 />
-                <button onClick={loadCourses}>Обновить</button>
+                <button onClick={loadCourses}>{t("button.refresh")}</button>
               </div>
 
               {courseLoading ? (
-                <div>Загрузка…</div>
+                <div>{t("label.loading")}</div>
               ) : courseList.length === 0 ? (
-                <div className="empty">Курсов пока нет.</div>
+                <div className="empty">{t("msg.noCoursesYet")}</div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>Название</th>
-                      <th>Учитель</th>
-                      <th>Тип</th>
-                      <th style={{ textAlign: "right" }}>За занятие (EUR)</th>
-                      <th style={{ textAlign: "right" }}>Абонемент (EUR)</th>
+                      <th>{t("field.name")}</th>
+                      <th>{t("field.teacher")}</th>
+                      <th>{t("field.type")}</th>
+                      <th style={{ textAlign: "right" }}>{t("field.lessonPrice")} (EUR)</th>
+                      <th style={{ textAlign: "right" }}>{t("field.subscriptionPrice")} (EUR)</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -2161,12 +2213,12 @@ export default function App() {
                       <tr key={c.id}>
                         <td>{c.name}</td>
                         <td>{c.teacherName || "—"}</td>
-                        <td>{courseTypeLabel(c.type)}</td>
+                        <td>{localizedCourseTypeLabel(c.type)}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(c.lessonPrice)}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(c.subscriptionPrice)}</td>
                         <td>
-                          <button onClick={() => openEditCourse(c)}>Редактировать</button>
-                          <button onClick={() => removeCourse(c.id)}>Удалить</button>
+                          <button onClick={() => openEditCourse(c)}>{t("button.edit")}</button>
+                          <button onClick={() => removeCourse(c.id)}>{t("button.delete")}</button>
                         </td>
                       </tr>
                     ))}
@@ -2177,15 +2229,15 @@ export default function App() {
               {courseModalOpen && (
                 <div className="modal">
                   <div className="modalBody">
-                    <h3>{editingCourse ? "Редактировать курс" : "Добавить курс"}</h3>
+                    <h3>{editingCourse ? t("modal.editCourse") : t("modal.addCourse")}</h3>
 
                     <div className="formRow">
-                      <label>Название</label>
+                      <label>{t("field.name")}</label>
                       <input value={cfName} onChange={(e) => setCfName(e.target.value)} />
                     </div>
 
                     <div className="formRow">
-                      <label>Учитель</label>
+                      <label>{t("field.teacher")}</label>
                       <div className="comboBox" ref={cfTeacherComboRef}>
                         <input
                           value={selectedCourseTeacher?.fullName ?? cfTeacherSearch}
@@ -2200,7 +2252,7 @@ export default function App() {
                               setCfTeacherPickerOpen(false);
                             }
                           }}
-                          placeholder="Выберите или добавьте учителя…"
+                          placeholder={t("filter.selectTeacher")}
                         />
                         {cfTeacherPickerOpen && (
                           <div className="comboBoxMenu">
@@ -2227,16 +2279,16 @@ export default function App() {
                               >
                                 <span className="comboBoxPrimary">
                                   {cfTeacherCreating
-                                    ? "Учитель добавляется..."
-                                    : `Добавить учителя «${cfTeacherSearch.trim()}»`}
+                                    ? `${t("field.teacher")}...`
+                                    : `${t("button.addCourse")}: ${cfTeacherSearch.trim()}`}
                                 </span>
                                 <span className="comboBoxMeta">
-                                  Сохранить нового учителя и выбрать его для этого курса.
+                                  {t("field.teacher")}
                                 </span>
                               </button>
                             )}
                             {filteredTeachers.length === 0 && !cfTeacherSearch.trim() && (
-                              <div className="comboBoxEmpty">Учителей пока нет.</div>
+                              <div className="comboBoxEmpty">{t("msg.noTeachers")}</div>
                             )}
                           </div>
                         )}
@@ -2244,15 +2296,15 @@ export default function App() {
                     </div>
 
                     <div className="formRow">
-                      <label>Тип</label>
+                      <label>{t("field.type")}</label>
                       <select value={cfType} onChange={(e) => setCfType(e.target.value as any)}>
-                        <option value="group">группа</option>
-                        <option value="individual">индивидуально</option>
+                        <option value="group">{t("course.group")}</option>
+                        <option value="individual">{t("course.individual")}</option>
                       </select>
                     </div>
 
                     <div className="formRow">
-                      <label>Цена за занятие (EUR)</label>
+                      <label>{t("field.lessonPrice")} (EUR)</label>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -2264,7 +2316,7 @@ export default function App() {
                     </div>
 
                     <div className="formRow">
-                      <label>Цена абонемента (EUR)</label>
+                      <label>{t("field.subscriptionPrice")} (EUR)</label>
                       <input
                         type="text"
                         inputMode="decimal"
@@ -2278,8 +2330,8 @@ export default function App() {
                     </div>
 
                     <div className="modalActions">
-                      <button onClick={saveCourse}>Сохранить</button>
-                      <button onClick={() => setCourseModalOpen(false)}>Отмена</button>
+                      <button onClick={saveCourse}>{t("button.save")}</button>
+                      <button onClick={() => setCourseModalOpen(false)}>{t("button.cancel")}</button>
                     </div>
                   </div>
                 </div>
@@ -2291,13 +2343,13 @@ export default function App() {
           {tab === "enrollments" && (
             <>
               <div className="controls">
-                <button onClick={openAddEnrollment}>Добавить зачисление</button>
+                <button onClick={openAddEnrollment}>{t("button.addEnrollment")}</button>
 
                 <select
                   value={enrStudentFilter ?? ""}
                   onChange={(e) => setEnrStudentFilter(intOrUndef(e.target.value))}
                 >
-                  <option value="">Все ученики</option>
+                  <option value="">{t("filter.allStudents")}</option>
                   {allStudents.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.fullName}
@@ -2309,7 +2361,7 @@ export default function App() {
                   value={enrCourseFilter ?? ""}
                   onChange={(e) => setEnrCourseFilter(intOrUndef(e.target.value))}
                 >
-                  <option value="">Все курсы</option>
+                  <option value="">{t("filter.allCourses")}</option>
                   {allCourses.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
@@ -2317,22 +2369,22 @@ export default function App() {
                   ))}
                 </select>
 
-                <button onClick={loadEnrollments}>Обновить</button>
+                <button onClick={loadEnrollments}>{t("button.refresh")}</button>
               </div>
 
               {enrLoading ? (
-                <div>Загрузка…</div>
+                <div>{t("label.loading")}</div>
               ) : enrollments.length === 0 ? (
-                <div className="empty">Зачислений пока нет.</div>
+                <div className="empty">{t("msg.noEnrollmentsYet")}</div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>Ученик</th>
-                      <th>Курс</th>
-                      <th>Учитель</th>
-                      <th>Оплата</th>
-                      <th style={{ textAlign: "right" }}>Скидка</th>
+                      <th>{t("field.student")}</th>
+                      <th>{t("field.course")}</th>
+                      <th>{t("field.teacher")}</th>
+                      <th>{t("field.billing")}</th>
+                      <th style={{ textAlign: "right" }}>{t("field.discount")}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -2349,10 +2401,10 @@ export default function App() {
                         </td>
                         <td>{e.courseName}</td>
                         <td>{e.teacherName || "—"}</td>
-                        <td>{billingModeLabel(e.billingMode)}</td>
+                        <td>{localizedBillingModeLabel(e.billingMode)}</td>
                         <td style={{ textAlign: "right" }}>{e.discountPct.toFixed(1)}%</td>
                         <td>
-                          <button onClick={() => openEditEnrollment(e)}>Редактировать</button>
+                          <button onClick={() => openEditEnrollment(e)}>{t("button.edit")}</button>
                         </td>
                       </tr>
                     ))}
@@ -2363,10 +2415,10 @@ export default function App() {
               {enrModalOpen && (
                 <div className="modal">
                   <div className="modalBody">
-                    <h3>{editingEnr ? "Редактировать зачисление" : "Добавить зачисление"}</h3>
+                    <h3>{editingEnr ? t("modal.editEnrollment") : t("modal.addEnrollment")}</h3>
 
                     <div className="formRow">
-                      <label>Ученик</label>
+                      <label>{t("field.student")}</label>
                       {editingEnr ? (
                         <input
                           value={selectedEnrollmentStudent?.fullName ?? efStudentSearch}
@@ -2386,12 +2438,12 @@ export default function App() {
                                 setEfStudentPickerOpen(false);
                               }
                             }}
-                            placeholder="Поиск ученика по имени, телефону или эл. почте…"
+                            placeholder={t("msg.searchPlaceholderStudent")}
                           />
                           {efStudentPickerOpen && (
                             <div className="comboBoxMenu">
                               {filteredEnrollmentStudents.length === 0 ? (
-                                <div className="comboBoxEmpty">Ученики не найдены.</div>
+                                <div className="comboBoxEmpty">{t("msg.noStudentsFound")}</div>
                               ) : (
                                 filteredEnrollmentStudents.map((s) => (
                                   <button
@@ -2418,7 +2470,7 @@ export default function App() {
                     </div>
 
                     <div className="formRow">
-                      <label>Курс</label>
+                      <label>{t("field.course")}</label>
                       <select
                         value={efCourseId}
                         disabled={!!editingEnr}
@@ -2433,15 +2485,15 @@ export default function App() {
                     </div>
 
                     <div className="formRow">
-                      <label>Оплата</label>
+                      <label>{t("field.billing")}</label>
                       <select value={efMode} onChange={(e) => setEfMode(e.target.value as any)}>
-                        <option value="per_lesson">по занятиям</option>
-                        <option value="subscription">абонемент</option>
+                        <option value="per_lesson">{t("billing.perLesson")}</option>
+                        <option value="subscription">{t("billing.subscription")}</option>
                       </select>
                     </div>
 
                     <div className="formRow">
-                      <label>Скидка %</label>
+                      <label>{t("field.discount")} %</label>
                       <input
                         type="number"
                         min={0}
@@ -2453,13 +2505,13 @@ export default function App() {
                     </div>
 
                     <div className="formRow">
-                      <label>Заметка</label>
+                      <label>{t("field.note")}</label>
                       <input value={efNote} onChange={(e) => setEfNote(e.target.value)} />
                     </div>
 
                     <div className="modalActions">
-                      <button onClick={saveEnrollment}>Сохранить</button>
-                      <button onClick={() => setEnrModalOpen(false)}>Отмена</button>
+                      <button onClick={saveEnrollment}>{t("button.save")}</button>
+                      <button onClick={() => setEnrModalOpen(false)}>{t("button.cancel")}</button>
                     </div>
                   </div>
                 </div>
@@ -2472,25 +2524,25 @@ export default function App() {
             <>
               <div className="sectionBanner">
                 <div>
-                  <div className="dashboardCardEyebrow">Статус месяца</div>
+                  <div className="dashboardCardEyebrow">{t("msg.monthStatus")}</div>
                   <strong>
                     {attendanceSummary.missing > 0
-                      ? `Есть незаполненные строки: ${attendanceSummary.missing}`
+                      ? t("msg.monthStatusMissing", { count: attendanceSummary.missing })
                       : attendanceSummary.total > 0
-                        ? "Всё заполнено, можно переходить к счетам"
-                        : "Пока нет строк для учёта"}
+                        ? t("msg.monthStatusDone")
+                        : t("msg.monthStatusEmpty")}
                   </strong>
                 </div>
                 <div className="sectionBannerActions">
                   <button className="workspaceActionButton" onClick={() => void loadAttendance()}>
-                    Обновить лист
+                    {t("msg.refreshSheet")}
                   </button>
                   <button
                     className="workspaceActionButton workspaceActionButtonPrimary"
                     onClick={() => setTab("invoice")}
                     disabled={attendanceSummary.total === 0}
                   >
-                    К счетам месяца
+                    {t("msg.openMonthInvoices")}
                   </button>
                 </div>
               </div>
@@ -2500,7 +2552,7 @@ export default function App() {
                   value={courseFilter ?? ""}
                   onChange={(e) => setCourseFilter(intOrUndef(e.target.value))}
                 >
-                  <option value="">Все группы</option>
+                  <option value="">{t("filter.allGroups")}</option>
                   {allCourses.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
@@ -2510,7 +2562,7 @@ export default function App() {
 
                 <input
                   className="searchField"
-                  placeholder="Поиск по ученику / телефону / группе…"
+                  placeholder={t("msg.searchPlaceholderAttendance")}
                   value={attQ}
                   onChange={(e) => setAttQ(e.target.value)}
                 />
@@ -2519,40 +2571,40 @@ export default function App() {
                   value={attFilter}
                   onChange={(e) => setAttFilter(e.target.value as typeof attFilter)}
                 >
-                  <option value="all">Показать: всё</option>
-                  <option value="missing">Только не заполненные</option>
-                  <option value="filled">Только заполненные</option>
-                  <option value="zero">Ноль занятий</option>
+                  <option value="all">{t("status.showAll")}</option>
+                  <option value="missing">{t("status.onlyMissing")}</option>
+                  <option value="filled">{t("status.onlyFilled")}</option>
+                  <option value="zero">{t("status.zeroLessons")}</option>
                 </select>
 
-                <button onClick={loadAttendance}>Обновить</button>
+                <button onClick={loadAttendance}>{t("button.refresh")}</button>
               </div>
 
               {rows.length > 0 && (
                 <div className="attSummary">
-                  Заполнено: {attendanceSummary.filled} / {attendanceSummary.total}
-                  &nbsp;·&nbsp;Не заполнено: {attendanceSummary.missing}
-                  &nbsp;·&nbsp;Ноль занятий: {attendanceSummary.zero}
+                  {t("msg.attFilled")}: {attendanceSummary.filled} / {attendanceSummary.total}
+                  &nbsp;·&nbsp;{t("msg.attMissing")}: {attendanceSummary.missing}
+                  &nbsp;·&nbsp;{t("msg.attZero")}: {attendanceSummary.zero}
                 </div>
               )}
 
               {loadingAtt ? (
-                <div>Загрузка…</div>
+                <div>{t("label.loading")}</div>
               ) : filteredAttendanceRows.length === 0 ? (
                 <div className="empty">
                   {attQ.trim() || attFilter !== "all"
-                    ? "По вашему запросу ничего не найдено."
-                    : "Нет строк с оплатой по занятиям. Сначала создайте зачисления."}
+                    ? t("msg.noSearchResults")
+                    : t("msg.noAttendanceRows")}
                 </div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>Ученик</th>
-                      <th>Курс</th>
-                      <th style={{ textAlign: "right" }}>Цена занятия (EUR)</th>
-                      <th style={{ textAlign: "right" }}>Кол-во</th>
-                      <th style={{ textAlign: "right" }}>Итого (EUR)</th>
+                      <th>{t("field.student")}</th>
+                      <th>{t("field.course")}</th>
+                      <th style={{ textAlign: "right" }}>{t("field.lessonPrice")} (EUR)</th>
+                      <th style={{ textAlign: "right" }}>{t("field.quantity")}</th>
+                      <th style={{ textAlign: "right" }}>{t("field.totalEur")}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -2568,11 +2620,11 @@ export default function App() {
                           </button>
                         </td>
                         <td>
-                          {r.courseName} ({courseTypeLabel(r.courseType)})
+                          {r.courseName} ({localizedCourseTypeLabel(r.courseType)})
                           {r.billingMode === BillingModeSubscription && (
                             <>
                               {" "}
-                              <span className="attBadge attBadge--subscription">Абонемент</span>
+                              <span className="attBadge attBadge--subscription">{t("billing.subscription")}</span>
                             </>
                           )}
                         </td>
@@ -2581,7 +2633,7 @@ export default function App() {
                         </td>
                         <td style={{ textAlign: "right" }}>
                           {r.billingMode === BillingModePerLesson && !r.hasRecord && (
-                            <span className="attBadge attBadge--missing">Не заполнено</span>
+                            <span className="attBadge attBadge--missing">{t("msg.attMissing")}</span>
                           )}
                           {r.billingMode === BillingModePerLesson &&
                             r.hasRecord &&
@@ -2620,17 +2672,17 @@ export default function App() {
                             </div>
                           ) : (
                             <div className="attendanceReadOnly">
-                              <span className="attBadge attBadge--subscription">Только чтение</span>
+                              <span className="attBadge attBadge--subscription">Read only</span>
                               <span className="mutedInline">
                                 {r.billingMode === BillingModeSubscription
-                                  ? "Ученик с абонементом"
+                                  ? "Subscription student"
                                   : r.invoiceStatus === InvoiceStatusIssued
-                                    ? "Заблокировано выставленным счётом"
+                                    ? "Locked by issued invoice"
                                     : r.invoiceStatus === InvoiceStatusPaid
-                                      ? "Заблокировано оплаченным счётом"
+                                      ? "Locked by paid invoice"
                                       : r.invoiceStatus === InvoiceStatusCanceled
-                                        ? "Заблокировано отменённым счётом"
-                                        : "Заблокировано, пока счёт не возвращён в черновик"}
+                                        ? "Locked by canceled invoice"
+                                        : "Locked until invoice returns to draft"}
                               </span>
                             </div>
                           )}
@@ -2684,50 +2736,50 @@ export default function App() {
             <>
               <div className="sectionBanner">
                 <div>
-                  <div className="dashboardCardEyebrow">Биллинг</div>
+                  <div className="dashboardCardEyebrow">{t("msg.billing")}</div>
                   <strong>{currentMonthLabel}</strong>
                   <span className="mutedInline">
-                    Черновики, выставление и оплаты за выбранный месяц.
+                    {t("title.invoice")}
                   </span>
                 </div>
                 <div className="sectionBannerActions">
                   <button className="workspaceActionButton" onClick={() => void loadInvoices()}>
-                    Синхронизировать
+                    {t("button.sync")}
                   </button>
                 </div>
               </div>
 
               <div className="controls">
                 <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
-                  <option value="draft">черновик</option>
-                  <option value="issued">выставлен</option>
-                  <option value="paid">оплачен</option>
-                  <option value="all">все</option>
+                  <option value="draft">{t("filter.selectStatusDraft")}</option>
+                  <option value="issued">{t("filter.selectStatusIssued")}</option>
+                  <option value="paid">{t("filter.selectStatusPaid")}</option>
+                  <option value="all">{t("filter.selectStatusAll")}</option>
                 </select>
 
                 <input
                   className="searchField searchFieldWide"
-                  placeholder="Поиск по ученику / телефону / эл. почте / номеру счёта"
+                  placeholder={t("msg.searchPlaceholderInvoice")}
                   value={invQ}
                   onChange={(e) => setInvQ(e.target.value)}
                 />
 
-                <button onClick={() => void loadInvoices()}>Обновить</button>
+                <button onClick={() => void loadInvoices()}>{t("button.refresh")}</button>
               </div>
 
               {loadingInv ? (
-                <div>Загрузка…</div>
+                <div>{t("label.loading")}</div>
               ) : filteredInvItems.length === 0 ? (
-                <div className="empty">Счета за выбранный период, статус или поиск не найдены.</div>
+                <div className="empty">{t("msg.noInvoiceResults")}</div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>Ученик</th>
-                      <th>Период</th>
-                      <th style={{ textAlign: "right" }}>Сумма (EUR)</th>
-                      <th>Статус</th>
-                      <th>Номер</th>
+                      <th>{t("field.student")}</th>
+                      <th>{t("field.period")}</th>
+                      <th style={{ textAlign: "right" }}>{t("field.amount")} (EUR)</th>
+                      <th>{t("field.status")}</th>
+                      <th>{t("field.number")}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -2743,36 +2795,36 @@ export default function App() {
                           </button>
                         </td>
                         <td>
-                          {months[it.month - 1]} {it.year}
+                          {uiMonths[it.month - 1]} {it.year}
                         </td>
                         <td style={{ textAlign: "right" }}>{formatEUR(it.total)}</td>
                         <td>
                           <span className={`statusPill statusPill--${it.status}`}>
-                            {invoiceStatusLabel(it.status)}
+                            {localizedInvoiceStatusLabel(it.status)}
                           </span>
                         </td>
                         <td>
                           {it.number ?? ""}
                           {it.pdfReady && (
                             <div className="badgeRow">
-                              <span className="attBadge attBadge--pdfReady">PDF готов</span>
+                              <span className="attBadge attBadge--pdfReady">PDF</span>
                             </div>
                           )}
                         </td>
                         <td>
                           <div className="invoiceRowActions">
-                            <button onClick={() => onOpenInvoice(it.id)}>Открыть</button>
+                            <button onClick={() => onOpenInvoice(it.id)}>{t("button.open")}</button>
                             {it.status === "draft" && (
                               <button
                                 className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
                                 onClick={() => onIssueOne(it.id)}
                               >
-                                Выставить
+                                {t("button.issue")}
                               </button>
                             )}
                             {it.status !== "draft" && (
                               <button onClick={() => void openPaymentModalForInvoice(it.id)}>
-                                Записать оплату
+                                {t("button.recordPayment")}
                               </button>
                             )}
                             {renderInvoiceActionsMenu(it)}
@@ -2791,14 +2843,14 @@ export default function App() {
             <>
               <div className="sectionBanner">
                 <div>
-                  <div className="dashboardCardEyebrow">Коллекшн</div>
+                  <div className="dashboardCardEyebrow">{t("msg.collection")}</div>
                   <strong>
-                    Самые большие долги сверху, рядом быстрые напоминания и приём оплаты.
+                    {t("label.needsAction")}
                   </strong>
                 </div>
                 <div className="sectionBannerActions">
                   <button className="workspaceActionButton" onClick={loadDebtors}>
-                    Обновить
+                    {t("button.refresh")}
                   </button>
                 </div>
               </div>
@@ -2806,8 +2858,8 @@ export default function App() {
               {debtorActionQueue.length > 0 && (
                 <div className="detailCard detailCard--wide actionQueuePanel">
                   <div className="detailCardHeader">
-                    <h3>Требуют действия сейчас</h3>
-                    <span className="statusPill warning">{debtorActionQueue.length} в очереди</span>
+                    <h3>{t("label.needsAction")}</h3>
+                    <span className="statusPill warning">{t("msg.queueCount", { count: debtorActionQueue.length })}</span>
                   </div>
                   <div className="actionQueueList">
                     {debtorActionQueue.map((item) => (
@@ -2823,13 +2875,13 @@ export default function App() {
                               className="workspaceActionButton workspaceActionButtonPrimary"
                               onClick={() => openDebtorPaymentModalByStudentId(item.studentId)}
                             >
-                              Принять оплату
+                              {t("button.takePayment")}
                             </button>
                             <button
                               className="secondaryActionButton"
                               onClick={() => void openStudentInWorkspaceById(item.studentId)}
                             >
-                              Карточка
+                              {t("button.card")}
                             </button>
                             <button
                               className="secondaryActionButton"
@@ -2852,17 +2904,17 @@ export default function App() {
               )}
 
               {debtorsLoading ? (
-                <div>Загрузка…</div>
+                <div>{t("label.loading")}</div>
               ) : debtors.length === 0 ? (
-                <div className="empty">Должников не найдено. Все ученики оплатили вовремя.</div>
+                <div className="empty">{t("msg.noDebtors")}</div>
               ) : (
                 <table>
                   <thead>
                     <tr>
-                      <th>Имя ученика</th>
-                      <th style={{ textAlign: "right" }}>Долг (EUR)</th>
-                      <th style={{ textAlign: "right" }}>Выставлено (EUR)</th>
-                      <th style={{ textAlign: "right" }}>Оплачено (EUR)</th>
+                      <th>{t("field.student")}</th>
+                      <th style={{ textAlign: "right" }}>{t("field.debtEur")}</th>
+                      <th style={{ textAlign: "right" }}>{t("field.totalEur")}</th>
+                      <th style={{ textAlign: "right" }}>{t("field.paidEur")}</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -2887,14 +2939,14 @@ export default function App() {
                             className="workspaceActionButton workspaceActionButtonPrimary"
                             onClick={() => openDebtorPaymentModal(d)}
                           >
-                            Принять оплату
+                            {t("button.takePayment")}
                           </button>
-                          <button onClick={() => openDebtDetails(d)}>Расшифровка долга</button>
+                          <button onClick={() => openDebtDetails(d)}>{t("modal.debtBreakdown")}</button>
                           <button onClick={() => void copyDebtMessageForDebtor(d, "ru")}>
-                            Напомнить RU
+                            {t("button.copyRu")}
                           </button>
                           <button onClick={() => void copyDebtMessageForDebtor(d, "lv")}>
-                            Напомнить LV
+                            {t("button.copyLv")}
                           </button>
                         </td>
                       </tr>
@@ -2902,7 +2954,7 @@ export default function App() {
                   </tbody>
                   <tfoot>
                     <tr>
-                      <td style={{ fontWeight: "bold" }}>Общий долг (EUR):</td>
+                      <td style={{ fontWeight: "bold" }}>{t("field.debtEur")}:</td>
                       <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
                         {formatEUR(debtors.reduce((sum, d) => sum + d.debt, 0))}
                       </td>
@@ -2918,11 +2970,26 @@ export default function App() {
             <div className="settingsGrid">
               <section className="detailCard">
                 <div className="detailCardHeader">
-                  <h3>Резервные копии</h3>
+                  <h3>{t("settings.languageTitle")}</h3>
                 </div>
-                <p className="mutedInline">
-                  Ручное создание копии базы и быстрый доступ к архиву приложения.
-                </p>
+                <p className="mutedInline">{t("settings.languageDesc")}</p>
+                <div className="formRow">
+                  <label>{t("settings.locale")}</label>
+                  <select
+                    value={uiLocale}
+                    onChange={(e) => void handleLocaleChange(e.target.value as UiLocale)}
+                  >
+                    <option value="en-US">{t("settings.languageEnglish")}</option>
+                    <option value="ru-RU">{t("settings.languageRussian")}</option>
+                  </select>
+                </div>
+              </section>
+
+              <section className="detailCard">
+                <div className="detailCardHeader">
+                  <h3>{t("settings.backupsTitle")}</h3>
+                </div>
+                <p className="mutedInline">{t("settings.backupDesc")}</p>
                 <div className="settingsActions">
                   <button
                     type="button"
@@ -2930,48 +2997,48 @@ export default function App() {
                     onClick={() => void createManualBackup()}
                     disabled={creatingBackup}
                   >
-                    {creatingBackup ? "Создание копии..." : "Создать резервную копию"}
+                    {creatingBackup ? `${t("button.createBackup")}...` : t("button.createBackup")}
                   </button>
                   <button
                     type="button"
                     className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.backups, "резервных копий")}
+                    onClick={() => void openAppFolder(appDirs?.backups, t("field.backups").toLowerCase())}
                     disabled={!appDirs?.backups}
                   >
-                    Открыть папку резервных копий
+                    {t("button.backupsFolder")}
                   </button>
                 </div>
               </section>
 
               <section className="detailCard">
                 <div className="detailCardHeader">
-                  <h3>Рабочие файлы</h3>
+                  <h3>{t("settings.filesTitle")}</h3>
                 </div>
-                <p className="mutedInline">Счета, exports и служебные папки приложения.</p>
+                <p className="mutedInline">{t("settings.filesDesc")}</p>
                 <div className="settingsActions">
                   <button
                     type="button"
                     className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.invoices, "счетов")}
+                    onClick={() => void openAppFolder(appDirs?.invoices, t("tabs.invoice").toLowerCase())}
                     disabled={!appDirs?.invoices}
                   >
-                    Открыть папку счетов
+                    {t("button.invoicesFolder")}
                   </button>
                   <button
                     type="button"
                     className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.exports, "экспортов")}
+                    onClick={() => void openAppFolder(appDirs?.exports, "exports")}
                     disabled={!appDirs?.exports}
                   >
-                    Открыть exports
+                    {t("button.exportsFolder")}
                   </button>
                   <button
                     type="button"
                     className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.data, "данных")}
+                    onClick={() => void openAppFolder(appDirs?.data, "data")}
                     disabled={!appDirs?.data}
                   >
-                    Открыть data
+                    {t("button.dataFolder")}
                   </button>
                 </div>
               </section>
@@ -2983,19 +3050,19 @@ export default function App() {
       {paymentModalOpen && paymentStudentId > 0 && (
         <div className="modal" onClick={() => setPaymentModalOpen(false)}>
           <div className="modalBody" onClick={(e) => e.stopPropagation()}>
-            <h3>Записать оплату</h3>
+            <h3>{t("modal.paymentTitle")}</h3>
             <div className="formRow">
-              <label>Ученик</label>
+              <label>{t("tabs.students")}</label>
               <input value={paymentStudentName} disabled />
             </div>
             {paymentInvoiceId && (
               <div className="formRow">
-                <label>Применить к</label>
+                <label>{t("field.course")}</label>
                 <input value={`Счёт #${paymentInvoiceId}`} disabled />
               </div>
             )}
             <div className="formRow">
-              <label>Сумма (EUR):</label>
+              <label>{t("field.amount")} (EUR):</label>
               <input
                 type="number"
                 step="0.01"
@@ -3005,27 +3072,27 @@ export default function App() {
               />
             </div>
             <div className="formRow">
-              <label>Способ:</label>
+              <label>{t("field.method")}:</label>
               <select
                 value={paymentMethod}
                 onChange={(e) => setPaymentMethod(e.target.value as "cash" | "bank")}
               >
-                <option value="cash">Наличные</option>
-                <option value="bank">Банк</option>
+                <option value="cash">{t("payment.cash")}</option>
+                <option value="bank">{t("payment.bank")}</option>
               </select>
             </div>
             <div className="formRow">
-              <label>Заметка (необязательно):</label>
+              <label>{t("field.note")}:</label>
               <input
                 type="text"
                 value={paymentNote}
                 onChange={(e) => setPaymentNote(e.target.value)}
-                placeholder="Заметка к оплате..."
+                placeholder={t("field.note")}
               />
             </div>
             <div className="modalActions">
-              <button onClick={closePaymentModal}>Отмена</button>
-              <button onClick={handleCreatePayment}>Записать оплату</button>
+              <button onClick={closePaymentModal}>{t("button.cancel")}</button>
+              <button onClick={handleCreatePayment}>{t("button.recordPayment")}</button>
             </div>
           </div>
         </div>
@@ -3036,57 +3103,57 @@ export default function App() {
           <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
             <div style={{ marginBottom: "1rem" }}>
               <h3>
-                Счёт {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
+                {t("modal.invoiceTitle")} {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
                 <button
                   className="linkButton"
                   onClick={() => void openStudentCardById(selectedInv.studentId)}
                 >
                   {selectedInv.studentName}
                 </button>{" "}
-                — {months[selectedInv.month - 1]} {selectedInv.year}
+                — {uiMonths[selectedInv.month - 1]} {selectedInv.year}
               </h3>
             </div>
 
             {invSummary && selectedInv.status !== "draft" && (
               <div className="invSummary">
                 <div className="invSummaryRow">
-                  <span>Получатель:</span>
+                  <span>{t("field.recipient")}:</span>
                   <span>{selectedInv.recipientName || selectedInv.studentName}</span>
                 </div>
                 {selectedInv.studentPersonalCode && (
                   <div className="invSummaryRow">
                     <span>
-                      {selectedInv.isMinor ? "Персональный код ребёнка:" : "Персональный код:"}
+                      {selectedInv.isMinor ? `${t("field.personalCode")} child:` : `${t("field.personalCode")}:`}
                     </span>
                     <span>{selectedInv.studentPersonalCode}</span>
                   </div>
                 )}
                 {selectedInv.isMinor && (
                   <div className="invSummaryRow">
-                    <span>За ребёнка:</span>
+                    <span>{t("field.forChild")}:</span>
                     <span>{selectedInv.childName}</span>
                   </div>
                 )}
                 <div className="invSummaryRow">
-                  <span>Сумма:</span>
+                  <span>{t("field.amount")}:</span>
                   <span className="money">{formatEUR(invSummary.total)}</span>
                 </div>
 
                 <div className="invSummaryRow">
-                  <span>Оплачено:</span>
+                  <span>{t("label.paid")}:</span>
                   <span className="money good">{formatEUR(invSummary.paid)}</span>
                 </div>
 
                 <div className="invSummaryRow">
-                  <span>Осталось:</span>
+                  <span>{t("field.remaining")}:</span>
                   <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
                     {formatEUR(invSummary.remaining)}
                   </span>
                 </div>
 
                 <div className="invSummaryRow">
-                  <span>Статус:</span>
-                  <span className="money">{invoiceStatusLabel(invSummary.status)}</span>
+                  <span>{t("field.status")}:</span>
+                  <span className="money">{localizedInvoiceStatusLabel(invSummary.status)}</span>
                 </div>
               </div>
             )}
@@ -3095,10 +3162,10 @@ export default function App() {
               <table>
                 <thead>
                   <tr>
-                    <th>Описание</th>
-                    <th style={{ textAlign: "right" }}>Кол-во</th>
-                    <th style={{ textAlign: "right" }}>Цена (EUR)</th>
-                    <th style={{ textAlign: "right" }}>Сумма (EUR)</th>
+                    <th>{t("field.description")}</th>
+                    <th style={{ textAlign: "right" }}>{t("field.quantity")}</th>
+                    <th style={{ textAlign: "right" }}>{t("field.lessonPrice")} (EUR)</th>
+                    <th style={{ textAlign: "right" }}>{t("field.amount")} (EUR)</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -3114,7 +3181,7 @@ export default function App() {
                 <tfoot>
                   <tr>
                     <td colSpan={3} style={{ textAlign: "right" }}>
-                      Итого (EUR):
+                      {t("field.totalEur")}:
                     </td>
                     <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
                   </tr>
@@ -3124,27 +3191,27 @@ export default function App() {
 
             <div className="modalActions">
               {selectedInv.status === "draft" && (
-                <button onClick={() => onIssueOne(selectedInv.id)}>Выставить</button>
+                <button onClick={() => onIssueOne(selectedInv.id)}>{t("button.issue")}</button>
               )}
               {selectedInv.status !== "draft" && (
                 <button onClick={() => openPaymentModal(selectedInv, invSummary)}>
-                  Записать оплату
+                  {t("button.recordPayment")}
                 </button>
               )}
               {selectedInv.status === "issued" && (
                 <button onClick={() => void onReopenToDraft(selectedInv.id)}>
-                  Вернуть в черновик
+                  {t("button.reopenDraft")}
                 </button>
               )}
               {selectedInv.status !== "draft" && (
                 <button onClick={() => void onRevealInvoiceFile(selectedInv.id)}>
-                  Показать в папке
+                  {t("button.showInFolder")}
                 </button>
               )}
               {selectedInv.status !== "draft" && !selectedInvPdfReady && (
-                <button onClick={() => onGeneratePdf(selectedInv.id)}>Создать PDF</button>
+                <button onClick={() => onGeneratePdf(selectedInv.id)}>{t("button.createPdf")}</button>
               )}
-              <button onClick={() => setInvoiceDetailsOpen(false)}>Закрыть</button>
+              <button onClick={() => setInvoiceDetailsOpen(false)}>{t("button.close")}</button>
             </div>
           </div>
         </div>
@@ -3153,11 +3220,11 @@ export default function App() {
       {debtDetailsOpen && selectedDebtor && (
         <div className="modal" onClick={() => setDebtDetailsOpen(false)}>
           <div className="modalBody" onClick={(e) => e.stopPropagation()}>
-            <h3>Расшифровка долга</h3>
+            <h3>{t("modal.debtBreakdown")}</h3>
 
             <div className="invSummary">
               <div className="invSummaryRow">
-                <span>Ученик</span>
+                <span>{t("field.student")}</span>
                 <button
                   className="linkButton"
                   onClick={() => void openStudentCardById(selectedDebtor.studentId)}
@@ -3166,41 +3233,41 @@ export default function App() {
                 </button>
               </div>
               <div className="invSummaryRow">
-                <span>Общий долг</span>
+                <span>{t("field.debtEur")}</span>
                 <strong className="money bad">{formatEUR(selectedDebtor.debt)}</strong>
               </div>
             </div>
 
             {debtDetailsLoading ? (
-              <div>Загрузка...</div>
+              <div>{t("label.loading")}</div>
             ) : debtDetails.length === 0 ? (
-              <div className="empty">Нет открытых счетов с остатком.</div>
+              <div className="empty">{t("msg.noOpenDebts")}</div>
             ) : (
               <div style={{ overflowX: "auto" }}>
                 <table>
                   <thead>
                     <tr>
-                      <th>Месяц</th>
-                      <th>Счёт</th>
-                      <th style={{ textAlign: "right" }}>Сумма</th>
-                      <th style={{ textAlign: "right" }}>Оплачено</th>
-                      <th style={{ textAlign: "right" }}>Осталось</th>
-                      <th>Статус</th>
+                      <th>{t("field.month")}</th>
+                      <th>{t("field.number")}</th>
+                      <th style={{ textAlign: "right" }}>{t("field.amount")}</th>
+                      <th style={{ textAlign: "right" }}>{t("label.paid")}</th>
+                      <th style={{ textAlign: "right" }}>{t("field.remaining")}</th>
+                      <th>{t("field.status")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {debtDetails.map((x) => (
                       <tr key={x.invoiceId}>
                         <td>
-                          {months[x.month - 1]} {x.year}
+                          {uiMonths[x.month - 1]} {x.year}
                         </td>
-                        <td>{x.number ?? "Без номера"}</td>
+                        <td>{x.number ?? t("msg.noInvoiceNumber")}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(x.total)}</td>
                         <td style={{ textAlign: "right" }}>{formatEUR(x.paid)}</td>
                         <td style={{ textAlign: "right" }}>
                           <strong className="money bad">{formatEUR(x.remaining)}</strong>
                         </td>
-                        <td>{invoiceStatusLabel(x.status)}</td>
+                        <td>{localizedInvoiceStatusLabel(x.status)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -3211,14 +3278,12 @@ export default function App() {
             <div className="modalActions">
               {!debtDetailsLoading && debtDetails.length > 0 && (
                 <>
-                  <button onClick={openPaymentFromDebtDetails}>Записать оплату</button>
-                  <button onClick={() => void copyDebtMessage("ru")}>Скопировать по-русски</button>
-                  <button onClick={() => void copyDebtMessage("lv")}>
-                    Скопировать по-латышски
-                  </button>
+                  <button onClick={openPaymentFromDebtDetails}>{t("button.recordPayment")}</button>
+                  <button onClick={() => void copyDebtMessage("ru")}>{t("button.copyRu")}</button>
+                  <button onClick={() => void copyDebtMessage("lv")}>{t("button.copyLv")}</button>
                 </>
               )}
-              <button onClick={() => setDebtDetailsOpen(false)}>Закрыть</button>
+              <button onClick={() => setDebtDetailsOpen(false)}>{t("button.close")}</button>
             </div>
           </div>
         </div>
@@ -3238,12 +3303,13 @@ export default function App() {
               monthInvoices={studentCardMonthInvoices}
               nextAction={studentNextAction}
               activity={studentActivity}
-              payerRoleLabel={payerRoleLabel}
-              billingModeLabel={billingModeLabel}
-              paymentMethodLabel={paymentMethodLabel}
-              invoiceStatusLabel={invoiceStatusLabel}
+              t={t}
+              payerRoleLabel={localizedPayerRoleLabel}
+              billingModeLabel={localizedBillingModeLabel}
+              paymentMethodLabel={localizedPaymentMethodLabel}
+              invoiceStatusLabel={localizedInvoiceStatusLabel}
               formatEUR={formatEUR}
-              months={months}
+              months={uiMonths}
               deletingPaymentId={studentCardDeletingPaymentId}
               onEditStudent={() => {
                 setStudentCardOpen(false);
@@ -3263,7 +3329,7 @@ export default function App() {
               }}
               footer={
                 <div className="modalActions">
-                  <button onClick={() => setStudentCardOpen(false)}>Закрыть</button>
+                  <button onClick={() => setStudentCardOpen(false)}>{t("button.close")}</button>
                 </div>
               }
             />

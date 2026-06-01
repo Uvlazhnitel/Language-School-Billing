@@ -1,10 +1,12 @@
 import { MonthOverviewDTO, RecentPaymentDTO } from "../lib/dashboard";
+import { TranslateFn } from "../lib/i18n";
 import { DebtorActionQueueItem } from "../lib/studentActivity";
 
 type DashboardOverviewProps = {
   overview: MonthOverviewDTO | null;
   loading: boolean;
   monthLabel: string;
+  t: TranslateFn;
   formatEUR: (value: number) => string;
   paymentMethodLabel: (method: string) => string;
   onOpenAttendance: () => void;
@@ -27,6 +29,7 @@ export function DashboardOverview({
   overview,
   loading,
   monthLabel,
+  t,
   formatEUR,
   paymentMethodLabel,
   onOpenAttendance,
@@ -41,11 +44,11 @@ export function DashboardOverview({
   actionQueue,
 }: DashboardOverviewProps) {
   if (loading) {
-    return <div className="empty">Загружаем обзор месяца…</div>;
+    return <div className="empty">{t("msg.dashboardLoading")}</div>;
   }
 
   if (!overview) {
-    return <div className="empty">Не удалось загрузить обзор месяца.</div>;
+    return <div className="empty">{t("msg.dashboardError")}</div>;
   }
 
   const attendanceReady = overview.perLessonEnrollments > 0 && overview.attendanceMissing === 0;
@@ -56,24 +59,21 @@ export function DashboardOverview({
     <div className="dashboard">
       <div className="dashboardHero">
         <div>
-          <div className="dashboardHeroEyebrow">Месячный обзор</div>
+          <div className="dashboardHeroEyebrow">{t("label.monthlyOverview")}</div>
           <h2>{monthLabel}</h2>
-          <p>
-            Сначала видим приоритеты месяца, потом идём в нужный рабочий сценарий без лишних
-            переходов.
-          </p>
+          <p>{t("msg.dashboardIntro")}</p>
         </div>
         <div className="dashboardHeroStats">
           <div className="dashboardHeroStat">
-            <span>Активных учеников</span>
+            <span>{t("field.activeStudents")}</span>
             <strong>{overview.activeStudents}</strong>
           </div>
           <div className="dashboardHeroStat">
-            <span>Активных курсов</span>
+            <span>{t("field.activeCourses")}</span>
             <strong>{overview.activeCourses}</strong>
           </div>
           <div className="dashboardHeroStat">
-            <span>Зачислений</span>
+            <span>{t("field.enrollments")}</span>
             <strong>{overview.enrollments}</strong>
           </div>
         </div>
@@ -83,24 +83,26 @@ export function DashboardOverview({
         <section className="dashboardCard">
           <div className="dashboardCardHeader">
             <div>
-              <div className="dashboardCardEyebrow">Счета</div>
-              <h3>Нужно выставить счета</h3>
+              <div className="dashboardCardEyebrow">{t("tabs.invoice")}</div>
+              <h3>{t("label.needIssueInvoices")}</h3>
             </div>
             <span className={`statusPill ${overview.draftInvoices > 0 ? "warning" : "success"}`}>
-              {overview.draftInvoices > 0 ? `${overview.draftInvoices} черновиков` : "Готово"}
+              {overview.draftInvoices > 0
+                ? t("msg.overviewDrafts", { count: overview.draftInvoices })
+                : t("msg.ready")}
             </span>
           </div>
           <p className="dashboardCardLead">
-            Выставлено на {formatEUR(overview.totalIssued)}, оплачено{" "}
+            {t("label.invoiced")} {formatEUR(overview.totalIssued)}, {t("label.paid").toLowerCase()}{" "}
             {formatEUR(overview.totalPaid)}.
           </p>
           <div className="dashboardMetrics">
             <div>
-              <span>Выставлены</span>
+              <span>{t("field.issuedInvoices")}</span>
               <strong>{overview.issuedInvoices}</strong>
             </div>
             <div>
-              <span>Оплачены</span>
+              <span>{t("field.paidInvoices")}</span>
               <strong>{overview.paidInvoices}</strong>
             </div>
           </div>
@@ -109,7 +111,7 @@ export function DashboardOverview({
               className="workspaceActionButton workspaceActionButtonPrimary"
               onClick={onOpenInvoices}
             >
-              Открыть счета
+              {t("button.openInvoices")}
             </button>
           </div>
         </section>
@@ -117,17 +119,16 @@ export function DashboardOverview({
         <section className="dashboardCard">
           <div className="dashboardCardHeader">
             <div>
-              <div className="dashboardCardEyebrow">Контроль месяца</div>
-              <h3>Не заполнена посещаемость</h3>
+              <div className="dashboardCardEyebrow">{t("label.monthControl")}</div>
+              <h3>{t("label.attendanceIncomplete")}</h3>
             </div>
             <span className={`statusPill ${attendanceReady ? "success" : "warning"}`}>
-              {attendanceReady ? "Можно выставлять" : `${overview.attendanceMissing} осталось`}
+              {attendanceReady
+                ? t("msg.canIssue")
+                : t("msg.leftCount", { count: overview.attendanceMissing })}
             </span>
           </div>
-          <p className="dashboardCardLead">
-            Заполнено {overview.attendanceFilled} из {overview.perLessonEnrollments} строк по оплате
-            за занятия.
-          </p>
+          <p className="dashboardCardLead">{t("field.filledAttendance", { filled: overview.attendanceFilled, total: overview.perLessonEnrollments })}</p>
           <div className="dashboardProgress">
             <div
               className="dashboardProgressValue"
@@ -144,7 +145,7 @@ export function DashboardOverview({
               className="workspaceActionButton workspaceActionButtonPrimary"
               onClick={onOpenAttendance}
             >
-              К посещаемости
+              {t("button.openAttendance")}
             </button>
           </div>
         </section>
@@ -152,29 +153,29 @@ export function DashboardOverview({
         <section className="dashboardCard dashboardCard--compact">
           <div className="dashboardCardHeader">
             <div>
-              <div className="dashboardCardEyebrow">Долги</div>
-              <h3>Открытый долг</h3>
+              <div className="dashboardCardEyebrow">{t("tabs.debtors")}</div>
+              <h3>{t("label.outstandingDebt")}</h3>
             </div>
             <span className={`statusPill ${overview.totalDebt > 0 ? "danger" : "success"}`}>
-              {overview.debtorsCount} учеников
+              {t("msg.studentsCount", { count: overview.debtorsCount })}
             </span>
           </div>
           <p className="dashboardCardLead">{formatEUR(overview.totalDebt)}</p>
           <div className="dashboardMetrics">
             <div>
-              <span>Требуют внимания</span>
+              <span>{t("field.needsAttention")}</span>
               <strong>{overview.debtorsCount}</strong>
             </div>
             <div>
-              <span>Без недавней оплаты</span>
+              <span>{t("field.noRecentPayment")}</span>
               <strong>{noRecentPaymentCount}</strong>
             </div>
             <div>
-              <span>Крупнейший долг</span>
+              <span>{t("field.biggestDebt")}</span>
               <strong>{topDebtor ? formatEUR(topDebtor.debt) : "—"}</strong>
             </div>
             <div>
-              <span>Лидер риска</span>
+              <span>{t("field.latestRisk")}</span>
               <strong>{topDebtor ? topDebtor.studentName : "—"}</strong>
             </div>
           </div>
@@ -183,7 +184,7 @@ export function DashboardOverview({
               className="workspaceActionButton workspaceActionButtonPrimary"
               onClick={onOpenDebtors}
             >
-              Открыть долги
+              {t("button.openDebts")}
             </button>
           </div>
         </section>
@@ -191,15 +192,17 @@ export function DashboardOverview({
         <section className="dashboardCard dashboardCard--queue">
           <div className="dashboardCardHeader">
             <div>
-              <div className="dashboardCardEyebrow">Action queue</div>
-              <h3>Требуют действия сейчас</h3>
+              <div className="dashboardCardEyebrow">{t("label.actionQueue")}</div>
+              <h3>{t("label.needsAction")}</h3>
             </div>
             <span className={`statusPill ${actionQueue.length > 0 ? "warning" : "success"}`}>
-              {actionQueue.length > 0 ? `${actionQueue.length} в приоритете` : "Очередь пуста"}
+              {actionQueue.length > 0
+                ? t("msg.priorityCount", { count: actionQueue.length })
+                : t("msg.ready")}
             </span>
           </div>
           {actionQueue.length === 0 ? (
-            <div className="empty">Сейчас нет срочных follow-up задач по долгам.</div>
+            <div className="empty">{t("msg.noActionQueue")}</div>
           ) : (
             <div className="actionQueueList">
               {actionQueue.slice(0, 3).map((item) => (
@@ -215,13 +218,13 @@ export function DashboardOverview({
                         className="workspaceActionButton workspaceActionButtonPrimary actionQueuePrimary"
                         onClick={() => onOpenPaymentQueueStudent(item.studentId)}
                       >
-                        Оплата
+                        {t("button.payment")}
                       </button>
                       <button
                         className="secondaryActionButton"
                         onClick={() => onOpenStudent(item.studentId)}
                       >
-                        Карточка
+                        {t("button.card")}
                       </button>
                       <div className="actionQueueSecondaryGroup">
                         <button
@@ -248,16 +251,16 @@ export function DashboardOverview({
         <section className="dashboardCard dashboardCard--feed dashboardCard--activity">
           <div className="dashboardCardHeader">
             <div>
-              <div className="dashboardCardEyebrow">Активность</div>
-              <h3>Последние оплаты</h3>
+              <div className="dashboardCardEyebrow">{t("label.monthReview")}</div>
+              <h3>{t("label.recentPayments")}</h3>
             </div>
             <button className="secondaryActionButton" onClick={onOpenStudents}>
-              База учеников
+              {t("button.showStudents")}
             </button>
           </div>
 
           {recentPayments.length === 0 ? (
-            <div className="empty">Оплат пока нет.</div>
+            <div className="empty">{t("msg.noRecentPayments")}</div>
           ) : (
             <div className="activityFeed">
               {recentPayments.map((payment) => (
@@ -278,7 +281,7 @@ export function DashboardOverview({
                     {payment.invoiceId ? (
                       <span>Счёт #{payment.invoiceId}</span>
                     ) : (
-                      <span>Без счёта</span>
+                      <span>{t("msg.noInvoice")}</span>
                     )}
                   </div>
                 </button>

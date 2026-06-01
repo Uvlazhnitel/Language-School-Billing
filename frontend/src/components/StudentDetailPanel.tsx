@@ -1,5 +1,6 @@
 import { BalanceDTO, DebtInvoiceDTO, PaymentDTO } from "../lib/payments";
 import { EnrollmentDTO } from "../lib/enrollments";
+import { TranslateFn } from "../lib/i18n";
 import { StudentDTO } from "../lib/students";
 import { InvoiceListItemView } from "../lib/invoices";
 import { StudentActivityItem, StudentNextAction } from "../lib/studentActivity";
@@ -14,6 +15,7 @@ type StudentDetailPanelProps = {
   monthInvoices: InvoiceListItemView[];
   nextAction: StudentNextAction | null;
   activity: StudentActivityItem[];
+  t: TranslateFn;
   payerRoleLabel: (relation: string) => string;
   billingModeLabel: (mode: string) => string;
   paymentMethodLabel: (method: string) => string;
@@ -41,6 +43,7 @@ export function StudentDetailPanel({
   monthInvoices,
   nextAction,
   activity,
+  t,
   payerRoleLabel,
   billingModeLabel,
   paymentMethodLabel,
@@ -58,14 +61,14 @@ export function StudentDetailPanel({
   footer,
 }: StudentDetailPanelProps) {
   if (!student) {
-    return <div className="empty">Выберите ученика слева, чтобы открыть рабочую карточку.</div>;
+    return <div className="empty">{t("msg.noStudentSelected")}</div>;
   }
 
   if (loading) {
-    return <div className="empty">Загрузка карточки ученика…</div>;
+    return <div className="empty">{t("msg.studentCardLoading")}</div>;
   }
 
-  const latestPayment = payments[0]?.paidAt?.slice(0, 10) ?? "ещё не было";
+  const latestPayment = payments[0]?.paidAt?.slice(0, 10) ?? t("msg.noPayments");
   const activeEnrollmentsCount = enrollments.length;
 
   const handlePrimaryAction = () => {
@@ -90,13 +93,13 @@ export function StudentDetailPanel({
     <div className="studentDetailPanel">
       <div className="studentDetailHero">
         <div>
-          <div className="dashboardCardEyebrow">Карточка ученика</div>
+          <div className="dashboardCardEyebrow">{t("student.card")}</div>
           <h2>{student.fullName}</h2>
-          <p>{student.isMinor ? "Ребёнок / несовершеннолетний" : "Взрослый ученик"}</p>
+          <p>{student.isMinor ? t("student.minor") : t("student.adult")}</p>
           {nextAction && (
             <div className="crmActionStrip">
               <div className="crmActionCopy">
-                <span className="crmActionLabel">Следующее действие</span>
+                <span className="crmActionLabel">{t("label.nextAction")}</span>
                 <strong>{nextAction.reason}</strong>
                 <p>{nextAction.outstandingIssue}</p>
               </div>
@@ -107,12 +110,12 @@ export function StudentDetailPanel({
                 >
                   {nextAction.label}
                 </button>
-                {nextAction.secondaryLabel === "Напомнить о долге" && debts.length > 0 && (
+                {nextAction.secondaryLabel === t("action.debtReminder") && debts.length > 0 && (
                   <button className="workspaceActionButton" onClick={onCopyDebtRu}>
                     {nextAction.secondaryLabel}
                   </button>
                 )}
-                {nextAction.secondaryLabel === "Проверить черновик" && (
+                {nextAction.secondaryLabel === t("action.checkDraft") && (
                   <button className="workspaceActionButton" onClick={onOpenInvoices}>
                     {nextAction.secondaryLabel}
                   </button>
@@ -126,42 +129,42 @@ export function StudentDetailPanel({
             className="workspaceActionButton workspaceActionButtonPrimary"
             onClick={onAddPayment}
           >
-            Записать оплату
+            {t("button.recordPayment")}
           </button>
           <button className="workspaceActionButton" onClick={onEditStudent}>
-            Редактировать
+            {t("button.edit")}
           </button>
           <button className="workspaceActionButton" onClick={onManageEnrollments}>
-            Зачисления
+            {t("button.manageEnrollments")}
           </button>
         </div>
       </div>
 
       <div className="studentSummaryGrid">
         <div className="summaryMetricCard">
-          <span>Выставлено</span>
+          <span>{t("label.invoiced")}</span>
           <strong>{balance ? formatEUR(balance.totalInvoiced) : "—"}</strong>
         </div>
         <div className="summaryMetricCard">
-          <span>Оплачено</span>
+          <span>{t("label.paid")}</span>
           <strong>{balance ? formatEUR(balance.totalPaid) : "—"}</strong>
         </div>
         <div className="summaryMetricCard">
-          <span>Долг</span>
+          <span>{t("label.debt")}</span>
           <strong className={balance && balance.debt > 0 ? "metricDanger" : "metricSuccess"}>
-            {balance ? (balance.debt > 0 ? formatEUR(balance.debt) : "Нет долга") : "—"}
+            {balance ? (balance.debt > 0 ? formatEUR(balance.debt) : t("msg.noOpenDebts")) : "—"}
           </strong>
         </div>
         <div className="summaryMetricCard">
-          <span>Последняя оплата</span>
+          <span>{t("label.lastPayment")}</span>
           <strong>{latestPayment}</strong>
         </div>
         <div className="summaryMetricCard">
-          <span>Активных зачислений</span>
+          <span>{t("label.activeEnrollments")}</span>
           <strong>{activeEnrollmentsCount}</strong>
         </div>
         <div className="summaryMetricCard">
-          <span>Счета месяца</span>
+          <span>{t("label.monthInvoices")}</span>
           <strong>{monthInvoices.length}</strong>
         </div>
       </div>
@@ -169,10 +172,10 @@ export function StudentDetailPanel({
       <div className="studentDetailGrid">
         <section className="detailCard detailCard--wide">
           <div className="detailCardHeader">
-            <h3>CRM timeline</h3>
+            <h3>{t("label.crmTimeline")}</h3>
           </div>
           {activity.length === 0 ? (
-            <div className="empty">История пока пустая.</div>
+            <div className="empty">{t("msg.studentHistoryEmpty")}</div>
           ) : (
             <div className="crmTimeline">
               {activity.map((item) => (
@@ -208,27 +211,27 @@ export function StudentDetailPanel({
 
         <section className="detailCard">
           <div className="detailCardHeader">
-            <h3>Контакты и статус</h3>
+            <h3>{t("label.contactsAndStatus")}</h3>
           </div>
           <div className="detailKeyValue">
-            <span>Телефон</span>
+            <span>{t("field.phone")}</span>
             <strong>{student.phone || "—"}</strong>
           </div>
           <div className="detailKeyValue">
-            <span>E-mail</span>
+            <span>{t("field.email")}</span>
             <strong>{student.email || "—"}</strong>
           </div>
           <div className="detailKeyValue">
-            <span>Персональный код</span>
+            <span>{t("field.personalCode")}</span>
             <strong>{student.personalCode || "—"}</strong>
           </div>
           <div className="detailKeyValue">
-            <span>Статус</span>
-            <strong>{student.isActive ? "Активен" : "Неактивен"}</strong>
+            <span>{t("field.status")}</span>
+            <strong>{student.isActive ? t("status.active") : t("status.inactive")}</strong>
           </div>
           {student.note && (
             <div className="detailNote">
-              <span>Заметка</span>
+              <span>{t("field.note")}</span>
               <p>{student.note}</p>
             </div>
           )}
@@ -237,18 +240,18 @@ export function StudentDetailPanel({
         {student.isMinor && (
           <section className="detailCard">
             <div className="detailCardHeader">
-              <h3>Плательщик</h3>
+              <h3>{t("label.payer")}</h3>
             </div>
             <div className="detailKeyValue">
-              <span>Имя</span>
+              <span>{t("field.name")}</span>
               <strong>{student.payerName || "—"}</strong>
             </div>
             <div className="detailKeyValue">
-              <span>Кем приходится</span>
+              <span>{t("field.payerRole")}</span>
               <strong>{student.payerRole ? payerRoleLabel(student.payerRole) : "—"}</strong>
             </div>
             <div className="detailKeyValue">
-              <span>Контакты</span>
+              <span>{t("field.contacts")}</span>
               <strong>{[student.phone, student.email].filter(Boolean).join(" · ") || "—"}</strong>
             </div>
           </section>
@@ -256,20 +259,20 @@ export function StudentDetailPanel({
 
         <section className="detailCard detailCard--wide">
           <div className="detailCardHeader">
-            <h3>Курсы и зачисления</h3>
+            <h3>{t("label.coursesAndEnrollments")}</h3>
           </div>
           {enrollments.length === 0 ? (
-            <div className="empty">Зачислений нет.</div>
+            <div className="empty">{t("msg.noEnrollments")}</div>
           ) : (
             <div className="tableWrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Курс</th>
-                    <th>Учитель</th>
-                    <th>Оплата</th>
-                    <th style={{ textAlign: "right" }}>Скидка</th>
-                    <th>Заметка</th>
+                    <th>{t("field.course")}</th>
+                    <th>{t("field.teacher")}</th>
+                    <th>{t("field.billing")}</th>
+                    <th style={{ textAlign: "right" }}>{t("field.discount")}</th>
+                    <th>{t("field.note")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -290,31 +293,31 @@ export function StudentDetailPanel({
 
         <section className="detailCard detailCard--wide">
           <div className="detailCardHeader">
-            <h3>Открытые долги</h3>
+            <h3>{t("label.openDebts")}</h3>
             {debts.length > 0 && (
               <div className="inlineActions">
                 <button className="secondaryActionButton" onClick={onCopyDebtRu}>
-                  Напомнить RU
+                  {t("button.copyRu")}
                 </button>
                 <button className="secondaryActionButton" onClick={onCopyDebtLv}>
-                  Напомнить LV
+                  {t("button.copyLv")}
                 </button>
               </div>
             )}
           </div>
           {debts.length === 0 ? (
-            <div className="empty">Всё оплачено, открытых долгов нет.</div>
+            <div className="empty">{t("msg.noOpenDebts")}</div>
           ) : (
             <div className="tableWrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Месяц</th>
-                    <th>Счёт</th>
-                    <th style={{ textAlign: "right" }}>Сумма</th>
-                    <th style={{ textAlign: "right" }}>Оплачено</th>
-                    <th style={{ textAlign: "right" }}>Осталось</th>
-                    <th>Статус</th>
+                    <th>{t("field.month")}</th>
+                    <th>{t("field.number")}</th>
+                    <th style={{ textAlign: "right" }}>{t("field.amount")}</th>
+                    <th style={{ textAlign: "right" }}>{t("label.paid")}</th>
+                    <th style={{ textAlign: "right" }}>{t("field.remaining")}</th>
+                    <th>{t("field.status")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -323,7 +326,7 @@ export function StudentDetailPanel({
                       <td>
                         {months[debt.month - 1]} {debt.year}
                       </td>
-                      <td>{debt.number ?? "Без номера"}</td>
+                      <td>{debt.number ?? "—"}</td>
                       <td style={{ textAlign: "right" }}>{formatEUR(debt.total)}</td>
                       <td style={{ textAlign: "right" }}>{formatEUR(debt.paid)}</td>
                       <td style={{ textAlign: "right" }}>
@@ -340,20 +343,20 @@ export function StudentDetailPanel({
 
         <section className="detailCard detailCard--wide">
           <div className="detailCardHeader">
-            <h3>Последние оплаты</h3>
+            <h3>{t("label.recentPayments")}</h3>
           </div>
           {payments.length === 0 ? (
-            <div className="empty">Оплат пока нет.</div>
+            <div className="empty">{t("msg.noPayments")}</div>
           ) : (
             <div className="tableWrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Дата</th>
-                    <th style={{ textAlign: "right" }}>Сумма</th>
-                    <th>Способ</th>
-                    <th>Заметка</th>
-                    <th>Действия</th>
+                    <th>{t("field.date")}</th>
+                    <th style={{ textAlign: "right" }}>{t("field.amount")}</th>
+                    <th>{t("field.method")}</th>
+                    <th>{t("field.note")}</th>
+                    <th>{t("field.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -368,7 +371,7 @@ export function StudentDetailPanel({
                           onClick={() => onDeletePayment(payment)}
                           disabled={deletingPaymentId === payment.id}
                         >
-                          {deletingPaymentId === payment.id ? "Удаление..." : "Удалить"}
+                          {deletingPaymentId === payment.id ? `${t("button.delete")}...` : t("button.delete")}
                         </button>
                       </td>
                     </tr>

@@ -103,7 +103,7 @@ func (a *App) startup(ctx context.Context) {
 			SetNextSeq(1).
 			SetInvoiceDayOfMonth(1).
 			SetCurrency("EUR").
-			SetLocale("lv-LV").
+			SetLocale("en-US").
 			Save(ctx); err != nil {
 			log.Fatal(err)
 		}
@@ -606,6 +606,18 @@ func (a *App) SettingsSetLocale(loc string) error {
 		SetLocale(loc).
 		Save(a.ctx)
 	return err
+}
+
+// SettingsGetLocale returns the saved application locale.
+func (a *App) SettingsGetLocale() (string, error) {
+	st, err := a.db.Ent.Settings.
+		Query().
+		Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
+		Only(a.ctx)
+	if err != nil {
+		return "", err
+	}
+	return st.Locale, nil
 }
 
 // ---------- Payment bindings ----------

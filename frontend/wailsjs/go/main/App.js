@@ -134,6 +134,10 @@ export function RecentPayments(arg1) {
   return window['go']['main']['App']['RecentPayments'](arg1);
 }
 
+export function SettingsGetLocale() {
+  return window['go']['main']['App']['SettingsGetLocale']();
+}
+
 export function SettingsSetLocale(arg1) {
   return window['go']['main']['App']['SettingsSetLocale'](arg1);
 }

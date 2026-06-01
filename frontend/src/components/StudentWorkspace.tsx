@@ -1,5 +1,6 @@
 import { BalanceDTO, DebtInvoiceDTO, PaymentDTO } from "../lib/payments";
 import { EnrollmentDTO } from "../lib/enrollments";
+import { TranslateFn } from "../lib/i18n";
 import { StudentDTO } from "../lib/students";
 import { InvoiceListItemView } from "../lib/invoices";
 import { StudentActivityItem, StudentNextAction } from "../lib/studentActivity";
@@ -19,6 +20,7 @@ type StudentWorkspaceProps = {
   detailMonthInvoices: InvoiceListItemView[];
   detailNextAction: StudentNextAction | null;
   detailActivity: StudentActivityItem[];
+  t: TranslateFn;
   deletingPaymentId: number | null;
   onQueryChange: (value: string) => void;
   onIncludeInactiveChange: (value: boolean) => void;
@@ -56,6 +58,7 @@ export function StudentWorkspace({
   detailMonthInvoices,
   detailNextAction,
   detailActivity,
+  t,
   deletingPaymentId,
   onQueryChange,
   onIncludeInactiveChange,
@@ -82,10 +85,10 @@ export function StudentWorkspace({
     <div className="studentWorkspace">
       <div className="studentSidebar">
         <div className="controls controls--sidebar">
-          <button onClick={onAddStudent}>Добавить ученика</button>
+          <button onClick={onAddStudent}>{t("button.addStudent")}</button>
           <input
             className="searchField"
-            placeholder="Поиск по имени / телефону / эл. почте…"
+            placeholder={t("msg.searchPlaceholderStudent")}
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
           />
@@ -95,15 +98,15 @@ export function StudentWorkspace({
               checked={includeInactive}
               onChange={(e) => onIncludeInactiveChange(e.target.checked)}
             />
-            Показывать неактивных
+            {t("label.showInactive")}
           </label>
-          <button onClick={onRefresh}>Обновить</button>
+          <button onClick={onRefresh}>{t("button.refresh")}</button>
         </div>
 
         {loading ? (
-          <div className="empty">Загрузка…</div>
+          <div className="empty">{t("label.loading")}</div>
         ) : students.length === 0 ? (
-          <div className="empty">Учеников пока нет.</div>
+          <div className="empty">{t("msg.noStudents")}</div>
         ) : (
           <div className="studentListPane">
             {students.map((student) => {
@@ -118,12 +121,12 @@ export function StudentWorkspace({
                   <div className="studentListItemTop">
                     <strong>{student.fullName}</strong>
                     <span className={`statusDot ${student.isActive ? "active" : "inactive"}`}>
-                      {student.isActive ? "Активен" : "Неактивен"}
+                      {student.isActive ? t("status.active") : t("status.inactive")}
                     </span>
                   </div>
                   <div className="studentListItemMeta">
-                    <span>{student.phone || "Без телефона"}</span>
-                    <span>{student.email || "Без e-mail"}</span>
+                    <span>{student.phone || t("student.noPhone")}</span>
+                    <span>{student.email || t("student.noEmail")}</span>
                   </div>
                 </button>
               );
@@ -135,12 +138,12 @@ export function StudentWorkspace({
       <div className="studentMainPanel">
         {selectedStudent && (
           <div className="studentMainToolbar">
-            <button onClick={() => onEditStudent(selectedStudent)}>Редактировать</button>
+            <button onClick={() => onEditStudent(selectedStudent)}>{t("button.edit")}</button>
             <button onClick={() => onToggleActive(selectedStudent)}>
-              {selectedStudent.isActive ? "Деактивировать" : "Активировать"}
+              {selectedStudent.isActive ? t("button.deactivate") : t("button.activate")}
             </button>
             {!selectedStudent.isActive && (
-              <button onClick={() => onDeleteStudent(selectedStudent.id)}>Удалить</button>
+              <button onClick={() => onDeleteStudent(selectedStudent.id)}>{t("button.delete")}</button>
             )}
           </div>
         )}
@@ -155,6 +158,7 @@ export function StudentWorkspace({
           monthInvoices={detailMonthInvoices}
           nextAction={detailNextAction}
           activity={detailActivity}
+          t={t}
           payerRoleLabel={payerRoleLabel}
           billingModeLabel={billingModeLabel}
           paymentMethodLabel={paymentMethodLabel}
