@@ -216,6 +216,36 @@ func TestMigrateLegacyCourseTeachers(t *testing.T) {
 	}
 }
 
+func TestSettingsLocalePersists(t *testing.T) {
+	app, client := newCRUDTestApp(t, "crudsettingslocale")
+	defer client.Close()
+
+	if _, err := client.Settings.Create().
+		SetSingletonID(appconst.SettingsSingletonID).
+		SetOrgName("LangSchool").
+		SetAddress("Test street 1").
+		SetInvoicePrefix("LS").
+		SetNextSeq(1).
+		SetInvoiceDayOfMonth(1).
+		SetCurrency("EUR").
+		SetLocale("en-US").
+		Save(app.ctx); err != nil {
+		t.Fatalf("Settings.Create: %v", err)
+	}
+
+	if err := app.SettingsSetLocale("ru-RU"); err != nil {
+		t.Fatalf("SettingsSetLocale: %v", err)
+	}
+
+	got, err := app.SettingsGetLocale()
+	if err != nil {
+		t.Fatalf("SettingsGetLocale: %v", err)
+	}
+	if got != "ru-RU" {
+		t.Fatalf("locale = %q, want %q", got, "ru-RU")
+	}
+}
+
 func TestStudentCreateAndUpdateIsMinor(t *testing.T) {
 	app, client := newCRUDTestApp(t, "crudstudentminor")
 	defer client.Close()

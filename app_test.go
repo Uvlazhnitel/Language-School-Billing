@@ -10,8 +10,8 @@ import (
 
 	"langschool/ent/course"
 	"langschool/ent/enrollment"
-	"langschool/ent/settings"
 	"langschool/ent/enttest"
+	"langschool/ent/settings"
 	sharedapp "langschool/internal/app"
 	invsvc "langschool/internal/app/invoice"
 	paysvc "langschool/internal/app/payment"
@@ -47,6 +47,32 @@ func TestDefaultSettingsCreateWithoutAutoIssue(t *testing.T) {
 
 	if got.ID != st.ID {
 		t.Fatalf("got settings id %d, want %d", got.ID, st.ID)
+	}
+}
+
+func TestResolveAppBaseDirMigratesLegacyDirectory(t *testing.T) {
+	home := t.TempDir()
+	legacyBase := filepath.Join(home, legacyAppDirName)
+	legacyData := filepath.Join(legacyBase, "Data")
+
+	if err := os.MkdirAll(legacyData, 0o755); err != nil {
+		t.Fatalf("MkdirAll legacy data: %v", err)
+	}
+	if err := os.WriteFile(filepath.Join(legacyData, "app.sqlite"), []byte("db"), 0o644); err != nil {
+		t.Fatalf("WriteFile legacy db: %v", err)
+	}
+
+	got := resolveAppBaseDir(home)
+	want := filepath.Join(home, appDirName)
+	if got != want {
+		t.Fatalf("resolveAppBaseDir() = %q, want %q", got, want)
+	}
+
+	if _, err := os.Stat(filepath.Join(want, "Data", "app.sqlite")); err != nil {
+		t.Fatalf("expected migrated database under new path: %v", err)
+	}
+	if _, err := os.Stat(legacyBase); !os.IsNotExist(err) {
+		t.Fatalf("expected legacy directory to be moved away, err=%v", err)
 	}
 }
 

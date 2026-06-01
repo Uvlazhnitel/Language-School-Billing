@@ -1205,7 +1205,21 @@ export default function App() {
       );
     }
 
-    return filtered;
+    return [...filtered].sort((a, b) => {
+      const aSubscription = a.billingMode === BillingModeSubscription;
+      const bSubscription = b.billingMode === BillingModeSubscription;
+      if (aSubscription !== bSubscription) {
+        return aSubscription ? 1 : -1;
+      }
+
+      const studentCompare = a.studentName.localeCompare(b.studentName);
+      if (studentCompare !== 0) return studentCompare;
+
+      const courseCompare = a.courseName.localeCompare(b.courseName);
+      if (courseCompare !== 0) return courseCompare;
+
+      return a.enrollmentId - b.enrollmentId;
+    });
   }, [rows, attQ, attFilter, studentIndex]);
 
   const attendanceSummary = useMemo(() => {
@@ -1847,13 +1861,15 @@ export default function App() {
   };
 
   const handleLocaleChange = async (nextLocale: UiLocale) => {
+    const previousLocale = uiLocale;
     setUiLocale(nextLocale);
     try {
       await SettingsSetLocale(nextLocale);
       showMessage(createTranslator(nextLocale)("settings.languageSaved"));
     } catch (e: any) {
+      setUiLocale(previousLocale);
       showMessage(
-        createTranslator(nextLocale)("settings.languageSaveError") +
+        createTranslator(previousLocale)("settings.languageSaveError") +
           `: ${String(e?.message ?? e)}`,
         "error"
       );

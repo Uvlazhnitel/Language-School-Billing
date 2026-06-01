@@ -7,7 +7,7 @@ import (
 )
 
 // Dirs holds paths to all application directories.
-// These directories are created under a base directory (typically ~/LangSchool).
+// These directories are created under a base directory (typically ~/StudentDesk).
 type Dirs struct {
 	Base     string // Base directory for all application data
 	Data     string // Directory for database files

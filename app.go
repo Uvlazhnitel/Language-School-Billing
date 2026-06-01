@@ -44,6 +44,9 @@ type App struct {
 // default values and will be fully configured during the startup lifecycle hook.
 func NewApp() *App { return &App{} }
 
+const appDisplayName = "StudentDesk"
+const appDirName = "StudentDesk"
+const legacyAppDirName = "LangSchool"
 const defaultSchoolDisplayName = "ArtLab"
 const defaultSchoolAddress = "Latgales iela 260, Rīga, Latvija"
 const preMigrationBackupLimit = 30
@@ -55,7 +58,7 @@ const preMigrationBackupLimit = 30
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	base := filepath.Join(userHome(), "LangSchool")
+	base := resolveAppBaseDir(userHome())
 	dirs, err := paths.Ensure(base)
 	if err != nil {
 		log.Fatal(err)
@@ -142,6 +145,26 @@ func (a *App) startup(ctx context.Context) {
 	a.pay = paysvc.New(a.db.Ent)
 }
 
+func resolveAppBaseDir(home string) string {
+	base := filepath.Join(home, appDirName)
+	legacyBase := filepath.Join(home, legacyAppDirName)
+
+	if info, err := os.Stat(base); err == nil && info.IsDir() {
+		return base
+	}
+
+	if info, err := os.Stat(legacyBase); err == nil && info.IsDir() {
+		if err := os.Rename(legacyBase, base); err == nil {
+			log.Printf("Migrated app data directory from %s to %s", legacyBase, base)
+			return base
+		}
+		log.Printf("Using legacy app data directory %s because migration to %s failed", legacyBase, base)
+		return legacyBase
+	}
+
+	return base
+}
+
 // domReady is called by Wails when the frontend DOM is ready.
 // Currently unused, but available for any initialization that needs to
 // happen after the frontend has fully loaded.
@@ -194,7 +217,7 @@ func (a *App) resolveFontsDir() (string, error) {
 		candidates = append(candidates, env)
 	}
 
-	// 2) Our app data base: ~/LangSchool/Fonts
+	// 2) Our app data base: ~/StudentDesk/Fonts
 	candidates = append(candidates, filepath.Join(a.dirs.Base, "Fonts"))
 
 	// 3) Next to executable
@@ -222,7 +245,7 @@ func (a *App) resolveFontsDir() (string, error) {
 		log.Printf("resolveFontsDir: not found in %s", c)
 	}
 
-	return "", fmt.Errorf("DejaVuSans.ttf & DejaVuSans-Bold.ttf not found in any known location; set LS_FONTS_DIR or place fonts into ~/LangSchool/Fonts or ./Fonts")
+	return "", fmt.Errorf("DejaVuSans.ttf & DejaVuSans-Bold.ttf not found in any known location; set LS_FONTS_DIR or place fonts into ~/StudentDesk/Fonts or ./Fonts")
 }
 
 // ---------- App info / utilities ----------
@@ -487,7 +510,7 @@ func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 }
 
 // OpenFile opens a directory or reveals a file in the OS file manager.
-// Only allows paths within the LangSchool directory tree to prevent path traversal attacks.
+// Only allows paths within the StudentDesk directory tree to prevent path traversal attacks.
 func (a *App) OpenFile(path string) error {
 	// Normalize the path
 	if abs, err := filepath.Abs(path); err == nil {
@@ -498,7 +521,7 @@ func (a *App) OpenFile(path string) error {
 	allowedBase := filepath.Clean(a.dirs.Base)
 	cleanPath := filepath.Clean(path)
 
-	// Check if the path is within the LangSchool directory
+	// Check if the path is within the StudentDesk directory
 	if !strings.HasPrefix(cleanPath, allowedBase) {
 		return fmt.Errorf("доступ запрещён: файл должен находиться внутри каталога %s", allowedBase)
 	}

@@ -7,7 +7,7 @@ import (
 )
 
 func TestEnsureCreatesCapitalizedDirectories(t *testing.T) {
-	base := filepath.Join(t.TempDir(), "LangSchool")
+	base := filepath.Join(t.TempDir(), "StudentDesk")
 
 	dirs, err := Ensure(base)
 	if err != nil {
