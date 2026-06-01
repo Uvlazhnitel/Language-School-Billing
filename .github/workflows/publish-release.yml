@@ -27,7 +27,7 @@ jobs:
           else
             gh release create "${{ github.ref_name }}" \
               --repo "${{ github.repository }}" \
-              --title "LangSchool ${{ github.ref_name }}" \
+              --title "StudentDesk ${{ github.ref_name }}" \
               --generate-notes
           fi
 
@@ -96,7 +96,7 @@ jobs:
         run: |
           $tag = "${{ github.ref_name }}"
           $installer = Get-ChildItem build\bin -Filter '*installer.exe' -ErrorAction Stop | Select-Object -First 1
-          $assetName = if ($tag.StartsWith('ru-v')) { "langschool-ru-windows-installer-$tag.exe" } else { "langschool-windows-installer-$tag.exe" }
+          $assetName = if ($tag.StartsWith('ru-v')) { "studentdesk-ru-windows-installer-$tag.exe" } else { "studentdesk-windows-installer-$tag.exe" }
           Copy-Item $installer.FullName "build\bin\$assetName" -Force
           "asset_path=build\bin\$assetName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
@@ -150,11 +150,11 @@ jobs:
         run: |
           tag="${{ github.ref_name }}"
           if [[ "$tag" == ru-v* ]]; then
-            asset_name="langschool-ru-macos-${tag}.zip"
+            asset_name="studentdesk-ru-macos-${tag}.zip"
           else
-            asset_name="langschool-macos-${tag}.zip"
+            asset_name="studentdesk-macos-${tag}.zip"
           fi
-          ditto -c -k --sequesterRsrc --keepParent "build/bin/langschool.app" "build/bin/${asset_name}"
+          ditto -c -k --sequesterRsrc --keepParent "build/bin/studentdesk.app" "build/bin/${asset_name}"
           echo "asset_path=build/bin/${asset_name}" >> "$GITHUB_OUTPUT"
 
       - name: Upload asset to release
