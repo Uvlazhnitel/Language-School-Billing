@@ -7,6 +7,8 @@ import {invoice} from '../models';
 
 export function AppDirs():Promise<Record<string, string>>;
 
+export function AppReady():Promise<boolean>;
+
 export function AttendanceAddOne(arg1:number,arg2:number,arg3:any):Promise<number>;
 
 export function AttendanceListPerLesson(arg1:number,arg2:number,arg3:any):Promise<Array<attendance.Row>>;

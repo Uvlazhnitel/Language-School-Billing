@@ -29,6 +29,7 @@ import {
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
 import {
+  AppReady,
   AppDirs,
   BackupNow,
   OpenFile,
@@ -320,6 +321,7 @@ function buildDebtReminderMessage(
 export default function App() {
   const now = new Date();
   const [tab, setTab] = useState<Tab>("dashboard");
+  const [appReady, setAppReady] = useState(false);
   const [uiLocale, setUiLocale] = useState<UiLocale>("en-US");
   const [appDirs, setAppDirs] = useState<Record<string, string> | null>(null);
   const [creatingBackup, setCreatingBackup] = useState(false);
@@ -390,13 +392,27 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
 
-    void Promise.all([AppDirs(), SettingsGetLocale().catch(() => "en-US")])
-      .then(([dirs, locale]) => {
-        if (cancelled) return;
-        setAppDirs(dirs);
-        setUiLocale(normalizeLocale(locale));
-      })
-      .catch((e: any) => {
+    const bootstrap = async () => {
+      try {
+        for (let attempt = 0; attempt < 50; attempt += 1) {
+          if (cancelled) return;
+          const ready = await AppReady().catch(() => false);
+          if (ready) {
+            const [dirs, locale] = await Promise.all([
+              AppDirs(),
+              SettingsGetLocale().catch(() => "en-US"),
+            ]);
+            if (cancelled) return;
+            setAppDirs(dirs);
+            setUiLocale(normalizeLocale(locale));
+            setAppReady(true);
+            return;
+          }
+          await new Promise((resolve) => window.setTimeout(resolve, 100));
+        }
+
+        throw new Error("backend startup timed out");
+      } catch (e: any) {
         if (!cancelled) {
           showMessage(
             createTranslator("en-US")("msg.loadingFoldersError", {
@@ -405,7 +421,10 @@ export default function App() {
             "error"
           );
         }
-      });
+      }
+    };
+
+    void bootstrap();
 
     return () => {
       cancelled = true;
@@ -496,8 +515,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!appReady) return;
     if (tab === "students") loadStudents();
-  }, [tab, loadStudents]);
+  }, [appReady, tab, loadStudents]);
 
   useEffect(() => {
     if (tab !== "students" || studentLoading || studentList.length === 0) return;
@@ -510,8 +530,9 @@ export default function App() {
   }, [tab, studentLoading, studentList, selectedStudentCard]);
 
   useEffect(() => {
+    if (!appReady) return;
     void loadAllStudents();
-  }, [loadAllStudents]);
+  }, [appReady, loadAllStudents]);
 
   const loadDashboard = useCallback(async () => {
     setOverviewLoading(true);
@@ -533,10 +554,11 @@ export default function App() {
   }, [month, showMessage, t, year]);
 
   useEffect(() => {
+    if (!appReady) return;
     if (tab === "dashboard") {
       void loadDashboard();
     }
-  }, [loadDashboard, tab]);
+  }, [appReady, loadDashboard, tab]);
 
   function openAddStudent() {
     setEditingStudent(null);
@@ -828,16 +850,19 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!appReady) return;
     if (tab === "courses") loadCourses();
-  }, [tab, loadCourses]);
+  }, [appReady, tab, loadCourses]);
 
   useEffect(() => {
+    if (!appReady) return;
     void loadAllCourses();
-  }, [loadAllCourses]);
+  }, [appReady, loadAllCourses]);
 
   useEffect(() => {
+    if (!appReady) return;
     void loadAllTeachers();
-  }, [loadAllTeachers]);
+  }, [appReady, loadAllTeachers]);
 
   const selectedCourseTeacher = useMemo(
     () => allTeachers.find((t) => t.id === cfTeacherId) ?? null,
@@ -1169,8 +1194,9 @@ export default function App() {
   }, [year, month, courseFilter, ensureStudentsLoaded, ensureCoursesLoaded]);
 
   useEffect(() => {
+    if (!appReady) return;
     if (tab === "attendance") loadAttendance();
-  }, [tab, loadAttendance]);
+  }, [appReady, tab, loadAttendance]);
 
   const perLessonTotal = useMemo(
     () =>
@@ -1410,8 +1436,9 @@ export default function App() {
   }, [recentPayments, showMessage, t]);
 
   useEffect(() => {
+    if (!appReady) return;
     if (tab === "debtors") loadDebtors();
-  }, [tab, loadDebtors]);
+  }, [appReady, tab, loadDebtors]);
 
   useEffect(() => {
     setDebtorActionQueue(buildDebtorActionQueue(debtors, recentPayments, t));

@@ -6,6 +6,10 @@ export function AppDirs() {
   return window['go']['main']['App']['AppDirs']();
 }
 
+export function AppReady() {
+  return window['go']['main']['App']['AppReady']();
+}
+
 export function AttendanceAddOne(arg1, arg2, arg3) {
   return window['go']['main']['App']['AttendanceAddOne'](arg1, arg2, arg3);
 }

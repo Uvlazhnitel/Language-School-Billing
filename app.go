@@ -252,10 +252,22 @@ func (a *App) resolveFontsDir() (string, error) {
 
 // AppDirs returns application directories for UI (useful for exports/backups).
 func (a *App) AppDirs() map[string]string {
+	if a.dirs.Base == "" {
+		base := resolveAppBaseDir(userHome())
+		dirs, err := paths.Ensure(base)
+		if err == nil {
+			a.dirs = dirs
+		}
+	}
 	return map[string]string{
 		"base": a.dirs.Base, "data": a.dirs.Data, "backups": a.dirs.Backups,
 		"invoices": a.dirs.Invoices, "exports": a.dirs.Exports,
 	}
+}
+
+// AppReady reports whether startup completed enough for frontend data calls.
+func (a *App) AppReady() bool {
+	return a.ctx != nil && a.db != nil && a.db.Ent != nil && a.att != nil && a.inv != nil && a.pay != nil
 }
 
 // BackupNow creates a timestamped copy of the SQLite DB in Backups/ and returns the file path.
@@ -633,6 +645,9 @@ func (a *App) SettingsSetLocale(loc string) error {
 
 // SettingsGetLocale returns the saved application locale.
 func (a *App) SettingsGetLocale() (string, error) {
+	if a.db == nil || a.db.Ent == nil {
+		return "en-US", nil
+	}
 	st, err := a.db.Ent.Settings.
 		Query().
 		Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
