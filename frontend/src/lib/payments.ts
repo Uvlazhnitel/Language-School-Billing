@@ -1,52 +1,13 @@
-import {
-  PaymentCreate,
-  PaymentDelete,
-  DebtorsList,
-  InvoicePaymentSummary,
-  StudentDebtDetails,
-  StudentBalance,
-  PaymentListForStudent,
-} from "../../wailsjs/go/main/App";
 import { PaymentMethod } from "./constants";
-
-export type PaymentDTO = {
-  id: number;
-  studentId: number;
-  invoiceId?: number;
-  paidAt: string; // RFC3339
-  amount: number;
-  method: PaymentMethod;
-  note: string;
-  createdAt: string; // RFC3339
-};
-
-export type DebtorDTO = {
-  studentId: number;
-  studentName: string;
-  debt: number;
-  totalInvoiced: number;
-  totalPaid: number;
-};
-
-export type InvoiceSummaryDTO = {
-  invoiceId: number;
-  total: number;
-  paid: number;
-  remaining: number;
-  status: string;
-  number?: string;
-};
-
-export type DebtInvoiceDTO = {
-  invoiceId: number;
-  year: number;
-  month: number;
-  number?: string;
-  total: number;
-  paid: number;
-  remaining: number;
-  status: string;
-};
+import {
+  getTransport,
+  type BalanceDTO,
+  type DebtInvoiceDTO,
+  type DebtorDTO,
+  type InvoiceSummaryDTO,
+  type PaymentDTO,
+} from "./api";
+export type { BalanceDTO, DebtInvoiceDTO, DebtorDTO, InvoiceSummaryDTO, PaymentDTO } from "./api";
 
 export async function createPayment(
   studentId: number,
@@ -56,39 +17,36 @@ export async function createPayment(
   paidAt: string, // "YYYY-MM-DD"
   note: string
 ) {
-  const inv = invoiceId ? invoiceId : undefined;
-  return (await PaymentCreate(studentId, inv, amount, method, paidAt, note)) as PaymentDTO;
+  const transport = await getTransport();
+  return transport.createPayment(studentId, invoiceId, amount, method, paidAt, note);
 }
 
 export async function deletePayment(paymentId: number) {
-  return await PaymentDelete(paymentId);
+  const transport = await getTransport();
+  return transport.deletePayment(paymentId);
 }
 
 export async function listDebtors() {
-  return (await DebtorsList()) as DebtorDTO[];
+  const transport = await getTransport();
+  return transport.listDebtors();
 }
 
 export async function invoiceSummary(invoiceId: number) {
-  return (await InvoicePaymentSummary(invoiceId)) as InvoiceSummaryDTO;
+  const transport = await getTransport();
+  return transport.invoiceSummary(invoiceId);
 }
 
 export async function studentDebtDetails(studentId: number) {
-  return (await StudentDebtDetails(studentId)) as DebtInvoiceDTO[];
+  const transport = await getTransport();
+  return transport.studentDebtDetails(studentId);
 }
 
-export type BalanceDTO = {
-  studentId: number;
-  studentName: string;
-  totalInvoiced: number;
-  totalPaid: number;
-  balance: number;
-  debt: number;
-};
-
 export async function studentBalance(studentId: number) {
-  return (await StudentBalance(studentId)) as BalanceDTO;
+  const transport = await getTransport();
+  return transport.studentBalance(studentId);
 }
 
 export async function paymentListForStudent(studentId: number) {
-  return (await PaymentListForStudent(studentId)) as PaymentDTO[];
+  const transport = await getTransport();
+  return transport.paymentListForStudent(studentId);
 }

@@ -29,14 +29,6 @@ import {
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
 import {
-  AppReady,
-  AppDirs,
-  BackupNow,
-  OpenFile,
-  SettingsGetLocale,
-  SettingsSetLocale,
-} from "../wailsjs/go/main/App";
-import {
   BillingModePerLesson,
   BillingModeSubscription,
   InvoiceStatusCanceled,
@@ -71,6 +63,7 @@ import {
   MonthOverviewDTO,
   RecentPaymentDTO,
 } from "./lib/dashboard";
+import { getTransport, type TransportCapabilities } from "./lib/api";
 import { DashboardOverview } from "./components/DashboardOverview";
 import { StudentWorkspace } from "./components/StudentWorkspace";
 import { StudentDetailPanel } from "./components/StudentDetailPanel";
@@ -82,6 +75,7 @@ import {
   StudentActivityItem,
   StudentNextAction,
 } from "./lib/studentActivity";
+import { canShowInvoiceFolderAction, canShowSettingsFilesCard } from "./lib/uiCapabilities";
 import { createTranslator, getMonthNames, normalizeLocale, TranslateFn, UiLocale } from "./lib/i18n";
 
 const monthsRu = [
@@ -320,6 +314,12 @@ function buildDebtReminderMessage(
 
 export default function App() {
   const now = new Date();
+  const [transportCapabilities, setTransportCapabilities] = useState<TransportCapabilities>({
+    isDesktop: false,
+    canOpenLocalFiles: false,
+    canOpenFolders: false,
+    canDownloadPdf: true,
+  });
   const [tab, setTab] = useState<Tab>("dashboard");
   const [appReady, setAppReady] = useState(false);
   const [uiLocale, setUiLocale] = useState<UiLocale>("en-US");
@@ -394,24 +394,13 @@ export default function App() {
 
     const bootstrap = async () => {
       try {
-        for (let attempt = 0; attempt < 50; attempt += 1) {
-          if (cancelled) return;
-          const ready = await AppReady().catch(() => false);
-          if (ready) {
-            const [dirs, locale] = await Promise.all([
-              AppDirs(),
-              SettingsGetLocale().catch(() => "en-US"),
-            ]);
-            if (cancelled) return;
-            setAppDirs(dirs);
-            setUiLocale(normalizeLocale(locale));
-            setAppReady(true);
-            return;
-          }
-          await new Promise((resolve) => window.setTimeout(resolve, 100));
-        }
-
-        throw new Error("backend startup timed out");
+        const transport = await getTransport();
+        const bootstrapResult = await transport.bootstrap();
+        if (cancelled) return;
+        setAppDirs(bootstrapResult.appDirs);
+        setTransportCapabilities(bootstrapResult.capabilities);
+        setUiLocale(normalizeLocale(bootstrapResult.locale));
+        setAppReady(bootstrapResult.ready);
       } catch (e: any) {
         if (!cancelled) {
           showMessage(
@@ -1711,11 +1700,14 @@ export default function App() {
   const onGeneratePdf = async (id: number) => {
     try {
       closeInvoiceMenu();
-      const path = await ensurePdf(id);
+      const pdf = await ensurePdf(id);
       setInvItems((prev) =>
         prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
       );
-      showMessage(t("msg.pdfReady", { path }));
+      showMessage(t("msg.pdfReady", { path: pdf.localPath ?? pdf.filename }));
+      if (!transportCapabilities.isDesktop && pdf.downloadUrl) {
+        window.open(pdf.downloadUrl, "_blank", "noopener,noreferrer");
+      }
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
@@ -1724,8 +1716,13 @@ export default function App() {
   const onRevealInvoiceFile = async (id: number) => {
     try {
       closeInvoiceMenu();
-      const path = await ensurePdf(id);
-      await OpenFile(path);
+      const pdf = await ensurePdf(id);
+      if (!pdf.localPath) {
+        showMessage(t("msg.folderUnavailable", { label: t("tabs.invoice").toLowerCase() }), "error");
+        return;
+      }
+      const transport = await getTransport();
+      await transport.openLocalPath(pdf.localPath);
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
@@ -1742,10 +1739,12 @@ export default function App() {
         });
       }
       if (invoice.status !== "draft") {
-        menuItems.push({
-          label: t("button.showInFolder"),
-          onClick: () => void onRevealInvoiceFile(invoice.id),
-        });
+        if (canShowInvoiceFolderAction(transportCapabilities)) {
+          menuItems.push({
+            label: t("button.showInFolder"),
+            onClick: () => void onRevealInvoiceFile(invoice.id),
+          });
+        }
         if (!invoice.pdfReady) {
           menuItems.push({
             label: t("button.createPdf"),
@@ -1756,7 +1755,7 @@ export default function App() {
 
       return menuItems;
     },
-    [onGeneratePdf, onReopenToDraft, onRevealInvoiceFile, t]
+    [onGeneratePdf, onReopenToDraft, onRevealInvoiceFile, t, transportCapabilities]
   );
 
   const openInvoiceMenuAtTrigger = useCallback(
@@ -1866,7 +1865,8 @@ export default function App() {
       return;
     }
     try {
-      await OpenFile(path);
+      const transport = await getTransport();
+      await transport.openLocalPath(path);
     } catch (e: any) {
       showMessage(
         t("msg.folderOpenError", { label, message: String(e?.message ?? e) }),
@@ -1878,8 +1878,9 @@ export default function App() {
   const createManualBackup = async () => {
     try {
       setCreatingBackup(true);
-      const backupPath = await BackupNow();
-      showMessage(t("msg.backupCreated", { path: backupPath }));
+      const transport = await getTransport();
+      const backup = await transport.createBackup();
+      showMessage(t("msg.backupCreated", { path: backup.path ?? backup.filename }));
     } catch (e: any) {
       showMessage(t("msg.backupCreateError", { message: String(e?.message ?? e) }), "error");
     } finally {
@@ -1891,7 +1892,8 @@ export default function App() {
     const previousLocale = uiLocale;
     setUiLocale(nextLocale);
     try {
-      await SettingsSetLocale(nextLocale);
+      const transport = await getTransport();
+      await transport.setLocale(nextLocale);
       showMessage(createTranslator(nextLocale)("settings.languageSaved"));
     } catch (e: any) {
       setUiLocale(previousLocale);
@@ -3055,49 +3057,53 @@ export default function App() {
                   >
                     {creatingBackup ? `${t("button.createBackup")}...` : t("button.createBackup")}
                   </button>
-                  <button
-                    type="button"
-                    className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.backups, t("field.backups").toLowerCase())}
-                    disabled={!appDirs?.backups}
-                  >
-                    {t("button.backupsFolder")}
-                  </button>
+                  {canShowInvoiceFolderAction(transportCapabilities) && (
+                    <button
+                      type="button"
+                      className="workspaceActionButton"
+                      onClick={() => void openAppFolder(appDirs?.backups, t("field.backups").toLowerCase())}
+                      disabled={!appDirs?.backups}
+                    >
+                      {t("button.backupsFolder")}
+                    </button>
+                  )}
                 </div>
               </section>
 
-              <section className="detailCard">
-                <div className="detailCardHeader">
-                  <h3>{t("settings.filesTitle")}</h3>
-                </div>
-                <p className="mutedInline">{t("settings.filesDesc")}</p>
-                <div className="settingsActions">
-                  <button
-                    type="button"
-                    className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.invoices, t("tabs.invoice").toLowerCase())}
-                    disabled={!appDirs?.invoices}
-                  >
-                    {t("button.invoicesFolder")}
-                  </button>
-                  <button
-                    type="button"
-                    className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.exports, "exports")}
-                    disabled={!appDirs?.exports}
-                  >
-                    {t("button.exportsFolder")}
-                  </button>
-                  <button
-                    type="button"
-                    className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.data, "data")}
-                    disabled={!appDirs?.data}
-                  >
-                    {t("button.dataFolder")}
-                  </button>
-                </div>
-              </section>
+              {canShowSettingsFilesCard(transportCapabilities) && (
+                <section className="detailCard">
+                  <div className="detailCardHeader">
+                    <h3>{t("settings.filesTitle")}</h3>
+                  </div>
+                  <p className="mutedInline">{t("settings.filesDesc")}</p>
+                  <div className="settingsActions">
+                    <button
+                      type="button"
+                      className="workspaceActionButton"
+                      onClick={() => void openAppFolder(appDirs?.invoices, t("tabs.invoice").toLowerCase())}
+                      disabled={!appDirs?.invoices}
+                    >
+                      {t("button.invoicesFolder")}
+                    </button>
+                    <button
+                      type="button"
+                      className="workspaceActionButton"
+                      onClick={() => void openAppFolder(appDirs?.exports, "exports")}
+                      disabled={!appDirs?.exports}
+                    >
+                      {t("button.exportsFolder")}
+                    </button>
+                    <button
+                      type="button"
+                      className="workspaceActionButton"
+                      onClick={() => void openAppFolder(appDirs?.data, "data")}
+                      disabled={!appDirs?.data}
+                    >
+                      {t("button.dataFolder")}
+                    </button>
+                  </div>
+                </section>
+              )}
             </div>
           )}
         </section>
@@ -3259,7 +3265,7 @@ export default function App() {
                   {t("button.reopenDraft")}
                 </button>
               )}
-              {selectedInv.status !== "draft" && (
+              {selectedInv.status !== "draft" && canShowInvoiceFolderAction(transportCapabilities) && (
                 <button onClick={() => void onRevealInvoiceFile(selectedInv.id)}>
                   {t("button.showInFolder")}
                 </button>

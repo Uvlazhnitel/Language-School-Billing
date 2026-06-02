@@ -1,15 +1,12 @@
-import { TeacherCreate, TeacherList } from "../../wailsjs/go/main/App";
-
-export type TeacherDTO = {
-  id: number;
-  fullName: string;
-  isActive: boolean;
-};
+import { getTransport, type TeacherDTO } from "./api";
+export type { TeacherDTO } from "./api";
 
 export async function listTeachers(q: string) {
-  return (await TeacherList(q)) as TeacherDTO[];
+  const transport = await getTransport();
+  return transport.listTeachers(q);
 }
 
 export async function createTeacher(fullName: string) {
-  return (await TeacherCreate(fullName)) as TeacherDTO;
+  const transport = await getTransport();
+  return transport.createTeacher(fullName);
 }

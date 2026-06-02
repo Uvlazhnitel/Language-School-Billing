@@ -1,25 +1,6 @@
-import {
-  AttendanceListPerLesson,
-  AttendanceUpsert,
-  EnrollmentDelete,
-} from "../../wailsjs/go/main/App";
 import { BillingMode, CourseType, InvoiceStatus } from "./constants";
-
-export type Row = {
-  enrollmentId: number;
-  studentId: number;
-  studentName: string;
-  courseId: number;
-  courseName: string;
-  courseType: CourseType;
-  billingMode: BillingMode;
-  lessonPrice: number;
-  hours: number;
-  hasRecord: boolean;
-  canDelete: boolean;
-  attendanceLocked: boolean;
-  invoiceStatus?: InvoiceStatus;
-};
+import { getTransport, type Row } from "./api";
+export type { Row } from "./api";
 
 function normalizeCourseId(courseId?: number): number | undefined {
   return typeof courseId === "number" && courseId > 0 ? courseId : undefined;
@@ -27,19 +8,22 @@ function normalizeCourseId(courseId?: number): number | undefined {
 
 export async function fetchRows(year: number, month: number, courseId?: number): Promise<Row[]> {
   const cid = normalizeCourseId(courseId);
-  return (await AttendanceListPerLesson(year, month, cid)) as Row[];
+  const transport = await getTransport();
+  return transport.fetchAttendanceRows(year, month, cid);
 }
 
-export function saveHours(
+export async function saveHours(
   studentId: number,
   courseId: number,
   year: number,
   month: number,
   hours: number
 ): Promise<void> {
-  return AttendanceUpsert(studentId, courseId, year, month, hours);
+  const transport = await getTransport();
+  return transport.saveAttendanceHours(studentId, courseId, year, month, hours);
 }
 
-export function deleteEnrollment(enrollmentId: number) {
-  return EnrollmentDelete(enrollmentId);
+export async function deleteEnrollment(enrollmentId: number) {
+  const transport = await getTransport();
+  return transport.deleteEnrollment(enrollmentId);
 }
