@@ -14,6 +14,7 @@ import (
 	"langschool/ent/settings"
 	"langschool/internal/app"
 	"langschool/internal/app/attendance"
+	"langschool/internal/backend"
 
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/infra"
@@ -32,6 +33,7 @@ type App struct {
 	db        *infra.DB       // Database connection wrapper
 	appDBPath string          // Path to the SQLite database file
 	runtime   *appruntime.Runtime
+	svc       *backend.Service
 
 	// services provide business logic for different domains
 	att *attendance.Service // Attendance tracking service
@@ -128,11 +130,17 @@ func (a *App) AppDirs() map[string]string {
 
 // AppReady reports whether startup completed enough for frontend data calls.
 func (a *App) AppReady() bool {
+	if a.svc != nil {
+		return a.svc.Ready()
+	}
 	return a.ctx != nil && a.db != nil && a.db.Ent != nil && a.att != nil && a.inv != nil && a.pay != nil
 }
 
 // BackupNow creates a timestamped copy of the SQLite DB in Backups/ and returns the file path.
 func (a *App) BackupNow() (string, error) {
+	if a.svc != nil {
+		return a.svc.BackupNow()
+	}
 	return appruntime.BackupNow(a.appDBPath, a.dirs.Backups)
 }
 
@@ -149,6 +157,7 @@ func (a *App) cleanupOldPreMigrationBackups(limit int) error {
 
 func (a *App) attachRuntime(runtimeInstance *appruntime.Runtime) {
 	a.runtime = runtimeInstance
+	a.svc = backend.New(runtimeInstance)
 	a.dirs = runtimeInstance.Dirs
 	a.db = runtimeInstance.DB
 	a.appDBPath = runtimeInstance.AppDBPath
@@ -163,12 +172,18 @@ func (a *App) attachRuntime(runtimeInstance *appruntime.Runtime) {
 // enrollments for the specified year, month, and optionally filtered by course.
 // Returns a list of rows containing student, course, and tracked hours information.
 func (a *App) AttendanceListPerLesson(year, month int, courseID *int) ([]attendance.Row, error) {
+	if a.svc != nil {
+		return a.svc.AttendanceListPerLesson(a.ctx, year, month, courseID)
+	}
 	return a.att.ListPerLesson(a.ctx, year, month, courseID)
 }
 
 // AttendanceUpsert creates or updates an attendance record for a student-course
 // pair for a specific month.
 func (a *App) AttendanceUpsert(studentID, courseID, year, month int, hours float64) error {
+	if a.svc != nil {
+		return a.svc.AttendanceUpsert(a.ctx, studentID, courseID, year, month, hours)
+	}
 	return a.att.Upsert(a.ctx, studentID, courseID, year, month, hours)
 }
 
@@ -176,6 +191,9 @@ func (a *App) AttendanceUpsert(studentID, courseID, year, month int, hours float
 // records matching the filter (year, month, optional courseID).
 // Returns the number of records that were successfully updated.
 func (a *App) AttendanceAddOne(year, month int, courseID *int) (int, error) {
+	if a.svc != nil {
+		return a.svc.AttendanceAddOne(a.ctx, year, month, courseID)
+	}
 	return a.att.AddOneForFilter(a.ctx, year, month, courseID)
 }
 
@@ -190,6 +208,9 @@ type InvoiceDTO = invsvc.InvoiceDTO
 // issued/paid/canceled invoices are skipped. Returns statistics about
 // the generation process.
 func (a *App) InvoiceGenerateDrafts(year, month int) (invsvc.GenerateResult, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceGenerateDrafts(a.ctx, year, month)
+	}
 	log.Printf("InvoiceGenerateDrafts called for %04d-%02d", year, month)
 	res, err := a.inv.GenerateDrafts(a.ctx, year, month)
 	if err != nil {
@@ -204,6 +225,9 @@ func (a *App) InvoiceGenerateDrafts(year, month int) (invsvc.GenerateResult, err
 // InvoiceRebuildStudentDraft rebuilds the draft invoice for a single student
 // in the specified year and month. Issued, paid, and canceled invoices are skipped.
 func (a *App) InvoiceRebuildStudentDraft(studentID, year, month int) (invsvc.GenerateResult, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceRebuildStudentDraft(a.ctx, studentID, year, month)
+	}
 	log.Printf("InvoiceRebuildStudentDraft called for student=%d period=%04d-%02d", studentID, year, month)
 	res, err := a.inv.RebuildStudentDraft(a.ctx, studentID, year, month)
 	if err != nil {
@@ -218,35 +242,42 @@ func (a *App) InvoiceRebuildStudentDraft(studentID, year, month int) (invsvc.Gen
 // InvoiceGet retrieves a single invoice by ID with all its line items.
 // Works for invoices in any status (draft, issued, paid, canceled).
 func (a *App) InvoiceGet(id int) (*InvoiceDTO, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceGet(a.ctx, id)
+	}
 	return a.inv.Get(a.ctx, id)
 }
 
 // InvoiceDeleteDraft deletes a draft invoice and all its line items.
 // Only draft invoices can be deleted; issued/paid/canceled invoices are protected.
 func (a *App) InvoiceDeleteDraft(id int) error {
+	if a.svc != nil {
+		return a.svc.InvoiceDeleteDraft(a.ctx, id)
+	}
 	return a.inv.DeleteDraft(a.ctx, id)
 }
 
 // InvoiceReopenDraft moves an issued invoice with no payments back to draft state.
 // The invoice lines remain unchanged so the draft can be reviewed and issued again.
 func (a *App) InvoiceReopenDraft(id int) error {
+	if a.svc != nil {
+		return a.svc.InvoiceReopenDraft(a.ctx, id)
+	}
 	return a.inv.ReopenDraft(a.ctx, id, a.dirs.Invoices)
 }
 
 // IssueResult contains the result of issuing a single invoice.
-type IssueResult struct {
-	Number string `json:"number"` // The assigned invoice number
-}
+type IssueResult = backend.IssueResult
 
 // IssueAllResult contains the result of issuing all draft invoices for a period.
-type IssueAllResult struct {
-	Count    int      `json:"count"`    // Number of invoices issued
-	PdfPaths []string `json:"pdfPaths"` // Paths to all generated PDF files
-}
+type IssueAllResult = backend.IssueAllResult
 
 // InvoiceList returns invoices for the specified year and month, optionally
 // filtered by status. Status can be "draft", "issued", "paid", "canceled", or "all".
 func (a *App) InvoiceList(year, month int, status string) ([]invsvc.ListItem, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceList(a.ctx, year, month, status)
+	}
 	return a.inv.List(a.ctx, year, month, status)
 }
 
@@ -254,6 +285,9 @@ func (a *App) InvoiceList(year, month int, status string) ([]invsvc.ListItem, er
 // and changing its status to "issued". PDF generation is handled separately
 // by InvoiceEnsurePDF when the user explicitly requests a document.
 func (a *App) InvoiceIssue(id int) (IssueResult, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceIssue(a.ctx, id)
+	}
 	num, err := a.inv.IssueOne(a.ctx, id)
 	if err != nil {
 		return IssueResult{}, err
@@ -272,6 +306,9 @@ func (a *App) InvoiceIssue(id int) (IssueResult, error) {
 // Each invoice is assigned a number, marked as issued, and a PDF is generated.
 // Returns the count of issued invoices and paths to all generated PDFs.
 func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceIssueAll(a.ctx, year, month)
+	}
 	fonts, err := a.resolveFontsDir()
 	if err != nil {
 		return IssueAllResult{}, err
@@ -360,6 +397,9 @@ func (a *App) OpenFile(path string) error {
 // If the PDF already exists, returns its path. Otherwise, regenerates it.
 // Only works for invoices that have been issued (have a number).
 func (a *App) InvoiceEnsurePDF(id int) (string, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceEnsurePDF(a.ctx, id)
+	}
 	dto, err := a.inv.Get(a.ctx, id)
 	if err != nil {
 		return "", err
@@ -389,6 +429,9 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 // InvoiceHasPDF reports whether an issued invoice already has a PDF file on disk.
 // It checks both the current named file convention and the legacy number-only path.
 func (a *App) InvoiceHasPDF(id int) (bool, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceHasPDF(a.ctx, id)
+	}
 	dto, err := a.inv.Get(a.ctx, id)
 	if err != nil {
 		return false, err
@@ -422,6 +465,9 @@ func (a *App) invoicePDFPaths(dto *invsvc.InvoiceDTO) []string {
 // SettingsSetLocale updates the application locale setting.
 // The locale affects date, number, and currency formatting in invoices.
 func (a *App) SettingsSetLocale(loc string) error {
+	if a.svc != nil {
+		return a.svc.SettingsSetLocale(a.ctx, loc)
+	}
 	_, err := a.db.Ent.Settings.
 		Update().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
 		SetLocale(loc).
@@ -431,6 +477,9 @@ func (a *App) SettingsSetLocale(loc string) error {
 
 // SettingsGetLocale returns the saved application locale.
 func (a *App) SettingsGetLocale() (string, error) {
+	if a.svc != nil {
+		return a.svc.SettingsGetLocale(a.ctx)
+	}
 	if a.db == nil || a.db.Ent == nil {
 		return "en-US", nil
 	}
@@ -459,57 +508,87 @@ type RecentPaymentDTO = paysvc.RecentPaymentDTO
 // either "YYYY-MM-DD" format or RFC3339. If invoiceID is provided, the payment
 // is linked to that invoice and the invoice status may be updated automatically.
 func (a *App) PaymentCreate(studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
+	if a.svc != nil {
+		return a.svc.PaymentCreate(a.ctx, studentID, invoiceID, amount, method, paidAt, note)
+	}
 	return a.pay.Create(a.ctx, studentID, invoiceID, amount, method, paidAt, note)
 }
 
 // PaymentDelete deletes a payment record. If the payment was linked to an invoice,
 // the invoice status will be recomputed (e.g., from "paid" back to "issued" if needed).
 func (a *App) PaymentDelete(paymentID int) error {
+	if a.svc != nil {
+		return a.svc.PaymentDelete(a.ctx, paymentID)
+	}
 	return a.pay.Delete(a.ctx, paymentID)
 }
 
 // PaymentListForStudent returns all payments for a specific student,
 // ordered by payment date (most recent first).
 func (a *App) PaymentListForStudent(studentID int) ([]PaymentDTO, error) {
+	if a.svc != nil {
+		return a.svc.PaymentListForStudent(a.ctx, studentID)
+	}
 	return a.pay.ListForStudent(a.ctx, studentID)
 }
 
 // StudentBalance calculates the financial balance for a student, including
 // total invoiced amount, total paid amount, current balance, and debt (if any).
 func (a *App) StudentBalance(studentID int) (*BalanceDTO, error) {
+	if a.svc != nil {
+		return a.svc.StudentBalance(a.ctx, studentID)
+	}
 	return a.pay.StudentBalance(a.ctx, studentID)
 }
 
 // DebtorsList returns a list of all active students who have outstanding debt,
 // sorted by debt amount (highest first).
 func (a *App) DebtorsList() ([]DebtorDTO, error) {
+	if a.svc != nil {
+		return a.svc.DebtorsList(a.ctx)
+	}
 	return a.pay.ListDebtors(a.ctx)
 }
 
 // MonthOverview returns a read-only monthly dashboard snapshot.
 func (a *App) MonthOverview(year, month int) (*MonthOverviewDTO, error) {
+	if a.svc != nil {
+		return a.svc.MonthOverview(a.ctx, year, month)
+	}
 	return a.pay.MonthOverview(a.ctx, year, month)
 }
 
 // RecentPayments returns the latest payments for dashboard activity feeds.
 func (a *App) RecentPayments(limit int) ([]RecentPaymentDTO, error) {
+	if a.svc != nil {
+		return a.svc.RecentPayments(a.ctx, limit)
+	}
 	return a.pay.ListRecent(a.ctx, limit)
 }
 
 // StudentDebtDetails returns open invoice debt details for one student.
 func (a *App) StudentDebtDetails(studentID int) ([]DebtInvoiceDTO, error) {
+	if a.svc != nil {
+		return a.svc.StudentDebtDetails(a.ctx, studentID)
+	}
 	return a.pay.StudentDebtDetails(a.ctx, studentID)
 }
 
 // InvoicePaymentSummary returns a summary of payment status for a specific invoice,
 // including total amount, paid amount, remaining balance, and current status.
 func (a *App) InvoicePaymentSummary(invoiceID int) (*InvoiceSummaryDTO, error) {
+	if a.svc != nil {
+		return a.svc.InvoicePaymentSummary(a.ctx, invoiceID)
+	}
 	return a.pay.InvoiceSummary(a.ctx, invoiceID)
 }
 
 // PaymentQuickCash creates an unlinked cash payment for immediate payment scenarios
 // (e.g., "cash for lesson now"). The payment is not linked to any invoice.
 func (a *App) PaymentQuickCash(studentID int, amount float64, note string) (*PaymentDTO, error) {
+	if a.svc != nil {
+		return a.svc.PaymentQuickCash(a.ctx, studentID, amount, note)
+	}
 	return a.pay.QuickCash(a.ctx, studentID, amount, note)
 }
 
