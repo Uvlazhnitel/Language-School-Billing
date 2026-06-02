@@ -1,12 +1,15 @@
-# Language School Billing (Go + Wails)
+# Language School Billing (Go + Wails + Web)
 
-A **single-user desktop application** for a language school owner/administrator.
+A billing app for a language school owner/administrator that can run as:
+- a **desktop app** via Wails
+- a **web app** via the Go HTTP server
 
 It helps manage **students, courses, enrollments, monthly attendance**, and **invoices (PDF)**.
 
 **Tech stack**
 - Backend: **Go 1.22+**
 - Desktop framework: **Wails v2**
+- Web server: **net/http**
 - ORM: **ent**
 - Database: **SQLite** (local file on the user’s machine)
 - Frontend: **React + Vite + TypeScript**
@@ -154,6 +157,61 @@ cd ..
 
 wails dev
 ```
+
+## Web development
+
+Run the Go API/server:
+
+```bash
+go run ./cmd/web
+```
+
+In a second terminal, run the frontend dev server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+By default, Vite proxies `/api` and `/healthz` to `http://127.0.0.1:8080`.
+
+If your Go server runs somewhere else, set:
+
+```bash
+cd frontend
+cp .env.example .env.local
+```
+
+Then edit `VITE_DEV_API_TARGET`.
+
+## Web production-style run
+
+Build the frontend:
+
+```bash
+cd frontend
+npm install
+npm run build
+cd ..
+```
+
+Start the Go server:
+
+```bash
+go run ./cmd/web
+```
+
+If `frontend/dist` exists, the Go server serves both:
+- the React app
+- the JSON API under `/api`
+
+If `frontend/dist` does not exist, the server still starts in API-only mode.
+
+Optional environment variables:
+- `ADDR` or `HOST` + `PORT` for the listen address
+- `WEB_DIST_DIR` to point the server at a different built frontend directory
+- `APP_DATA_DIR`, `INVOICES_DIR`, `BACKUPS_DIR`, `LS_FONTS_DIR` for server-side storage
 
 ---
 

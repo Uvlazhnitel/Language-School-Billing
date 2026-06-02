@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -13,18 +14,29 @@ import (
 	"langschool/internal/backend"
 )
 
-type Server struct {
-	svc *backend.Service
-	mux *http.ServeMux
+type HandlerOptions struct {
+	DistDir string
 }
 
-func NewHandler(svc *backend.Service) http.Handler {
+type Server struct {
+	svc      *backend.Service
+	mux      *http.ServeMux
+	distDir  string
+	hasIndex bool
+}
+
+func NewHandler(svc *backend.Service, opts HandlerOptions) http.Handler {
 	server := &Server{
-		svc: svc,
-		mux: http.NewServeMux(),
+		svc:     svc,
+		mux:     http.NewServeMux(),
+		distDir: normalizeDistDir(opts.DistDir),
 	}
+	server.hasIndex = fileExists(filepath.Join(server.distDir, "index.html"))
 	server.routes()
-	return server.mux
+	if server.distDir == "" || !server.hasIndex {
+		return server.mux
+	}
+	return http.HandlerFunc(server.serve)
 }
 
 func (s *Server) routes() {
@@ -83,6 +95,25 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/debtors", s.handleDebtorsList)
 	s.mux.HandleFunc("GET /api/dashboard/month-overview", s.handleDashboardMonthOverview)
 	s.mux.HandleFunc("GET /api/dashboard/recent-payments", s.handleDashboardRecentPayments)
+}
+
+func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == "/healthz" || strings.HasPrefix(r.URL.Path, "/api/") {
+		s.mux.ServeHTTP(w, r)
+		return
+	}
+
+	if path, ok := s.staticPath(r.URL.Path); ok {
+		http.ServeFile(w, r, path)
+		return
+	}
+
+	if looksLikeAssetRequest(r.URL.Path) {
+		http.NotFound(w, r)
+		return
+	}
+
+	http.ServeFile(w, r, filepath.Join(s.distDir, "index.html"))
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
@@ -872,4 +903,42 @@ func parseQueryIntDefault(raw string, fallback int) (int, error) {
 		return 0, errors.New("invalid integer value")
 	}
 	return value, nil
+}
+
+func normalizeDistDir(dir string) string {
+	dir = strings.TrimSpace(dir)
+	if dir == "" {
+		return ""
+	}
+	abs, err := filepath.Abs(dir)
+	if err != nil {
+		return ""
+	}
+	return abs
+}
+
+func fileExists(path string) bool {
+	info, err := os.Stat(path)
+	return err == nil && !info.IsDir()
+}
+
+func (s *Server) staticPath(requestPath string) (string, bool) {
+	cleanPath := filepath.Clean("/" + strings.TrimSpace(requestPath))
+	if cleanPath == "/" {
+		indexPath := filepath.Join(s.distDir, "index.html")
+		return indexPath, fileExists(indexPath)
+	}
+
+	relPath := strings.TrimPrefix(cleanPath, "/")
+	fullPath := filepath.Join(s.distDir, relPath)
+	relToBase, err := filepath.Rel(s.distDir, fullPath)
+	if err != nil || relToBase == ".." || strings.HasPrefix(relToBase, ".."+string(filepath.Separator)) {
+		return "", false
+	}
+	return fullPath, fileExists(fullPath)
+}
+
+func looksLikeAssetRequest(requestPath string) bool {
+	base := filepath.Base(strings.TrimSpace(requestPath))
+	return strings.Contains(base, ".")
 }

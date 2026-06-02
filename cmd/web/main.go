@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -24,7 +25,14 @@ func main() {
 	}
 	defer rt.Close()
 
-	handler := web.NewHandler(backend.New(rt))
+	distDir := webDistDir()
+	if distDir != "" {
+		log.Printf("Serving web frontend from %s", distDir)
+	} else {
+		log.Printf("Frontend dist not found; serving API only")
+	}
+
+	handler := web.NewHandler(backend.New(rt), web.HandlerOptions{DistDir: distDir})
 	server := &http.Server{
 		Addr:              listenAddr(),
 		Handler:           handler,
@@ -62,4 +70,29 @@ func listenAddr() string {
 		port = "8080"
 	}
 	return host + ":" + port
+}
+
+func webDistDir() string {
+	if dir := strings.TrimSpace(os.Getenv("WEB_DIST_DIR")); dir != "" {
+		if hasIndexHTML(dir) {
+			return dir
+		}
+		return ""
+	}
+
+	candidates := []string{
+		filepath.Join("frontend", "dist"),
+		filepath.Join("..", "..", "frontend", "dist"),
+	}
+	for _, candidate := range candidates {
+		if hasIndexHTML(candidate) {
+			return candidate
+		}
+	}
+	return ""
+}
+
+func hasIndexHTML(dir string) bool {
+	info, err := os.Stat(filepath.Join(dir, "index.html"))
+	return err == nil && !info.IsDir()
 }

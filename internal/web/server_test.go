@@ -208,6 +208,61 @@ func TestLocaleBackupAndErrors(t *testing.T) {
 	}
 }
 
+func TestStaticServingWithDist(t *testing.T) {
+	distDir := writeTestDist(t)
+	env := newTestServerWithDist(t, distDir)
+	defer env.Close()
+
+	resp, body := rawRequest(t, http.MethodGet, env.Server.URL+"/", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("root status = %d, want 200", resp.StatusCode)
+	}
+	if got := string(body); got != "<!doctype html><title>LangSchool</title>" {
+		t.Fatalf("root body = %q", got)
+	}
+
+	resp, body = rawRequest(t, http.MethodGet, env.Server.URL+"/students", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("spa route status = %d, want 200", resp.StatusCode)
+	}
+	if got := string(body); got != "<!doctype html><title>LangSchool</title>" {
+		t.Fatalf("spa body = %q", got)
+	}
+
+	resp, body = rawRequest(t, http.MethodGet, env.Server.URL+"/assets/app.js", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("asset status = %d, want 200", resp.StatusCode)
+	}
+	if got := string(body); got != "console.log('langschool');" {
+		t.Fatalf("asset body = %q", got)
+	}
+
+	resp, _ = rawRequest(t, http.MethodGet, env.Server.URL+"/assets/missing.js", nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing asset status = %d, want 404", resp.StatusCode)
+	}
+
+	health := getJSON[map[string]bool](t, env.Server, "/healthz")
+	if !health["ready"] {
+		t.Fatal("healthz ready = false with dist")
+	}
+}
+
+func TestStaticServingFallsBackToAPIOnlyWithoutDist(t *testing.T) {
+	env := newTestServerWithDist(t, filepath.Join(t.TempDir(), "missing-dist"))
+	defer env.Close()
+
+	resp, _ := rawRequest(t, http.MethodGet, env.Server.URL+"/students", nil)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("spa route without dist status = %d, want 404", resp.StatusCode)
+	}
+
+	health := getJSON[map[string]bool](t, env.Server, "/healthz")
+	if !health["ready"] {
+		t.Fatal("healthz ready = false without dist")
+	}
+}
+
 type testServerEnv struct {
 	Server  *httptest.Server
 	Runtime *appruntime.Runtime
@@ -218,6 +273,11 @@ func (e *testServerEnv) Close() {
 }
 
 func newTestServer(t *testing.T) *testServerEnv {
+	t.Helper()
+	return newTestServerWithDist(t, "")
+}
+
+func newTestServerWithDist(t *testing.T, distDir string) *testServerEnv {
 	t.Helper()
 	root := t.TempDir()
 	fontsDir, err := makeTestFontsDir(t)
@@ -239,9 +299,24 @@ func newTestServer(t *testing.T) *testServerEnv {
 		_ = rt.Close()
 	})
 	return &testServerEnv{
-		Server:  httptest.NewServer(NewHandler(backend.New(rt))),
+		Server:  httptest.NewServer(NewHandler(backend.New(rt), HandlerOptions{DistDir: distDir})),
 		Runtime: rt,
 	}
+}
+
+func writeTestDist(t *testing.T) string {
+	t.Helper()
+	distDir := filepath.Join(t.TempDir(), "dist")
+	if err := os.MkdirAll(filepath.Join(distDir, "assets"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(distDir, "index.html"), []byte("<!doctype html><title>LangSchool</title>"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(distDir, "assets", "app.js"), []byte("console.log('langschool');"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	return distDir
 }
 
 func makeTestFontsDir(t *testing.T) (string, error) {
