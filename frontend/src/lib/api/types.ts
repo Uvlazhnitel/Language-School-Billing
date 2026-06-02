@@ -12,6 +12,22 @@ export type BootstrapResult = {
   locale: string;
   appDirs: AppDirs;
   capabilities: TransportCapabilities;
+  authRequired: boolean;
+  session: SessionInfo;
+};
+
+export type SessionUser = {
+  id: number;
+  email: string;
+  role: string;
+};
+
+export type SessionInfo = {
+  authenticated: boolean;
+  user?: SessionUser;
+  locale: string;
+  capabilities: Record<string, boolean>;
+  ready: boolean;
 };
 
 export type BackupResult = {
@@ -219,6 +235,9 @@ export type PaymentMethod = "cash" | "bank";
 
 export interface AppTransport {
   bootstrap(): Promise<BootstrapResult>;
+  getSession(): Promise<SessionInfo>;
+  login(email: string, password: string): Promise<SessionInfo>;
+  logout(): Promise<void>;
   getLocale(): Promise<string>;
   setLocale(locale: string): Promise<void>;
   createBackup(): Promise<BackupResult>;

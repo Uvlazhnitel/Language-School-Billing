@@ -20,7 +20,13 @@ import type {
   Row,
   StudentDTO,
   TeacherDTO,
+  SessionInfo,
 } from "./types";
+import { AUTH_REQUIRED_EVENT, AuthRequiredError } from "./shared";
+
+type RequestOptions = RequestInit & {
+  suppressAuthEvent?: boolean;
+};
 
 function healthBase(): string {
   const override = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim();
@@ -38,14 +44,28 @@ function apiBase(): string {
   return "/api";
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${apiBase()}${path}`, {
+async function requestAbsolute<T>(url: string, init?: RequestOptions): Promise<T> {
+  const { suppressAuthEvent = false, ...requestInit } = init ?? {};
+  const response = await fetch(url, {
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
+      ...(requestInit.headers ?? {}),
     },
-    ...init,
+    ...requestInit,
   });
+
+  if (response.status === 401) {
+    if (!suppressAuthEvent && typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent(AUTH_REQUIRED_EVENT));
+    }
+    let message = "Authentication required";
+    try {
+      const body = (await response.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {}
+    throw new AuthRequiredError(message);
+  }
 
   if (!response.ok) {
     let message = `${response.status} ${response.statusText}`;
@@ -63,6 +83,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
+async function request<T>(path: string, init?: RequestOptions): Promise<T> {
+  return requestAbsolute(`${apiBase()}${path}`, init);
+}
+
 async function requestVoid(path: string, init?: RequestInit): Promise<void> {
   await request<undefined>(path, init);
 }
@@ -75,26 +99,43 @@ function body(value: unknown): RequestInit {
 
 export const httpTransport: AppTransport = {
   async bootstrap(): Promise<BootstrapResult> {
-    const [health, meta] = await Promise.all([
-      request<{ ready: boolean }>(`${healthBase()}/healthz`),
-      request<{
-        ready: boolean;
-        locale: string;
-        capabilities: Record<string, boolean>;
-      }>("/meta"),
+    const [health, session] = await Promise.all([
+      requestAbsolute<{ ready: boolean }>(`${healthBase()}/healthz`, { suppressAuthEvent: true }),
+      request<SessionInfo>("/auth/session"),
     ]);
 
     return {
-      ready: health.ready && meta.ready,
-      locale: meta.locale || "en-US",
+      ready: health.ready && session.ready,
+      locale: session.locale || "en-US",
       appDirs: null,
       capabilities: {
         isDesktop: false,
         canOpenLocalFiles: false,
         canOpenFolders: false,
-        canDownloadPdf: Boolean(meta.capabilities?.pdfDownload),
+        canDownloadPdf: Boolean(session.capabilities?.pdfDownload),
       },
+      authRequired: true,
+      session,
     };
+  },
+
+  getSession() {
+    return request<SessionInfo>("/auth/session");
+  },
+
+  login(email, password) {
+    return request<SessionInfo>("/auth/login", {
+      method: "POST",
+      suppressAuthEvent: true,
+      ...body({ email, password }),
+    });
+  },
+
+  async logout() {
+    await requestVoid("/auth/logout", {
+      method: "POST",
+      ...body({}),
+    });
   },
 
   async getLocale() {

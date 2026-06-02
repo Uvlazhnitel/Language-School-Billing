@@ -1,5 +1,14 @@
 import type { AppTransport } from "./types";
 
+export const AUTH_REQUIRED_EVENT = "langschool:auth-required";
+
+export class AuthRequiredError extends Error {
+  constructor(message = "Authentication required") {
+    super(message);
+    this.name = "AuthRequiredError";
+  }
+}
+
 declare global {
   interface Window {
     go?: {

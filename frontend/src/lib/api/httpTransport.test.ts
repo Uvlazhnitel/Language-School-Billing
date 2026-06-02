@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { httpTransport } from "./httpTransport";
+import { AuthRequiredError } from "./shared";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -21,8 +22,9 @@ describe("httpTransport", () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.endsWith("/healthz")) return jsonResponse({ ready: true });
-      if (url.endsWith("/api/meta")) {
+      if (url.endsWith("/api/auth/session")) {
         return jsonResponse({
+          authenticated: false,
           ready: true,
           locale: "en-US",
           capabilities: { pdfDownload: true },
@@ -36,6 +38,7 @@ describe("httpTransport", () => {
 
     expect(result.ready).toBe(true);
     expect(result.capabilities.isDesktop).toBe(false);
+    expect(result.authRequired).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
@@ -48,7 +51,7 @@ describe("httpTransport", () => {
 
     expect(fetchMock).toHaveBeenCalledWith(
       "http://localhost:9999/api/students?q=&includeInactive=true",
-      expect.any(Object)
+      expect.objectContaining({ credentials: "include" })
     );
   });
 
@@ -82,5 +85,12 @@ describe("httpTransport", () => {
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "boom" }, 400)));
 
     await expect(httpTransport.getStudent(1)).rejects.toThrow("boom");
+  });
+
+  it("surfaces 401 as auth errors", async () => {
+    vi.stubGlobal("window", { dispatchEvent: vi.fn() } as unknown as Window);
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "auth" }, 401)));
+
+    await expect(httpTransport.getStudent(1)).rejects.toBeInstanceOf(AuthRequiredError);
   });
 });

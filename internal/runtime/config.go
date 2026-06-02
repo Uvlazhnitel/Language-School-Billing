@@ -15,25 +15,31 @@ const (
 )
 
 type Config struct {
-	BaseDir     string
-	DataDir     string
-	BackupsDir  string
-	InvoicesDir string
-	ExportsDir  string
-	FontsDir    string
-	BaseURL     string
+	BaseDir       string
+	DataDir       string
+	BackupsDir    string
+	InvoicesDir   string
+	ExportsDir    string
+	FontsDir      string
+	BaseURL       string
+	AdminEmail    string
+	AdminPassword string
+	SessionSecret string
 }
 
 func LoadConfig(home string) Config {
 	base := ResolveAppBaseDir(home)
 	cfg := Config{
-		BaseDir:     base,
-		DataDir:     envOrDefault("APP_DATA_DIR", filepath.Join(base, "Data")),
-		BackupsDir:  envOrDefault("BACKUPS_DIR", filepath.Join(base, "Backups")),
-		InvoicesDir: envOrDefault("INVOICES_DIR", filepath.Join(base, "Invoices")),
-		ExportsDir:  filepath.Join(base, "Exports"),
-		FontsDir:    strings.TrimSpace(os.Getenv("LS_FONTS_DIR")),
-		BaseURL:     strings.TrimSpace(os.Getenv("APP_BASE_URL")),
+		BaseDir:       base,
+		DataDir:       envOrDefault("APP_DATA_DIR", filepath.Join(base, "Data")),
+		BackupsDir:    envOrDefault("BACKUPS_DIR", filepath.Join(base, "Backups")),
+		InvoicesDir:   envOrDefault("INVOICES_DIR", filepath.Join(base, "Invoices")),
+		ExportsDir:    filepath.Join(base, "Exports"),
+		FontsDir:      strings.TrimSpace(os.Getenv("LS_FONTS_DIR")),
+		BaseURL:       strings.TrimSpace(os.Getenv("APP_BASE_URL")),
+		AdminEmail:    strings.TrimSpace(os.Getenv("ADMIN_EMAIL")),
+		AdminPassword: strings.TrimSpace(os.Getenv("ADMIN_PASSWORD")),
+		SessionSecret: strings.TrimSpace(os.Getenv("SESSION_SECRET")),
 	}
 	return cfg
 }

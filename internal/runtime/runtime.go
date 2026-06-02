@@ -12,6 +12,7 @@ import (
 	"langschool/internal/app/attendance"
 	invsvc "langschool/internal/app/invoice"
 	paysvc "langschool/internal/app/payment"
+	"langschool/internal/auth"
 	"langschool/internal/infra"
 	"langschool/internal/paths"
 )
@@ -31,6 +32,7 @@ type Runtime struct {
 	Attendance *attendance.Service
 	Invoice    *invsvc.Service
 	Payment    *paysvc.Service
+	Auth       *auth.Service
 }
 
 func Start(ctx context.Context, cfg Config) (*Runtime, error) {
@@ -66,6 +68,12 @@ func Start(ctx context.Context, cfg Config) (*Runtime, error) {
 		return nil, err
 	}
 
+	authService := auth.New(db.Ent, cfg.AdminEmail, cfg.AdminPassword, cfg.SessionSecret, cfg.BaseURL)
+	if err := authService.BootstrapAdmin(ctx); err != nil {
+		_ = db.Ent.Close()
+		return nil, err
+	}
+
 	return &Runtime{
 		Config:     cfg,
 		Dirs:       dirs,
@@ -74,6 +82,7 @@ func Start(ctx context.Context, cfg Config) (*Runtime, error) {
 		Attendance: attendance.New(db.Ent),
 		Invoice:    invsvc.New(db.Ent),
 		Payment:    paysvc.New(db.Ent),
+		Auth:       authService,
 	}, nil
 }
 

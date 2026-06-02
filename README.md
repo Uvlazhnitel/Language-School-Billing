@@ -212,6 +212,8 @@ Optional environment variables:
 - `ADDR` or `HOST` + `PORT` for the listen address
 - `WEB_DIST_DIR` to point the server at a different built frontend directory
 - `APP_DATA_DIR`, `INVOICES_DIR`, `BACKUPS_DIR`, `LS_FONTS_DIR` for server-side storage
+- `ADMIN_EMAIL` and `ADMIN_PASSWORD` for the bootstrap admin account
+- `SESSION_SECRET` for signed web sessions
 
 ---
 

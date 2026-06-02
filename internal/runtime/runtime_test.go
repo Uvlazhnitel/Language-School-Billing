@@ -5,7 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
+	"golang.org/x/crypto/bcrypt"
 	"langschool/ent/settings"
+	"langschool/ent/user"
 	sharedapp "langschool/internal/app"
 )
 
@@ -14,11 +16,14 @@ func TestStartBootstrapsRuntimeAndSettings(t *testing.T) {
 	base := t.TempDir()
 
 	rt, err := Start(ctx, Config{
-		BaseDir:     base,
-		DataDir:     filepath.Join(base, "Data"),
-		BackupsDir:  filepath.Join(base, "Backups"),
-		InvoicesDir: filepath.Join(base, "Invoices"),
-		ExportsDir:  filepath.Join(base, "Exports"),
+		BaseDir:       base,
+		DataDir:       filepath.Join(base, "Data"),
+		BackupsDir:    filepath.Join(base, "Backups"),
+		InvoicesDir:   filepath.Join(base, "Invoices"),
+		ExportsDir:    filepath.Join(base, "Exports"),
+		AdminEmail:    "admin@example.com",
+		AdminPassword: "secret-password",
+		SessionSecret: "session-secret",
 	})
 	if err != nil {
 		t.Fatalf("Start returned error: %v", err)
@@ -30,7 +35,7 @@ func TestStartBootstrapsRuntimeAndSettings(t *testing.T) {
 	if rt.DB == nil || rt.DB.Ent == nil {
 		t.Fatal("expected initialized database client")
 	}
-	if rt.Attendance == nil || rt.Invoice == nil || rt.Payment == nil {
+	if rt.Attendance == nil || rt.Invoice == nil || rt.Payment == nil || rt.Auth == nil {
 		t.Fatal("expected initialized services")
 	}
 	if rt.AppDBPath != filepath.Join(rt.Dirs.Data, "app.sqlite") {
@@ -48,6 +53,17 @@ func TestStartBootstrapsRuntimeAndSettings(t *testing.T) {
 	}
 	if st.Address != DefaultSchoolAddress {
 		t.Fatalf("Address = %q, want %q", st.Address, DefaultSchoolAddress)
+	}
+
+	adminUser, err := rt.DB.Ent.User.Query().Where(user.EmailEQ("admin@example.com")).Only(ctx)
+	if err != nil {
+		t.Fatalf("admin user query failed: %v", err)
+	}
+	if adminUser.Role != "admin" {
+		t.Fatalf("admin role = %q, want admin", adminUser.Role)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte("secret-password")); err != nil {
+		t.Fatalf("admin password hash mismatch: %v", err)
 	}
 }
 
@@ -98,5 +114,45 @@ func TestRuntimeCloseSucceeds(t *testing.T) {
 
 	if err := rt.Close(); err != nil {
 		t.Fatalf("Close returned error: %v", err)
+	}
+}
+
+func TestStartUpdatesEnvBackedAdminPassword(t *testing.T) {
+	ctx := context.Background()
+	base := t.TempDir()
+	cfg := Config{
+		BaseDir:       base,
+		DataDir:       filepath.Join(base, "Data"),
+		BackupsDir:    filepath.Join(base, "Backups"),
+		InvoicesDir:   filepath.Join(base, "Invoices"),
+		ExportsDir:    filepath.Join(base, "Exports"),
+		AdminEmail:    "admin@example.com",
+		AdminPassword: "old-password",
+		SessionSecret: "session-secret",
+	}
+
+	rt, err := Start(ctx, cfg)
+	if err != nil {
+		t.Fatalf("first Start returned error: %v", err)
+	}
+	if err := rt.Close(); err != nil {
+		t.Fatalf("first Close returned error: %v", err)
+	}
+
+	cfg.AdminPassword = "new-password"
+	rt, err = Start(ctx, cfg)
+	if err != nil {
+		t.Fatalf("second Start returned error: %v", err)
+	}
+	t.Cleanup(func() {
+		_ = rt.Close()
+	})
+
+	adminUser, err := rt.DB.Ent.User.Query().Where(user.EmailEQ("admin@example.com")).Only(ctx)
+	if err != nil {
+		t.Fatalf("admin user query failed: %v", err)
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(adminUser.PasswordHash), []byte("new-password")); err != nil {
+		t.Fatalf("updated admin password hash mismatch: %v", err)
 	}
 }

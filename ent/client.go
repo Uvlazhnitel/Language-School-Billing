@@ -20,6 +20,8 @@ import (
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"langschool/ent/teacher"
+	"langschool/ent/user"
+	"langschool/ent/websession"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
@@ -50,6 +52,10 @@ type Client struct {
 	Student *StudentClient
 	// Teacher is the client for interacting with the Teacher builders.
 	Teacher *TeacherClient
+	// User is the client for interacting with the User builders.
+	User *UserClient
+	// WebSession is the client for interacting with the WebSession builders.
+	WebSession *WebSessionClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -70,6 +76,8 @@ func (c *Client) init() {
 	c.Settings = NewSettingsClient(c.config)
 	c.Student = NewStudentClient(c.config)
 	c.Teacher = NewTeacherClient(c.config)
+	c.User = NewUserClient(c.config)
+	c.WebSession = NewWebSessionClient(c.config)
 }
 
 type (
@@ -171,6 +179,8 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		Settings:        NewSettingsClient(cfg),
 		Student:         NewStudentClient(cfg),
 		Teacher:         NewTeacherClient(cfg),
+		User:            NewUserClient(cfg),
+		WebSession:      NewWebSessionClient(cfg),
 	}, nil
 }
 
@@ -199,6 +209,8 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		Settings:        NewSettingsClient(cfg),
 		Student:         NewStudentClient(cfg),
 		Teacher:         NewTeacherClient(cfg),
+		User:            NewUserClient(cfg),
+		WebSession:      NewWebSessionClient(cfg),
 	}, nil
 }
 
@@ -229,7 +241,7 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.AttendanceMonth, c.Course, c.Enrollment, c.Invoice, c.InvoiceLine, c.Payment,
-		c.Settings, c.Student, c.Teacher,
+		c.Settings, c.Student, c.Teacher, c.User, c.WebSession,
 	} {
 		n.Use(hooks...)
 	}
@@ -240,7 +252,7 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.AttendanceMonth, c.Course, c.Enrollment, c.Invoice, c.InvoiceLine, c.Payment,
-		c.Settings, c.Student, c.Teacher,
+		c.Settings, c.Student, c.Teacher, c.User, c.WebSession,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -267,6 +279,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Student.mutate(ctx, m)
 	case *TeacherMutation:
 		return c.Teacher.mutate(ctx, m)
+	case *UserMutation:
+		return c.User.mutate(ctx, m)
+	case *WebSessionMutation:
+		return c.WebSession.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -1725,14 +1741,312 @@ func (c *TeacherClient) mutate(ctx context.Context, m *TeacherMutation) (Value, 
 	}
 }
 
+// UserClient is a client for the User schema.
+type UserClient struct {
+	config
+}
+
+// NewUserClient returns a client for the User from the given config.
+func NewUserClient(c config) *UserClient {
+	return &UserClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `user.Hooks(f(g(h())))`.
+func (c *UserClient) Use(hooks ...Hook) {
+	c.hooks.User = append(c.hooks.User, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `user.Intercept(f(g(h())))`.
+func (c *UserClient) Intercept(interceptors ...Interceptor) {
+	c.inters.User = append(c.inters.User, interceptors...)
+}
+
+// Create returns a builder for creating a User entity.
+func (c *UserClient) Create() *UserCreate {
+	mutation := newUserMutation(c.config, OpCreate)
+	return &UserCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of User entities.
+func (c *UserClient) CreateBulk(builders ...*UserCreate) *UserCreateBulk {
+	return &UserCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *UserClient) MapCreateBulk(slice any, setFunc func(*UserCreate, int)) *UserCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &UserCreateBulk{err: fmt.Errorf("calling to UserClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*UserCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &UserCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for User.
+func (c *UserClient) Update() *UserUpdate {
+	mutation := newUserMutation(c.config, OpUpdate)
+	return &UserUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *UserClient) UpdateOne(_m *User) *UserUpdateOne {
+	mutation := newUserMutation(c.config, OpUpdateOne, withUser(_m))
+	return &UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *UserClient) UpdateOneID(id int) *UserUpdateOne {
+	mutation := newUserMutation(c.config, OpUpdateOne, withUserID(id))
+	return &UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for User.
+func (c *UserClient) Delete() *UserDelete {
+	mutation := newUserMutation(c.config, OpDelete)
+	return &UserDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *UserClient) DeleteOne(_m *User) *UserDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *UserClient) DeleteOneID(id int) *UserDeleteOne {
+	builder := c.Delete().Where(user.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &UserDeleteOne{builder}
+}
+
+// Query returns a query builder for User.
+func (c *UserClient) Query() *UserQuery {
+	return &UserQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeUser},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a User entity by its id.
+func (c *UserClient) Get(ctx context.Context, id int) (*User, error) {
+	return c.Query().Where(user.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *UserClient) GetX(ctx context.Context, id int) *User {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QuerySessions queries the sessions edge of a User.
+func (c *UserClient) QuerySessions(_m *User) *WebSessionQuery {
+	query := (&WebSessionClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(websession.Table, websession.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.SessionsTable, user.SessionsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *UserClient) Hooks() []Hook {
+	return c.hooks.User
+}
+
+// Interceptors returns the client interceptors.
+func (c *UserClient) Interceptors() []Interceptor {
+	return c.inters.User
+}
+
+func (c *UserClient) mutate(ctx context.Context, m *UserMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&UserCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&UserUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&UserUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&UserDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown User mutation op: %q", m.Op())
+	}
+}
+
+// WebSessionClient is a client for the WebSession schema.
+type WebSessionClient struct {
+	config
+}
+
+// NewWebSessionClient returns a client for the WebSession from the given config.
+func NewWebSessionClient(c config) *WebSessionClient {
+	return &WebSessionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `websession.Hooks(f(g(h())))`.
+func (c *WebSessionClient) Use(hooks ...Hook) {
+	c.hooks.WebSession = append(c.hooks.WebSession, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `websession.Intercept(f(g(h())))`.
+func (c *WebSessionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.WebSession = append(c.inters.WebSession, interceptors...)
+}
+
+// Create returns a builder for creating a WebSession entity.
+func (c *WebSessionClient) Create() *WebSessionCreate {
+	mutation := newWebSessionMutation(c.config, OpCreate)
+	return &WebSessionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of WebSession entities.
+func (c *WebSessionClient) CreateBulk(builders ...*WebSessionCreate) *WebSessionCreateBulk {
+	return &WebSessionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *WebSessionClient) MapCreateBulk(slice any, setFunc func(*WebSessionCreate, int)) *WebSessionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &WebSessionCreateBulk{err: fmt.Errorf("calling to WebSessionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*WebSessionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &WebSessionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for WebSession.
+func (c *WebSessionClient) Update() *WebSessionUpdate {
+	mutation := newWebSessionMutation(c.config, OpUpdate)
+	return &WebSessionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *WebSessionClient) UpdateOne(_m *WebSession) *WebSessionUpdateOne {
+	mutation := newWebSessionMutation(c.config, OpUpdateOne, withWebSession(_m))
+	return &WebSessionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *WebSessionClient) UpdateOneID(id int) *WebSessionUpdateOne {
+	mutation := newWebSessionMutation(c.config, OpUpdateOne, withWebSessionID(id))
+	return &WebSessionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for WebSession.
+func (c *WebSessionClient) Delete() *WebSessionDelete {
+	mutation := newWebSessionMutation(c.config, OpDelete)
+	return &WebSessionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *WebSessionClient) DeleteOne(_m *WebSession) *WebSessionDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *WebSessionClient) DeleteOneID(id int) *WebSessionDeleteOne {
+	builder := c.Delete().Where(websession.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &WebSessionDeleteOne{builder}
+}
+
+// Query returns a query builder for WebSession.
+func (c *WebSessionClient) Query() *WebSessionQuery {
+	return &WebSessionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeWebSession},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a WebSession entity by its id.
+func (c *WebSessionClient) Get(ctx context.Context, id int) (*WebSession, error) {
+	return c.Query().Where(websession.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *WebSessionClient) GetX(ctx context.Context, id int) *WebSession {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a WebSession.
+func (c *WebSessionClient) QueryUser(_m *WebSession) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(websession.Table, websession.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, websession.UserTable, websession.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *WebSessionClient) Hooks() []Hook {
+	return c.hooks.WebSession
+}
+
+// Interceptors returns the client interceptors.
+func (c *WebSessionClient) Interceptors() []Interceptor {
+	return c.inters.WebSession
+}
+
+func (c *WebSessionClient) mutate(ctx context.Context, m *WebSessionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&WebSessionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&WebSessionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&WebSessionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&WebSessionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown WebSession mutation op: %q", m.Op())
+	}
+}
+
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
 		AttendanceMonth, Course, Enrollment, Invoice, InvoiceLine, Payment, Settings,
-		Student, Teacher []ent.Hook
+		Student, Teacher, User, WebSession []ent.Hook
 	}
 	inters struct {
 		AttendanceMonth, Course, Enrollment, Invoice, InvoiceLine, Payment, Settings,
-		Student, Teacher []ent.Interceptor
+		Student, Teacher, User, WebSession []ent.Interceptor
 	}
 )

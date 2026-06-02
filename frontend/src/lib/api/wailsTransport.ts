@@ -59,6 +59,7 @@ import type {
   Row,
   StudentDTO,
   TeacherDTO,
+  SessionInfo,
 } from "./types";
 
 function pathToFilename(path: string): string {
@@ -85,6 +86,23 @@ export const wailsTransport: AppTransport = {
             canOpenFolders: true,
             canDownloadPdf: true,
           },
+          authRequired: false,
+          session: {
+            authenticated: true,
+            user: {
+              id: 0,
+              email: "desktop@local",
+              role: "admin",
+            },
+            locale,
+            capabilities: {
+              backups: true,
+              pdfDownload: true,
+              pdfGenerate: true,
+              desktopPaths: true,
+            },
+            ready: true,
+          },
         };
       }
       await new Promise((resolve) => window.setTimeout(resolve, 100));
@@ -92,6 +110,48 @@ export const wailsTransport: AppTransport = {
 
     throw new Error("backend startup timed out");
   },
+
+  async getSession(): Promise<SessionInfo> {
+    const locale = await SettingsGetLocale().catch(() => "en-US");
+    return {
+      authenticated: true,
+      user: {
+        id: 0,
+        email: "desktop@local",
+        role: "admin",
+      },
+      locale,
+      capabilities: {
+        backups: true,
+        pdfDownload: true,
+        pdfGenerate: true,
+        desktopPaths: true,
+      },
+      ready: true,
+    };
+  },
+
+  async login() {
+    const locale = await SettingsGetLocale().catch(() => "en-US");
+    return {
+      authenticated: true,
+      user: {
+        id: 0,
+        email: "desktop@local",
+        role: "admin",
+      },
+      locale,
+      capabilities: {
+        backups: true,
+        pdfDownload: true,
+        pdfGenerate: true,
+        desktopPaths: true,
+      },
+      ready: true,
+    };
+  },
+
+  async logout() {},
 
   getLocale: SettingsGetLocale,
   setLocale: SettingsSetLocale,

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 	"strings"
 
 	"langschool/ent"
+	"langschool/internal/auth"
 	"langschool/internal/backend"
 )
 
@@ -33,14 +35,14 @@ func NewHandler(svc *backend.Service, opts HandlerOptions) http.Handler {
 	}
 	server.hasIndex = fileExists(filepath.Join(server.distDir, "index.html"))
 	server.routes()
-	if server.distDir == "" || !server.hasIndex {
-		return server.mux
-	}
 	return http.HandlerFunc(server.serve)
 }
 
 func (s *Server) routes() {
 	s.mux.HandleFunc("GET /healthz", s.handleHealthz)
+	s.mux.HandleFunc("POST /api/auth/login", s.handleAuthLogin)
+	s.mux.HandleFunc("POST /api/auth/logout", s.handleAuthLogout)
+	s.mux.HandleFunc("GET /api/auth/session", s.handleAuthSession)
 	s.mux.HandleFunc("GET /api/meta", s.handleMeta)
 	s.mux.HandleFunc("POST /api/backups", s.handleBackupsCreate)
 
@@ -98,8 +100,18 @@ func (s *Server) routes() {
 }
 
 func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
-	if r.URL.Path == "/healthz" || strings.HasPrefix(r.URL.Path, "/api/") {
+	if r.URL.Path == "/healthz" {
 		s.mux.ServeHTTP(w, r)
+		return
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/api/") {
+		s.serveAPI(w, r)
+		return
+	}
+
+	if s.distDir == "" || !s.hasIndex {
+		http.NotFound(w, r)
 		return
 	}
 
@@ -116,8 +128,78 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filepath.Join(s.distDir, "index.html"))
 }
 
+func (s *Server) serveAPI(w http.ResponseWriter, r *http.Request) {
+	if isPublicAPIPath(r.URL.Path) {
+		s.mux.ServeHTTP(w, r)
+		return
+	}
+
+	currentUser, err := s.userFromRequest(r)
+	if err != nil {
+		writeUnauthorized(w, "authentication required")
+		return
+	}
+
+	s.mux.ServeHTTP(w, r.WithContext(withCurrentUser(r.Context(), currentUser)))
+}
+
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"ready": s.svc.Ready()})
+}
+
+func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+
+	currentUser, signedToken, expiresAt, err := s.svc.Login(r.Context(), req.Email, req.Password)
+	if err != nil {
+		if errors.Is(err, auth.ErrUnauthorized) {
+			writeUnauthorized(w, "invalid email or password")
+			return
+		}
+		writeError(w, err)
+		return
+	}
+
+	http.SetCookie(w, s.svc.SessionCookie(signedToken, expiresAt))
+
+	session, err := s.svc.SessionState(r.Context(), currentUser)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, session)
+}
+
+func (s *Server) handleAuthLogout(w http.ResponseWriter, r *http.Request) {
+	if cookie, err := r.Cookie(auth.CookieName); err == nil {
+		_ = s.svc.Logout(r.Context(), cookie.Value)
+	}
+	http.SetCookie(w, s.svc.ClearSessionCookie())
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (s *Server) handleAuthSession(w http.ResponseWriter, r *http.Request) {
+	currentUser, err := s.userFromRequest(r)
+	if err != nil && !errors.Is(err, auth.ErrUnauthorized) {
+		writeError(w, err)
+		return
+	}
+	if errors.Is(err, auth.ErrUnauthorized) {
+		currentUser = nil
+	}
+
+	session, err := s.svc.SessionState(r.Context(), currentUser)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, session)
 }
 
 func (s *Server) handleMeta(w http.ResponseWriter, r *http.Request) {
@@ -817,6 +899,10 @@ func writeBadRequest(w http.ResponseWriter, message string) {
 	writeJSON(w, http.StatusBadRequest, map[string]string{"error": message})
 }
 
+func writeUnauthorized(w http.ResponseWriter, message string) {
+	writeJSON(w, http.StatusUnauthorized, map[string]string{"error": message})
+}
+
 func writeError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	switch {
@@ -824,6 +910,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status = http.StatusNotFound
 	case ent.IsConstraintError(err):
 		status = http.StatusConflict
+	case errors.Is(err, auth.ErrUnauthorized):
+		status = http.StatusUnauthorized
 	case isConflictError(err):
 		status = http.StatusConflict
 	case isBadRequestError(err):
@@ -941,4 +1029,29 @@ func (s *Server) staticPath(requestPath string) (string, bool) {
 func looksLikeAssetRequest(requestPath string) bool {
 	base := filepath.Base(strings.TrimSpace(requestPath))
 	return strings.Contains(base, ".")
+}
+
+func isPublicAPIPath(path string) bool {
+	switch path {
+	case "/api/auth/login", "/api/auth/logout", "/api/auth/session":
+		return true
+	default:
+		return false
+	}
+}
+
+type contextKey string
+
+const currentUserKey contextKey = "currentUser"
+
+func withCurrentUser(ctx context.Context, currentUser *auth.UserInfo) context.Context {
+	return context.WithValue(ctx, currentUserKey, currentUser)
+}
+
+func (s *Server) userFromRequest(r *http.Request) (*auth.UserInfo, error) {
+	cookie, err := r.Cookie(auth.CookieName)
+	if err != nil {
+		return nil, auth.ErrUnauthorized
+	}
+	return s.svc.Session(r.Context(), cookie.Value)
 }

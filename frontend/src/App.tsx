@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef, type FormEvent } from "react";
 import "./App.css";
 
 import { fetchRows, saveHours, deleteEnrollment, Row } from "./lib/attendance";
@@ -64,7 +64,9 @@ import {
   RecentPaymentDTO,
 } from "./lib/dashboard";
 import { getTransport, type TransportCapabilities } from "./lib/api";
+import { AUTH_REQUIRED_EVENT } from "./lib/api/shared";
 import { DashboardOverview } from "./components/DashboardOverview";
+import { LoginScreen } from "./components/LoginScreen";
 import { StudentWorkspace } from "./components/StudentWorkspace";
 import { StudentDetailPanel } from "./components/StudentDetailPanel";
 import {
@@ -322,6 +324,14 @@ export default function App() {
   });
   const [tab, setTab] = useState<Tab>("dashboard");
   const [appReady, setAppReady] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginPending, setLoginPending] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [uiLocale, setUiLocale] = useState<UiLocale>("en-US");
   const [appDirs, setAppDirs] = useState<Record<string, string> | null>(null);
   const [creatingBackup, setCreatingBackup] = useState(false);
@@ -400,9 +410,13 @@ export default function App() {
         setAppDirs(bootstrapResult.appDirs);
         setTransportCapabilities(bootstrapResult.capabilities);
         setUiLocale(normalizeLocale(bootstrapResult.locale));
-        setAppReady(bootstrapResult.ready);
+        setAuthRequired(bootstrapResult.authRequired);
+        setIsAuthenticated(bootstrapResult.session.authenticated);
+        setAppReady(bootstrapResult.ready && (!bootstrapResult.authRequired || bootstrapResult.session.authenticated));
+        setAuthLoading(false);
       } catch (e: any) {
         if (!cancelled) {
+          setAuthLoading(false);
           showMessage(
             createTranslator("en-US")("msg.loadingFoldersError", {
               message: String(e?.message ?? e),
@@ -419,6 +433,21 @@ export default function App() {
       cancelled = true;
     };
   }, [showMessage]);
+
+  useEffect(() => {
+    const onAuthRequired = () => {
+      setIsAuthenticated(false);
+      setAppReady(false);
+      setLoginPassword("");
+      setLoginError(null);
+      setSessionExpired(true);
+    };
+
+    window.addEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
+    return () => {
+      window.removeEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
+    };
+  }, []);
 
   const t = useMemo(() => createTranslator(uiLocale), [uiLocale]);
   const uiMonths = useMemo(() => getMonthNames(uiLocale), [uiLocale]);
@@ -1921,6 +1950,47 @@ export default function App() {
     return rowInvoice ? buildInvoiceMenuItems(rowInvoice) : [];
   }, [buildInvoiceMenuItems, invItems, openInvoiceMenu, selectedInv, selectedInvPdfReady]);
 
+  const handleLogin = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setLoginPending(true);
+      setLoginError(null);
+      try {
+        const transport = await getTransport();
+        const session = await transport.login(loginEmail, loginPassword);
+        setUiLocale(normalizeLocale(session.locale));
+        setTransportCapabilities({
+          isDesktop: false,
+          canOpenLocalFiles: false,
+          canOpenFolders: false,
+          canDownloadPdf: Boolean(session.capabilities?.pdfDownload),
+        });
+        setIsAuthenticated(session.authenticated);
+        setAppReady(session.ready && session.authenticated);
+        setLoginError(null);
+        setLoginPassword("");
+        setSessionExpired(false);
+      } catch (e: any) {
+        setLoginError(String(e?.message ?? e));
+      } finally {
+        setLoginPending(false);
+      }
+    },
+    [loginEmail, loginPassword]
+  );
+
+  const handleLogout = useCallback(async () => {
+    try {
+      const transport = await getTransport();
+      await transport.logout();
+    } catch {}
+    setIsAuthenticated(false);
+    setAppReady(false);
+    setLoginPassword("");
+    setLoginError(null);
+    setSessionExpired(false);
+  }, []);
+
   return (
     <div className="container">
       {/* Global message display */}
@@ -2025,6 +2095,27 @@ export default function App() {
         </div>
       )}
 
+      {authLoading ? (
+        <div className="authShell">
+          <section className="authCard">
+            <div className="workspaceEyebrow">{t("auth.eyebrow")}</div>
+            <h1>{t("label.loading")}</h1>
+          </section>
+        </div>
+      ) : authRequired && !isAuthenticated ? (
+        <LoginScreen
+          email={loginEmail}
+          password={loginPassword}
+          pending={loginPending}
+          error={loginError}
+          sessionExpired={sessionExpired}
+          onEmailChange={setLoginEmail}
+          onPasswordChange={setLoginPassword}
+          onSubmit={handleLogin}
+          t={t}
+        />
+      ) : (
+        <>
       <div className="appShell">
         <section className="workspaceCard">
           <div className="workspaceTopbar">
@@ -2058,6 +2149,15 @@ export default function App() {
               >
                 {t("button.filesAndCopies")}
               </button>
+              {authRequired && !transportCapabilities.isDesktop && (
+                <button
+                  type="button"
+                  className="workspaceActionButton"
+                  onClick={() => void handleLogout()}
+                >
+                  {t("auth.logout")}
+                </button>
+              )}
             </div>
           </div>
 
@@ -3425,6 +3525,8 @@ export default function App() {
             </button>
           ))}
         </div>
+      )}
+        </>
       )}
     </div>
   );

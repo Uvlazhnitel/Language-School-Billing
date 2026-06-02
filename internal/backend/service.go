@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"html"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
@@ -25,6 +27,7 @@ import (
 	invsvc "langschool/internal/app/invoice"
 	paysvc "langschool/internal/app/payment"
 	"langschool/internal/app/utils"
+	"langschool/internal/auth"
 	appruntime "langschool/internal/runtime"
 )
 
@@ -103,6 +106,14 @@ type Meta struct {
 	Capabilities map[string]bool `json:"capabilities"`
 }
 
+type SessionDTO struct {
+	Authenticated bool            `json:"authenticated"`
+	User          *auth.UserInfo  `json:"user,omitempty"`
+	Locale        string          `json:"locale"`
+	Capabilities  map[string]bool `json:"capabilities"`
+	Ready         bool            `json:"ready"`
+}
+
 type Service struct {
 	rt *appruntime.Runtime
 }
@@ -130,6 +141,60 @@ func (s *Service) Meta(ctx context.Context) (*Meta, error) {
 			"desktopPaths": false,
 		},
 	}, nil
+}
+
+func (s *Service) SessionState(ctx context.Context, currentUser *auth.UserInfo) (*SessionDTO, error) {
+	locale, err := s.SettingsGetLocale(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &SessionDTO{
+		Authenticated: currentUser != nil,
+		User:          currentUser,
+		Locale:        locale,
+		Capabilities: map[string]bool{
+			"backups":      true,
+			"pdfDownload":  true,
+			"pdfGenerate":  true,
+			"desktopPaths": false,
+		},
+		Ready: s.Ready(),
+	}, nil
+}
+
+func (s *Service) Login(ctx context.Context, email, password string) (*auth.UserInfo, string, time.Time, error) {
+	if s.rt == nil || s.rt.Auth == nil {
+		return nil, "", time.Time{}, auth.ErrUnauthorized
+	}
+	return s.rt.Auth.Login(ctx, email, password)
+}
+
+func (s *Service) Session(ctx context.Context, signedToken string) (*auth.UserInfo, error) {
+	if s.rt == nil || s.rt.Auth == nil {
+		return nil, auth.ErrUnauthorized
+	}
+	return s.rt.Auth.Session(ctx, signedToken)
+}
+
+func (s *Service) Logout(ctx context.Context, signedToken string) error {
+	if s.rt == nil || s.rt.Auth == nil {
+		return nil
+	}
+	return s.rt.Auth.Logout(ctx, signedToken)
+}
+
+func (s *Service) SessionCookie(signedToken string, expiresAt time.Time) *http.Cookie {
+	if s.rt == nil || s.rt.Auth == nil {
+		return nil
+	}
+	return s.rt.Auth.SessionCookie(signedToken, expiresAt)
+}
+
+func (s *Service) ClearSessionCookie() *http.Cookie {
+	if s.rt == nil || s.rt.Auth == nil {
+		return nil
+	}
+	return s.rt.Auth.ClearSessionCookie()
 }
 
 func (s *Service) BackupNow() (string, error) {
