@@ -2489,6 +2489,12 @@ export default function App() {
               {t("tabs.courses")}
             </button>
             <button
+              className={tab === "enrollments" ? "active" : ""}
+              onClick={() => setTab("enrollments")}
+            >
+              {t("tabs.enrollments")}
+            </button>
+            <button
               className={tab === "attendance" ? "active" : ""}
               onClick={() => setTab("attendance")}
             >
