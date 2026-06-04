@@ -21,7 +21,7 @@ func TestStartBootstrapsRuntimeAndSettings(t *testing.T) {
 		BackupsDir:    filepath.Join(base, "Backups"),
 		InvoicesDir:   filepath.Join(base, "Invoices"),
 		ExportsDir:    filepath.Join(base, "Exports"),
-		AdminEmail:    "admin@example.com",
+		AdminUsername: "admin",
 		AdminPassword: "secret-password",
 		SessionSecret: "session-secret",
 	})
@@ -55,7 +55,7 @@ func TestStartBootstrapsRuntimeAndSettings(t *testing.T) {
 		t.Fatalf("Address = %q, want %q", st.Address, DefaultSchoolAddress)
 	}
 
-	adminUser, err := rt.DB.Ent.User.Query().Where(user.EmailEQ("admin@example.com")).Only(ctx)
+	adminUser, err := rt.DB.Ent.User.Query().Where(user.UsernameEQ("admin")).Only(ctx)
 	if err != nil {
 		t.Fatalf("admin user query failed: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestStartUpdatesEnvBackedAdminPassword(t *testing.T) {
 		BackupsDir:    filepath.Join(base, "Backups"),
 		InvoicesDir:   filepath.Join(base, "Invoices"),
 		ExportsDir:    filepath.Join(base, "Exports"),
-		AdminEmail:    "admin@example.com",
+		AdminUsername: "admin",
 		AdminPassword: "old-password",
 		SessionSecret: "session-secret",
 	}
@@ -148,7 +148,7 @@ func TestStartUpdatesEnvBackedAdminPassword(t *testing.T) {
 		_ = rt.Close()
 	})
 
-	adminUser, err := rt.DB.Ent.User.Query().Where(user.EmailEQ("admin@example.com")).Only(ctx)
+	adminUser, err := rt.DB.Ent.User.Query().Where(user.UsernameEQ("admin")).Only(ctx)
 	if err != nil {
 		t.Fatalf("admin user query failed: %v", err)
 	}

@@ -68,7 +68,7 @@ func Start(ctx context.Context, cfg Config) (*Runtime, error) {
 		return nil, err
 	}
 
-	authService := auth.New(db.Ent, cfg.AdminEmail, cfg.AdminPassword, cfg.SessionSecret, cfg.BaseURL)
+	authService := auth.New(db.Ent, cfg.AdminUsername, cfg.AdminPassword, cfg.SessionSecret, cfg.BaseURL)
 	if err := authService.BootstrapAdmin(ctx); err != nil {
 		_ = db.Ent.Close()
 		return nil, err

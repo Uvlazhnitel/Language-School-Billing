@@ -162,11 +162,11 @@ func (s *Service) SessionState(ctx context.Context, currentUser *auth.UserInfo) 
 	}, nil
 }
 
-func (s *Service) Login(ctx context.Context, email, password string) (*auth.UserInfo, string, time.Time, error) {
+func (s *Service) Login(ctx context.Context, username, password string, rememberMe bool) (*auth.UserInfo, string, time.Time, bool, error) {
 	if s.rt == nil || s.rt.Auth == nil {
-		return nil, "", time.Time{}, auth.ErrUnauthorized
+		return nil, "", time.Time{}, false, auth.ErrUnauthorized
 	}
-	return s.rt.Auth.Login(ctx, email, password)
+	return s.rt.Auth.Login(ctx, username, password, rememberMe)
 }
 
 func (s *Service) Session(ctx context.Context, signedToken string) (*auth.UserInfo, error) {
@@ -183,11 +183,11 @@ func (s *Service) Logout(ctx context.Context, signedToken string) error {
 	return s.rt.Auth.Logout(ctx, signedToken)
 }
 
-func (s *Service) SessionCookie(signedToken string, expiresAt time.Time) *http.Cookie {
+func (s *Service) SessionCookie(signedToken string, expiresAt time.Time, persistent bool) *http.Cookie {
 	if s.rt == nil || s.rt.Auth == nil {
 		return nil
 	}
-	return s.rt.Auth.SessionCookie(signedToken, expiresAt)
+	return s.rt.Auth.SessionCookie(signedToken, expiresAt, persistent)
 }
 
 func (s *Service) ClearSessionCookie() *http.Cookie {
@@ -216,12 +216,12 @@ func (s *Service) UserList(ctx context.Context) ([]UserDTO, error) {
 	return s.rt.Auth.ListUsers(ctx)
 }
 
-func (s *Service) UserCreate(ctx context.Context, email, password, role string) (*UserDTO, error) {
-	return s.rt.Auth.CreateUser(ctx, email, password, role)
+func (s *Service) UserCreate(ctx context.Context, username, password, role string) (*UserDTO, error) {
+	return s.rt.Auth.CreateUser(ctx, username, password, role)
 }
 
-func (s *Service) UserUpdate(ctx context.Context, id int, email, role string, isActive bool) (*UserDTO, error) {
-	return s.rt.Auth.UpdateUser(ctx, id, email, role, isActive)
+func (s *Service) UserUpdate(ctx context.Context, id int, username, role string, isActive bool) (*UserDTO, error) {
+	return s.rt.Auth.UpdateUser(ctx, id, username, role, isActive)
 }
 
 func (s *Service) UserSetPassword(ctx context.Context, id int, password string) error {

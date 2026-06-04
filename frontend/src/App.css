@@ -133,6 +133,20 @@ body {
   box-shadow: var(--focus);
 }
 
+.authCheckbox {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted-strong);
+  font-size: 0.94rem;
+  font-weight: 700;
+}
+
+.authCheckbox input {
+  width: 16px;
+  height: 16px;
+}
+
 .authSubmit {
   justify-content: center;
   margin-top: 6px;

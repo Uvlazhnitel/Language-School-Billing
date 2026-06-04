@@ -12,7 +12,7 @@ type User struct{ ent.Schema }
 
 func (User) Fields() []ent.Field {
 	return []ent.Field{
-		field.String("email").Unique(),
+		field.String("username").StorageKey("email").Unique(),
 		field.String("password_hash"),
 		field.String("role").Default("admin"),
 		field.Bool("is_active").Default(true),

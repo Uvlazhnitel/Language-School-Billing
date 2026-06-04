@@ -138,11 +138,11 @@ export const httpTransport: AppTransport = {
     return request<SessionInfo>("/auth/session");
   },
 
-  login(email, password) {
+  login(username, password, rememberMe) {
     return request<SessionInfo>("/auth/login", {
       method: "POST",
       suppressAuthEvent: true,
-      ...body({ email, password }),
+      ...body({ username, password, rememberMe }),
     });
   },
 
@@ -172,11 +172,11 @@ export const httpTransport: AppTransport = {
   async listUsers() {
     return request<UserDTO[]>("/users");
   },
-  async createUser(email, password, role) {
-    return request<UserDTO>("/users", { method: "POST", ...body({ email, password, role }) });
+  async createUser(username, password, role) {
+    return request<UserDTO>("/users", { method: "POST", ...body({ username, password, role }) });
   },
-  async updateUser(id, email, role, isActive) {
-    return request<UserDTO>(`/users/${id}`, { method: "PUT", ...body({ email, role, isActive }) });
+  async updateUser(id, username, role, isActive) {
+    return request<UserDTO>(`/users/${id}`, { method: "PUT", ...body({ username, role, isActive }) });
   },
   async setUserPassword(id, password) {
     await requestVoid(`/users/${id}/password`, { method: "POST", ...body({ password }) });

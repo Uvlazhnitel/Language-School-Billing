@@ -228,17 +228,17 @@ func TestAuthLoginProtectsAPIAndLogout(t *testing.T) {
 		env.Client,
 		http.MethodPost,
 		env.Server.URL+"/api/auth/login",
-		bytes.NewReader([]byte(`{"email":"admin@example.com","password":"wrong"}`)),
+		bytes.NewReader([]byte(`{"username":"admin","password":"wrong"}`)),
 	)
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("bad login status = %d, want 401", resp.StatusCode)
 	}
 
 	login := postJSON[backend.SessionDTO](t, env.Client, env.Server.URL, "/api/auth/login", map[string]any{
-		"email":    env.AdminEmail,
+		"username": env.AdminUsername,
 		"password": env.AdminPassword,
 	})
-	if !login.Authenticated || login.User == nil || login.User.Email != env.AdminEmail {
+	if !login.Authenticated || login.User == nil || login.User.Username != env.AdminUsername {
 		t.Fatalf("unexpected login session: %+v", login)
 	}
 
@@ -260,7 +260,7 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 	defer env.Close()
 
 	created := postJSON[backend.UserDTO](t, env.Client, env.Server.URL, "/api/users", map[string]any{
-		"email":    "staff@example.com",
+		"username": "staff",
 		"password": "staff-pass-123",
 		"role":     "staff",
 	})
@@ -279,7 +279,7 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 	}
 	staffClient := &http.Client{Jar: jar}
 	login := postJSON[backend.SessionDTO](t, staffClient, env.Server.URL, "/api/auth/login", map[string]any{
-		"email":    "staff@example.com",
+		"username": "staff",
 		"password": "staff-pass-123",
 	})
 	if !login.Authenticated || login.User == nil || login.User.Role != "staff" {
@@ -309,7 +309,7 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 	}
 
 	updated := putJSON[backend.UserDTO](t, env.Client, env.Server.URL, "/api/users/"+strconv.Itoa(created.ID), map[string]any{
-		"email":    "staff@example.com",
+		"username": "staff",
 		"role":     "staff",
 		"isActive": false,
 	})
@@ -322,7 +322,7 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 		staffClient,
 		http.MethodPost,
 		env.Server.URL+"/api/auth/login",
-		bytes.NewReader([]byte(`{"email":"staff@example.com","password":"staff-pass-123"}`)),
+		bytes.NewReader([]byte(`{"username":"staff","password":"staff-pass-123"}`)),
 	)
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("inactive staff login status = %d, want 401", resp.StatusCode)
@@ -388,7 +388,7 @@ type testServerEnv struct {
 	Server        *httptest.Server
 	Runtime       *appruntime.Runtime
 	Client        *http.Client
-	AdminEmail    string
+	AdminUsername string
 	AdminPassword string
 }
 
@@ -426,7 +426,7 @@ func newAnonymousTestServerWithDist(t *testing.T, distDir string) *testServerEnv
 	if err != nil {
 		t.Fatal(err)
 	}
-	adminEmail := "admin@example.com"
+	adminUsername := "admin"
 	adminPassword := "test-password-123"
 	rt, err := appruntime.Start(context.Background(), appruntime.Config{
 		BaseDir:       filepath.Join(root, "base"),
@@ -435,7 +435,7 @@ func newAnonymousTestServerWithDist(t *testing.T, distDir string) *testServerEnv
 		InvoicesDir:   filepath.Join(root, "invoices"),
 		ExportsDir:    filepath.Join(root, "exports"),
 		FontsDir:      fontsDir,
-		AdminEmail:    adminEmail,
+		AdminUsername: adminUsername,
 		AdminPassword: adminPassword,
 		SessionSecret: "test-session-secret",
 	})
@@ -449,7 +449,7 @@ func newAnonymousTestServerWithDist(t *testing.T, distDir string) *testServerEnv
 		Server:        httptest.NewServer(NewHandler(backend.New(rt), HandlerOptions{DistDir: distDir})),
 		Runtime:       rt,
 		Client:        &http.Client{Jar: jar},
-		AdminEmail:    adminEmail,
+		AdminUsername: adminUsername,
 		AdminPassword: adminPassword,
 	}
 }
@@ -457,7 +457,7 @@ func newAnonymousTestServerWithDist(t *testing.T, distDir string) *testServerEnv
 func (e *testServerEnv) login(t *testing.T) {
 	t.Helper()
 	_ = postJSON[backend.SessionDTO](t, e.Client, e.Server.URL, "/api/auth/login", map[string]any{
-		"email":    e.AdminEmail,
+		"username": e.AdminUsername,
 		"password": e.AdminPassword,
 	})
 }

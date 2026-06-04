@@ -18,13 +18,13 @@ export type BootstrapResult = {
 
 export type SessionUser = {
   id: number;
-  email: string;
+  username: string;
   role: string;
 };
 
 export type UserDTO = {
   id: number;
-  email: string;
+  username: string;
   role: string;
   isActive: boolean;
 };
@@ -253,15 +253,15 @@ export type PaymentMethod = "cash" | "bank";
 export interface AppTransport {
   bootstrap(): Promise<BootstrapResult>;
   getSession(): Promise<SessionInfo>;
-  login(email: string, password: string): Promise<SessionInfo>;
+  login(username: string, password: string, rememberMe: boolean): Promise<SessionInfo>;
   logout(): Promise<void>;
   getLocale(): Promise<string>;
   setLocale(locale: string): Promise<void>;
   createBackup(): Promise<BackupResult>;
   openLocalPath(path: string): Promise<void>;
   listUsers(): Promise<UserDTO[]>;
-  createUser(email: string, password: string, role: string): Promise<UserDTO>;
-  updateUser(id: number, email: string, role: string, isActive: boolean): Promise<UserDTO>;
+  createUser(username: string, password: string, role: string): Promise<UserDTO>;
+  updateUser(id: number, username: string, role: string, isActive: boolean): Promise<UserDTO>;
   setUserPassword(id: number, password: string): Promise<void>;
   setUserActive(id: number, active: boolean): Promise<UserDTO>;
 

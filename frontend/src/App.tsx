@@ -204,7 +204,7 @@ type Tab =
   | "settings";
 type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 type InvoiceMenuPosition = { top: number; left: number; openUpward: boolean };
-type UserDraft = { email: string; role: string; isActive: boolean };
+type UserDraft = { username: string; role: string; isActive: boolean };
 
 function buildTabMeta(t: TranslateFn): Record<Tab, { eyebrow: string; title: string }> {
   return {
@@ -353,10 +353,11 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [, setCurrentSessionUser] = useState<{ id: number; email: string; role: string } | null>(null);
+  const [, setCurrentSessionUser] = useState<{ id: number; username: string; role: string } | null>(null);
   const [sessionCapabilities, setSessionCapabilities] = useState<Record<string, boolean>>({});
-  const [loginEmail, setLoginEmail] = useState("");
+  const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [loginRememberMe, setLoginRememberMe] = useState(true);
   const [loginPending, setLoginPending] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -366,7 +367,7 @@ export default function App() {
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
-  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserUsername, setNewUserUsername] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState("staff");
   const [userDrafts, setUserDrafts] = useState<Record<number, UserDraft>>({});
@@ -2155,7 +2156,7 @@ export default function App() {
       setUsers(items);
       setUserDrafts(
         Object.fromEntries(
-          items.map((item) => [item.id, { email: item.email, role: item.role, isActive: item.isActive }])
+          items.map((item) => [item.id, { username: item.username, role: item.role, isActive: item.isActive }])
         )
       );
     } catch (e: any) {
@@ -2175,13 +2176,13 @@ export default function App() {
     try {
       setCreatingUser(true);
       const transport = await getTransport();
-      const created = await transport.createUser(newUserEmail, newUserPassword, newUserRole);
+      const created = await transport.createUser(newUserUsername, newUserPassword, newUserRole);
       setUsers((prev) => [...prev, created]);
       setUserDrafts((prev) => ({
         ...prev,
-        [created.id]: { email: created.email, role: created.role, isActive: created.isActive },
+        [created.id]: { username: created.username, role: created.role, isActive: created.isActive },
       }));
-      setNewUserEmail("");
+      setNewUserUsername("");
       setNewUserPassword("");
       setNewUserRole("staff");
       showMessage("User created");
@@ -2197,9 +2198,9 @@ export default function App() {
     if (!draft) return;
     try {
       const transport = await getTransport();
-      const updated = await transport.updateUser(userId, draft.email, draft.role, draft.isActive);
+      const updated = await transport.updateUser(userId, draft.username, draft.role, draft.isActive);
       setUsers((prev) => prev.map((item) => (item.id === userId ? updated : item)));
-      setUserDrafts((prev) => ({ ...prev, [userId]: { email: updated.email, role: updated.role, isActive: updated.isActive } }));
+      setUserDrafts((prev) => ({ ...prev, [userId]: { username: updated.username, role: updated.role, isActive: updated.isActive } }));
       showMessage("User updated");
     } catch (e: any) {
       showMessage(String(e?.message ?? e), "error");
@@ -2262,7 +2263,7 @@ export default function App() {
       setLoginError(null);
       try {
         const transport = await getTransport();
-        const session = await transport.login(loginEmail, loginPassword);
+        const session = await transport.login(loginUsername, loginPassword, loginRememberMe);
         setUiLocale(normalizeLocale(session.locale));
         setCurrentSessionUser(session.user ?? null);
         setSessionCapabilities(session.capabilities ?? {});
@@ -2283,7 +2284,7 @@ export default function App() {
         setLoginPending(false);
       }
     },
-    [loginEmail, loginPassword]
+    [loginRememberMe, loginPassword, loginUsername]
   );
 
   const handleLogout = useCallback(async () => {
@@ -2415,13 +2416,15 @@ export default function App() {
         </div>
       ) : authRequired && !isAuthenticated ? (
         <LoginScreen
-          email={loginEmail}
+          username={loginUsername}
           password={loginPassword}
+          rememberMe={loginRememberMe}
           pending={loginPending}
           error={loginError}
           sessionExpired={sessionExpired}
-          onEmailChange={setLoginEmail}
+          onUsernameChange={setLoginUsername}
           onPasswordChange={setLoginPassword}
+          onRememberMeChange={setLoginRememberMe}
           onSubmit={handleLogin}
           t={t}
         />
@@ -3696,8 +3699,8 @@ export default function App() {
                   <p className="mutedInline">Manage admin and staff accounts for the web app.</p>
 
                   <div className="formRow">
-                    <label>Email</label>
-                    <input value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} />
+                    <label>Username</label>
+                    <input value={newUserUsername} onChange={(e) => setNewUserUsername(e.target.value)} />
                   </div>
                   <div className="formRow">
                     <label>Password</label>
@@ -3735,7 +3738,7 @@ export default function App() {
                       <table>
                         <thead>
                           <tr>
-                            <th>Email</th>
+                            <th>Username</th>
                             <th>Role</th>
                             <th>Active</th>
                             <th>Password reset</th>
@@ -3745,7 +3748,7 @@ export default function App() {
                         <tbody>
                           {users.map((user) => {
                             const draft = userDrafts[user.id] ?? {
-                              email: user.email,
+                              username: user.username,
                               role: user.role,
                               isActive: user.isActive,
                             };
@@ -3753,11 +3756,11 @@ export default function App() {
                               <tr key={user.id}>
                                 <td>
                                   <input
-                                    value={draft.email}
+                                    value={draft.username}
                                     onChange={(e) =>
                                       setUserDrafts((prev) => ({
                                         ...prev,
-                                        [user.id]: { ...draft, email: e.target.value },
+                                        [user.id]: { ...draft, username: e.target.value },
                                       }))
                                     }
                                   />

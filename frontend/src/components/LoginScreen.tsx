@@ -3,26 +3,30 @@ import type { FormEvent } from "react";
 import type { TranslateFn } from "../lib/i18n";
 
 type LoginScreenProps = {
-  email: string;
+  username: string;
   password: string;
+  rememberMe: boolean;
   pending: boolean;
   error: string | null;
   sessionExpired: boolean;
-  onEmailChange: (value: string) => void;
+  onUsernameChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
+  onRememberMeChange: (value: boolean) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void | Promise<void>;
   t: TranslateFn;
 };
 
 export function LoginScreen(props: LoginScreenProps) {
   const {
-    email,
+    username,
     password,
+    rememberMe,
     pending,
     error,
     sessionExpired,
-    onEmailChange,
+    onUsernameChange,
     onPasswordChange,
+    onRememberMeChange,
     onSubmit,
     t,
   } = props;
@@ -39,11 +43,11 @@ export function LoginScreen(props: LoginScreenProps) {
 
         <form className="authForm" onSubmit={onSubmit}>
           <label className="authField">
-            <span>{t("auth.email")}</span>
+            <span>{t("auth.username")}</span>
             <input
-              type="email"
-              value={email}
-              onChange={(event) => onEmailChange(event.target.value)}
+              type="text"
+              value={username}
+              onChange={(event) => onUsernameChange(event.target.value)}
               autoComplete="username"
               required
             />
@@ -58,6 +62,15 @@ export function LoginScreen(props: LoginScreenProps) {
               autoComplete="current-password"
               required
             />
+          </label>
+
+          <label className="authCheckbox">
+            <input
+              type="checkbox"
+              checked={rememberMe}
+              onChange={(event) => onRememberMeChange(event.target.checked)}
+            />
+            <span>{t("auth.rememberMe")}</span>
           </label>
 
           <button

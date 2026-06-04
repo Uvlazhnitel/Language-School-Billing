@@ -94,7 +94,7 @@ export const wailsTransport: AppTransport = {
             authenticated: true,
             user: {
               id: 0,
-              email: "desktop@local",
+              username: "desktop",
               role: "admin",
             },
             locale,
@@ -120,7 +120,7 @@ export const wailsTransport: AppTransport = {
       authenticated: true,
       user: {
         id: 0,
-        email: "desktop@local",
+        username: "desktop",
         role: "admin",
       },
       locale,
@@ -134,13 +134,13 @@ export const wailsTransport: AppTransport = {
     };
   },
 
-  async login() {
+  async login(_username, _password, _rememberMe) {
     const locale = await SettingsGetLocale().catch(() => "en-US");
     return {
       authenticated: true,
       user: {
         id: 0,
-        email: "desktop@local",
+        username: "desktop",
         role: "admin",
       },
       locale,
@@ -168,17 +168,17 @@ export const wailsTransport: AppTransport = {
   },
 
   async listUsers(): Promise<UserDTO[]> {
-    return [{ id: 0, email: "desktop@local", role: "admin", isActive: true }];
+    return [{ id: 0, username: "desktop", role: "admin", isActive: true }];
   },
-  async createUser(email, _password, role): Promise<UserDTO> {
-    return { id: Date.now(), email, role, isActive: true };
+  async createUser(username, _password, role): Promise<UserDTO> {
+    return { id: Date.now(), username, role, isActive: true };
   },
-  async updateUser(id, email, role, isActive): Promise<UserDTO> {
-    return { id, email, role, isActive };
+  async updateUser(id, username, role, isActive): Promise<UserDTO> {
+    return { id, username, role, isActive };
   },
   async setUserPassword() {},
   async setUserActive(id, active): Promise<UserDTO> {
-    return { id, email: "desktop@local", role: "admin", isActive: active };
+    return { id, username: "desktop", role: "admin", isActive: active };
   },
 
   openLocalPath: OpenFile,

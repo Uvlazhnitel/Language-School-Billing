@@ -16,7 +16,7 @@ func TestLoadConfigUsesEnvironmentOverrides(t *testing.T) {
 	t.Setenv("INVOICES_DIR", invoicesDir)
 	t.Setenv("LS_FONTS_DIR", "/fonts")
 	t.Setenv("APP_BASE_URL", "https://example.test")
-	t.Setenv("ADMIN_EMAIL", "admin@example.com")
+	t.Setenv("ADMIN_USERNAME", "admin")
 	t.Setenv("ADMIN_PASSWORD", "secret")
 	t.Setenv("SESSION_SECRET", "session-secret")
 
@@ -37,8 +37,8 @@ func TestLoadConfigUsesEnvironmentOverrides(t *testing.T) {
 	if cfg.BaseURL != "https://example.test" {
 		t.Fatalf("BaseURL = %q, want %q", cfg.BaseURL, "https://example.test")
 	}
-	if cfg.AdminEmail != "admin@example.com" {
-		t.Fatalf("AdminEmail = %q, want %q", cfg.AdminEmail, "admin@example.com")
+	if cfg.AdminUsername != "admin" {
+		t.Fatalf("AdminUsername = %q, want %q", cfg.AdminUsername, "admin")
 	}
 	if cfg.AdminPassword != "secret" {
 		t.Fatalf("AdminPassword = %q, want %q", cfg.AdminPassword, "secret")

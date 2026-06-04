@@ -22,7 +22,7 @@ type Config struct {
 	ExportsDir    string
 	FontsDir      string
 	BaseURL       string
-	AdminEmail    string
+	AdminUsername string
 	AdminPassword string
 	SessionSecret string
 }
@@ -37,7 +37,7 @@ func LoadConfig(home string) Config {
 		ExportsDir:    filepath.Join(base, "Exports"),
 		FontsDir:      strings.TrimSpace(os.Getenv("LS_FONTS_DIR")),
 		BaseURL:       strings.TrimSpace(os.Getenv("APP_BASE_URL")),
-		AdminEmail:    strings.TrimSpace(os.Getenv("ADMIN_EMAIL")),
+		AdminUsername: firstNonEmpty(os.Getenv("ADMIN_USERNAME"), os.Getenv("ADMIN_EMAIL")),
 		AdminPassword: strings.TrimSpace(os.Getenv("ADMIN_PASSWORD")),
 		SessionSecret: strings.TrimSpace(os.Getenv("SESSION_SECRET")),
 	}
@@ -99,4 +99,13 @@ func envOrDefault(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }

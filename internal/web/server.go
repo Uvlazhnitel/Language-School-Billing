@@ -160,24 +160,25 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Username   string `json:"username"`
+		Password   string `json:"password"`
+		RememberMe bool   `json:"rememberMe"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
 
-	currentUser, signedToken, expiresAt, err := s.svc.Login(r.Context(), req.Email, req.Password)
+	currentUser, signedToken, expiresAt, persistent, err := s.svc.Login(r.Context(), req.Username, req.Password, req.RememberMe)
 	if err != nil {
 		if errors.Is(err, auth.ErrUnauthorized) {
-			writeUnauthorized(w, "invalid email or password")
+			writeUnauthorized(w, "invalid username or password")
 			return
 		}
 		writeError(w, err)
 		return
 	}
 
-	http.SetCookie(w, s.svc.SessionCookie(signedToken, expiresAt))
+	http.SetCookie(w, s.svc.SessionCookie(signedToken, expiresAt, persistent))
 
 	session, err := s.svc.SessionState(r.Context(), currentUser)
 	if err != nil {
@@ -774,14 +775,14 @@ func (s *Server) handleUsersList(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleUsersCreate(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Email    string `json:"email"`
+		Username string `json:"username"`
 		Password string `json:"password"`
 		Role     string `json:"role"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.UserCreate(r.Context(), req.Email, req.Password, req.Role)
+	item, err := s.svc.UserCreate(r.Context(), req.Username, req.Password, req.Role)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -795,14 +796,14 @@ func (s *Server) handleUsersUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Email    string `json:"email"`
+		Username string `json:"username"`
 		Role     string `json:"role"`
 		IsActive bool   `json:"isActive"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.UserUpdate(r.Context(), id, req.Email, req.Role, req.IsActive)
+	item, err := s.svc.UserUpdate(r.Context(), id, req.Username, req.Role, req.IsActive)
 	if err != nil {
 		writeError(w, err)
 		return
