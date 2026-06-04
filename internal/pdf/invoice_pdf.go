@@ -128,7 +128,7 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 	periodEnd := periodStart.AddDate(0, 1, -1)
 
 	p := fpdf.New("P", "mm", "A4", fontsDir)
-	p.SetTitle(fmt.Sprintf("Rēķins %s — %s", *iv.Number, subjectName), false)
+	p.SetTitle(fmt.Sprintf("Invoice %s - %s", *iv.Number, subjectName), false)
 	p.SetAuthor(provider.DisplayName, false)
 	p.SetMargins(10, 10, 10)
 	p.SetAutoPageBreak(true, 18)
