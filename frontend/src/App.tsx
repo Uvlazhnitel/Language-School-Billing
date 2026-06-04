@@ -277,6 +277,13 @@ function formatHoursValue(value: number): string {
   return value.toFixed(2).replace(/\.?0+$/, "");
 }
 
+function normalizeHoursDraftInput(value: string): string | null {
+  const normalized = value.replace(",", ".");
+  if (normalized === "") return "";
+  if (/^\d*(\.\d{0,2})?$/.test(normalized)) return normalized;
+  return null;
+}
+
 function debtMonthLabel(month: number, year: number, locale: "ru" | "lv"): string {
   const labels = locale === "ru" ? monthsRu : monthsLv;
   return `${labels[month - 1]} ${year}`;
@@ -1210,6 +1217,7 @@ export default function App() {
   const [attQ, setAttQ] = useState("");
   const [attFilter, setAttFilter] = useState<"all" | "missing" | "filled" | "zero">("all");
   const [attendanceSavingRows, setAttendanceSavingRows] = useState<Record<number, boolean>>({});
+  const [attendanceInputDrafts, setAttendanceInputDrafts] = useState<Record<number, string>>({});
 
   // For search by phone we need students list (shared with invoices and attendance)
   const studentIndex = useMemo(() => {
@@ -1346,6 +1354,66 @@ export default function App() {
       });
     }
   };
+
+  const setAttendanceDraft = useCallback((enrollmentId: number, value: string) => {
+    setAttendanceInputDrafts((prev) => ({ ...prev, [enrollmentId]: value }));
+  }, []);
+
+  const clearAttendanceDraft = useCallback((enrollmentId: number) => {
+    setAttendanceInputDrafts((prev) => {
+      if (!(enrollmentId in prev)) return prev;
+      const next = { ...prev };
+      delete next[enrollmentId];
+      return next;
+    });
+  }, []);
+
+  const commitAttendanceDraft = useCallback(
+    async (r: Row) => {
+      const draft = attendanceInputDrafts[r.enrollmentId];
+      if (draft === undefined) return;
+
+      const trimmed = draft.trim();
+      if (trimmed === "") {
+        clearAttendanceDraft(r.enrollmentId);
+        return;
+      }
+
+      const parsed = Number(trimmed.replace(",", "."));
+      if (!Number.isFinite(parsed)) {
+        clearAttendanceDraft(r.enrollmentId);
+        showMessage(t("msg.errorGeneric", { message: "Invalid hours value" }), "error");
+        return;
+      }
+
+      if (normalizeQuarterHours(parsed) === r.hours) {
+        clearAttendanceDraft(r.enrollmentId);
+        return;
+      }
+
+      try {
+        await onChangeHours(r, parsed);
+      } finally {
+        clearAttendanceDraft(r.enrollmentId);
+      }
+    },
+    [attendanceInputDrafts, clearAttendanceDraft, onChangeHours, showMessage, t]
+  );
+
+  const getAttendanceInputValue = useCallback(
+    (r: Row) => attendanceInputDrafts[r.enrollmentId] ?? formatHoursValue(r.hours),
+    [attendanceInputDrafts]
+  );
+
+  const getAttendanceStepBase = useCallback(
+    (r: Row) => {
+      const draft = attendanceInputDrafts[r.enrollmentId];
+      if (draft === undefined || draft.trim() === "") return r.hours;
+      const parsed = Number(draft.replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : r.hours;
+    },
+    [attendanceInputDrafts]
+  );
 
   const onDeleteEnrollmentFromSheet = async (id: number) => {
     showConfirm(
@@ -2917,26 +2985,53 @@ export default function App() {
                               <button
                                 type="button"
                                 className="attendanceStepperButton"
-                                onClick={() => onChangeHours(r, r.hours - 0.25)}
-                                disabled={attendanceSavingRows[r.enrollmentId] || r.hours <= 0}
+                                onClick={() =>
+                                  onChangeHours(r, Math.max(0, getAttendanceStepBase(r) - 1))
+                                }
+                                disabled={
+                                  attendanceSavingRows[r.enrollmentId] ||
+                                  getAttendanceStepBase(r) <= 0
+                                }
                                 aria-label={`Decrease hours for ${r.studentName}`}
                               >
                                 −
                               </button>
                               <input
-                                type="number"
-                                min={0}
-                                step={0.25}
-                                value={formatHoursValue(r.hours)}
+                                type="text"
+                                inputMode="decimal"
+                                value={getAttendanceInputValue(r)}
                                 disabled={attendanceSavingRows[r.enrollmentId]}
-                                onChange={(e) => onChangeHours(r, Number(e.target.value))}
+                                onChange={(e) => {
+                                  const nextValue = normalizeHoursDraftInput(e.target.value);
+                                  if (nextValue !== null) {
+                                    setAttendanceDraft(r.enrollmentId, nextValue);
+                                  }
+                                }}
+                                onFocus={(e) => {
+                                  setAttendanceDraft(r.enrollmentId, getAttendanceInputValue(r));
+                                  requestAnimationFrame(() => e.currentTarget.select());
+                                }}
+                                onBlur={() => {
+                                  void commitAttendanceDraft(r);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    void commitAttendanceDraft(r);
+                                  }
+                                  if (e.key === "Escape") {
+                                    e.preventDefault();
+                                    clearAttendanceDraft(r.enrollmentId);
+                                    e.currentTarget.blur();
+                                  }
+                                }}
                                 className="attendanceStepperInput"
                                 aria-label={`Hours for ${r.studentName}`}
                               />
                               <button
                                 type="button"
                                 className="attendanceStepperButton"
-                                onClick={() => onChangeHours(r, r.hours + 0.25)}
+                                onClick={() => onChangeHours(r, getAttendanceStepBase(r) + 1)}
                                 disabled={attendanceSavingRows[r.enrollmentId]}
                                 aria-label={`Increase hours for ${r.studentName}`}
                               >
