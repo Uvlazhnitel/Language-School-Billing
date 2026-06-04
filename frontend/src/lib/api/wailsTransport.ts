@@ -176,6 +176,7 @@ export const wailsTransport: AppTransport = {
   async updateUser(id, username, role, isActive): Promise<UserDTO> {
     return { id, username, role, isActive };
   },
+  async deleteUser() {},
   async setUserPassword() {},
   async setUserActive(id, active): Promise<UserDTO> {
     return { id, username: "desktop", role: "admin", isActive: active };

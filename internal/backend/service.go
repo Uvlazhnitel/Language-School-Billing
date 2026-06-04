@@ -232,6 +232,10 @@ func (s *Service) UserSetActive(ctx context.Context, id int, active bool) (*User
 	return s.rt.Auth.SetUserActive(ctx, id, active)
 }
 
+func (s *Service) UserDelete(ctx context.Context, currentUserID, targetUserID int) error {
+	return s.rt.Auth.DeleteUser(ctx, currentUserID, targetUserID)
+}
+
 func (s *Service) AttendanceListPerLesson(ctx context.Context, year, month int, courseID *int) ([]attendance.Row, error) {
 	return s.rt.Attendance.ListPerLesson(ctx, year, month, courseID)
 }

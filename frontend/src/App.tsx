@@ -353,7 +353,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [, setCurrentSessionUser] = useState<{ id: number; username: string; role: string } | null>(null);
+  const [currentSessionUser, setCurrentSessionUser] = useState<{ id: number; username: string; role: string } | null>(null);
   const [sessionCapabilities, setSessionCapabilities] = useState<Record<string, boolean>>({});
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -2207,6 +2207,35 @@ export default function App() {
     }
   };
 
+  const handleDeleteUser = async (userId: number) => {
+    const target = users.find((item) => item.id === userId);
+    if (!target) return;
+    showConfirm(
+      `Delete user "${target.username}"? This cannot be undone.`,
+      async () => {
+        try {
+          const transport = await getTransport();
+          await transport.deleteUser(userId);
+          setUsers((prev) => prev.filter((item) => item.id !== userId));
+          setUserDrafts((prev) => {
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+          });
+          setUserPasswordDrafts((prev) => {
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+          });
+          showMessage("User deleted");
+        } catch (e: any) {
+          showMessage(String(e?.message ?? e), "error");
+        }
+      },
+      "Delete user"
+    );
+  };
+
   const handleResetUserPassword = async (userId: number) => {
     const password = userPasswordDrafts[userId]?.trim() ?? "";
     if (!password) {
@@ -3804,6 +3833,12 @@ export default function App() {
                                 <td>
                                   <button onClick={() => void handleSaveUser(user.id)}>{t("button.save")}</button>
                                   <button onClick={() => void handleResetUserPassword(user.id)}>Reset password</button>
+                                  <button
+                                    onClick={() => void handleDeleteUser(user.id)}
+                                    disabled={currentSessionUser?.id === user.id}
+                                  >
+                                    Delete
+                                  </button>
                                 </td>
                               </tr>
                             );

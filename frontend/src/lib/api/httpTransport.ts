@@ -178,6 +178,9 @@ export const httpTransport: AppTransport = {
   async updateUser(id, username, role, isActive) {
     return request<UserDTO>(`/users/${id}`, { method: "PUT", ...body({ username, role, isActive }) });
   },
+  async deleteUser(id) {
+    await requestVoid(`/users/${id}`, { method: "DELETE" });
+  },
   async setUserPassword(id, password) {
     await requestVoid(`/users/${id}/password`, { method: "POST", ...body({ password }) });
   },

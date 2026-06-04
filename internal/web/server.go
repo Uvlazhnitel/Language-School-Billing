@@ -92,6 +92,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/users", s.handleUsersList)
 	s.mux.HandleFunc("POST /api/users", s.handleUsersCreate)
 	s.mux.HandleFunc("PUT /api/users/{id}", s.handleUsersUpdate)
+	s.mux.HandleFunc("DELETE /api/users/{id}", s.handleUsersDelete)
 	s.mux.HandleFunc("POST /api/users/{id}/password", s.handleUsersSetPassword)
 	s.mux.HandleFunc("POST /api/users/{id}/active", s.handleUsersSetActive)
 
@@ -829,6 +830,28 @@ func (s *Server) handleUsersSetPassword(w http.ResponseWriter, r *http.Request) 
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
+func (s *Server) handleUsersDelete(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt(w, r, "id")
+	if !ok {
+		return
+	}
+	currentUser := currentUserFromContext(r.Context())
+	if currentUser == nil {
+		writeUnauthorized(w, "authentication required")
+		return
+	}
+	if err := s.svc.UserDelete(r.Context(), currentUser.ID, id); err != nil {
+		switch {
+		case errors.Is(err, auth.ErrDeleteSelf), errors.Is(err, auth.ErrDeleteLastAdmin):
+			writeBadRequest(w, err.Error())
+		default:
+			writeError(w, err)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (s *Server) handleUsersSetActive(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathInt(w, r, "id")
 	if !ok {
@@ -1207,6 +1230,11 @@ const currentUserKey contextKey = "currentUser"
 
 func withCurrentUser(ctx context.Context, currentUser *auth.UserInfo) context.Context {
 	return context.WithValue(ctx, currentUserKey, currentUser)
+}
+
+func currentUserFromContext(ctx context.Context) *auth.UserInfo {
+	currentUser, _ := ctx.Value(currentUserKey).(*auth.UserInfo)
+	return currentUser
 }
 
 func (s *Server) userFromRequest(r *http.Request) (*auth.UserInfo, error) {

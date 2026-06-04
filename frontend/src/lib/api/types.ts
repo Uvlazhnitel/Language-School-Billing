@@ -262,6 +262,7 @@ export interface AppTransport {
   listUsers(): Promise<UserDTO[]>;
   createUser(username: string, password: string, role: string): Promise<UserDTO>;
   updateUser(id: number, username: string, role: string, isActive: boolean): Promise<UserDTO>;
+  deleteUser(id: number): Promise<void>;
   setUserPassword(id: number, password: string): Promise<void>;
   setUserActive(id: number, active: boolean): Promise<UserDTO>;
 

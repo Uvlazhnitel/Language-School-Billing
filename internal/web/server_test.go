@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"testing"
 
+	"langschool/ent/user"
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/backend"
 	appruntime "langschool/internal/runtime"
@@ -308,6 +309,11 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 		t.Fatalf("staff delete student status = %d, want 403", resp.StatusCode)
 	}
 
+	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/users/"+strconv.Itoa(created.ID), nil)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("staff delete user status = %d, want 403", resp.StatusCode)
+	}
+
 	updated := putJSON[backend.UserDTO](t, env.Client, env.Server.URL, "/api/users/"+strconv.Itoa(created.ID), map[string]any{
 		"username": "staff",
 		"role":     "staff",
@@ -327,6 +333,47 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("inactive staff login status = %d, want 401", resp.StatusCode)
 	}
+
+	deletable := postJSON[backend.UserDTO](t, env.Client, env.Server.URL, "/api/users", map[string]any{
+		"username": "delete-me",
+		"password": "delete-me-pass",
+		"role":     "staff",
+	})
+	resp, _ = rawRequest(t, env.Client, http.MethodDelete, env.Server.URL+"/api/users/"+strconv.Itoa(deletable.ID), nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("delete user status = %d, want 204", resp.StatusCode)
+	}
+
+	users = getJSON[[]backend.UserDTO](t, env.Client, env.Server.URL, "/api/users")
+	for _, item := range users {
+		if item.ID == deletable.ID {
+			t.Fatalf("deleted user %d still present in list", deletable.ID)
+		}
+	}
+
+	resp, _ = rawRequest(
+		t,
+		http.DefaultClient,
+		http.MethodPost,
+		env.Server.URL+"/api/auth/login",
+		bytes.NewReader([]byte(`{"username":"delete-me","password":"delete-me-pass"}`)),
+	)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("deleted user login status = %d, want 401", resp.StatusCode)
+	}
+
+	admin, err := env.Runtime.DB.Ent.User.Query().Where(user.UsernameEQ(env.AdminUsername)).Only(context.Background())
+	if err != nil {
+		t.Fatalf("admin query failed: %v", err)
+	}
+	resp, body := rawRequest(t, env.Client, http.MethodDelete, env.Server.URL+"/api/users/"+strconv.Itoa(admin.ID), nil)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("self delete status = %d, want 400", resp.StatusCode)
+	}
+	if !bytes.Contains(body, []byte("cannot delete your own account")) {
+		t.Fatalf("self delete body = %q", string(body))
+	}
+
 }
 
 func TestStaticServingWithDist(t *testing.T) {

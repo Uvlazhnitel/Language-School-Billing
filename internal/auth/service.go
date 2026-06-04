@@ -32,6 +32,8 @@ const (
 
 var ErrUnauthorized = errors.New("unauthorized")
 var ErrForbidden = errors.New("forbidden")
+var ErrDeleteSelf = errors.New("cannot delete your own account")
+var ErrDeleteLastAdmin = errors.New("cannot delete the last active admin")
 
 type UserInfo struct {
 	ID       int    `json:"id"`
@@ -196,6 +198,40 @@ func (s *Service) SetUserActive(ctx context.Context, id int, isActive bool) (*Us
 	}
 	record := userRecordFromEnt(item)
 	return &record, nil
+}
+
+func (s *Service) DeleteUser(ctx context.Context, currentUserID, targetUserID int) error {
+	if s == nil || s.client == nil {
+		return ErrUnauthorized
+	}
+	if currentUserID == targetUserID {
+		return ErrDeleteSelf
+	}
+
+	target, err := s.client.User.Get(ctx, targetUserID)
+	if err != nil {
+		return err
+	}
+
+	if target.Role == RoleAdmin && target.IsActive {
+		adminCount, err := s.client.User.Query().
+			Where(user.RoleEQ(RoleAdmin), user.IsActiveEQ(true)).
+			Count(ctx)
+		if err != nil {
+			return err
+		}
+		if adminCount <= 1 {
+			return ErrDeleteLastAdmin
+		}
+	}
+
+	if _, err := s.client.WebSession.Delete().
+		Where(websession.HasUserWith(user.IDEQ(targetUserID))).
+		Exec(ctx); err != nil {
+		return err
+	}
+
+	return s.client.User.DeleteOneID(targetUserID).Exec(ctx)
 }
 
 func (s *Service) Login(ctx context.Context, username, password string, rememberMe bool) (*UserInfo, string, time.Time, bool, error) {
