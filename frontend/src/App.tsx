@@ -2110,7 +2110,13 @@ export default function App() {
           className="invoiceActionsMenuTrigger"
           aria-haspopup="menu"
           aria-expanded={isOpen}
-          onClick={(event) => toggleInvoiceMenu(kind, invoice, event.currentTarget)}
+          onMouseDown={(event) => {
+            event.stopPropagation();
+          }}
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleInvoiceMenu(kind, invoice, event.currentTarget);
+          }}
         >
           {t("msg.more")}
         </button>
@@ -4150,6 +4156,9 @@ export default function App() {
           ref={invoiceMenuRef}
           className={`invoiceActionsMenuPanel ${invoiceMenuPosition.openUpward ? "invoiceActionsMenuPanelUpward" : ""}`}
           role="menu"
+          onMouseDown={(event) => {
+            event.stopPropagation();
+          }}
           style={{
             position: "fixed",
             top: invoiceMenuPosition.top,
