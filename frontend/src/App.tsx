@@ -2089,9 +2089,10 @@ export default function App() {
   }, [closeInvoiceMenu, openInvoiceMenu]);
 
   useEffect(() => {
-    if (!openInvoiceMenu) return;
-    closeInvoiceMenu();
-  }, [closeInvoiceMenu, invoiceDetailsOpen, openInvoiceMenu, tab]);
+    if (openInvoiceMenu) {
+      closeInvoiceMenu();
+    }
+  }, [closeInvoiceMenu, invoiceDetailsOpen, tab]);
 
   const renderInvoiceActionsMenu = (
     invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
