@@ -286,10 +286,10 @@ function normalizeHoursDraftInput(value: string): string | null {
 
 function getAttendanceInputWidth(value: string): string {
   const minChars = 4;
-  const maxChars = 8;
+  const maxChars = 12;
   const extraBuffer = 1;
   const widthChars = Math.min(maxChars, Math.max(minChars, value.length + extraBuffer));
-  return `${widthChars}ch`;
+  return `calc(${widthChars}ch + 1.75rem)`;
 }
 
 function debtMonthLabel(month: number, year: number, locale: "ru" | "lv"): string {
@@ -3017,8 +3017,10 @@ export default function App() {
                                   }
                                 }}
                                 onFocus={(e) => {
-                                  setAttendanceDraft(r.enrollmentId, getAttendanceInputValue(r));
                                   requestAnimationFrame(() => e.currentTarget.select());
+                                }}
+                                onMouseUp={(e) => {
+                                  e.preventDefault();
                                 }}
                                 onBlur={() => {
                                   void commitAttendanceDraft(r);

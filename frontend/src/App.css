@@ -1292,8 +1292,9 @@ tfoot td {
 
 .attendanceStepperInput {
   min-width: 4ch;
-  max-width: 8ch;
+  max-width: none;
   flex: 0 0 auto;
+  box-sizing: content-box;
   text-align: center;
   font-weight: 800;
 }
