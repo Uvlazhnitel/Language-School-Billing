@@ -284,6 +284,14 @@ function normalizeHoursDraftInput(value: string): string | null {
   return null;
 }
 
+function getAttendanceInputWidth(value: string): string {
+  const minChars = 4;
+  const maxChars = 8;
+  const extraBuffer = 1;
+  const widthChars = Math.min(maxChars, Math.max(minChars, value.length + extraBuffer));
+  return `${widthChars}ch`;
+}
+
 function debtMonthLabel(month: number, year: number, locale: "ru" | "lv"): string {
   const labels = locale === "ru" ? monthsRu : monthsLv;
   return `${labels[month - 1]} ${year}`;
@@ -3000,6 +3008,7 @@ export default function App() {
                                 type="text"
                                 inputMode="decimal"
                                 value={getAttendanceInputValue(r)}
+                                style={{ width: getAttendanceInputWidth(getAttendanceInputValue(r)) }}
                                 disabled={attendanceSavingRows[r.enrollmentId]}
                                 onChange={(e) => {
                                   const nextValue = normalizeHoursDraftInput(e.target.value);
