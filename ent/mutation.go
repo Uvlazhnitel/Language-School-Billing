@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
+	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
@@ -36,6 +37,7 @@ const (
 	// Node types.
 	TypeAttendanceMonth = "AttendanceMonth"
 	TypeCourse          = "Course"
+	TypeCourseMonthStat = "CourseMonthStat"
 	TypeEnrollment      = "Enrollment"
 	TypeInvoice         = "Invoice"
 	TypeInvoiceLine     = "InvoiceLine"
@@ -777,6 +779,9 @@ type CourseMutation struct {
 	enrollments           map[int]struct{}
 	removedenrollments    map[int]struct{}
 	clearedenrollments    bool
+	month_stats           map[int]struct{}
+	removedmonth_stats    map[int]struct{}
+	clearedmonth_stats    bool
 	done                  bool
 	oldValue              func(context.Context) (*Course, error)
 	predicates            []predicate.Course
@@ -1266,6 +1271,60 @@ func (m *CourseMutation) ResetEnrollments() {
 	m.removedenrollments = nil
 }
 
+// AddMonthStatIDs adds the "month_stats" edge to the CourseMonthStat entity by ids.
+func (m *CourseMutation) AddMonthStatIDs(ids ...int) {
+	if m.month_stats == nil {
+		m.month_stats = make(map[int]struct{})
+	}
+	for i := range ids {
+		m.month_stats[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMonthStats clears the "month_stats" edge to the CourseMonthStat entity.
+func (m *CourseMutation) ClearMonthStats() {
+	m.clearedmonth_stats = true
+}
+
+// MonthStatsCleared reports if the "month_stats" edge to the CourseMonthStat entity was cleared.
+func (m *CourseMutation) MonthStatsCleared() bool {
+	return m.clearedmonth_stats
+}
+
+// RemoveMonthStatIDs removes the "month_stats" edge to the CourseMonthStat entity by IDs.
+func (m *CourseMutation) RemoveMonthStatIDs(ids ...int) {
+	if m.removedmonth_stats == nil {
+		m.removedmonth_stats = make(map[int]struct{})
+	}
+	for i := range ids {
+		delete(m.month_stats, ids[i])
+		m.removedmonth_stats[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMonthStats returns the removed IDs of the "month_stats" edge to the CourseMonthStat entity.
+func (m *CourseMutation) RemovedMonthStatsIDs() (ids []int) {
+	for id := range m.removedmonth_stats {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MonthStatsIDs returns the "month_stats" edge IDs in the mutation.
+func (m *CourseMutation) MonthStatsIDs() (ids []int) {
+	for id := range m.month_stats {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMonthStats resets all changes to the "month_stats" edge.
+func (m *CourseMutation) ResetMonthStats() {
+	m.month_stats = nil
+	m.clearedmonth_stats = false
+	m.removedmonth_stats = nil
+}
+
 // Where appends a list predicates to the CourseMutation builder.
 func (m *CourseMutation) Where(ps ...predicate.Course) {
 	m.predicates = append(m.predicates, ps...)
@@ -1537,12 +1596,15 @@ func (m *CourseMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *CourseMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.teacher != nil {
 		edges = append(edges, course.EdgeTeacher)
 	}
 	if m.enrollments != nil {
 		edges = append(edges, course.EdgeEnrollments)
+	}
+	if m.month_stats != nil {
+		edges = append(edges, course.EdgeMonthStats)
 	}
 	return edges
 }
@@ -1561,15 +1623,24 @@ func (m *CourseMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case course.EdgeMonthStats:
+		ids := make([]ent.Value, 0, len(m.month_stats))
+		for id := range m.month_stats {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *CourseMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.removedenrollments != nil {
 		edges = append(edges, course.EdgeEnrollments)
+	}
+	if m.removedmonth_stats != nil {
+		edges = append(edges, course.EdgeMonthStats)
 	}
 	return edges
 }
@@ -1584,18 +1655,27 @@ func (m *CourseMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case course.EdgeMonthStats:
+		ids := make([]ent.Value, 0, len(m.removedmonth_stats))
+		for id := range m.removedmonth_stats {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *CourseMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 3)
 	if m.clearedteacher {
 		edges = append(edges, course.EdgeTeacher)
 	}
 	if m.clearedenrollments {
 		edges = append(edges, course.EdgeEnrollments)
+	}
+	if m.clearedmonth_stats {
+		edges = append(edges, course.EdgeMonthStats)
 	}
 	return edges
 }
@@ -1608,6 +1688,8 @@ func (m *CourseMutation) EdgeCleared(name string) bool {
 		return m.clearedteacher
 	case course.EdgeEnrollments:
 		return m.clearedenrollments
+	case course.EdgeMonthStats:
+		return m.clearedmonth_stats
 	}
 	return false
 }
@@ -1633,31 +1715,680 @@ func (m *CourseMutation) ResetEdge(name string) error {
 	case course.EdgeEnrollments:
 		m.ResetEnrollments()
 		return nil
+	case course.EdgeMonthStats:
+		m.ResetMonthStats()
+		return nil
 	}
 	return fmt.Errorf("unknown Course edge %s", name)
+}
+
+// CourseMonthStatMutation represents an operation that mutates the CourseMonthStat nodes in the graph.
+type CourseMonthStatMutation struct {
+	config
+	op                           Op
+	typ                          string
+	id                           *int
+	year                         *int
+	addyear                      *int
+	month                        *int
+	addmonth                     *int
+	subscription_lessons_held    *float64
+	addsubscription_lessons_held *float64
+	clearedFields                map[string]struct{}
+	course                       *int
+	clearedcourse                bool
+	done                         bool
+	oldValue                     func(context.Context) (*CourseMonthStat, error)
+	predicates                   []predicate.CourseMonthStat
+}
+
+var _ ent.Mutation = (*CourseMonthStatMutation)(nil)
+
+// coursemonthstatOption allows management of the mutation configuration using functional options.
+type coursemonthstatOption func(*CourseMonthStatMutation)
+
+// newCourseMonthStatMutation creates new mutation for the CourseMonthStat entity.
+func newCourseMonthStatMutation(c config, op Op, opts ...coursemonthstatOption) *CourseMonthStatMutation {
+	m := &CourseMonthStatMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeCourseMonthStat,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withCourseMonthStatID sets the ID field of the mutation.
+func withCourseMonthStatID(id int) coursemonthstatOption {
+	return func(m *CourseMonthStatMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *CourseMonthStat
+		)
+		m.oldValue = func(ctx context.Context) (*CourseMonthStat, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().CourseMonthStat.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withCourseMonthStat sets the old CourseMonthStat of the mutation.
+func withCourseMonthStat(node *CourseMonthStat) coursemonthstatOption {
+	return func(m *CourseMonthStatMutation) {
+		m.oldValue = func(context.Context) (*CourseMonthStat, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m CourseMonthStatMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m CourseMonthStatMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *CourseMonthStatMutation) ID() (id int, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *CourseMonthStatMutation) IDs(ctx context.Context) ([]int, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().CourseMonthStat.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetCourseID sets the "course_id" field.
+func (m *CourseMonthStatMutation) SetCourseID(i int) {
+	m.course = &i
+}
+
+// CourseID returns the value of the "course_id" field in the mutation.
+func (m *CourseMonthStatMutation) CourseID() (r int, exists bool) {
+	v := m.course
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCourseID returns the old "course_id" field's value of the CourseMonthStat entity.
+// If the CourseMonthStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMonthStatMutation) OldCourseID(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCourseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCourseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCourseID: %w", err)
+	}
+	return oldValue.CourseID, nil
+}
+
+// ResetCourseID resets all changes to the "course_id" field.
+func (m *CourseMonthStatMutation) ResetCourseID() {
+	m.course = nil
+}
+
+// SetYear sets the "year" field.
+func (m *CourseMonthStatMutation) SetYear(i int) {
+	m.year = &i
+	m.addyear = nil
+}
+
+// Year returns the value of the "year" field in the mutation.
+func (m *CourseMonthStatMutation) Year() (r int, exists bool) {
+	v := m.year
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldYear returns the old "year" field's value of the CourseMonthStat entity.
+// If the CourseMonthStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMonthStatMutation) OldYear(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldYear is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldYear requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldYear: %w", err)
+	}
+	return oldValue.Year, nil
+}
+
+// AddYear adds i to the "year" field.
+func (m *CourseMonthStatMutation) AddYear(i int) {
+	if m.addyear != nil {
+		*m.addyear += i
+	} else {
+		m.addyear = &i
+	}
+}
+
+// AddedYear returns the value that was added to the "year" field in this mutation.
+func (m *CourseMonthStatMutation) AddedYear() (r int, exists bool) {
+	v := m.addyear
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetYear resets all changes to the "year" field.
+func (m *CourseMonthStatMutation) ResetYear() {
+	m.year = nil
+	m.addyear = nil
+}
+
+// SetMonth sets the "month" field.
+func (m *CourseMonthStatMutation) SetMonth(i int) {
+	m.month = &i
+	m.addmonth = nil
+}
+
+// Month returns the value of the "month" field in the mutation.
+func (m *CourseMonthStatMutation) Month() (r int, exists bool) {
+	v := m.month
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMonth returns the old "month" field's value of the CourseMonthStat entity.
+// If the CourseMonthStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMonthStatMutation) OldMonth(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMonth is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMonth requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMonth: %w", err)
+	}
+	return oldValue.Month, nil
+}
+
+// AddMonth adds i to the "month" field.
+func (m *CourseMonthStatMutation) AddMonth(i int) {
+	if m.addmonth != nil {
+		*m.addmonth += i
+	} else {
+		m.addmonth = &i
+	}
+}
+
+// AddedMonth returns the value that was added to the "month" field in this mutation.
+func (m *CourseMonthStatMutation) AddedMonth() (r int, exists bool) {
+	v := m.addmonth
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetMonth resets all changes to the "month" field.
+func (m *CourseMonthStatMutation) ResetMonth() {
+	m.month = nil
+	m.addmonth = nil
+}
+
+// SetSubscriptionLessonsHeld sets the "subscription_lessons_held" field.
+func (m *CourseMonthStatMutation) SetSubscriptionLessonsHeld(f float64) {
+	m.subscription_lessons_held = &f
+	m.addsubscription_lessons_held = nil
+}
+
+// SubscriptionLessonsHeld returns the value of the "subscription_lessons_held" field in the mutation.
+func (m *CourseMonthStatMutation) SubscriptionLessonsHeld() (r float64, exists bool) {
+	v := m.subscription_lessons_held
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSubscriptionLessonsHeld returns the old "subscription_lessons_held" field's value of the CourseMonthStat entity.
+// If the CourseMonthStat object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMonthStatMutation) OldSubscriptionLessonsHeld(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSubscriptionLessonsHeld is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSubscriptionLessonsHeld requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSubscriptionLessonsHeld: %w", err)
+	}
+	return oldValue.SubscriptionLessonsHeld, nil
+}
+
+// AddSubscriptionLessonsHeld adds f to the "subscription_lessons_held" field.
+func (m *CourseMonthStatMutation) AddSubscriptionLessonsHeld(f float64) {
+	if m.addsubscription_lessons_held != nil {
+		*m.addsubscription_lessons_held += f
+	} else {
+		m.addsubscription_lessons_held = &f
+	}
+}
+
+// AddedSubscriptionLessonsHeld returns the value that was added to the "subscription_lessons_held" field in this mutation.
+func (m *CourseMonthStatMutation) AddedSubscriptionLessonsHeld() (r float64, exists bool) {
+	v := m.addsubscription_lessons_held
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSubscriptionLessonsHeld resets all changes to the "subscription_lessons_held" field.
+func (m *CourseMonthStatMutation) ResetSubscriptionLessonsHeld() {
+	m.subscription_lessons_held = nil
+	m.addsubscription_lessons_held = nil
+}
+
+// ClearCourse clears the "course" edge to the Course entity.
+func (m *CourseMonthStatMutation) ClearCourse() {
+	m.clearedcourse = true
+	m.clearedFields[coursemonthstat.FieldCourseID] = struct{}{}
+}
+
+// CourseCleared reports if the "course" edge to the Course entity was cleared.
+func (m *CourseMonthStatMutation) CourseCleared() bool {
+	return m.clearedcourse
+}
+
+// CourseIDs returns the "course" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// CourseID instead. It exists only for internal usage by the builders.
+func (m *CourseMonthStatMutation) CourseIDs() (ids []int) {
+	if id := m.course; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetCourse resets all changes to the "course" edge.
+func (m *CourseMonthStatMutation) ResetCourse() {
+	m.course = nil
+	m.clearedcourse = false
+}
+
+// Where appends a list predicates to the CourseMonthStatMutation builder.
+func (m *CourseMonthStatMutation) Where(ps ...predicate.CourseMonthStat) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the CourseMonthStatMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *CourseMonthStatMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.CourseMonthStat, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *CourseMonthStatMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *CourseMonthStatMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (CourseMonthStat).
+func (m *CourseMonthStatMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *CourseMonthStatMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.course != nil {
+		fields = append(fields, coursemonthstat.FieldCourseID)
+	}
+	if m.year != nil {
+		fields = append(fields, coursemonthstat.FieldYear)
+	}
+	if m.month != nil {
+		fields = append(fields, coursemonthstat.FieldMonth)
+	}
+	if m.subscription_lessons_held != nil {
+		fields = append(fields, coursemonthstat.FieldSubscriptionLessonsHeld)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *CourseMonthStatMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case coursemonthstat.FieldCourseID:
+		return m.CourseID()
+	case coursemonthstat.FieldYear:
+		return m.Year()
+	case coursemonthstat.FieldMonth:
+		return m.Month()
+	case coursemonthstat.FieldSubscriptionLessonsHeld:
+		return m.SubscriptionLessonsHeld()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *CourseMonthStatMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case coursemonthstat.FieldCourseID:
+		return m.OldCourseID(ctx)
+	case coursemonthstat.FieldYear:
+		return m.OldYear(ctx)
+	case coursemonthstat.FieldMonth:
+		return m.OldMonth(ctx)
+	case coursemonthstat.FieldSubscriptionLessonsHeld:
+		return m.OldSubscriptionLessonsHeld(ctx)
+	}
+	return nil, fmt.Errorf("unknown CourseMonthStat field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CourseMonthStatMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case coursemonthstat.FieldCourseID:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCourseID(v)
+		return nil
+	case coursemonthstat.FieldYear:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetYear(v)
+		return nil
+	case coursemonthstat.FieldMonth:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMonth(v)
+		return nil
+	case coursemonthstat.FieldSubscriptionLessonsHeld:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSubscriptionLessonsHeld(v)
+		return nil
+	}
+	return fmt.Errorf("unknown CourseMonthStat field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *CourseMonthStatMutation) AddedFields() []string {
+	var fields []string
+	if m.addyear != nil {
+		fields = append(fields, coursemonthstat.FieldYear)
+	}
+	if m.addmonth != nil {
+		fields = append(fields, coursemonthstat.FieldMonth)
+	}
+	if m.addsubscription_lessons_held != nil {
+		fields = append(fields, coursemonthstat.FieldSubscriptionLessonsHeld)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *CourseMonthStatMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case coursemonthstat.FieldYear:
+		return m.AddedYear()
+	case coursemonthstat.FieldMonth:
+		return m.AddedMonth()
+	case coursemonthstat.FieldSubscriptionLessonsHeld:
+		return m.AddedSubscriptionLessonsHeld()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *CourseMonthStatMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case coursemonthstat.FieldYear:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddYear(v)
+		return nil
+	case coursemonthstat.FieldMonth:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddMonth(v)
+		return nil
+	case coursemonthstat.FieldSubscriptionLessonsHeld:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSubscriptionLessonsHeld(v)
+		return nil
+	}
+	return fmt.Errorf("unknown CourseMonthStat numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *CourseMonthStatMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *CourseMonthStatMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *CourseMonthStatMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown CourseMonthStat nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *CourseMonthStatMutation) ResetField(name string) error {
+	switch name {
+	case coursemonthstat.FieldCourseID:
+		m.ResetCourseID()
+		return nil
+	case coursemonthstat.FieldYear:
+		m.ResetYear()
+		return nil
+	case coursemonthstat.FieldMonth:
+		m.ResetMonth()
+		return nil
+	case coursemonthstat.FieldSubscriptionLessonsHeld:
+		m.ResetSubscriptionLessonsHeld()
+		return nil
+	}
+	return fmt.Errorf("unknown CourseMonthStat field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *CourseMonthStatMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.course != nil {
+		edges = append(edges, coursemonthstat.EdgeCourse)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *CourseMonthStatMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case coursemonthstat.EdgeCourse:
+		if id := m.course; id != nil {
+			return []ent.Value{*id}
+		}
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *CourseMonthStatMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *CourseMonthStatMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *CourseMonthStatMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedcourse {
+		edges = append(edges, coursemonthstat.EdgeCourse)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *CourseMonthStatMutation) EdgeCleared(name string) bool {
+	switch name {
+	case coursemonthstat.EdgeCourse:
+		return m.clearedcourse
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *CourseMonthStatMutation) ClearEdge(name string) error {
+	switch name {
+	case coursemonthstat.EdgeCourse:
+		m.ClearCourse()
+		return nil
+	}
+	return fmt.Errorf("unknown CourseMonthStat unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *CourseMonthStatMutation) ResetEdge(name string) error {
+	switch name {
+	case coursemonthstat.EdgeCourse:
+		m.ResetCourse()
+		return nil
+	}
+	return fmt.Errorf("unknown CourseMonthStat edge %s", name)
 }
 
 // EnrollmentMutation represents an operation that mutates the Enrollment nodes in the graph.
 type EnrollmentMutation struct {
 	config
-	op                   Op
-	typ                  string
-	id                   *int
-	billing_mode         *enrollment.BillingMode
-	discount_pct         *float64
-	adddiscount_pct      *float64
-	note                 *string
-	clearedFields        map[string]struct{}
-	student              *int
-	clearedstudent       bool
-	course               *int
-	clearedcourse        bool
-	invoice_lines        map[int]struct{}
-	removedinvoice_lines map[int]struct{}
-	clearedinvoice_lines bool
-	done                 bool
-	oldValue             func(context.Context) (*Enrollment, error)
-	predicates           []predicate.Enrollment
+	op                           Op
+	typ                          string
+	id                           *int
+	billing_mode                 *enrollment.BillingMode
+	discount_pct                 *float64
+	adddiscount_pct              *float64
+	subscription_discount_pct    *float64
+	addsubscription_discount_pct *float64
+	note                         *string
+	clearedFields                map[string]struct{}
+	student                      *int
+	clearedstudent               bool
+	course                       *int
+	clearedcourse                bool
+	invoice_lines                map[int]struct{}
+	removedinvoice_lines         map[int]struct{}
+	clearedinvoice_lines         bool
+	done                         bool
+	oldValue                     func(context.Context) (*Enrollment, error)
+	predicates                   []predicate.Enrollment
 }
 
 var _ ent.Mutation = (*EnrollmentMutation)(nil)
@@ -1922,6 +2653,62 @@ func (m *EnrollmentMutation) ResetDiscountPct() {
 	m.adddiscount_pct = nil
 }
 
+// SetSubscriptionDiscountPct sets the "subscription_discount_pct" field.
+func (m *EnrollmentMutation) SetSubscriptionDiscountPct(f float64) {
+	m.subscription_discount_pct = &f
+	m.addsubscription_discount_pct = nil
+}
+
+// SubscriptionDiscountPct returns the value of the "subscription_discount_pct" field in the mutation.
+func (m *EnrollmentMutation) SubscriptionDiscountPct() (r float64, exists bool) {
+	v := m.subscription_discount_pct
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSubscriptionDiscountPct returns the old "subscription_discount_pct" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldSubscriptionDiscountPct(ctx context.Context) (v float64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSubscriptionDiscountPct is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSubscriptionDiscountPct requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSubscriptionDiscountPct: %w", err)
+	}
+	return oldValue.SubscriptionDiscountPct, nil
+}
+
+// AddSubscriptionDiscountPct adds f to the "subscription_discount_pct" field.
+func (m *EnrollmentMutation) AddSubscriptionDiscountPct(f float64) {
+	if m.addsubscription_discount_pct != nil {
+		*m.addsubscription_discount_pct += f
+	} else {
+		m.addsubscription_discount_pct = &f
+	}
+}
+
+// AddedSubscriptionDiscountPct returns the value that was added to the "subscription_discount_pct" field in this mutation.
+func (m *EnrollmentMutation) AddedSubscriptionDiscountPct() (r float64, exists bool) {
+	v := m.addsubscription_discount_pct
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSubscriptionDiscountPct resets all changes to the "subscription_discount_pct" field.
+func (m *EnrollmentMutation) ResetSubscriptionDiscountPct() {
+	m.subscription_discount_pct = nil
+	m.addsubscription_discount_pct = nil
+}
+
 // SetNote sets the "note" field.
 func (m *EnrollmentMutation) SetNote(s string) {
 	m.note = &s
@@ -2100,7 +2887,7 @@ func (m *EnrollmentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *EnrollmentMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 6)
 	if m.student != nil {
 		fields = append(fields, enrollment.FieldStudentID)
 	}
@@ -2112,6 +2899,9 @@ func (m *EnrollmentMutation) Fields() []string {
 	}
 	if m.discount_pct != nil {
 		fields = append(fields, enrollment.FieldDiscountPct)
+	}
+	if m.subscription_discount_pct != nil {
+		fields = append(fields, enrollment.FieldSubscriptionDiscountPct)
 	}
 	if m.note != nil {
 		fields = append(fields, enrollment.FieldNote)
@@ -2132,6 +2922,8 @@ func (m *EnrollmentMutation) Field(name string) (ent.Value, bool) {
 		return m.BillingMode()
 	case enrollment.FieldDiscountPct:
 		return m.DiscountPct()
+	case enrollment.FieldSubscriptionDiscountPct:
+		return m.SubscriptionDiscountPct()
 	case enrollment.FieldNote:
 		return m.Note()
 	}
@@ -2151,6 +2943,8 @@ func (m *EnrollmentMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldBillingMode(ctx)
 	case enrollment.FieldDiscountPct:
 		return m.OldDiscountPct(ctx)
+	case enrollment.FieldSubscriptionDiscountPct:
+		return m.OldSubscriptionDiscountPct(ctx)
 	case enrollment.FieldNote:
 		return m.OldNote(ctx)
 	}
@@ -2190,6 +2984,13 @@ func (m *EnrollmentMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDiscountPct(v)
 		return nil
+	case enrollment.FieldSubscriptionDiscountPct:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSubscriptionDiscountPct(v)
+		return nil
 	case enrollment.FieldNote:
 		v, ok := value.(string)
 		if !ok {
@@ -2208,6 +3009,9 @@ func (m *EnrollmentMutation) AddedFields() []string {
 	if m.adddiscount_pct != nil {
 		fields = append(fields, enrollment.FieldDiscountPct)
 	}
+	if m.addsubscription_discount_pct != nil {
+		fields = append(fields, enrollment.FieldSubscriptionDiscountPct)
+	}
 	return fields
 }
 
@@ -2218,6 +3022,8 @@ func (m *EnrollmentMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case enrollment.FieldDiscountPct:
 		return m.AddedDiscountPct()
+	case enrollment.FieldSubscriptionDiscountPct:
+		return m.AddedSubscriptionDiscountPct()
 	}
 	return nil, false
 }
@@ -2233,6 +3039,13 @@ func (m *EnrollmentMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddDiscountPct(v)
+		return nil
+	case enrollment.FieldSubscriptionDiscountPct:
+		v, ok := value.(float64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSubscriptionDiscountPct(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Enrollment numeric field %s", name)
@@ -2272,6 +3085,9 @@ func (m *EnrollmentMutation) ResetField(name string) error {
 		return nil
 	case enrollment.FieldDiscountPct:
 		m.ResetDiscountPct()
+		return nil
+	case enrollment.FieldSubscriptionDiscountPct:
+		m.ResetSubscriptionDiscountPct()
 		return nil
 	case enrollment.FieldNote:
 		m.ResetNote()

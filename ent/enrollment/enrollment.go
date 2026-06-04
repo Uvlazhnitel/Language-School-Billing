@@ -22,6 +22,8 @@ const (
 	FieldBillingMode = "billing_mode"
 	// FieldDiscountPct holds the string denoting the discount_pct field in the database.
 	FieldDiscountPct = "discount_pct"
+	// FieldSubscriptionDiscountPct holds the string denoting the subscription_discount_pct field in the database.
+	FieldSubscriptionDiscountPct = "subscription_discount_pct"
 	// FieldNote holds the string denoting the note field in the database.
 	FieldNote = "note"
 	// EdgeStudent holds the string denoting the student edge name in mutations.
@@ -62,6 +64,7 @@ var Columns = []string{
 	FieldCourseID,
 	FieldBillingMode,
 	FieldDiscountPct,
+	FieldSubscriptionDiscountPct,
 	FieldNote,
 }
 
@@ -78,6 +81,8 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultDiscountPct holds the default value on creation for the "discount_pct" field.
 	DefaultDiscountPct float64
+	// DefaultSubscriptionDiscountPct holds the default value on creation for the "subscription_discount_pct" field.
+	DefaultSubscriptionDiscountPct float64
 	// DefaultNote holds the default value on creation for the "note" field.
 	DefaultNote string
 )
@@ -131,6 +136,11 @@ func ByBillingMode(opts ...sql.OrderTermOption) OrderOption {
 // ByDiscountPct orders the results by the discount_pct field.
 func ByDiscountPct(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDiscountPct, opts...).ToFunc()
+}
+
+// BySubscriptionDiscountPct orders the results by the subscription_discount_pct field.
+func BySubscriptionDiscountPct(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSubscriptionDiscountPct, opts...).ToFunc()
 }
 
 // ByNote orders the results by the note field.

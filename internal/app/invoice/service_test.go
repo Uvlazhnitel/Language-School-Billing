@@ -51,10 +51,19 @@ func TestGenerateDraftsSubscriptionWithoutLessonsDoesNotAddMaterials(t *testing.
 		SetCourseID(crs.ID).
 		SetBillingMode(enrollment.BillingModeSubscription).
 		SetDiscountPct(0).
+		SetSubscriptionDiscountPct(0).
 		SetNote("").
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("Enrollment.Create: %v", err)
+	}
+	if _, err := client.CourseMonthStat.Create().
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(4).
+		SetSubscriptionLessonsHeld(3).
+		Save(ctx); err != nil {
+		t.Fatalf("CourseMonthStat.Create: %v", err)
 	}
 
 	assertDraft := func(expectedStatus string, expectedTotal float64) {

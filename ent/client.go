@@ -13,6 +13,7 @@ import (
 
 	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
+	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
@@ -38,6 +39,8 @@ type Client struct {
 	AttendanceMonth *AttendanceMonthClient
 	// Course is the client for interacting with the Course builders.
 	Course *CourseClient
+	// CourseMonthStat is the client for interacting with the CourseMonthStat builders.
+	CourseMonthStat *CourseMonthStatClient
 	// Enrollment is the client for interacting with the Enrollment builders.
 	Enrollment *EnrollmentClient
 	// Invoice is the client for interacting with the Invoice builders.
@@ -69,6 +72,7 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.AttendanceMonth = NewAttendanceMonthClient(c.config)
 	c.Course = NewCourseClient(c.config)
+	c.CourseMonthStat = NewCourseMonthStatClient(c.config)
 	c.Enrollment = NewEnrollmentClient(c.config)
 	c.Invoice = NewInvoiceClient(c.config)
 	c.InvoiceLine = NewInvoiceLineClient(c.config)
@@ -172,6 +176,7 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		config:          cfg,
 		AttendanceMonth: NewAttendanceMonthClient(cfg),
 		Course:          NewCourseClient(cfg),
+		CourseMonthStat: NewCourseMonthStatClient(cfg),
 		Enrollment:      NewEnrollmentClient(cfg),
 		Invoice:         NewInvoiceClient(cfg),
 		InvoiceLine:     NewInvoiceLineClient(cfg),
@@ -202,6 +207,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		config:          cfg,
 		AttendanceMonth: NewAttendanceMonthClient(cfg),
 		Course:          NewCourseClient(cfg),
+		CourseMonthStat: NewCourseMonthStatClient(cfg),
 		Enrollment:      NewEnrollmentClient(cfg),
 		Invoice:         NewInvoiceClient(cfg),
 		InvoiceLine:     NewInvoiceLineClient(cfg),
@@ -240,8 +246,9 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.AttendanceMonth, c.Course, c.Enrollment, c.Invoice, c.InvoiceLine, c.Payment,
-		c.Settings, c.Student, c.Teacher, c.User, c.WebSession,
+		c.AttendanceMonth, c.Course, c.CourseMonthStat, c.Enrollment, c.Invoice,
+		c.InvoiceLine, c.Payment, c.Settings, c.Student, c.Teacher, c.User,
+		c.WebSession,
 	} {
 		n.Use(hooks...)
 	}
@@ -251,8 +258,9 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.AttendanceMonth, c.Course, c.Enrollment, c.Invoice, c.InvoiceLine, c.Payment,
-		c.Settings, c.Student, c.Teacher, c.User, c.WebSession,
+		c.AttendanceMonth, c.Course, c.CourseMonthStat, c.Enrollment, c.Invoice,
+		c.InvoiceLine, c.Payment, c.Settings, c.Student, c.Teacher, c.User,
+		c.WebSession,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -265,6 +273,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.AttendanceMonth.mutate(ctx, m)
 	case *CourseMutation:
 		return c.Course.mutate(ctx, m)
+	case *CourseMonthStatMutation:
+		return c.CourseMonthStat.mutate(ctx, m)
 	case *EnrollmentMutation:
 		return c.Enrollment.mutate(ctx, m)
 	case *InvoiceMutation:
@@ -561,6 +571,22 @@ func (c *CourseClient) QueryEnrollments(_m *Course) *EnrollmentQuery {
 	return query
 }
 
+// QueryMonthStats queries the month_stats edge of a Course.
+func (c *CourseClient) QueryMonthStats(_m *Course) *CourseMonthStatQuery {
+	query := (&CourseMonthStatClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(course.Table, course.FieldID, id),
+			sqlgraph.To(coursemonthstat.Table, coursemonthstat.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, course.MonthStatsTable, course.MonthStatsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *CourseClient) Hooks() []Hook {
 	return c.hooks.Course
@@ -583,6 +609,155 @@ func (c *CourseClient) mutate(ctx context.Context, m *CourseMutation) (Value, er
 		return (&CourseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Course mutation op: %q", m.Op())
+	}
+}
+
+// CourseMonthStatClient is a client for the CourseMonthStat schema.
+type CourseMonthStatClient struct {
+	config
+}
+
+// NewCourseMonthStatClient returns a client for the CourseMonthStat from the given config.
+func NewCourseMonthStatClient(c config) *CourseMonthStatClient {
+	return &CourseMonthStatClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `coursemonthstat.Hooks(f(g(h())))`.
+func (c *CourseMonthStatClient) Use(hooks ...Hook) {
+	c.hooks.CourseMonthStat = append(c.hooks.CourseMonthStat, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `coursemonthstat.Intercept(f(g(h())))`.
+func (c *CourseMonthStatClient) Intercept(interceptors ...Interceptor) {
+	c.inters.CourseMonthStat = append(c.inters.CourseMonthStat, interceptors...)
+}
+
+// Create returns a builder for creating a CourseMonthStat entity.
+func (c *CourseMonthStatClient) Create() *CourseMonthStatCreate {
+	mutation := newCourseMonthStatMutation(c.config, OpCreate)
+	return &CourseMonthStatCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of CourseMonthStat entities.
+func (c *CourseMonthStatClient) CreateBulk(builders ...*CourseMonthStatCreate) *CourseMonthStatCreateBulk {
+	return &CourseMonthStatCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *CourseMonthStatClient) MapCreateBulk(slice any, setFunc func(*CourseMonthStatCreate, int)) *CourseMonthStatCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &CourseMonthStatCreateBulk{err: fmt.Errorf("calling to CourseMonthStatClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*CourseMonthStatCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &CourseMonthStatCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for CourseMonthStat.
+func (c *CourseMonthStatClient) Update() *CourseMonthStatUpdate {
+	mutation := newCourseMonthStatMutation(c.config, OpUpdate)
+	return &CourseMonthStatUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *CourseMonthStatClient) UpdateOne(_m *CourseMonthStat) *CourseMonthStatUpdateOne {
+	mutation := newCourseMonthStatMutation(c.config, OpUpdateOne, withCourseMonthStat(_m))
+	return &CourseMonthStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *CourseMonthStatClient) UpdateOneID(id int) *CourseMonthStatUpdateOne {
+	mutation := newCourseMonthStatMutation(c.config, OpUpdateOne, withCourseMonthStatID(id))
+	return &CourseMonthStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for CourseMonthStat.
+func (c *CourseMonthStatClient) Delete() *CourseMonthStatDelete {
+	mutation := newCourseMonthStatMutation(c.config, OpDelete)
+	return &CourseMonthStatDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *CourseMonthStatClient) DeleteOne(_m *CourseMonthStat) *CourseMonthStatDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *CourseMonthStatClient) DeleteOneID(id int) *CourseMonthStatDeleteOne {
+	builder := c.Delete().Where(coursemonthstat.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &CourseMonthStatDeleteOne{builder}
+}
+
+// Query returns a query builder for CourseMonthStat.
+func (c *CourseMonthStatClient) Query() *CourseMonthStatQuery {
+	return &CourseMonthStatQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeCourseMonthStat},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a CourseMonthStat entity by its id.
+func (c *CourseMonthStatClient) Get(ctx context.Context, id int) (*CourseMonthStat, error) {
+	return c.Query().Where(coursemonthstat.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *CourseMonthStatClient) GetX(ctx context.Context, id int) *CourseMonthStat {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryCourse queries the course edge of a CourseMonthStat.
+func (c *CourseMonthStatClient) QueryCourse(_m *CourseMonthStat) *CourseQuery {
+	query := (&CourseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(coursemonthstat.Table, coursemonthstat.FieldID, id),
+			sqlgraph.To(course.Table, course.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, coursemonthstat.CourseTable, coursemonthstat.CourseColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *CourseMonthStatClient) Hooks() []Hook {
+	return c.hooks.CourseMonthStat
+}
+
+// Interceptors returns the client interceptors.
+func (c *CourseMonthStatClient) Interceptors() []Interceptor {
+	return c.inters.CourseMonthStat
+}
+
+func (c *CourseMonthStatClient) mutate(ctx context.Context, m *CourseMonthStatMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&CourseMonthStatCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&CourseMonthStatUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&CourseMonthStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&CourseMonthStatDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown CourseMonthStat mutation op: %q", m.Op())
 	}
 }
 
@@ -2042,11 +2217,11 @@ func (c *WebSessionClient) mutate(ctx context.Context, m *WebSessionMutation) (V
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		AttendanceMonth, Course, Enrollment, Invoice, InvoiceLine, Payment, Settings,
-		Student, Teacher, User, WebSession []ent.Hook
+		AttendanceMonth, Course, CourseMonthStat, Enrollment, Invoice, InvoiceLine,
+		Payment, Settings, Student, Teacher, User, WebSession []ent.Hook
 	}
 	inters struct {
-		AttendanceMonth, Course, Enrollment, Invoice, InvoiceLine, Payment, Settings,
-		Student, Teacher, User, WebSession []ent.Interceptor
+		AttendanceMonth, Course, CourseMonthStat, Enrollment, Invoice, InvoiceLine,
+		Payment, Settings, Student, Teacher, User, WebSession []ent.Interceptor
 	}
 )

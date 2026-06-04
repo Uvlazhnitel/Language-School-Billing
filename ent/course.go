@@ -43,9 +43,11 @@ type CourseEdges struct {
 	Teacher *Teacher `json:"teacher,omitempty"`
 	// Enrollments holds the value of the enrollments edge.
 	Enrollments []*Enrollment `json:"enrollments,omitempty"`
+	// MonthStats holds the value of the month_stats edge.
+	MonthStats []*CourseMonthStat `json:"month_stats,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // TeacherOrErr returns the Teacher value or an error if the edge
@@ -66,6 +68,15 @@ func (e CourseEdges) EnrollmentsOrErr() ([]*Enrollment, error) {
 		return e.Enrollments, nil
 	}
 	return nil, &NotLoadedError{edge: "enrollments"}
+}
+
+// MonthStatsOrErr returns the MonthStats value or an error if the edge
+// was not loaded in eager-loading.
+func (e CourseEdges) MonthStatsOrErr() ([]*CourseMonthStat, error) {
+	if e.loadedTypes[2] {
+		return e.MonthStats, nil
+	}
+	return nil, &NotLoadedError{edge: "month_stats"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -166,6 +177,11 @@ func (_m *Course) QueryTeacher() *TeacherQuery {
 // QueryEnrollments queries the "enrollments" edge of the Course entity.
 func (_m *Course) QueryEnrollments() *EnrollmentQuery {
 	return NewCourseClient(_m.config).QueryEnrollments(_m)
+}
+
+// QueryMonthStats queries the "month_stats" edge of the Course entity.
+func (_m *Course) QueryMonthStats() *CourseMonthStatQuery {
+	return NewCourseClient(_m.config).QueryMonthStats(_m)
 }
 
 // Update returns a builder for updating this Course.

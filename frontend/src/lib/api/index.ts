@@ -6,6 +6,7 @@ export type {
   BillingMode,
   BootstrapResult,
   CourseDTO,
+  CourseMonthSubscriptionDTO,
   CourseType,
   DebtInvoiceDTO,
   DebtorDTO,

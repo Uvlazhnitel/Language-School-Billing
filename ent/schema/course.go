@@ -27,5 +27,6 @@ func (Course) Edges() []ent.Edge {
 			Field("teacher_id").
 			Unique(),
 		edge.To("enrollments", Enrollment.Type),
+		edge.To("month_stats", CourseMonthStat.Type),
 	}
 }

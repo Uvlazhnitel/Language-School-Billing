@@ -15,6 +15,7 @@ import (
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
+	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
@@ -78,7 +79,15 @@ type EnrollmentDTO struct {
 	TeacherName string  `json:"teacherName"` // Teacher name from the linked course
 	BillingMode string  `json:"billingMode"` // Billing mode: "subscription" or "per_lesson"
 	DiscountPct float64 `json:"discountPct"` // Discount percentage (0-100)
+	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"` // Base subscription discount percentage (0-100)
 	Note        string  `json:"note"`        // Optional notes about the enrollment
+}
+
+type CourseMonthSubscriptionDTO struct {
+	CourseID    int     `json:"courseId"`
+	Year        int     `json:"year"`
+	Month       int     `json:"month"`
+	LessonsHeld float64 `json:"lessonsHeld"`
 }
 
 // TeacherDTO represents a teacher in the frontend.
@@ -229,6 +238,7 @@ func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
 		CourseID:    e.CourseID,
 		BillingMode: string(e.BillingMode),
 		DiscountPct: e.DiscountPct,
+		SubscriptionDiscountPct: e.SubscriptionDiscountPct,
 		Note:        e.Note,
 	}
 	if e.Edges.Student != nil {
@@ -747,7 +757,7 @@ func (a *App) EnrollmentList(studentID *int, courseID *int) ([]EnrollmentDTO, er
 // The billingMode determines how the student is billed: "subscription" or "per_lesson".
 // The discountPct applies a percentage discount to the course prices (0-100).
 // To prevent duplicates, this method rejects enrollments if the same student-course pair already exists.
-func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, discountPct float64, note string) (*EnrollmentDTO, error) {
+func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, discountPct, subscriptionDiscountPct float64, note string) (*EnrollmentDTO, error) {
 	ctx := a.ctx
 
 	if studentID <= 0 || courseID <= 0 {
@@ -758,6 +768,9 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 		return nil, err
 	}
 	if err := validateDiscountPct(discountPct); err != nil {
+		return nil, err
+	}
+	if err := validateDiscountPct(subscriptionDiscountPct); err != nil {
 		return nil, err
 	}
 
@@ -792,6 +805,7 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 		SetCourseID(courseID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetDiscountPct(discountPct).
+		SetSubscriptionDiscountPct(subscriptionDiscountPct).
 		SetNote(sanitizeInput(note)).
 		Save(ctx)
 	if err != nil {
@@ -818,7 +832,7 @@ func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, disc
 // The billingMode must be "subscription" or "per_lesson".
 // The discountPct must be between 0 and 100.
 // All user inputs are sanitized to prevent XSS attacks.
-func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct float64, note string) (*EnrollmentDTO, error) {
+func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct, subscriptionDiscountPct float64, note string) (*EnrollmentDTO, error) {
 	ctx := a.ctx
 
 	billingMode = strings.TrimSpace(billingMode)
@@ -828,10 +842,14 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct
 	if err := validateDiscountPct(discountPct); err != nil {
 		return nil, err
 	}
+	if err := validateDiscountPct(subscriptionDiscountPct); err != nil {
+		return nil, err
+	}
 
 	_, err := a.db.Ent.Enrollment.UpdateOneID(enrollmentID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetDiscountPct(discountPct).
+		SetSubscriptionDiscountPct(subscriptionDiscountPct).
 		SetNote(sanitizeInput(note)).
 		Save(ctx)
 	if err != nil {
@@ -852,4 +870,83 @@ func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct
 
 	dto := toEnrollmentDTO(e2)
 	return &dto, nil
+}
+
+func (a *App) CourseMonthSubscriptionList(year, month int, courseID *int) ([]CourseMonthSubscriptionDTO, error) {
+	ctx := a.ctx
+	q := a.db.Ent.CourseMonthStat.Query().
+		Where(coursemonthstat.YearEQ(year), coursemonthstat.MonthEQ(month))
+	if courseID != nil && *courseID > 0 {
+		q = q.Where(coursemonthstat.CourseIDEQ(*courseID))
+	}
+	items, err := q.Order(ent.Asc(coursemonthstat.FieldCourseID)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]CourseMonthSubscriptionDTO, 0, len(items))
+	for _, item := range items {
+		out = append(out, CourseMonthSubscriptionDTO{
+			CourseID:    item.CourseID,
+			Year:        item.Year,
+			Month:       item.Month,
+			LessonsHeld: utils.Round2(item.SubscriptionLessonsHeld),
+		})
+	}
+	return out, nil
+}
+
+func (a *App) CourseMonthSubscriptionUpsert(courseID, year, month int, lessonsHeld float64) (*CourseMonthSubscriptionDTO, error) {
+	ctx := a.ctx
+	if courseID <= 0 {
+		return nil, errors.New("courseID must be > 0")
+	}
+	if year <= 0 {
+		return nil, errors.New("year must be > 0")
+	}
+	if month < 1 || month > 12 {
+		return nil, errors.New("month must be between 1 and 12")
+	}
+	if lessonsHeld < 0 {
+		return nil, errors.New("lessonsHeld must be >= 0")
+	}
+	lessonsHeld = utils.Round2(lessonsHeld)
+	if _, err := a.db.Ent.Course.Get(ctx, courseID); err != nil {
+		return nil, err
+	}
+	item, err := a.db.Ent.CourseMonthStat.Query().
+		Where(
+			coursemonthstat.CourseIDEQ(courseID),
+			coursemonthstat.YearEQ(year),
+			coursemonthstat.MonthEQ(month),
+		).Only(ctx)
+	if err == nil {
+		item, err = item.Update().SetSubscriptionLessonsHeld(lessonsHeld).Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return &CourseMonthSubscriptionDTO{
+			CourseID:    item.CourseID,
+			Year:        item.Year,
+			Month:       item.Month,
+			LessonsHeld: utils.Round2(item.SubscriptionLessonsHeld),
+		}, nil
+	}
+	if !ent.IsNotFound(err) {
+		return nil, err
+	}
+	item, err = a.db.Ent.CourseMonthStat.Create().
+		SetCourseID(courseID).
+		SetYear(year).
+		SetMonth(month).
+		SetSubscriptionLessonsHeld(lessonsHeld).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &CourseMonthSubscriptionDTO{
+		CourseID:    item.CourseID,
+		Year:        item.Year,
+		Month:       item.Month,
+		LessonsHeld: utils.Round2(item.SubscriptionLessonsHeld),
+	}, nil
 }

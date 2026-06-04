@@ -93,6 +93,27 @@ func (_u *EnrollmentUpdate) AddDiscountPct(v float64) *EnrollmentUpdate {
 	return _u
 }
 
+// SetSubscriptionDiscountPct sets the "subscription_discount_pct" field.
+func (_u *EnrollmentUpdate) SetSubscriptionDiscountPct(v float64) *EnrollmentUpdate {
+	_u.mutation.ResetSubscriptionDiscountPct()
+	_u.mutation.SetSubscriptionDiscountPct(v)
+	return _u
+}
+
+// SetNillableSubscriptionDiscountPct sets the "subscription_discount_pct" field if the given value is not nil.
+func (_u *EnrollmentUpdate) SetNillableSubscriptionDiscountPct(v *float64) *EnrollmentUpdate {
+	if v != nil {
+		_u.SetSubscriptionDiscountPct(*v)
+	}
+	return _u
+}
+
+// AddSubscriptionDiscountPct adds value to the "subscription_discount_pct" field.
+func (_u *EnrollmentUpdate) AddSubscriptionDiscountPct(v float64) *EnrollmentUpdate {
+	_u.mutation.AddSubscriptionDiscountPct(v)
+	return _u
+}
+
 // SetNote sets the "note" field.
 func (_u *EnrollmentUpdate) SetNote(v string) *EnrollmentUpdate {
 	_u.mutation.SetNote(v)
@@ -233,6 +254,12 @@ func (_u *EnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if value, ok := _u.mutation.AddedDiscountPct(); ok {
 		_spec.AddField(enrollment.FieldDiscountPct, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.SubscriptionDiscountPct(); ok {
+		_spec.SetField(enrollment.FieldSubscriptionDiscountPct, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedSubscriptionDiscountPct(); ok {
+		_spec.AddField(enrollment.FieldSubscriptionDiscountPct, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(enrollment.FieldNote, field.TypeString, value)
@@ -423,6 +450,27 @@ func (_u *EnrollmentUpdateOne) AddDiscountPct(v float64) *EnrollmentUpdateOne {
 	return _u
 }
 
+// SetSubscriptionDiscountPct sets the "subscription_discount_pct" field.
+func (_u *EnrollmentUpdateOne) SetSubscriptionDiscountPct(v float64) *EnrollmentUpdateOne {
+	_u.mutation.ResetSubscriptionDiscountPct()
+	_u.mutation.SetSubscriptionDiscountPct(v)
+	return _u
+}
+
+// SetNillableSubscriptionDiscountPct sets the "subscription_discount_pct" field if the given value is not nil.
+func (_u *EnrollmentUpdateOne) SetNillableSubscriptionDiscountPct(v *float64) *EnrollmentUpdateOne {
+	if v != nil {
+		_u.SetSubscriptionDiscountPct(*v)
+	}
+	return _u
+}
+
+// AddSubscriptionDiscountPct adds value to the "subscription_discount_pct" field.
+func (_u *EnrollmentUpdateOne) AddSubscriptionDiscountPct(v float64) *EnrollmentUpdateOne {
+	_u.mutation.AddSubscriptionDiscountPct(v)
+	return _u
+}
+
 // SetNote sets the "note" field.
 func (_u *EnrollmentUpdateOne) SetNote(v string) *EnrollmentUpdateOne {
 	_u.mutation.SetNote(v)
@@ -593,6 +641,12 @@ func (_u *EnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Enrollment, 
 	}
 	if value, ok := _u.mutation.AddedDiscountPct(); ok {
 		_spec.AddField(enrollment.FieldDiscountPct, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.SubscriptionDiscountPct(); ok {
+		_spec.SetField(enrollment.FieldSubscriptionDiscountPct, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AddedSubscriptionDiscountPct(); ok {
+		_spec.AddField(enrollment.FieldSubscriptionDiscountPct, field.TypeFloat64, value)
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(enrollment.FieldNote, field.TypeString, value)

@@ -11,6 +11,7 @@ import (
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
+	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
@@ -152,8 +153,16 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 }
 
 // buildSubscriptionLine creates an invoice line for subscription billing
-func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment, y, m int, subscriptionPrice float64) (*ent.InvoiceLineCreate, float64) {
-	amount := utils.Round2(subscriptionPrice)
+func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPrice float64, lessonsHeld float64) (*ent.InvoiceLineCreate, float64) {
+	baseAmount := utils.Round2(lessonPrice * lessonsHeld)
+	totalDiscountPct := en.SubscriptionDiscountPct + en.DiscountPct
+	if totalDiscountPct > 100 {
+		totalDiscountPct = 100
+	}
+	if totalDiscountPct < 0 {
+		totalDiscountPct = 0
+	}
+	amount := utils.Round2(baseAmount * (1 - totalDiscountPct/100.0))
 	courseName := ""
 	if c, err := s.db.Course.Get(ctx, en.CourseID); err == nil {
 		courseName = c.Name
@@ -163,8 +172,8 @@ func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment,
 	line := s.db.InvoiceLine.Create().
 		SetEnrollmentID(en.ID).
 		SetDescription(desc).
-		SetQty(1).
-		SetUnitPrice(subscriptionPrice).
+		SetQty(lessonsHeld).
+		SetUnitPrice(lessonPrice).
 		SetAmount(amount)
 
 	return line, amount
@@ -216,6 +225,20 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 	return utils.Round2(lessonPrice), utils.Round2(subscriptionPrice)
 }
 
+func (s *Service) subscriptionLessonsHeld(ctx context.Context, courseID, y, m int) float64 {
+	item, err := s.db.CourseMonthStat.Query().
+		Where(
+			coursemonthstat.CourseIDEQ(courseID),
+			coursemonthstat.YearEQ(y),
+			coursemonthstat.MonthEQ(m),
+		).
+		Only(ctx)
+	if err != nil {
+		return 0
+	}
+	return utils.Round2(item.SubscriptionLessonsHeld)
+}
+
 func (s *Service) hasAnyLessonsInMonth(ctx context.Context, ens []*ent.Enrollment, y, m int) bool {
 	for _, en := range ens {
 		count, err := s.db.AttendanceMonth.Query().
@@ -259,7 +282,7 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 	total := 0.0
 
 	for _, en := range ens {
-		lp, sp := s.resolvePrices(ctx, en, y, m)
+		lp, _ := s.resolvePrices(ctx, en, y, m)
 
 		switch en.BillingMode {
 		case BillingPerLesson:
@@ -268,10 +291,11 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 			total += amount
 
 		case BillingSubscription:
-			if sp <= 0 {
+			lessonsHeld := s.subscriptionLessonsHeld(ctx, en.CourseID, y, m)
+			if lp <= 0 || lessonsHeld <= 0 {
 				continue
 			}
-			line, amount := s.buildSubscriptionLine(ctx, en, y, m, sp)
+			line, amount := s.buildSubscriptionLine(ctx, en, y, m, lp, lessonsHeld)
 			lines = append(lines, line)
 			total += amount
 

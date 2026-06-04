@@ -1,7 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef, type FormEvent } from "react";
 import "./App.css";
 
-import { fetchRows, saveHours, deleteEnrollment, Row } from "./lib/attendance";
+import {
+  fetchRows,
+  saveHours,
+  deleteEnrollment,
+  listCourseMonthSubscriptions,
+  saveCourseMonthSubscriptionLessons,
+  Row,
+} from "./lib/attendance";
 
 import {
   listInvoices,
@@ -275,6 +282,17 @@ function formatHoursValue(value: number): string {
     return String(Math.round(value));
   }
   return value.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function clampPct(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
+}
+
+function subscriptionTotal(row: Row, lessonsHeld: number): number {
+  const totalDiscountPct = clampPct(row.discountPct + row.subscriptionDiscountPct);
+  const base = row.lessonPrice * lessonsHeld;
+  return Math.round(base * (1 - totalDiscountPct / 100) * 100) / 100;
 }
 
 function normalizeHoursDraftInput(value: string): string | null {
@@ -1071,6 +1089,7 @@ export default function App() {
   const [efCourseId, setEfCourseId] = useState<number>(0);
   const [efMode, setEfMode] = useState<"subscription" | "per_lesson">("per_lesson");
   const [efDiscount, setEfDiscount] = useState(0);
+  const [efSubscriptionDiscount, setEfSubscriptionDiscount] = useState(20);
   const [efNote, setEfNote] = useState("");
 
   const activeStudents = useMemo(() => allStudents.filter((s) => s.isActive), [allStudents]);
@@ -1148,6 +1167,7 @@ export default function App() {
     setEfCourseId(initialCourseId);
     setEfMode("per_lesson");
     setEfDiscount(0);
+    setEfSubscriptionDiscount(20);
     setEfNote("");
     setEnrModalOpen(true);
   }
@@ -1160,6 +1180,7 @@ export default function App() {
     setEfCourseId(e.courseId);
     setEfMode(e.billingMode);
     setEfDiscount(e.discountPct);
+    setEfSubscriptionDiscount(e.subscriptionDiscountPct);
     setEfNote(e.note);
     setEnrModalOpen(true);
   }
@@ -1173,14 +1194,31 @@ export default function App() {
       showMessage(t("msg.discountRange"), "error");
       return;
     }
+    if (efSubscriptionDiscount < 0 || efSubscriptionDiscount > 100) {
+      showMessage(t("msg.discountRange"), "error");
+      return;
+    }
 
     try {
       let result: EnrollmentDTO;
       if (editingEnr) {
-        result = await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
+        result = await updateEnrollment(
+          editingEnr.id,
+          efMode,
+          efDiscount,
+          efMode === "subscription" ? efSubscriptionDiscount : 0,
+          efNote
+        );
         showMessage(t("msg.enrollmentUpdated"));
       } else {
-        result = await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
+        result = await createEnrollment(
+          efStudentId,
+          efCourseId,
+          efMode,
+          efDiscount,
+          efMode === "subscription" ? efSubscriptionDiscount : 0,
+          efNote
+        );
 
         const matchesFilters =
           (enrStudentFilter === undefined || enrStudentFilter === result.studentId) &&
@@ -1219,6 +1257,9 @@ export default function App() {
   const [attendanceSavingRows, setAttendanceSavingRows] = useState<Record<number, boolean>>({});
   const [attendanceInputDrafts, setAttendanceInputDrafts] = useState<Record<number, string>>({});
   const attendancePendingSelectRef = useRef<number | null>(null);
+  const [subscriptionMonthLessons, setSubscriptionMonthLessons] = useState<Record<number, number>>({});
+  const [subscriptionMonthDrafts, setSubscriptionMonthDrafts] = useState<Record<number, string>>({});
+  const [subscriptionMonthSaving, setSubscriptionMonthSaving] = useState<Record<number, boolean>>({});
 
   // For search by phone we need students list (shared with invoices and attendance)
   const studentIndex = useMemo(() => {
@@ -1242,8 +1283,15 @@ export default function App() {
     try {
       await ensureStudentsLoaded();
       await ensureCoursesLoaded();
-      const data = await fetchRows(year, month, courseFilter);
+      const [data, subscriptionData] = await Promise.all([
+        fetchRows(year, month, courseFilter),
+        listCourseMonthSubscriptions(year, month, courseFilter),
+      ]);
       setRows(data);
+      setSubscriptionMonthLessons(
+        Object.fromEntries(subscriptionData.map((item) => [item.courseId, item.lessonsHeld]))
+      );
+      setSubscriptionMonthDrafts({});
     } finally {
       setLoadingAtt(false);
     }
@@ -1311,6 +1359,18 @@ export default function App() {
     const zero = editableRows.filter((r) => r.hasRecord && r.hours === 0).length;
     return { filled, missing, zero, total: editableRows.length };
   }, [rows]);
+
+  const subscriptionLeadEnrollmentIds = useMemo(() => {
+    const seen = new Set<number>();
+    const leadIds = new Set<number>();
+    for (const row of filteredAttendanceRows) {
+      if (row.billingMode !== BillingModeSubscription) continue;
+      if (seen.has(row.courseId)) continue;
+      seen.add(row.courseId);
+      leadIds.add(row.enrollmentId);
+    }
+    return leadIds;
+  }, [filteredAttendanceRows]);
 
   const onChangeHours = async (r: Row, v: number) => {
     if (r.billingMode !== BillingModePerLesson) return;
@@ -1414,6 +1474,77 @@ export default function App() {
       return Number.isFinite(parsed) ? parsed : r.hours;
     },
     [attendanceInputDrafts]
+  );
+
+  const getSubscriptionMonthLessonsValue = useCallback(
+    (courseId: number) => {
+      const draft = subscriptionMonthDrafts[courseId];
+      if (draft !== undefined) return draft;
+      return formatHoursValue(subscriptionMonthLessons[courseId] ?? 0);
+    },
+    [subscriptionMonthDrafts, subscriptionMonthLessons]
+  );
+
+  const setSubscriptionMonthLessonsDraft = useCallback((courseId: number, value: string) => {
+    setSubscriptionMonthDrafts((prev) => ({ ...prev, [courseId]: value }));
+  }, []);
+
+  const clearSubscriptionMonthLessonsDraft = useCallback((courseId: number) => {
+    setSubscriptionMonthDrafts((prev) => {
+      if (!(courseId in prev)) return prev;
+      const next = { ...prev };
+      delete next[courseId];
+      return next;
+    });
+  }, []);
+
+  const commitSubscriptionMonthLessonsDraft = useCallback(
+    async (row: Row) => {
+      const draft = subscriptionMonthDrafts[row.courseId];
+      if (draft === undefined) return;
+      const trimmed = draft.trim();
+      if (trimmed === "") {
+        clearSubscriptionMonthLessonsDraft(row.courseId);
+        return;
+      }
+      const parsed = Number(trimmed.replace(",", "."));
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        clearSubscriptionMonthLessonsDraft(row.courseId);
+        showMessage(t("msg.errorGeneric", { message: "Invalid lessons value" }), "error");
+        return;
+      }
+      const normalized = normalizeQuarterHours(parsed);
+      if (normalized === (subscriptionMonthLessons[row.courseId] ?? 0)) {
+        clearSubscriptionMonthLessonsDraft(row.courseId);
+        return;
+      }
+
+      try {
+        setSubscriptionMonthSaving((prev) => ({ ...prev, [row.courseId]: true }));
+        const updated = await saveCourseMonthSubscriptionLessons(row.courseId, year, month, normalized);
+        setSubscriptionMonthLessons((prev) => ({ ...prev, [row.courseId]: updated.lessonsHeld }));
+        await loadAttendance();
+      } catch (e: any) {
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+      } finally {
+        clearSubscriptionMonthLessonsDraft(row.courseId);
+        setSubscriptionMonthSaving((prev) => {
+          const next = { ...prev };
+          delete next[row.courseId];
+          return next;
+        });
+      }
+    },
+    [
+      clearSubscriptionMonthLessonsDraft,
+      loadAttendance,
+      month,
+      showMessage,
+      subscriptionMonthDrafts,
+      subscriptionMonthLessons,
+      t,
+      year,
+    ]
   );
 
   const onDeleteEnrollmentFromSheet = async (id: number) => {
@@ -2845,6 +2976,20 @@ export default function App() {
                       />
                     </div>
 
+                    {efMode === "subscription" && (
+                      <div className="formRow">
+                        <label>{t("field.subscriptionDiscount")} %</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step="0.1"
+                          value={efSubscriptionDiscount}
+                          onChange={(e) => setEfSubscriptionDiscount(numOrZero(e.target.value))}
+                        />
+                      </div>
+                    )}
+
                     <div className="formRow">
                       <label>{t("field.note")}</label>
                       <input value={efNote} onChange={(e) => setEfNote(e.target.value)} />
@@ -2970,7 +3115,7 @@ export default function App() {
                           )}
                         </td>
                         <td style={{ textAlign: "right" }}>
-                          {r.billingMode === BillingModePerLesson ? formatEUR(r.lessonPrice) : "—"}
+                          {formatEUR(r.lessonPrice)}
                         </td>
                         <td style={{ textAlign: "right" }}>
                           {r.billingMode === BillingModePerLesson && !r.hasRecord && (
@@ -3053,19 +3198,125 @@ export default function App() {
                                 +
                               </button>
                             </div>
+                          ) : r.billingMode === BillingModeSubscription ? (
+                            subscriptionLeadEnrollmentIds.has(r.enrollmentId) ? (
+                              <div className="attendanceStepper">
+                                <button
+                                  type="button"
+                                  className="attendanceStepperButton"
+                                  onClick={() => {
+                                    const current = subscriptionMonthLessons[r.courseId] ?? 0;
+                                    void saveCourseMonthSubscriptionLessons(
+                                      r.courseId,
+                                      year,
+                                      month,
+                                      Math.max(0, current - 1)
+                                    )
+                                      .then((updated) => {
+                                        setSubscriptionMonthLessons((prev) => ({
+                                          ...prev,
+                                          [r.courseId]: updated.lessonsHeld,
+                                        }));
+                                        return loadAttendance();
+                                      })
+                                      .catch((e: any) => {
+                                        showMessage(
+                                          t("msg.errorGeneric", {
+                                            message: String(e?.message ?? e),
+                                          }),
+                                          "error"
+                                        );
+                                      });
+                                  }}
+                                  disabled={
+                                    subscriptionMonthSaving[r.courseId] ||
+                                    (subscriptionMonthLessons[r.courseId] ?? 0) <= 0
+                                  }
+                                  aria-label={`Decrease subscription lessons for ${r.courseName}`}
+                                >
+                                  −
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={getSubscriptionMonthLessonsValue(r.courseId)}
+                                  disabled={subscriptionMonthSaving[r.courseId]}
+                                  onChange={(e) => {
+                                    const nextValue = normalizeHoursDraftInput(e.target.value);
+                                    if (nextValue !== null) {
+                                      setSubscriptionMonthLessonsDraft(r.courseId, nextValue);
+                                    }
+                                  }}
+                                  onFocus={(e) => e.currentTarget.select()}
+                                  onBlur={() => {
+                                    void commitSubscriptionMonthLessonsDraft(r);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      void commitSubscriptionMonthLessonsDraft(r);
+                                    }
+                                    if (e.key === "Escape") {
+                                      e.preventDefault();
+                                      clearSubscriptionMonthLessonsDraft(r.courseId);
+                                      e.currentTarget.blur();
+                                    }
+                                  }}
+                                  className="attendanceStepperInput"
+                                  aria-label={`Subscription lessons held for ${r.courseName}`}
+                                />
+                                <button
+                                  type="button"
+                                  className="attendanceStepperButton"
+                                  onClick={() => {
+                                    const current = subscriptionMonthLessons[r.courseId] ?? 0;
+                                    void saveCourseMonthSubscriptionLessons(
+                                      r.courseId,
+                                      year,
+                                      month,
+                                      current + 1
+                                    )
+                                      .then((updated) => {
+                                        setSubscriptionMonthLessons((prev) => ({
+                                          ...prev,
+                                          [r.courseId]: updated.lessonsHeld,
+                                        }));
+                                        return loadAttendance();
+                                      })
+                                      .catch((e: any) => {
+                                        showMessage(
+                                          t("msg.errorGeneric", {
+                                            message: String(e?.message ?? e),
+                                          }),
+                                          "error"
+                                        );
+                                      });
+                                  }}
+                                  disabled={subscriptionMonthSaving[r.courseId]}
+                                  aria-label={`Increase subscription lessons for ${r.courseName}`}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="attendanceReadOnly">
+                                <span className="attBadge attBadge--subscription">
+                                  {t("msg.readOnly")}
+                                </span>
+                                <span className="mutedInline">{t("msg.subscriptionSharedValue")}</span>
+                              </div>
+                            )
                           ) : (
                             <div className="attendanceReadOnly">
                               <span className="attBadge attBadge--subscription">{t("msg.readOnly")}</span>
                               <span className="mutedInline">
-                                {r.billingMode === BillingModeSubscription
-                                  ? t("msg.subscriptionStudent")
-                                  : r.invoiceStatus === InvoiceStatusIssued
-                                    ? t("msg.lockedIssuedInvoice")
-                                    : r.invoiceStatus === InvoiceStatusPaid
-                                      ? t("msg.lockedPaidInvoice")
-                                      : r.invoiceStatus === InvoiceStatusCanceled
-                                        ? t("msg.lockedCanceledInvoice")
-                                        : t("msg.lockedUntilDraft")}
+                                {r.invoiceStatus === InvoiceStatusIssued
+                                  ? t("msg.lockedIssuedInvoice")
+                                  : r.invoiceStatus === InvoiceStatusPaid
+                                    ? t("msg.lockedPaidInvoice")
+                                    : r.invoiceStatus === InvoiceStatusCanceled
+                                      ? t("msg.lockedCanceledInvoice")
+                                      : t("msg.lockedUntilDraft")}
                               </span>
                             </div>
                           )}
@@ -3073,7 +3324,7 @@ export default function App() {
                         <td style={{ textAlign: "right" }}>
                           {r.billingMode === BillingModePerLesson
                             ? formatEUR(r.hours * r.lessonPrice)
-                            : "—"}
+                            : formatEUR(subscriptionTotal(r, subscriptionMonthLessons[r.courseId] ?? 0))}
                         </td>
                         <td>
                           {r.billingMode === BillingModePerLesson &&

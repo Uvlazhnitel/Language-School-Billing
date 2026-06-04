@@ -9,6 +9,7 @@ import (
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
+	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
@@ -37,11 +38,20 @@ type Row struct {
 	CourseType       string  `json:"courseType"`       // Course type: "group" or "individual"
 	BillingMode      string  `json:"billingMode"`      // Enrollment billing mode
 	LessonPrice      float64 `json:"lessonPrice"`      // Hourly rate for this enrollment
+	DiscountPct      float64 `json:"discountPct"`      // Personal discount percentage for the enrollment
+	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"` // Base subscription discount percentage
 	Hours            float64 `json:"hours"`            // Hours attended in the month
 	HasRecord        bool    `json:"hasRecord"`        // Whether an AttendanceMonth record exists for this month
 	CanDelete        bool    `json:"canDelete"`        // Whether enrollment can be safely deleted
 	AttendanceLocked bool    `json:"attendanceLocked"` // Whether attendance is locked by a non-draft invoice
 	InvoiceStatus    string  `json:"invoiceStatus"`    // Invoice status for the student/month, if any
+}
+
+type CourseMonthSubscription struct {
+	CourseID    int     `json:"courseId"`
+	Year        int     `json:"year"`
+	Month       int     `json:"month"`
+	LessonsHeld float64 `json:"lessonsHeld"`
 }
 
 func (s *Service) getMonthInvoiceStatus(ctx context.Context, studentID, y, m int) (string, bool, error) {
@@ -138,6 +148,8 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			CourseType:       string(c.Type),
 			BillingMode:      string(e.BillingMode),
 			LessonPrice:      utils.Round2(c.LessonPrice),
+			DiscountPct:      utils.Round2(e.DiscountPct),
+			SubscriptionDiscountPct: utils.Round2(e.SubscriptionDiscountPct),
 			Hours:            hours,
 			HasRecord:        hasRecord,
 			CanDelete:        canDelete,
@@ -203,6 +215,96 @@ func (s *Service) AddOneForFilter(ctx context.Context, y, m int, courseID *int) 
 		}
 	}
 	return changed, nil
+}
+
+func (s *Service) ListCourseMonthSubscriptions(ctx context.Context, y, m int, courseID *int) ([]CourseMonthSubscription, error) {
+	q := s.db.CourseMonthStat.Query().
+		Where(coursemonthstat.YearEQ(y), coursemonthstat.MonthEQ(m))
+	if courseID != nil && *courseID > 0 {
+		q = q.Where(coursemonthstat.CourseIDEQ(*courseID))
+	}
+	items, err := q.Order(ent.Asc(coursemonthstat.FieldCourseID)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]CourseMonthSubscription, 0, len(items))
+	for _, item := range items {
+		out = append(out, CourseMonthSubscription{
+			CourseID:    item.CourseID,
+			Year:        item.Year,
+			Month:       item.Month,
+			LessonsHeld: utils.Round2(item.SubscriptionLessonsHeld),
+		})
+	}
+	return out, nil
+}
+
+func (s *Service) UpsertCourseMonthSubscription(ctx context.Context, courseID, y, m int, lessonsHeld float64) (*CourseMonthSubscription, error) {
+	if courseID <= 0 {
+		return nil, errors.New("courseID must be > 0")
+	}
+	if y <= 0 {
+		return nil, errors.New("year must be > 0")
+	}
+	if m < 1 || m > 12 {
+		return nil, errors.New("month must be between 1 and 12")
+	}
+	if lessonsHeld < 0 {
+		return nil, errors.New("lessonsHeld must be >= 0")
+	}
+	lessonsHeld = utils.Round2(lessonsHeld)
+	if _, err := s.db.Course.Get(ctx, courseID); err != nil {
+		return nil, err
+	}
+
+	item, err := s.db.CourseMonthStat.Query().
+		Where(
+			coursemonthstat.CourseIDEQ(courseID),
+			coursemonthstat.YearEQ(y),
+			coursemonthstat.MonthEQ(m),
+		).
+		Only(ctx)
+	if err == nil {
+		item, err = item.Update().SetSubscriptionLessonsHeld(lessonsHeld).Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+	} else if ent.IsNotFound(err) {
+		item, err = s.db.CourseMonthStat.Create().
+			SetCourseID(courseID).
+			SetYear(y).
+			SetMonth(m).
+			SetSubscriptionLessonsHeld(lessonsHeld).
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		return nil, err
+	}
+
+	subscriptionEnrollments, err := s.db.Enrollment.Query().
+		Where(
+			enrollment.CourseIDEQ(courseID),
+			enrollment.BillingModeEQ(enrollment.BillingModeSubscription),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	invoiceService := invsvc.New(s.db)
+	for _, en := range subscriptionEnrollments {
+		if _, err := invoiceService.RebuildStudentDraft(ctx, en.StudentID, y, m); err != nil {
+			return nil, err
+		}
+	}
+
+	return &CourseMonthSubscription{
+		CourseID:    item.CourseID,
+		Year:        item.Year,
+		Month:       item.Month,
+		LessonsHeld: utils.Round2(item.SubscriptionLessonsHeld),
+	}, nil
 }
 
 // DeleteEnrollment deletes an enrollment and all associated attendance records.

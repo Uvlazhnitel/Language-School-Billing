@@ -16,6 +16,8 @@ type Tx struct {
 	AttendanceMonth *AttendanceMonthClient
 	// Course is the client for interacting with the Course builders.
 	Course *CourseClient
+	// CourseMonthStat is the client for interacting with the CourseMonthStat builders.
+	CourseMonthStat *CourseMonthStatClient
 	// Enrollment is the client for interacting with the Enrollment builders.
 	Enrollment *EnrollmentClient
 	// Invoice is the client for interacting with the Invoice builders.
@@ -167,6 +169,7 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.AttendanceMonth = NewAttendanceMonthClient(tx.config)
 	tx.Course = NewCourseClient(tx.config)
+	tx.CourseMonthStat = NewCourseMonthStatClient(tx.config)
 	tx.Enrollment = NewEnrollmentClient(tx.config)
 	tx.Invoice = NewInvoiceClient(tx.config)
 	tx.InvoiceLine = NewInvoiceLineClient(tx.config)

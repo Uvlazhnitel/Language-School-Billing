@@ -3,6 +3,8 @@ import {
   AppReady,
   AttendanceAddOne,
   AttendanceListPerLesson,
+  CourseMonthSubscriptionList,
+  CourseMonthSubscriptionUpsert,
   AttendanceUpsert,
   BackupNow,
   CourseCreate,
@@ -256,17 +258,37 @@ export const wailsTransport: AppTransport = {
     const cid = typeof courseId === "number" && courseId > 0 ? courseId : null;
     return (await EnrollmentList(sid, cid)) as any;
   },
-  async createEnrollment(studentId, courseId, billingMode, discountPct, note) {
-    return (await EnrollmentCreate(studentId, courseId, billingMode, discountPct, note)) as any;
+  async createEnrollment(studentId, courseId, billingMode, discountPct, subscriptionDiscountPct, note) {
+    return (await EnrollmentCreate(
+      studentId,
+      courseId,
+      billingMode,
+      discountPct,
+      subscriptionDiscountPct,
+      note
+    )) as any;
   },
-  async updateEnrollment(enrollmentId, billingMode, discountPct, note) {
-    return (await EnrollmentUpdate(enrollmentId, billingMode, discountPct, note)) as any;
+  async updateEnrollment(enrollmentId, billingMode, discountPct, subscriptionDiscountPct, note) {
+    return (await EnrollmentUpdate(
+      enrollmentId,
+      billingMode,
+      discountPct,
+      subscriptionDiscountPct,
+      note
+    )) as any;
   },
   deleteEnrollment: EnrollmentDelete,
 
   async fetchAttendanceRows(year, month, courseId) {
     const cid = typeof courseId === "number" && courseId > 0 ? courseId : undefined;
     return (await AttendanceListPerLesson(year, month, cid)) as Row[];
+  },
+  async listCourseMonthSubscriptions(year, month, courseId) {
+    const cid = typeof courseId === "number" && courseId > 0 ? courseId : undefined;
+    return (await CourseMonthSubscriptionList(year, month, cid)) as any;
+  },
+  async saveCourseMonthSubscriptionLessons(courseId, year, month, lessonsHeld) {
+    return (await CourseMonthSubscriptionUpsert(courseId, year, month, lessonsHeld)) as any;
   },
   saveAttendanceHours: AttendanceUpsert,
   async addAttendanceHours(year, month, courseId) {

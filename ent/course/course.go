@@ -32,6 +32,8 @@ const (
 	EdgeTeacher = "teacher"
 	// EdgeEnrollments holds the string denoting the enrollments edge name in mutations.
 	EdgeEnrollments = "enrollments"
+	// EdgeMonthStats holds the string denoting the month_stats edge name in mutations.
+	EdgeMonthStats = "month_stats"
 	// Table holds the table name of the course in the database.
 	Table = "courses"
 	// TeacherTable is the table that holds the teacher relation/edge.
@@ -48,6 +50,13 @@ const (
 	EnrollmentsInverseTable = "enrollments"
 	// EnrollmentsColumn is the table column denoting the enrollments relation/edge.
 	EnrollmentsColumn = "course_id"
+	// MonthStatsTable is the table that holds the month_stats relation/edge.
+	MonthStatsTable = "course_month_stats"
+	// MonthStatsInverseTable is the table name for the CourseMonthStat entity.
+	// It exists in this package in order to avoid circular dependency with the "coursemonthstat" package.
+	MonthStatsInverseTable = "course_month_stats"
+	// MonthStatsColumn is the table column denoting the month_stats relation/edge.
+	MonthStatsColumn = "course_id"
 )
 
 // Columns holds all SQL columns for course fields.
@@ -169,6 +178,20 @@ func ByEnrollments(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newEnrollmentsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByMonthStatsCount orders the results by month_stats count.
+func ByMonthStatsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newMonthStatsStep(), opts...)
+	}
+}
+
+// ByMonthStats orders the results by month_stats terms.
+func ByMonthStats(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newMonthStatsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
 func newTeacherStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -181,5 +204,12 @@ func newEnrollmentsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(EnrollmentsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, EnrollmentsTable, EnrollmentsColumn),
+	)
+}
+func newMonthStatsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(MonthStatsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, MonthStatsTable, MonthStatsColumn),
 	)
 }

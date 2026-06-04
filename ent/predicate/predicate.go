@@ -12,6 +12,9 @@ type AttendanceMonth func(*sql.Selector)
 // Course is the predicate function for course builders.
 type Course func(*sql.Selector)
 
+// CourseMonthStat is the predicate function for coursemonthstat builders.
+type CourseMonthStat func(*sql.Selector)
+
 // Enrollment is the predicate function for enrollment builders.
 type Enrollment func(*sql.Selector)
 

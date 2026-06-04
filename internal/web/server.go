@@ -71,6 +71,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/attendance/per-lesson", s.handleAttendanceList)
 	s.mux.HandleFunc("PUT /api/attendance", s.handleAttendanceUpsert)
 	s.mux.HandleFunc("POST /api/attendance/add-one", s.handleAttendanceAddOne)
+	s.mux.HandleFunc("GET /api/attendance/subscription-month", s.handleAttendanceSubscriptionMonthList)
+	s.mux.HandleFunc("PUT /api/attendance/subscription-month", s.handleAttendanceSubscriptionMonthUpsert)
 
 	s.mux.HandleFunc("GET /api/invoices", s.handleInvoicesList)
 	s.mux.HandleFunc("GET /api/invoices/{id}", s.handleInvoicesGet)
@@ -443,7 +445,7 @@ func (s *Server) handleEnrollmentsCreate(w http.ResponseWriter, r *http.Request)
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.EnrollmentCreate(r.Context(), req.StudentID, req.CourseID, req.BillingMode, req.DiscountPct, req.Note)
+	item, err := s.svc.EnrollmentCreate(r.Context(), req.StudentID, req.CourseID, req.BillingMode, req.DiscountPct, req.SubscriptionDiscountPct, req.Note)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -460,7 +462,7 @@ func (s *Server) handleEnrollmentsUpdate(w http.ResponseWriter, r *http.Request)
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.EnrollmentUpdate(r.Context(), id, req.BillingMode, req.DiscountPct, req.Note)
+	item, err := s.svc.EnrollmentUpdate(r.Context(), id, req.BillingMode, req.DiscountPct, req.SubscriptionDiscountPct, req.Note)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -537,6 +539,48 @@ func (s *Server) handleAttendanceAddOne(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]int{"count": count})
+}
+
+func (s *Server) handleAttendanceSubscriptionMonthList(w http.ResponseWriter, r *http.Request) {
+	year, err := parseRequiredQueryInt(r, "year")
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	month, err := parseRequiredQueryInt(r, "month")
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	courseID, err := parseOptionalInt(r.URL.Query().Get("courseId"))
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	items, err := s.svc.CourseMonthSubscriptionList(r.Context(), year, month, courseID)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+func (s *Server) handleAttendanceSubscriptionMonthUpsert(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		CourseID    int     `json:"courseId"`
+		Year        int     `json:"year"`
+		Month       int     `json:"month"`
+		LessonsHeld float64 `json:"lessonsHeld"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	item, err := s.svc.CourseMonthSubscriptionUpsert(r.Context(), req.CourseID, req.Year, req.Month, req.LessonsHeld)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
 }
 
 func (s *Server) handleInvoicesList(w http.ResponseWriter, r *http.Request) {
@@ -953,17 +997,19 @@ type courseUpsertRequest struct {
 }
 
 type enrollmentCreateRequest struct {
-	StudentID   int     `json:"studentId"`
-	CourseID    int     `json:"courseId"`
-	BillingMode string  `json:"billingMode"`
-	DiscountPct float64 `json:"discountPct"`
-	Note        string  `json:"note"`
+	StudentID               int     `json:"studentId"`
+	CourseID                int     `json:"courseId"`
+	BillingMode             string  `json:"billingMode"`
+	DiscountPct             float64 `json:"discountPct"`
+	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"`
+	Note                    string  `json:"note"`
 }
 
 type enrollmentUpdateRequest struct {
-	BillingMode string  `json:"billingMode"`
-	DiscountPct float64 `json:"discountPct"`
-	Note        string  `json:"note"`
+	BillingMode             string  `json:"billingMode"`
+	DiscountPct             float64 `json:"discountPct"`
+	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"`
+	Note                    string  `json:"note"`
 }
 
 type periodRequest struct {

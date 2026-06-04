@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"langschool/ent/course"
+	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/teacher"
 
@@ -121,6 +122,21 @@ func (_c *CourseCreate) AddEnrollments(v ...*Enrollment) *CourseCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddEnrollmentIDs(ids...)
+}
+
+// AddMonthStatIDs adds the "month_stats" edge to the CourseMonthStat entity by IDs.
+func (_c *CourseCreate) AddMonthStatIDs(ids ...int) *CourseCreate {
+	_c.mutation.AddMonthStatIDs(ids...)
+	return _c
+}
+
+// AddMonthStats adds the "month_stats" edges to the CourseMonthStat entity.
+func (_c *CourseCreate) AddMonthStats(v ...*CourseMonthStat) *CourseCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddMonthStatIDs(ids...)
 }
 
 // Mutation returns the CourseMutation object of the builder.
@@ -277,6 +293,22 @@ func (_c *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.MonthStatsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.MonthStatsTable,
+			Columns: []string{course.MonthStatsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(coursemonthstat.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

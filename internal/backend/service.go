@@ -71,7 +71,15 @@ type EnrollmentDTO struct {
 	TeacherName string  `json:"teacherName"`
 	BillingMode string  `json:"billingMode"`
 	DiscountPct float64 `json:"discountPct"`
+	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"`
 	Note        string  `json:"note"`
+}
+
+type CourseMonthSubscriptionDTO struct {
+	CourseID    int     `json:"courseId"`
+	Year        int     `json:"year"`
+	Month       int     `json:"month"`
+	LessonsHeld float64 `json:"lessonsHeld"`
 }
 
 type TeacherDTO struct {
@@ -230,6 +238,36 @@ func (s *Service) AttendanceListPerLesson(ctx context.Context, year, month int, 
 
 func (s *Service) AttendanceUpsert(ctx context.Context, studentID, courseID, year, month int, hours float64) error {
 	return s.rt.Attendance.Upsert(ctx, studentID, courseID, year, month, hours)
+}
+
+func (s *Service) CourseMonthSubscriptionList(ctx context.Context, year, month int, courseID *int) ([]CourseMonthSubscriptionDTO, error) {
+	items, err := s.rt.Attendance.ListCourseMonthSubscriptions(ctx, year, month, courseID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]CourseMonthSubscriptionDTO, 0, len(items))
+	for _, item := range items {
+		out = append(out, CourseMonthSubscriptionDTO{
+			CourseID:    item.CourseID,
+			Year:        item.Year,
+			Month:       item.Month,
+			LessonsHeld: item.LessonsHeld,
+		})
+	}
+	return out, nil
+}
+
+func (s *Service) CourseMonthSubscriptionUpsert(ctx context.Context, courseID, year, month int, lessonsHeld float64) (*CourseMonthSubscriptionDTO, error) {
+	item, err := s.rt.Attendance.UpsertCourseMonthSubscription(ctx, courseID, year, month, lessonsHeld)
+	if err != nil {
+		return nil, err
+	}
+	return &CourseMonthSubscriptionDTO{
+		CourseID:    item.CourseID,
+		Year:        item.Year,
+		Month:       item.Month,
+		LessonsHeld: item.LessonsHeld,
+	}, nil
 }
 
 func (s *Service) AttendanceAddOne(ctx context.Context, year, month int, courseID *int) (int, error) {
@@ -752,7 +790,7 @@ func (s *Service) EnrollmentList(ctx context.Context, studentID *int, courseID *
 	return out, nil
 }
 
-func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int, billingMode string, discountPct float64, note string) (*EnrollmentDTO, error) {
+func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int, billingMode string, discountPct, subscriptionDiscountPct float64, note string) (*EnrollmentDTO, error) {
 	if studentID <= 0 || courseID <= 0 {
 		return nil, errors.New("studentID and courseID must be > 0")
 	}
@@ -761,6 +799,9 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 		return nil, err
 	}
 	if err := validateDiscountPct(discountPct); err != nil {
+		return nil, err
+	}
+	if err := validateDiscountPct(subscriptionDiscountPct); err != nil {
 		return nil, err
 	}
 	st, err := s.rt.DB.Ent.Student.Get(ctx, studentID)
@@ -787,6 +828,7 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 		SetCourseID(courseID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetDiscountPct(discountPct).
+		SetSubscriptionDiscountPct(subscriptionDiscountPct).
 		SetNote(sanitizeInput(note)).
 		Save(ctx)
 	if err != nil {
@@ -804,7 +846,7 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 	return &dto, nil
 }
 
-func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billingMode string, discountPct float64, note string) (*EnrollmentDTO, error) {
+func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billingMode string, discountPct, subscriptionDiscountPct float64, note string) (*EnrollmentDTO, error) {
 	billingMode = strings.TrimSpace(billingMode)
 	if err := validateBillingMode(billingMode); err != nil {
 		return nil, err
@@ -812,9 +854,13 @@ func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billin
 	if err := validateDiscountPct(discountPct); err != nil {
 		return nil, err
 	}
+	if err := validateDiscountPct(subscriptionDiscountPct); err != nil {
+		return nil, err
+	}
 	if _, err := s.rt.DB.Ent.Enrollment.UpdateOneID(enrollmentID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetDiscountPct(discountPct).
+		SetSubscriptionDiscountPct(subscriptionDiscountPct).
 		SetNote(sanitizeInput(note)).
 		Save(ctx); err != nil {
 		return nil, err
@@ -895,6 +941,7 @@ func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
 		CourseID:    e.CourseID,
 		BillingMode: string(e.BillingMode),
 		DiscountPct: e.DiscountPct,
+		SubscriptionDiscountPct: e.SubscriptionDiscountPct,
 		Note:        e.Note,
 	}
 	if e.Edges.Student != nil {

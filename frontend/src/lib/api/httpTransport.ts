@@ -252,16 +252,23 @@ export const httpTransport: AppTransport = {
     const query = params.toString();
     return request<EnrollmentDTO[]>(`/enrollments${query ? `?${query}` : ""}`);
   },
-  async createEnrollment(studentId, courseId, billingMode, discountPct, note) {
+  async createEnrollment(studentId, courseId, billingMode, discountPct, subscriptionDiscountPct, note) {
     return request<EnrollmentDTO>("/enrollments", {
       method: "POST",
-      ...body({ studentId, courseId, billingMode, discountPct, note }),
+      ...body({
+        studentId,
+        courseId,
+        billingMode,
+        discountPct,
+        subscriptionDiscountPct,
+        note,
+      }),
     });
   },
-  async updateEnrollment(enrollmentId, billingMode, discountPct, note) {
+  async updateEnrollment(enrollmentId, billingMode, discountPct, subscriptionDiscountPct, note) {
     return request<EnrollmentDTO>(`/enrollments/${enrollmentId}`, {
       method: "PUT",
-      ...body({ billingMode, discountPct, note }),
+      ...body({ billingMode, discountPct, subscriptionDiscountPct, note }),
     });
   },
   async deleteEnrollment(enrollmentId) {
@@ -272,6 +279,17 @@ export const httpTransport: AppTransport = {
     const params = new URLSearchParams({ year: String(year), month: String(month) });
     if (typeof courseId === "number") params.set("courseId", String(courseId));
     return request<Row[]>(`/attendance/per-lesson?${params.toString()}`);
+  },
+  async listCourseMonthSubscriptions(year, month, courseId) {
+    const params = new URLSearchParams({ year: String(year), month: String(month) });
+    if (typeof courseId === "number") params.set("courseId", String(courseId));
+    return request(`/attendance/subscription-month?${params.toString()}`);
+  },
+  async saveCourseMonthSubscriptionLessons(courseId, year, month, lessonsHeld) {
+    return request("/attendance/subscription-month", {
+      method: "PUT",
+      ...body({ courseId, year, month, lessonsHeld }),
+    });
   },
   async saveAttendanceHours(studentId, courseId, year, month, hours) {
     await requestVoid("/attendance", {

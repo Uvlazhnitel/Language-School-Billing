@@ -57,6 +57,8 @@ export type Row = {
   courseType: CourseType;
   billingMode: BillingMode;
   lessonPrice: number;
+  discountPct: number;
+  subscriptionDiscountPct: number;
   hours: number;
   hasRecord: boolean;
   canDelete: boolean;
@@ -103,7 +105,15 @@ export type EnrollmentDTO = {
   teacherName: string;
   billingMode: BillingMode;
   discountPct: number;
+  subscriptionDiscountPct: number;
   note: string;
+};
+
+export type CourseMonthSubscriptionDTO = {
+  courseId: number;
+  year: number;
+  month: number;
+  lessonsHeld: number;
 };
 
 export type InvoiceListItem = {
@@ -309,17 +319,30 @@ export interface AppTransport {
     courseId: number,
     billingMode: EnrollmentDTO["billingMode"],
     discountPct: number,
+    subscriptionDiscountPct: number,
     note: string
   ): Promise<EnrollmentDTO>;
   updateEnrollment(
     enrollmentId: number,
     billingMode: EnrollmentDTO["billingMode"],
     discountPct: number,
+    subscriptionDiscountPct: number,
     note: string
   ): Promise<EnrollmentDTO>;
   deleteEnrollment(enrollmentId: number): Promise<void>;
 
   fetchAttendanceRows(year: number, month: number, courseId?: number): Promise<Row[]>;
+  listCourseMonthSubscriptions(
+    year: number,
+    month: number,
+    courseId?: number
+  ): Promise<CourseMonthSubscriptionDTO[]>;
+  saveCourseMonthSubscriptionLessons(
+    courseId: number,
+    year: number,
+    month: number,
+    lessonsHeld: number
+  ): Promise<CourseMonthSubscriptionDTO>;
   saveAttendanceHours(
     studentId: number,
     courseId: number,

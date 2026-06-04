@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"langschool/ent/course"
+	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/predicate"
 	"langschool/ent/teacher"
@@ -167,6 +168,21 @@ func (_u *CourseUpdate) AddEnrollments(v ...*Enrollment) *CourseUpdate {
 	return _u.AddEnrollmentIDs(ids...)
 }
 
+// AddMonthStatIDs adds the "month_stats" edge to the CourseMonthStat entity by IDs.
+func (_u *CourseUpdate) AddMonthStatIDs(ids ...int) *CourseUpdate {
+	_u.mutation.AddMonthStatIDs(ids...)
+	return _u
+}
+
+// AddMonthStats adds the "month_stats" edges to the CourseMonthStat entity.
+func (_u *CourseUpdate) AddMonthStats(v ...*CourseMonthStat) *CourseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMonthStatIDs(ids...)
+}
+
 // Mutation returns the CourseMutation object of the builder.
 func (_u *CourseUpdate) Mutation() *CourseMutation {
 	return _u.mutation
@@ -197,6 +213,27 @@ func (_u *CourseUpdate) RemoveEnrollments(v ...*Enrollment) *CourseUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveEnrollmentIDs(ids...)
+}
+
+// ClearMonthStats clears all "month_stats" edges to the CourseMonthStat entity.
+func (_u *CourseUpdate) ClearMonthStats() *CourseUpdate {
+	_u.mutation.ClearMonthStats()
+	return _u
+}
+
+// RemoveMonthStatIDs removes the "month_stats" edge to CourseMonthStat entities by IDs.
+func (_u *CourseUpdate) RemoveMonthStatIDs(ids ...int) *CourseUpdate {
+	_u.mutation.RemoveMonthStatIDs(ids...)
+	return _u
+}
+
+// RemoveMonthStats removes "month_stats" edges to CourseMonthStat entities.
+func (_u *CourseUpdate) RemoveMonthStats(v ...*CourseMonthStat) *CourseUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMonthStatIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -339,6 +376,51 @@ func (_u *CourseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.MonthStatsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.MonthStatsTable,
+			Columns: []string{course.MonthStatsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(coursemonthstat.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMonthStatsIDs(); len(nodes) > 0 && !_u.mutation.MonthStatsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.MonthStatsTable,
+			Columns: []string{course.MonthStatsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(coursemonthstat.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MonthStatsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.MonthStatsTable,
+			Columns: []string{course.MonthStatsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(coursemonthstat.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -504,6 +586,21 @@ func (_u *CourseUpdateOne) AddEnrollments(v ...*Enrollment) *CourseUpdateOne {
 	return _u.AddEnrollmentIDs(ids...)
 }
 
+// AddMonthStatIDs adds the "month_stats" edge to the CourseMonthStat entity by IDs.
+func (_u *CourseUpdateOne) AddMonthStatIDs(ids ...int) *CourseUpdateOne {
+	_u.mutation.AddMonthStatIDs(ids...)
+	return _u
+}
+
+// AddMonthStats adds the "month_stats" edges to the CourseMonthStat entity.
+func (_u *CourseUpdateOne) AddMonthStats(v ...*CourseMonthStat) *CourseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddMonthStatIDs(ids...)
+}
+
 // Mutation returns the CourseMutation object of the builder.
 func (_u *CourseUpdateOne) Mutation() *CourseMutation {
 	return _u.mutation
@@ -534,6 +631,27 @@ func (_u *CourseUpdateOne) RemoveEnrollments(v ...*Enrollment) *CourseUpdateOne 
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveEnrollmentIDs(ids...)
+}
+
+// ClearMonthStats clears all "month_stats" edges to the CourseMonthStat entity.
+func (_u *CourseUpdateOne) ClearMonthStats() *CourseUpdateOne {
+	_u.mutation.ClearMonthStats()
+	return _u
+}
+
+// RemoveMonthStatIDs removes the "month_stats" edge to CourseMonthStat entities by IDs.
+func (_u *CourseUpdateOne) RemoveMonthStatIDs(ids ...int) *CourseUpdateOne {
+	_u.mutation.RemoveMonthStatIDs(ids...)
+	return _u
+}
+
+// RemoveMonthStats removes "month_stats" edges to CourseMonthStat entities.
+func (_u *CourseUpdateOne) RemoveMonthStats(v ...*CourseMonthStat) *CourseUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveMonthStatIDs(ids...)
 }
 
 // Where appends a list predicates to the CourseUpdate builder.
@@ -706,6 +824,51 @@ func (_u *CourseUpdateOne) sqlSave(ctx context.Context) (_node *Course, err erro
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.MonthStatsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.MonthStatsTable,
+			Columns: []string{course.MonthStatsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(coursemonthstat.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedMonthStatsIDs(); len(nodes) > 0 && !_u.mutation.MonthStatsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.MonthStatsTable,
+			Columns: []string{course.MonthStatsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(coursemonthstat.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.MonthStatsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   course.MonthStatsTable,
+			Columns: []string{course.MonthStatsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(coursemonthstat.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
