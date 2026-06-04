@@ -21,8 +21,9 @@ import type {
   StudentDTO,
   TeacherDTO,
   SessionInfo,
+  UserDTO,
 } from "./types";
-import { AUTH_REQUIRED_EVENT, AuthRequiredError } from "./shared";
+import { AUTH_REQUIRED_EVENT, AuthRequiredError, AuthorizationError } from "./shared";
 
 type RequestOptions = RequestInit & {
   suppressAuthEvent?: boolean;
@@ -65,6 +66,15 @@ async function requestAbsolute<T>(url: string, init?: RequestOptions): Promise<T
       if (body.error) message = body.error;
     } catch {}
     throw new AuthRequiredError(message);
+  }
+
+  if (response.status === 403) {
+    let message = "Forbidden";
+    try {
+      const body = (await response.json()) as { error?: string };
+      if (body.error) message = body.error;
+    } catch {}
+    throw new AuthorizationError(message);
   }
 
   if (!response.ok) {
@@ -152,6 +162,22 @@ export const httpTransport: AppTransport = {
 
   async createBackup(): Promise<BackupResult> {
     return request<BackupResult>("/backups", { method: "POST", ...body({}) });
+  },
+
+  async listUsers() {
+    return request<UserDTO[]>("/users");
+  },
+  async createUser(email, password, role) {
+    return request<UserDTO>("/users", { method: "POST", ...body({ email, password, role }) });
+  },
+  async updateUser(id, email, role, isActive) {
+    return request<UserDTO>(`/users/${id}`, { method: "PUT", ...body({ email, role, isActive }) });
+  },
+  async setUserPassword(id, password) {
+    await requestVoid(`/users/${id}/password`, { method: "POST", ...body({ password }) });
+  },
+  async setUserActive(id, active) {
+    return request<UserDTO>(`/users/${id}/active`, { method: "POST", ...body({ active }) });
   },
 
   async openLocalPath() {

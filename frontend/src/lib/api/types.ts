@@ -22,6 +22,13 @@ export type SessionUser = {
   role: string;
 };
 
+export type UserDTO = {
+  id: number;
+  email: string;
+  role: string;
+  isActive: boolean;
+};
+
 export type SessionInfo = {
   authenticated: boolean;
   user?: SessionUser;
@@ -242,6 +249,11 @@ export interface AppTransport {
   setLocale(locale: string): Promise<void>;
   createBackup(): Promise<BackupResult>;
   openLocalPath(path: string): Promise<void>;
+  listUsers(): Promise<UserDTO[]>;
+  createUser(email: string, password: string, role: string): Promise<UserDTO>;
+  updateUser(id: number, email: string, role: string, isActive: boolean): Promise<UserDTO>;
+  setUserPassword(id: number, password: string): Promise<void>;
+  setUserActive(id: number, active: boolean): Promise<UserDTO>;
 
   listStudents(q: string, includeInactive: boolean): Promise<StudentDTO[]>;
   getStudent(id: number): Promise<StudentDTO>;

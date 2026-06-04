@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { httpTransport } from "./httpTransport";
-import { AuthRequiredError } from "./shared";
+import { AuthRequiredError, AuthorizationError } from "./shared";
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -92,5 +92,11 @@ describe("httpTransport", () => {
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "auth" }, 401)));
 
     await expect(httpTransport.getStudent(1)).rejects.toBeInstanceOf(AuthRequiredError);
+  });
+
+  it("surfaces 403 as authorization errors", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "forbidden" }, 403)));
+
+    await expect(httpTransport.createBackup()).rejects.toBeInstanceOf(AuthorizationError);
   });
 });

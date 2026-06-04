@@ -255,6 +255,80 @@ func TestAuthLoginProtectsAPIAndLogout(t *testing.T) {
 	}
 }
 
+func TestUserManagementAndStaffRestrictions(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	created := postJSON[backend.UserDTO](t, env.Client, env.Server.URL, "/api/users", map[string]any{
+		"email":    "staff@example.com",
+		"password": "staff-pass-123",
+		"role":     "staff",
+	})
+	if created.Role != "staff" {
+		t.Fatalf("created role = %q, want staff", created.Role)
+	}
+
+	users := getJSON[[]backend.UserDTO](t, env.Client, env.Server.URL, "/api/users")
+	if len(users) < 2 {
+		t.Fatalf("users count = %d, want at least 2", len(users))
+	}
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staffClient := &http.Client{Jar: jar}
+	login := postJSON[backend.SessionDTO](t, staffClient, env.Server.URL, "/api/auth/login", map[string]any{
+		"email":    "staff@example.com",
+		"password": "staff-pass-123",
+	})
+	if !login.Authenticated || login.User == nil || login.User.Role != "staff" {
+		t.Fatalf("unexpected staff session: %+v", login)
+	}
+
+	staffStudent := postJSON[backend.StudentDTO](t, staffClient, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "Staff Created Student",
+	})
+	if staffStudent.FullName != "Staff Created Student" {
+		t.Fatalf("staff student fullName = %q", staffStudent.FullName)
+	}
+
+	resp, _ := rawRequest(t, staffClient, http.MethodGet, env.Server.URL+"/api/users", nil)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("staff users status = %d, want 403", resp.StatusCode)
+	}
+
+	resp, _ = rawRequest(t, staffClient, http.MethodPost, env.Server.URL+"/api/backups", bytes.NewReader([]byte(`{}`)))
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("staff backups status = %d, want 403", resp.StatusCode)
+	}
+
+	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/students/"+strconv.Itoa(staffStudent.ID), nil)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("staff delete student status = %d, want 403", resp.StatusCode)
+	}
+
+	updated := putJSON[backend.UserDTO](t, env.Client, env.Server.URL, "/api/users/"+strconv.Itoa(created.ID), map[string]any{
+		"email":    "staff@example.com",
+		"role":     "staff",
+		"isActive": false,
+	})
+	if updated.IsActive {
+		t.Fatal("expected user to be inactive")
+	}
+
+	resp, _ = rawRequest(
+		t,
+		staffClient,
+		http.MethodPost,
+		env.Server.URL+"/api/auth/login",
+		bytes.NewReader([]byte(`{"email":"staff@example.com","password":"staff-pass-123"}`)),
+	)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("inactive staff login status = %d, want 401", resp.StatusCode)
+	}
+}
+
 func TestStaticServingWithDist(t *testing.T) {
 	distDir := writeTestDist(t)
 	env := newTestServerWithDist(t, distDir)

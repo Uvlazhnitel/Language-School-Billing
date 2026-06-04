@@ -63,7 +63,7 @@ import {
   MonthOverviewDTO,
   RecentPaymentDTO,
 } from "./lib/dashboard";
-import { getTransport, type TransportCapabilities } from "./lib/api";
+import { getTransport, type TransportCapabilities, type UserDTO } from "./lib/api";
 import { AUTH_REQUIRED_EVENT } from "./lib/api/shared";
 import { DashboardOverview } from "./components/DashboardOverview";
 import { LoginScreen } from "./components/LoginScreen";
@@ -197,6 +197,7 @@ type Tab =
   | "settings";
 type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 type InvoiceMenuPosition = { top: number; left: number; openUpward: boolean };
+type UserDraft = { email: string; role: string; isActive: boolean };
 
 function buildTabMeta(t: TranslateFn): Record<Tab, { eyebrow: string; title: string }> {
   return {
@@ -327,6 +328,8 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [currentSessionUser, setCurrentSessionUser] = useState<{ id: number; email: string; role: string } | null>(null);
+  const [sessionCapabilities, setSessionCapabilities] = useState<Record<string, boolean>>({});
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [loginPending, setLoginPending] = useState(false);
@@ -335,6 +338,14 @@ export default function App() {
   const [uiLocale, setUiLocale] = useState<UiLocale>("en-US");
   const [appDirs, setAppDirs] = useState<Record<string, string> | null>(null);
   const [creatingBackup, setCreatingBackup] = useState(false);
+  const [users, setUsers] = useState<UserDTO[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState("staff");
+  const [userDrafts, setUserDrafts] = useState<Record<number, UserDraft>>({});
+  const [userPasswordDrafts, setUserPasswordDrafts] = useState<Record<number, string>>({});
 
   // Global message display
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -412,6 +423,8 @@ export default function App() {
         setUiLocale(normalizeLocale(bootstrapResult.locale));
         setAuthRequired(bootstrapResult.authRequired);
         setIsAuthenticated(bootstrapResult.session.authenticated);
+        setCurrentSessionUser(bootstrapResult.session.user ?? null);
+        setSessionCapabilities(bootstrapResult.session.capabilities ?? {});
         setAppReady(bootstrapResult.ready && (!bootstrapResult.authRequired || bootstrapResult.session.authenticated));
         setAuthLoading(false);
       } catch (e: any) {
@@ -437,6 +450,8 @@ export default function App() {
   useEffect(() => {
     const onAuthRequired = () => {
       setIsAuthenticated(false);
+      setCurrentSessionUser(null);
+      setSessionCapabilities({});
       setAppReady(false);
       setLoginPassword("");
       setLoginError(null);
@@ -452,6 +467,12 @@ export default function App() {
   const t = useMemo(() => createTranslator(uiLocale), [uiLocale]);
   const uiMonths = useMemo(() => getMonthNames(uiLocale), [uiLocale]);
   const tabMeta = useMemo(() => buildTabMeta(t), [t]);
+  const canManageUsers = Boolean(sessionCapabilities.manageUsers) || transportCapabilities.isDesktop;
+  const canManageSettings = Boolean(sessionCapabilities.manageSettings) || transportCapabilities.isDesktop;
+  const canCreateBackups = Boolean(sessionCapabilities.backups) || transportCapabilities.isDesktop;
+  const canDeleteStudents = Boolean(sessionCapabilities.deleteStudents) || transportCapabilities.isDesktop;
+  const canDeleteCourses = Boolean(sessionCapabilities.deleteCourses) || transportCapabilities.isDesktop;
+  const canDeletePayments = Boolean(sessionCapabilities.deletePayments) || transportCapabilities.isDesktop;
 
   const localizedPayerRoleLabel = useCallback(
     (relation: string) => payerRoleLabel(relation, t),
@@ -1917,6 +1938,82 @@ export default function App() {
     }
   };
 
+  const loadUsers = useCallback(async () => {
+    if (!canManageUsers) return;
+    try {
+      setUsersLoading(true);
+      const transport = await getTransport();
+      const items = await transport.listUsers();
+      setUsers(items);
+      setUserDrafts(
+        Object.fromEntries(
+          items.map((item) => [item.id, { email: item.email, role: item.role, isActive: item.isActive }])
+        )
+      );
+    } catch (e: any) {
+      showMessage(String(e?.message ?? e), "error");
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [canManageUsers, showMessage]);
+
+  useEffect(() => {
+    if (isAuthenticated && canManageUsers) {
+      void loadUsers();
+    }
+  }, [isAuthenticated, canManageUsers, loadUsers]);
+
+  const handleCreateUser = async () => {
+    try {
+      setCreatingUser(true);
+      const transport = await getTransport();
+      const created = await transport.createUser(newUserEmail, newUserPassword, newUserRole);
+      setUsers((prev) => [...prev, created]);
+      setUserDrafts((prev) => ({
+        ...prev,
+        [created.id]: { email: created.email, role: created.role, isActive: created.isActive },
+      }));
+      setNewUserEmail("");
+      setNewUserPassword("");
+      setNewUserRole("staff");
+      showMessage("User created");
+    } catch (e: any) {
+      showMessage(String(e?.message ?? e), "error");
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const handleSaveUser = async (userId: number) => {
+    const draft = userDrafts[userId];
+    if (!draft) return;
+    try {
+      const transport = await getTransport();
+      const updated = await transport.updateUser(userId, draft.email, draft.role, draft.isActive);
+      setUsers((prev) => prev.map((item) => (item.id === userId ? updated : item)));
+      setUserDrafts((prev) => ({ ...prev, [userId]: { email: updated.email, role: updated.role, isActive: updated.isActive } }));
+      showMessage("User updated");
+    } catch (e: any) {
+      showMessage(String(e?.message ?? e), "error");
+    }
+  };
+
+  const handleResetUserPassword = async (userId: number) => {
+    const password = userPasswordDrafts[userId]?.trim() ?? "";
+    if (!password) {
+      showMessage("Password is required", "error");
+      return;
+    }
+    try {
+      const transport = await getTransport();
+      await transport.setUserPassword(userId, password);
+      setUserPasswordDrafts((prev) => ({ ...prev, [userId]: "" }));
+      showMessage("Password reset");
+    } catch (e: any) {
+      showMessage(String(e?.message ?? e), "error");
+    }
+  };
+
   const handleLocaleChange = async (nextLocale: UiLocale) => {
     const previousLocale = uiLocale;
     setUiLocale(nextLocale);
@@ -1959,6 +2056,8 @@ export default function App() {
         const transport = await getTransport();
         const session = await transport.login(loginEmail, loginPassword);
         setUiLocale(normalizeLocale(session.locale));
+        setCurrentSessionUser(session.user ?? null);
+        setSessionCapabilities(session.capabilities ?? {});
         setTransportCapabilities({
           isDesktop: false,
           canOpenLocalFiles: false,
@@ -1985,6 +2084,8 @@ export default function App() {
       await transport.logout();
     } catch {}
     setIsAuthenticated(false);
+    setCurrentSessionUser(null);
+    setSessionCapabilities({});
     setAppReady(false);
     setLoginPassword("");
     setLoginError(null);
@@ -2253,6 +2354,8 @@ export default function App() {
                 onDeletePayment={deleteStudentPayment}
                 onManageEnrollments={() => setTab("enrollments")}
                 onOpenInvoices={() => setTab("invoice")}
+                canDeleteStudent={canDeleteStudents}
+                canDeletePayment={canDeletePayments}
                 payerRoleLabel={localizedPayerRoleLabel}
                 billingModeLabel={localizedBillingModeLabel}
                 paymentMethodLabel={localizedPaymentMethodLabel}
@@ -2375,7 +2478,9 @@ export default function App() {
                         <td style={{ textAlign: "right" }}>{formatEUR(c.subscriptionPrice)}</td>
                         <td>
                           <button onClick={() => openEditCourse(c)}>{t("button.edit")}</button>
-                          <button onClick={() => removeCourse(c.id)}>{t("button.delete")}</button>
+                          {canDeleteCourses && (
+                            <button onClick={() => removeCourse(c.id)}>{t("button.delete")}</button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -3135,6 +3240,7 @@ export default function App() {
                   <label>{t("settings.locale")}</label>
                   <select
                     value={uiLocale}
+                    disabled={!canManageSettings}
                     onChange={(e) => void handleLocaleChange(e.target.value as UiLocale)}
                   >
                     <option value="en-US">{t("settings.languageEnglish")}</option>
@@ -3153,7 +3259,7 @@ export default function App() {
                     type="button"
                     className="workspaceActionButton workspaceActionButtonPrimary"
                     onClick={() => void createManualBackup()}
-                    disabled={creatingBackup}
+                    disabled={creatingBackup || !canCreateBackups}
                   >
                     {creatingBackup ? `${t("button.createBackup")}...` : t("button.createBackup")}
                   </button>
@@ -3202,6 +3308,130 @@ export default function App() {
                       {t("button.dataFolder")}
                     </button>
                   </div>
+                </section>
+              )}
+
+              {canManageUsers && (
+                <section className="detailCard">
+                  <div className="detailCardHeader">
+                    <h3>Users</h3>
+                  </div>
+                  <p className="mutedInline">Manage admin and staff accounts for the web app.</p>
+
+                  <div className="formRow">
+                    <label>Email</label>
+                    <input value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} />
+                  </div>
+                  <div className="formRow">
+                    <label>Password</label>
+                    <input
+                      type="password"
+                      value={newUserPassword}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="formRow">
+                    <label>Role</label>
+                    <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)}>
+                      <option value="staff">staff</option>
+                      <option value="admin">admin</option>
+                    </select>
+                  </div>
+                  <div className="settingsActions">
+                    <button
+                      type="button"
+                      className="workspaceActionButton workspaceActionButtonPrimary"
+                      onClick={() => void handleCreateUser()}
+                      disabled={creatingUser}
+                    >
+                      {creatingUser ? "Create..." : "Create user"}
+                    </button>
+                    <button type="button" className="workspaceActionButton" onClick={() => void loadUsers()}>
+                      {t("button.refresh")}
+                    </button>
+                  </div>
+
+                  {usersLoading ? (
+                    <div className="empty">{t("label.loading")}</div>
+                  ) : (
+                    <div className="tableWrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Active</th>
+                            <th>Password reset</th>
+                            <th>{t("field.actions")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {users.map((user) => {
+                            const draft = userDrafts[user.id] ?? {
+                              email: user.email,
+                              role: user.role,
+                              isActive: user.isActive,
+                            };
+                            return (
+                              <tr key={user.id}>
+                                <td>
+                                  <input
+                                    value={draft.email}
+                                    onChange={(e) =>
+                                      setUserDrafts((prev) => ({
+                                        ...prev,
+                                        [user.id]: { ...draft, email: e.target.value },
+                                      }))
+                                    }
+                                  />
+                                </td>
+                                <td>
+                                  <select
+                                    value={draft.role}
+                                    onChange={(e) =>
+                                      setUserDrafts((prev) => ({
+                                        ...prev,
+                                        [user.id]: { ...draft, role: e.target.value },
+                                      }))
+                                    }
+                                  >
+                                    <option value="staff">staff</option>
+                                    <option value="admin">admin</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    checked={draft.isActive}
+                                    onChange={(e) =>
+                                      setUserDrafts((prev) => ({
+                                        ...prev,
+                                        [user.id]: { ...draft, isActive: e.target.checked },
+                                      }))
+                                    }
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="password"
+                                    value={userPasswordDrafts[user.id] ?? ""}
+                                    onChange={(e) =>
+                                      setUserPasswordDrafts((prev) => ({ ...prev, [user.id]: e.target.value }))
+                                    }
+                                    placeholder="New password"
+                                  />
+                                </td>
+                                <td>
+                                  <button onClick={() => void handleSaveUser(user.id)}>{t("button.save")}</button>
+                                  <button onClick={() => void handleResetUserPassword(user.id)}>Reset password</button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </section>
               )}
             </div>
@@ -3473,6 +3703,7 @@ export default function App() {
               formatEUR={formatEUR}
               months={uiMonths}
               deletingPaymentId={studentCardDeletingPaymentId}
+              canDeletePayment={canDeletePayments}
               onEditStudent={() => {
                 setStudentCardOpen(false);
                 openEditStudent(selectedStudentCard);

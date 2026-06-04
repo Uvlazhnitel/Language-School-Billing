@@ -27,6 +27,7 @@ export type {
   StudentDTO,
   TeacherDTO,
   TransportCapabilities,
+  UserDTO,
 } from "./types";
 
 export { getTransport, isWailsRuntime, setTransportForTests } from "./shared";

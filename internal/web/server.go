@@ -87,6 +87,11 @@ func (s *Server) routes() {
 
 	s.mux.HandleFunc("GET /api/settings/locale", s.handleSettingsGetLocale)
 	s.mux.HandleFunc("POST /api/settings/locale", s.handleSettingsSetLocale)
+	s.mux.HandleFunc("GET /api/users", s.handleUsersList)
+	s.mux.HandleFunc("POST /api/users", s.handleUsersCreate)
+	s.mux.HandleFunc("PUT /api/users/{id}", s.handleUsersUpdate)
+	s.mux.HandleFunc("POST /api/users/{id}/password", s.handleUsersSetPassword)
+	s.mux.HandleFunc("POST /api/users/{id}/active", s.handleUsersSetActive)
 
 	s.mux.HandleFunc("POST /api/payments", s.handlePaymentsCreate)
 	s.mux.HandleFunc("DELETE /api/payments/{id}", s.handlePaymentsDelete)
@@ -137,6 +142,10 @@ func (s *Server) serveAPI(w http.ResponseWriter, r *http.Request) {
 	currentUser, err := s.userFromRequest(r)
 	if err != nil {
 		writeUnauthorized(w, "authentication required")
+		return
+	}
+	if isAdminOnlyAPIPath(r.Method, r.URL.Path) && currentUser.Role != auth.RoleAdmin {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "admin access required"})
 		return
 	}
 
@@ -710,6 +719,90 @@ func (s *Server) handleSettingsSetLocale(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, map[string]string{"locale": req.Locale})
 }
 
+func (s *Server) handleUsersList(w http.ResponseWriter, r *http.Request) {
+	items, err := s.svc.UserList(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+func (s *Server) handleUsersCreate(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+		Role     string `json:"role"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	item, err := s.svc.UserCreate(r.Context(), req.Email, req.Password, req.Role)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, item)
+}
+
+func (s *Server) handleUsersUpdate(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt(w, r, "id")
+	if !ok {
+		return
+	}
+	var req struct {
+		Email    string `json:"email"`
+		Role     string `json:"role"`
+		IsActive bool   `json:"isActive"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	item, err := s.svc.UserUpdate(r.Context(), id, req.Email, req.Role, req.IsActive)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (s *Server) handleUsersSetPassword(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt(w, r, "id")
+	if !ok {
+		return
+	}
+	var req struct {
+		Password string `json:"password"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if err := s.svc.UserSetPassword(r.Context(), id, req.Password); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (s *Server) handleUsersSetActive(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt(w, r, "id")
+	if !ok {
+		return
+	}
+	var req struct {
+		Active bool `json:"active"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	item, err := s.svc.UserSetActive(r.Context(), id, req.Active)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
 func (s *Server) handlePaymentsCreate(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		StudentID int     `json:"studentId"`
@@ -912,6 +1005,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, auth.ErrUnauthorized):
 		status = http.StatusUnauthorized
+	case errors.Is(err, auth.ErrForbidden):
+		status = http.StatusForbidden
 	case isConflictError(err):
 		status = http.StatusConflict
 	case isBadRequestError(err):
@@ -1034,6 +1129,25 @@ func looksLikeAssetRequest(requestPath string) bool {
 func isPublicAPIPath(path string) bool {
 	switch path {
 	case "/api/auth/login", "/api/auth/logout", "/api/auth/session":
+		return true
+	default:
+		return false
+	}
+}
+
+func isAdminOnlyAPIPath(method, path string) bool {
+	switch {
+	case method == http.MethodPost && path == "/api/backups":
+		return true
+	case method == http.MethodPost && path == "/api/settings/locale":
+		return true
+	case strings.HasPrefix(path, "/api/users"):
+		return true
+	case method == http.MethodDelete && strings.HasPrefix(path, "/api/payments/"):
+		return true
+	case method == http.MethodDelete && strings.HasPrefix(path, "/api/students/"):
+		return true
+	case method == http.MethodDelete && strings.HasPrefix(path, "/api/courses/"):
 		return true
 	default:
 		return false

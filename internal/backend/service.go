@@ -114,6 +114,8 @@ type SessionDTO struct {
 	Ready         bool            `json:"ready"`
 }
 
+type UserDTO = auth.UserRecord
+
 type Service struct {
 	rt *appruntime.Runtime
 }
@@ -132,14 +134,9 @@ func (s *Service) Meta(ctx context.Context) (*Meta, error) {
 		return nil, err
 	}
 	return &Meta{
-		Ready:  s.Ready(),
-		Locale: locale,
-		Capabilities: map[string]bool{
-			"backups":      true,
-			"pdfDownload":  true,
-			"pdfGenerate":  true,
-			"desktopPaths": false,
-		},
+		Ready:        s.Ready(),
+		Locale:       locale,
+		Capabilities: capabilitiesForRole(auth.RoleAdmin, false),
 	}, nil
 }
 
@@ -152,13 +149,8 @@ func (s *Service) SessionState(ctx context.Context, currentUser *auth.UserInfo) 
 		Authenticated: currentUser != nil,
 		User:          currentUser,
 		Locale:        locale,
-		Capabilities: map[string]bool{
-			"backups":      true,
-			"pdfDownload":  true,
-			"pdfGenerate":  true,
-			"desktopPaths": false,
-		},
-		Ready: s.Ready(),
+		Capabilities:  capabilitiesForCurrentUser(currentUser, false),
+		Ready:         s.Ready(),
 	}, nil
 }
 
@@ -210,6 +202,26 @@ func (s *Service) FullBackupNow() (string, error) {
 		return "", err
 	}
 	return path, nil
+}
+
+func (s *Service) UserList(ctx context.Context) ([]UserDTO, error) {
+	return s.rt.Auth.ListUsers(ctx)
+}
+
+func (s *Service) UserCreate(ctx context.Context, email, password, role string) (*UserDTO, error) {
+	return s.rt.Auth.CreateUser(ctx, email, password, role)
+}
+
+func (s *Service) UserUpdate(ctx context.Context, id int, email, role string, isActive bool) (*UserDTO, error) {
+	return s.rt.Auth.UpdateUser(ctx, id, email, role, isActive)
+}
+
+func (s *Service) UserSetPassword(ctx context.Context, id int, password string) error {
+	return s.rt.Auth.SetUserPassword(ctx, id, password)
+}
+
+func (s *Service) UserSetActive(ctx context.Context, id int, active bool) (*UserDTO, error) {
+	return s.rt.Auth.SetUserActive(ctx, id, active)
 }
 
 func (s *Service) AttendanceListPerLesson(ctx context.Context, year, month int, courseID *int) ([]attendance.Row, error) {
@@ -978,6 +990,28 @@ func validateMinorPayer(isMinor bool, payerName, payerRole string) error {
 
 func normalizePayerRole(role string) string {
 	return strings.ToLower(strings.TrimSpace(role))
+}
+
+func capabilitiesForCurrentUser(currentUser *auth.UserInfo, isDesktop bool) map[string]bool {
+	if currentUser == nil {
+		return capabilitiesForRole("", isDesktop)
+	}
+	return capabilitiesForRole(currentUser.Role, isDesktop)
+}
+
+func capabilitiesForRole(role string, isDesktop bool) map[string]bool {
+	isAdmin := role == auth.RoleAdmin || isDesktop
+	return map[string]bool{
+		"backups":        isAdmin,
+		"pdfDownload":    true,
+		"pdfGenerate":    true,
+		"desktopPaths":   isDesktop,
+		"manageUsers":    isAdmin,
+		"manageSettings": isAdmin,
+		"deletePayments": isAdmin,
+		"deleteStudents": isAdmin,
+		"deleteCourses":  isAdmin,
+	}
 }
 
 func sanitizeInput(input string) string {

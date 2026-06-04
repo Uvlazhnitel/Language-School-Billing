@@ -60,6 +60,7 @@ import type {
   StudentDTO,
   TeacherDTO,
   SessionInfo,
+  UserDTO,
 } from "./types";
 
 function pathToFilename(path: string): string {
@@ -162,6 +163,20 @@ export const wailsTransport: AppTransport = {
       filename: pathToFilename(path),
       path,
     };
+  },
+
+  async listUsers(): Promise<UserDTO[]> {
+    return [{ id: 0, email: "desktop@local", role: "admin", isActive: true }];
+  },
+  async createUser(email, _password, role): Promise<UserDTO> {
+    return { id: Date.now(), email, role, isActive: true };
+  },
+  async updateUser(id, email, role, isActive): Promise<UserDTO> {
+    return { id, email, role, isActive };
+  },
+  async setUserPassword() {},
+  async setUserActive(id, active): Promise<UserDTO> {
+    return { id, email: "desktop@local", role: "admin", isActive: active };
   },
 
   openLocalPath: OpenFile,

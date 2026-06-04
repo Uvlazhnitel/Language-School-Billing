@@ -9,6 +9,13 @@ export class AuthRequiredError extends Error {
   }
 }
 
+export class AuthorizationError extends Error {
+  constructor(message = "Forbidden") {
+    super(message);
+    this.name = "AuthorizationError";
+  }
+}
+
 declare global {
   interface Window {
     go?: {
