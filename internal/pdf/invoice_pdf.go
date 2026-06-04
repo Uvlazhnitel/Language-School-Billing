@@ -127,7 +127,7 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 	periodStart := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
 	periodEnd := periodStart.AddDate(0, 1, -1)
 
-	p := fpdf.New("P", "mm", "A4", "")
+	p := fpdf.New("P", "mm", "A4", fontsDir)
 	p.SetTitle(fmt.Sprintf("Rēķins %s — %s", *iv.Number, subjectName), false)
 	p.SetAuthor(provider.DisplayName, false)
 	p.SetMargins(10, 10, 10)
@@ -167,10 +167,17 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 }
 
 func addArtLabFonts(p *fpdf.Fpdf, fontsDir string) error {
-	regular := filepath.Join(fontsDir, "DejaVuSans.ttf")
-	bold := filepath.Join(fontsDir, "DejaVuSans-Bold.ttf")
-	italic := filepath.Join(fontsDir, "DejaVuSans-Oblique.ttf")
-	boldItalic := filepath.Join(fontsDir, "DejaVuSans-BoldOblique.ttf")
+	const (
+		regularFile    = "DejaVuSans.ttf"
+		boldFile       = "DejaVuSans-Bold.ttf"
+		italicFile     = "DejaVuSans-Oblique.ttf"
+		boldItalicFile = "DejaVuSans-BoldOblique.ttf"
+	)
+
+	regular := filepath.Join(fontsDir, regularFile)
+	bold := filepath.Join(fontsDir, boldFile)
+	italic := filepath.Join(fontsDir, italicFile)
+	boldItalic := filepath.Join(fontsDir, boldItalicFile)
 
 	required := []string{regular, bold}
 	for _, path := range required {
@@ -179,19 +186,19 @@ func addArtLabFonts(p *fpdf.Fpdf, fontsDir string) error {
 		}
 	}
 
-	p.AddUTF8Font("DejaVu", "", regular)
-	p.AddUTF8Font("DejaVu", "B", bold)
+	p.AddUTF8Font("DejaVu", "", regularFile)
+	p.AddUTF8Font("DejaVu", "B", boldFile)
 
 	if _, err := os.Stat(italic); err == nil {
-		p.AddUTF8Font("DejaVu", "I", italic)
+		p.AddUTF8Font("DejaVu", "I", italicFile)
 	} else {
-		p.AddUTF8Font("DejaVu", "I", regular)
+		p.AddUTF8Font("DejaVu", "I", regularFile)
 	}
 
 	if _, err := os.Stat(boldItalic); err == nil {
-		p.AddUTF8Font("DejaVu", "BI", boldItalic)
+		p.AddUTF8Font("DejaVu", "BI", boldItalicFile)
 	} else {
-		p.AddUTF8Font("DejaVu", "BI", bold)
+		p.AddUTF8Font("DejaVu", "BI", boldFile)
 	}
 
 	return nil
