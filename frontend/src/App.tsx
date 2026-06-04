@@ -1972,6 +1972,44 @@ export default function App() {
     }
   }, [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]);
 
+  const onDownloadPdf = useCallback(async (id: number) => {
+    try {
+      closeInvoiceMenu();
+      const pdf = await ensurePdf(id);
+      setInvItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
+      );
+
+      if (transportCapabilities.isDesktop) {
+        if (!pdf.localPath) {
+          showMessage(t("msg.errorGeneric", { message: t("msg.pdfDownloadUnavailable") }), "error");
+          return;
+        }
+        const transport = await getTransport();
+        await transport.openLocalPath(pdf.localPath);
+        showMessage(t("msg.pdfReady", { path: pdf.localPath }));
+        return;
+      }
+
+      if (!pdf.downloadUrl) {
+        showMessage(t("msg.errorGeneric", { message: t("msg.pdfDownloadUnavailable") }), "error");
+        return;
+      }
+
+      const link = document.createElement("a");
+      link.href = pdf.downloadUrl;
+      link.download = pdf.filename;
+      link.rel = "noopener";
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showMessage(t("msg.pdfDownloaded", { filename: pdf.filename }));
+    } catch (e: any) {
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    }
+  }, [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]);
+
   const onRevealInvoiceFile = useCallback(async (id: number) => {
     try {
       closeInvoiceMenu();
@@ -2004,7 +2042,7 @@ export default function App() {
             onClick: () => void onRevealInvoiceFile(invoice.id),
           });
         }
-        if (!invoice.pdfReady) {
+        if (transportCapabilities.isDesktop && !invoice.pdfReady) {
           menuItems.push({
             label: t("button.createPdf"),
             onClick: () => void onGeneratePdf(invoice.id),
@@ -3502,6 +3540,11 @@ export default function App() {
                               </button>
                             )}
                             {it.status !== "draft" && (
+                              <button onClick={() => void onDownloadPdf(it.id)}>
+                                {t("button.downloadPdf")}
+                              </button>
+                            )}
+                            {it.status !== "draft" && (
                               <button onClick={() => void openPaymentModalForInvoice(it.id)}>
                                 {t("button.recordPayment")}
                               </button>
@@ -4008,6 +4051,11 @@ export default function App() {
                 <button onClick={() => onIssueOne(selectedInv.id)}>{t("button.issue")}</button>
               )}
               {selectedInv.status !== "draft" && (
+                <button onClick={() => void onDownloadPdf(selectedInv.id)}>
+                  {t("button.downloadPdf")}
+                </button>
+              )}
+              {selectedInv.status !== "draft" && (
                 <button onClick={() => openPaymentModal(selectedInv, invSummary)}>
                   {t("button.recordPayment")}
                 </button>
@@ -4022,7 +4070,7 @@ export default function App() {
                   {t("button.showInFolder")}
                 </button>
               )}
-              {selectedInv.status !== "draft" && !selectedInvPdfReady && (
+              {transportCapabilities.isDesktop && selectedInv.status !== "draft" && !selectedInvPdfReady && (
                 <button onClick={() => onGeneratePdf(selectedInv.id)}>{t("button.createPdf")}</button>
               )}
               <button onClick={() => setInvoiceDetailsOpen(false)}>{t("button.close")}</button>
