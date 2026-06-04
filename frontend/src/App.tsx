@@ -284,14 +284,6 @@ function normalizeHoursDraftInput(value: string): string | null {
   return null;
 }
 
-function getAttendanceInputWidth(value: string): string {
-  const minChars = 4;
-  const maxChars = 12;
-  const extraBuffer = 1;
-  const widthChars = Math.min(maxChars, Math.max(minChars, value.length + extraBuffer));
-  return `calc(${widthChars}ch + 1.75rem)`;
-}
-
 function debtMonthLabel(month: number, year: number, locale: "ru" | "lv"): string {
   const labels = locale === "ru" ? monthsRu : monthsLv;
   return `${labels[month - 1]} ${year}`;
@@ -1226,6 +1218,7 @@ export default function App() {
   const [attFilter, setAttFilter] = useState<"all" | "missing" | "filled" | "zero">("all");
   const [attendanceSavingRows, setAttendanceSavingRows] = useState<Record<number, boolean>>({});
   const [attendanceInputDrafts, setAttendanceInputDrafts] = useState<Record<number, string>>({});
+  const attendancePendingSelectRef = useRef<number | null>(null);
 
   // For search by phone we need students list (shared with invoices and attendance)
   const studentIndex = useMemo(() => {
@@ -3008,7 +3001,6 @@ export default function App() {
                                 type="text"
                                 inputMode="decimal"
                                 value={getAttendanceInputValue(r)}
-                                style={{ width: getAttendanceInputWidth(getAttendanceInputValue(r)) }}
                                 disabled={attendanceSavingRows[r.enrollmentId]}
                                 onChange={(e) => {
                                   const nextValue = normalizeHoursDraftInput(e.target.value);
@@ -3016,13 +3008,25 @@ export default function App() {
                                     setAttendanceDraft(r.enrollmentId, nextValue);
                                   }
                                 }}
+                                onPointerDown={() => {
+                                  attendancePendingSelectRef.current = r.enrollmentId;
+                                }}
                                 onFocus={(e) => {
-                                  requestAnimationFrame(() => e.currentTarget.select());
+                                  if (attendancePendingSelectRef.current !== r.enrollmentId) {
+                                    e.currentTarget.select();
+                                  }
                                 }}
                                 onMouseUp={(e) => {
-                                  e.preventDefault();
+                                  if (attendancePendingSelectRef.current === r.enrollmentId) {
+                                    e.preventDefault();
+                                    e.currentTarget.select();
+                                    attendancePendingSelectRef.current = null;
+                                  }
                                 }}
                                 onBlur={() => {
+                                  if (attendancePendingSelectRef.current === r.enrollmentId) {
+                                    attendancePendingSelectRef.current = null;
+                                  }
                                   void commitAttendanceDraft(r);
                                 }}
                                 onKeyDown={(e) => {
