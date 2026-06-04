@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.langschool.pull-backups</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/Users/uvlazhnitel/Documents/coding/langschool/langschool/scripts/pull-backups-mac.sh</string>
+    </array>
+
+    <key>StartCalendarInterval</key>
+    <array>
+      <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+      </dict>
+      <dict>
+        <key>Hour</key>
+        <integer>21</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+      </dict>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/uvlazhnitel/Documents/coding/langschool/langschool</string>
+
+    <key>StandardOutPath</key>
+    <string>/Users/uvlazhnitel/Backups/langschool/launchd.stdout.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/uvlazhnitel/Backups/langschool/launchd.stderr.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+  </dict>
+</plist>

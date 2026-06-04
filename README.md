@@ -301,8 +301,66 @@ By default it pulls:
 The script copies only `full-*.tar.gz` archives and appends a small sync log to
 `~/Backups/langschool/pull.log`.
 
-You can schedule it later with `launchd`, but it also works fine as a manual
-command.
+### Automate server backup creation
+
+On `home-java`, install the nightly cron job:
+
+```bash
+cd /home/ilya/langschool
+./scripts/install-server-backup-cron.sh
+```
+
+Default schedule:
+
+- every day at `03:15`
+
+Default log file:
+
+- `/home/ilya/langschool-data/backups/create-full-backup.log`
+
+Verify:
+
+```bash
+crontab -l
+```
+
+### Automate Mac backup pulls
+
+On the Mac, install the `launchd` job:
+
+```bash
+cd /Users/uvlazhnitel/Documents/coding/langschool/langschool
+./scripts/install-mac-backup-launchd.sh
+```
+
+Default schedule:
+
+- `09:00`
+- `21:00`
+
+Default log files:
+
+- `~/Backups/langschool/launchd.stdout.log`
+- `~/Backups/langschool/launchd.stderr.log`
+- `~/Backups/langschool/pull.log`
+
+Verify:
+
+```bash
+launchctl list | grep com.langschool.pull-backups
+```
+
+Manual trigger:
+
+```bash
+launchctl kickstart -k gui/$(id -u)/com.langschool.pull-backups
+```
+
+Unload later if needed:
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.langschool.pull-backups.plist
+```
 
 ---
 
