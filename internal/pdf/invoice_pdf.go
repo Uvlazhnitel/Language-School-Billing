@@ -358,7 +358,7 @@ func drawServiceRow(p *fpdf.Fpdf, no int, name, term, unit string, qty float64, 
 	wPrice := 19.0
 	wAmount := 18.0
 
-	descLines := p.SplitLines([]byte(name), wName-3)
+	descLines := p.SplitText(name, wName-3)
 	rowH := math.Max(10, float64(len(descLines))*4.2+4)
 
 	if y0+rowH > 268 {
