@@ -15,7 +15,6 @@ import type {
   IssueResult,
   MonthOverviewDTO,
   PaymentDTO,
-  PaymentMethod,
   RecentPaymentDTO,
   Row,
   StudentDTO,
@@ -64,7 +63,9 @@ async function requestAbsolute<T>(url: string, init?: RequestOptions): Promise<T
     try {
       const body = (await response.json()) as { error?: string };
       if (body.error) message = body.error;
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     throw new AuthRequiredError(message);
   }
 
@@ -73,7 +74,9 @@ async function requestAbsolute<T>(url: string, init?: RequestOptions): Promise<T
     try {
       const body = (await response.json()) as { error?: string };
       if (body.error) message = body.error;
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     throw new AuthorizationError(message);
   }
 
@@ -82,7 +85,9 @@ async function requestAbsolute<T>(url: string, init?: RequestOptions): Promise<T
     try {
       const body = (await response.json()) as { error?: string };
       if (body.error) message = body.error;
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     throw new Error(message);
   }
 

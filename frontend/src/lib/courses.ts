@@ -1,5 +1,5 @@
 import { CourseType } from "./constants";
-import { getTransport, type CourseDTO } from "./api";
+import { getTransport } from "./api";
 export type { CourseDTO } from "./api";
 
 export async function listCourses(q: string) {

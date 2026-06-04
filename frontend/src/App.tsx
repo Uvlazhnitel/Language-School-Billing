@@ -328,7 +328,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [currentSessionUser, setCurrentSessionUser] = useState<{ id: number; email: string; role: string } | null>(null);
+  const [, setCurrentSessionUser] = useState<{ id: number; email: string; role: string } | null>(null);
   const [sessionCapabilities, setSessionCapabilities] = useState<Record<string, boolean>>({});
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -359,13 +359,13 @@ export default function App() {
     confirmButtonLabel?: string;
   } | null>(null);
 
-  const showConfirm = (
+  const showConfirm = useCallback((
     messageText: string,
     onConfirm: () => void | Promise<void>,
     confirmButtonLabel?: string
   ) => {
     setConfirmDialog({ isOpen: true, message: messageText, onConfirm, confirmButtonLabel });
-  };
+  }, []);
 
   const handleConfirmYes = async () => {
     try {
@@ -559,16 +559,6 @@ export default function App() {
   }, [appReady, tab, loadStudents]);
 
   useEffect(() => {
-    if (tab !== "students" || studentLoading || studentList.length === 0) return;
-    if (
-      !selectedStudentCard ||
-      !studentList.some((student) => student.id === selectedStudentCard.id)
-    ) {
-      void openStudentCard(studentList[0], { inline: true });
-    }
-  }, [tab, studentLoading, studentList, selectedStudentCard]);
-
-  useEffect(() => {
     if (!appReady) return;
     void loadAllStudents();
   }, [appReady, loadAllStudents]);
@@ -698,7 +688,7 @@ export default function App() {
     );
   }
 
-  async function refreshStudentCardData(studentId: number) {
+  const refreshStudentCardData = useCallback(async (studentId: number) => {
     try {
       const [enr, bal, debts, payments, monthInvoices] = await Promise.all([
         listEnrollments(studentId, undefined),
@@ -740,9 +730,17 @@ export default function App() {
     } catch (e: any) {
       showMessage(t("msg.studentCardLoadError", { message: String(e?.message ?? e) }), "error");
     }
-  }
+  }, [
+    localizedBillingModeLabel,
+    localizedPaymentMethodLabel,
+    month,
+    showMessage,
+    t,
+    uiMonths,
+    year,
+  ]);
 
-  async function openStudentCard(s: StudentDTO, options?: { inline?: boolean }) {
+  const openStudentCard = useCallback(async (s: StudentDTO, options?: { inline?: boolean }) => {
     setSelectedStudentCard(s);
     setStudentCardOpen(!(options?.inline || tab === "students"));
     setStudentCardLoading(true);
@@ -758,7 +756,17 @@ export default function App() {
     } finally {
       setStudentCardLoading(false);
     }
-  }
+  }, [refreshStudentCardData, tab]);
+
+  useEffect(() => {
+    if (tab !== "students" || studentLoading || studentList.length === 0) return;
+    if (
+      !selectedStudentCard ||
+      !studentList.some((student) => student.id === selectedStudentCard.id)
+    ) {
+      void openStudentCard(studentList[0], { inline: true });
+    }
+  }, [openStudentCard, tab, studentLoading, studentList, selectedStudentCard]);
 
   async function openStudentCardById(studentId: number) {
     const existing = allStudents.find((s) => s.id === studentId);
@@ -788,7 +796,7 @@ export default function App() {
     if (!selectedStudentCard) return;
     if (tab !== "students" && !studentCardOpen) return;
     void refreshStudentCardData(selectedStudentCard.id);
-  }, [month, selectedStudentCard, studentCardOpen, tab, year]);
+  }, [month, refreshStudentCardData, selectedStudentCard, studentCardOpen, tab, year]);
 
   async function resolveDebtReminderRecipient(studentId: number, studentName: string) {
     const student =
@@ -1432,7 +1440,7 @@ export default function App() {
         setLoadingInv(false);
       }
     },
-    [year, month, invStatus, ensureStudentsLoaded, showMessage, syncDraftInvoices]
+    [year, month, invStatus, ensureStudentsLoaded, showMessage, syncDraftInvoices, t]
   );
 
   useEffect(() => {
@@ -1559,7 +1567,7 @@ export default function App() {
     });
   }, [invItems, invQ, studentIndex]);
 
-  const loadInvoiceDetails = async (id: number) => {
+  const loadInvoiceDetails = useCallback(async (id: number) => {
     const iv = await getInvoice(id);
     setSelectedInv(iv);
     if (iv.status !== "draft") {
@@ -1570,7 +1578,7 @@ export default function App() {
       setInvSummary(null);
       return { invoice: iv, summary: null };
     }
-  };
+  }, []);
 
   const onOpenInvoice = async (id: number) => {
     try {
@@ -1727,7 +1735,7 @@ export default function App() {
     }
   };
 
-  const onReopenToDraft = async (id: number) => {
+  const onReopenToDraft = useCallback(async (id: number) => {
     closeInvoiceMenu();
     showConfirm(
       t("msg.invoiceReopenConfirm"),
@@ -1745,9 +1753,9 @@ export default function App() {
       },
       t("button.reopenDraft")
     );
-  };
+  }, [closeInvoiceMenu, invoiceDetailsOpen, loadInvoiceDetails, loadInvoices, selectedInv, showConfirm, showMessage, t]);
 
-  const onGeneratePdf = async (id: number) => {
+  const onGeneratePdf = useCallback(async (id: number) => {
     try {
       closeInvoiceMenu();
       const pdf = await ensurePdf(id);
@@ -1761,9 +1769,9 @@ export default function App() {
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
-  };
+  }, [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]);
 
-  const onRevealInvoiceFile = async (id: number) => {
+  const onRevealInvoiceFile = useCallback(async (id: number) => {
     try {
       closeInvoiceMenu();
       const pdf = await ensurePdf(id);
@@ -1776,7 +1784,7 @@ export default function App() {
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
-  };
+  }, [closeInvoiceMenu, showMessage, t]);
 
   const buildInvoiceMenuItems = useCallback(
     (invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean }) => {
@@ -1882,7 +1890,7 @@ export default function App() {
   useEffect(() => {
     if (!openInvoiceMenu) return;
     closeInvoiceMenu();
-  }, [closeInvoiceMenu, invoiceDetailsOpen, tab]);
+  }, [closeInvoiceMenu, invoiceDetailsOpen, openInvoiceMenu, tab]);
 
   const renderInvoiceActionsMenu = (
     invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
@@ -2082,7 +2090,9 @@ export default function App() {
     try {
       const transport = await getTransport();
       await transport.logout();
-    } catch {}
+    } catch (error) {
+      void error;
+    }
     setIsAuthenticated(false);
     setCurrentSessionUser(null);
     setSessionCapabilities({});

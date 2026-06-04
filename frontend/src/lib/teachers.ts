@@ -1,4 +1,4 @@
-import { getTransport, type TeacherDTO } from "./api";
+import { getTransport } from "./api";
 export type { TeacherDTO } from "./api";
 
 export async function listTeachers(q: string) {

@@ -1,4 +1,4 @@
-import { getTransport, type MonthOverviewDTO, type RecentPaymentDTO } from "./api";
+import { getTransport } from "./api";
 export type { MonthOverviewDTO, RecentPaymentDTO } from "./api";
 
 export async function loadMonthOverview(year: number, month: number) {

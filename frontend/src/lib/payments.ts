@@ -1,12 +1,5 @@
 import { PaymentMethod } from "./constants";
-import {
-  getTransport,
-  type BalanceDTO,
-  type DebtInvoiceDTO,
-  type DebtorDTO,
-  type InvoiceSummaryDTO,
-  type PaymentDTO,
-} from "./api";
+import { getTransport } from "./api";
 export type { BalanceDTO, DebtInvoiceDTO, DebtorDTO, InvoiceSummaryDTO, PaymentDTO } from "./api";
 
 export async function createPayment(
