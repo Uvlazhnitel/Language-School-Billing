@@ -34,6 +34,8 @@ type StudentWorkspaceProps = {
   onCopyDebtRu: () => void;
   onCopyDebtLv: () => void;
   onDeletePayment: (payment: PaymentDTO) => void;
+  canDeleteStudent: boolean;
+  canDeletePayment: boolean;
   onManageEnrollments: () => void;
   onOpenInvoices: () => void;
   payerRoleLabel: (relation: string) => string;
@@ -72,6 +74,8 @@ export function StudentWorkspace({
   onCopyDebtRu,
   onCopyDebtLv,
   onDeletePayment,
+  canDeleteStudent,
+  canDeletePayment,
   onManageEnrollments,
   onOpenInvoices,
   payerRoleLabel,
@@ -142,7 +146,7 @@ export function StudentWorkspace({
             <button onClick={() => onToggleActive(selectedStudent)}>
               {selectedStudent.isActive ? t("button.deactivate") : t("button.activate")}
             </button>
-            {!selectedStudent.isActive && (
+            {!selectedStudent.isActive && canDeleteStudent && (
               <button onClick={() => onDeleteStudent(selectedStudent.id)}>{t("button.delete")}</button>
             )}
           </div>
@@ -166,6 +170,7 @@ export function StudentWorkspace({
           formatEUR={formatEUR}
           months={months}
           deletingPaymentId={deletingPaymentId}
+          canDeletePayment={canDeletePayment}
           onEditStudent={() => selectedStudent && onEditStudent(selectedStudent)}
           onAddPayment={onAddPayment}
           onCopyDebtRu={onCopyDebtRu}

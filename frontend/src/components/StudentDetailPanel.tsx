@@ -23,6 +23,7 @@ type StudentDetailPanelProps = {
   formatEUR: (value: number) => string;
   months: string[];
   deletingPaymentId: number | null;
+  canDeletePayment: boolean;
   onEditStudent: () => void;
   onAddPayment: () => void;
   onCopyDebtRu: () => void;
@@ -51,6 +52,7 @@ export function StudentDetailPanel({
   formatEUR,
   months,
   deletingPaymentId,
+  canDeletePayment,
   onEditStudent,
   onAddPayment,
   onCopyDebtRu,
@@ -367,12 +369,14 @@ export function StudentDetailPanel({
                       <td>{paymentMethodLabel(payment.method)}</td>
                       <td>{payment.note || "—"}</td>
                       <td>
-                        <button
-                          onClick={() => onDeletePayment(payment)}
-                          disabled={deletingPaymentId === payment.id}
-                        >
-                          {deletingPaymentId === payment.id ? `${t("button.delete")}...` : t("button.delete")}
-                        </button>
+                        {canDeletePayment && (
+                          <button
+                            onClick={() => onDeletePayment(payment)}
+                            disabled={deletingPaymentId === payment.id}
+                          >
+                            {deletingPaymentId === payment.id ? `${t("button.delete")}...` : t("button.delete")}
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}

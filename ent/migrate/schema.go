@@ -256,6 +256,45 @@ var (
 		Columns:    TeachersColumns,
 		PrimaryKey: []*schema.Column{TeachersColumns[0]},
 	}
+	// UsersColumns holds the columns for the "users" table.
+	UsersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "email", Type: field.TypeString, Unique: true},
+		{Name: "password_hash", Type: field.TypeString},
+		{Name: "role", Type: field.TypeString, Default: "admin"},
+		{Name: "is_active", Type: field.TypeBool, Default: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// UsersTable holds the schema information for the "users" table.
+	UsersTable = &schema.Table{
+		Name:       "users",
+		Columns:    UsersColumns,
+		PrimaryKey: []*schema.Column{UsersColumns[0]},
+	}
+	// WebSessionsColumns holds the columns for the "web_sessions" table.
+	WebSessionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "token_hash", Type: field.TypeString, Unique: true},
+		{Name: "expires_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "last_seen_at", Type: field.TypeTime},
+		{Name: "user_sessions", Type: field.TypeInt},
+	}
+	// WebSessionsTable holds the schema information for the "web_sessions" table.
+	WebSessionsTable = &schema.Table{
+		Name:       "web_sessions",
+		Columns:    WebSessionsColumns,
+		PrimaryKey: []*schema.Column{WebSessionsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "web_sessions_users_sessions",
+				Columns:    []*schema.Column{WebSessionsColumns[5]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AttendanceMonthsTable,
@@ -267,6 +306,8 @@ var (
 		SettingsTable,
 		StudentsTable,
 		TeachersTable,
+		UsersTable,
+		WebSessionsTable,
 	}
 )
 
@@ -279,4 +320,5 @@ func init() {
 	InvoiceLinesTable.ForeignKeys[1].RefTable = InvoicesTable
 	PaymentsTable.ForeignKeys[0].RefTable = InvoicesTable
 	PaymentsTable.ForeignKeys[1].RefTable = StudentsTable
+	WebSessionsTable.ForeignKeys[0].RefTable = UsersTable
 }

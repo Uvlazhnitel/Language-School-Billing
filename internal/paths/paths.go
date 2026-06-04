@@ -33,6 +33,10 @@ func Ensure(base string) (Dirs, error) {
 		return d, err
 	}
 
+	return EnsureLayout(d)
+}
+
+func EnsureLayout(d Dirs) (Dirs, error) {
 	for _, p := range []string{d.Data, d.Backups, d.Invoices, d.Exports} {
 		if err := os.MkdirAll(p, 0o755); err != nil {
 			return d, err

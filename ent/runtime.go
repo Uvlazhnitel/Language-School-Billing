@@ -12,6 +12,8 @@ import (
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"langschool/ent/teacher"
+	"langschool/ent/user"
+	"langschool/ent/websession"
 	"time"
 )
 
@@ -143,4 +145,36 @@ func init() {
 	teacherDescIsActive := teacherFields[1].Descriptor()
 	// teacher.DefaultIsActive holds the default value on creation for the is_active field.
 	teacher.DefaultIsActive = teacherDescIsActive.Default.(bool)
+	userFields := schema.User{}.Fields()
+	_ = userFields
+	// userDescRole is the schema descriptor for role field.
+	userDescRole := userFields[2].Descriptor()
+	// user.DefaultRole holds the default value on creation for the role field.
+	user.DefaultRole = userDescRole.Default.(string)
+	// userDescIsActive is the schema descriptor for is_active field.
+	userDescIsActive := userFields[3].Descriptor()
+	// user.DefaultIsActive holds the default value on creation for the is_active field.
+	user.DefaultIsActive = userDescIsActive.Default.(bool)
+	// userDescCreatedAt is the schema descriptor for created_at field.
+	userDescCreatedAt := userFields[4].Descriptor()
+	// user.DefaultCreatedAt holds the default value on creation for the created_at field.
+	user.DefaultCreatedAt = userDescCreatedAt.Default.(func() time.Time)
+	// userDescUpdatedAt is the schema descriptor for updated_at field.
+	userDescUpdatedAt := userFields[5].Descriptor()
+	// user.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	user.DefaultUpdatedAt = userDescUpdatedAt.Default.(func() time.Time)
+	// user.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	user.UpdateDefaultUpdatedAt = userDescUpdatedAt.UpdateDefault.(func() time.Time)
+	websessionFields := schema.WebSession{}.Fields()
+	_ = websessionFields
+	// websessionDescCreatedAt is the schema descriptor for created_at field.
+	websessionDescCreatedAt := websessionFields[2].Descriptor()
+	// websession.DefaultCreatedAt holds the default value on creation for the created_at field.
+	websession.DefaultCreatedAt = websessionDescCreatedAt.Default.(func() time.Time)
+	// websessionDescLastSeenAt is the schema descriptor for last_seen_at field.
+	websessionDescLastSeenAt := websessionFields[3].Descriptor()
+	// websession.DefaultLastSeenAt holds the default value on creation for the last_seen_at field.
+	websession.DefaultLastSeenAt = websessionDescLastSeenAt.Default.(func() time.Time)
+	// websession.UpdateDefaultLastSeenAt holds the default value on update for the last_seen_at field.
+	websession.UpdateDefaultLastSeenAt = websessionDescLastSeenAt.UpdateDefault.(func() time.Time)
 }

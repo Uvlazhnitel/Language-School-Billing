@@ -4,23 +4,22 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	rt "runtime"
-	"sort"
 	"strings"
-	"time"
 
 	"langschool/ent/settings"
 	"langschool/internal/app"
 	"langschool/internal/app/attendance"
+	"langschool/internal/backend"
 
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/infra"
 	"langschool/internal/paths"
+	appruntime "langschool/internal/runtime"
 
 	paysvc "langschool/internal/app/payment"
 )
@@ -33,6 +32,8 @@ type App struct {
 	dirs      paths.Dirs      // Application directory paths (data, backups, invoices, etc.)
 	db        *infra.DB       // Database connection wrapper
 	appDBPath string          // Path to the SQLite database file
+	runtime   *appruntime.Runtime
+	svc       *backend.Service
 
 	// services provide business logic for different domains
 	att *attendance.Service // Attendance tracking service
@@ -45,11 +46,8 @@ type App struct {
 func NewApp() *App { return &App{} }
 
 const appDisplayName = "StudentDesk"
-const appDirName = "StudentDesk"
-const legacyAppDirName = "LangSchool"
-const defaultSchoolDisplayName = "ArtLab"
-const defaultSchoolAddress = "Latgales iela 260, Rīga, Latvija"
-const preMigrationBackupLimit = 30
+const appDirName = appruntime.AppDirName
+const legacyAppDirName = appruntime.LegacyAppDirName
 
 // startup is called by Wails when the application starts.
 // It initializes the database connection, ensures required directories exist,
@@ -58,111 +56,15 @@ const preMigrationBackupLimit = 30
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
 
-	base := resolveAppBaseDir(userHome())
-	dirs, err := paths.Ensure(base)
+	runtimeInstance, err := appruntime.Start(ctx, appruntime.LoadConfig(userHome()))
 	if err != nil {
 		log.Fatal(err)
 	}
-	a.dirs = dirs
-
-	a.appDBPath = filepath.Join(dirs.Data, "app.sqlite")
-	log.Println("Data path:", a.appDBPath)
-
-	if backupPath, err := a.backupBeforeMigration(); err != nil {
-		log.Fatal(err)
-	} else if backupPath != "" {
-		log.Println("Pre-migration backup created:", backupPath)
-		if err := a.cleanupOldPreMigrationBackups(preMigrationBackupLimit); err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	db, err := infra.Open(ctx, a.appDBPath)
-	if err != nil {
-		log.Fatal(err)
-	}
-	a.db = db
-	log.Println("DB ready")
-
-	if err := migrateLegacyCourseTeachers(ctx, a.db.Ent); err != nil {
-		log.Fatal(err)
-	}
-
-	// Ensure single Settings record with singleton_id=1 exists
-	exists, err := a.db.Ent.Settings.
-		Query().
-		Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
-		Exist(ctx)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if !exists {
-		if _, err := a.db.Ent.Settings.
-			Create().
-			SetSingletonID(1).
-			SetOrgName(defaultSchoolDisplayName).
-			SetAddress(defaultSchoolAddress).
-			SetInvoicePrefix("LS").
-			SetNextSeq(1).
-			SetInvoiceDayOfMonth(1).
-			SetCurrency("EUR").
-			SetLocale("en-US").
-			Save(ctx); err != nil {
-			log.Fatal(err)
-		}
-	} else {
-		st, err := a.db.Ent.Settings.
-			Query().
-			Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
-			Only(ctx)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		upd := a.db.Ent.Settings.
-			Update().
-			Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
-			SetCurrency("EUR")
-
-		orgName := strings.TrimSpace(st.OrgName)
-		if orgName == "" || strings.EqualFold(orgName, "North Star Language Studio") {
-			upd.SetOrgName(defaultSchoolDisplayName)
-		}
-
-		address := strings.TrimSpace(st.Address)
-		if address == "" || strings.EqualFold(address, "Brivibas iela 88, Riga, Latvia") {
-			upd.SetAddress(defaultSchoolAddress)
-		}
-
-		if _, err := upd.Save(ctx); err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	// initialize services
-	a.att = attendance.New(a.db.Ent)
-	a.inv = invsvc.New(a.db.Ent)
-	a.pay = paysvc.New(a.db.Ent)
+	a.attachRuntime(runtimeInstance)
 }
 
 func resolveAppBaseDir(home string) string {
-	base := filepath.Join(home, appDirName)
-	legacyBase := filepath.Join(home, legacyAppDirName)
-
-	if info, err := os.Stat(base); err == nil && info.IsDir() {
-		return base
-	}
-
-	if info, err := os.Stat(legacyBase); err == nil && info.IsDir() {
-		if err := os.Rename(legacyBase, base); err == nil {
-			log.Printf("Migrated app data directory from %s to %s", legacyBase, base)
-			return base
-		}
-		log.Printf("Using legacy app data directory %s because migration to %s failed", legacyBase, base)
-		return legacyBase
-	}
-
-	return base
+	return appruntime.ResolveAppBaseDir(home)
 }
 
 // domReady is called by Wails when the frontend DOM is ready.
@@ -174,7 +76,11 @@ func (a *App) domReady(ctx context.Context) {}
 // It performs cleanup operations, such as closing the database connection
 // to ensure data integrity and proper resource cleanup.
 func (a *App) shutdown(ctx context.Context) {
-	if a.db != nil {
+	if a.runtime != nil {
+		_ = a.runtime.Close()
+		return
+	}
+	if a.db != nil && a.db.Ent != nil {
 		_ = a.db.Ent.Close()
 	}
 }
@@ -190,62 +96,20 @@ func (a *App) EnrollmentDelete(enrollmentID int) error {
 // userHome returns the user's home directory path.
 // Falls back to "." if the home directory cannot be determined.
 func userHome() string {
-	if h, err := os.UserHomeDir(); err == nil {
-		return h
-	}
-	return "."
-}
-
-// fileExists checks if a file exists at the given path.
-func fileExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
-// dirHasFonts checks that both TTF files are present in dir.
-func dirHasFonts(dir string) bool {
-	return fileExists(filepath.Join(dir, "DejaVuSans.ttf")) &&
-		fileExists(filepath.Join(dir, "DejaVuSans-Bold.ttf"))
+	return appruntime.UserHome()
 }
 
 // resolveFontsDir tries multiple locations and logs the decision.
 func (a *App) resolveFontsDir() (string, error) {
-	var candidates []string
-
-	// 1) Explicit env override
-	if env := os.Getenv("LS_FONTS_DIR"); env != "" {
-		candidates = append(candidates, env)
+	cfg := appruntime.LoadConfig(userHome())
+	if a.runtime != nil {
+		cfg = a.runtime.Config
 	}
-
-	// 2) Our app data base: ~/StudentDesk/Fonts
-	candidates = append(candidates, filepath.Join(a.dirs.Base, "Fonts"))
-
-	// 3) Next to executable
-	if exe, err := os.Executable(); err == nil {
-		exeDir := filepath.Dir(exe)
-		candidates = append(candidates,
-			filepath.Join(exeDir, "Fonts"),
-			filepath.Join(exeDir, "fonts"),
-		)
+	fontsDir, err := appruntime.ResolveFontsDir(cfg, a.dirs)
+	if err == nil {
+		log.Printf("resolveFontsDir: using %s", fontsDir)
 	}
-
-	// 4) Current working directory (dev)
-	if wd, err := os.Getwd(); err == nil {
-		candidates = append(candidates,
-			filepath.Join(wd, "Fonts"),
-			filepath.Join(wd, "fonts"),
-		)
-	}
-
-	for _, c := range candidates {
-		if dirHasFonts(c) {
-			log.Printf("resolveFontsDir: using %s", c)
-			return c, nil
-		}
-		log.Printf("resolveFontsDir: not found in %s", c)
-	}
-
-	return "", fmt.Errorf("DejaVuSans.ttf & DejaVuSans-Bold.ttf not found in any known location; set LS_FONTS_DIR or place fonts into ~/StudentDesk/Fonts or ./Fonts")
+	return fontsDir, err
 }
 
 // ---------- App info / utilities ----------
@@ -253,8 +117,7 @@ func (a *App) resolveFontsDir() (string, error) {
 // AppDirs returns application directories for UI (useful for exports/backups).
 func (a *App) AppDirs() map[string]string {
 	if a.dirs.Base == "" {
-		base := resolveAppBaseDir(userHome())
-		dirs, err := paths.Ensure(base)
+		dirs, err := appruntime.ResolveDirs(appruntime.LoadConfig(userHome()))
 		if err == nil {
 			a.dirs = dirs
 		}
@@ -267,117 +130,40 @@ func (a *App) AppDirs() map[string]string {
 
 // AppReady reports whether startup completed enough for frontend data calls.
 func (a *App) AppReady() bool {
+	if a.svc != nil {
+		return a.svc.Ready()
+	}
 	return a.ctx != nil && a.db != nil && a.db.Ent != nil && a.att != nil && a.inv != nil && a.pay != nil
 }
 
 // BackupNow creates a timestamped copy of the SQLite DB in Backups/ and returns the file path.
 func (a *App) BackupNow() (string, error) {
-	if a.appDBPath == "" {
-		return "", fmt.Errorf("db path is empty")
+	if a.svc != nil {
+		return a.svc.BackupNow()
 	}
-	ts := time.Now().Format("20060102-150405")
-	dst := filepath.Join(a.dirs.Backups, fmt.Sprintf("app-%s.sqlite", ts))
-	if err := copyFile(a.appDBPath, dst); err != nil {
-		return "", err
-	}
-	return dst, nil
+	return appruntime.BackupNow(a.appDBPath, a.dirs.Backups)
 }
 
 // backupBeforeMigration creates a timestamped copy of the existing SQLite DB
 // before startup runs schema migrations. If the DB does not exist yet, the
 // first-run startup continues without creating a backup.
 func (a *App) backupBeforeMigration() (string, error) {
-	if a.appDBPath == "" {
-		return "", fmt.Errorf("db path is empty")
-	}
-
-	info, err := os.Stat(a.appDBPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return "", nil
-		}
-		return "", err
-	}
-	if info.IsDir() {
-		return "", fmt.Errorf("db path points to a directory: %s", a.appDBPath)
-	}
-
-	ts := time.Now().Format("20060102-150405")
-	dst := filepath.Join(a.dirs.Backups, fmt.Sprintf("pre-migration-%s.sqlite", ts))
-	if err := copyFile(a.appDBPath, dst); err != nil {
-		return "", err
-	}
-	return dst, nil
+	return appruntime.BackupBeforeMigration(a.appDBPath, a.dirs.Backups)
 }
 
 func (a *App) cleanupOldPreMigrationBackups(limit int) error {
-	if limit <= 0 {
-		return fmt.Errorf("backup retention limit must be positive")
-	}
-
-	entries, err := os.ReadDir(a.dirs.Backups)
-	if err != nil {
-		return err
-	}
-
-	type backupFile struct {
-		path    string
-		modTime time.Time
-	}
-
-	backups := make([]backupFile, 0, len(entries))
-	for _, entry := range entries {
-		if entry.IsDir() {
-			continue
-		}
-		name := entry.Name()
-		if !strings.HasPrefix(name, "pre-migration-") || !strings.HasSuffix(name, ".sqlite") {
-			continue
-		}
-
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-
-		backups = append(backups, backupFile{
-			path:    filepath.Join(a.dirs.Backups, name),
-			modTime: info.ModTime(),
-		})
-	}
-
-	if len(backups) <= limit {
-		return nil
-	}
-
-	sort.Slice(backups, func(i, j int) bool {
-		return backups[i].modTime.After(backups[j].modTime)
-	})
-
-	for _, backup := range backups[limit:] {
-		if err := os.Remove(backup.path); err != nil {
-			return err
-		}
-	}
-
-	return nil
+	return appruntime.CleanupOldPreMigrationBackups(a.dirs.Backups, limit)
 }
 
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = out.Close() }()
-	if _, err := io.Copy(out, in); err != nil {
-		return err
-	}
-	return out.Sync()
+func (a *App) attachRuntime(runtimeInstance *appruntime.Runtime) {
+	a.runtime = runtimeInstance
+	a.svc = backend.New(runtimeInstance)
+	a.dirs = runtimeInstance.Dirs
+	a.db = runtimeInstance.DB
+	a.appDBPath = runtimeInstance.AppDBPath
+	a.att = runtimeInstance.Attendance
+	a.inv = runtimeInstance.Invoice
+	a.pay = runtimeInstance.Payment
 }
 
 // ---------- Attendance bindings ----------
@@ -386,12 +172,18 @@ func copyFile(src, dst string) error {
 // enrollments for the specified year, month, and optionally filtered by course.
 // Returns a list of rows containing student, course, and tracked hours information.
 func (a *App) AttendanceListPerLesson(year, month int, courseID *int) ([]attendance.Row, error) {
+	if a.svc != nil {
+		return a.svc.AttendanceListPerLesson(a.ctx, year, month, courseID)
+	}
 	return a.att.ListPerLesson(a.ctx, year, month, courseID)
 }
 
 // AttendanceUpsert creates or updates an attendance record for a student-course
 // pair for a specific month.
 func (a *App) AttendanceUpsert(studentID, courseID, year, month int, hours float64) error {
+	if a.svc != nil {
+		return a.svc.AttendanceUpsert(a.ctx, studentID, courseID, year, month, hours)
+	}
 	return a.att.Upsert(a.ctx, studentID, courseID, year, month, hours)
 }
 
@@ -399,6 +191,9 @@ func (a *App) AttendanceUpsert(studentID, courseID, year, month int, hours float
 // records matching the filter (year, month, optional courseID).
 // Returns the number of records that were successfully updated.
 func (a *App) AttendanceAddOne(year, month int, courseID *int) (int, error) {
+	if a.svc != nil {
+		return a.svc.AttendanceAddOne(a.ctx, year, month, courseID)
+	}
 	return a.att.AddOneForFilter(a.ctx, year, month, courseID)
 }
 
@@ -413,6 +208,9 @@ type InvoiceDTO = invsvc.InvoiceDTO
 // issued/paid/canceled invoices are skipped. Returns statistics about
 // the generation process.
 func (a *App) InvoiceGenerateDrafts(year, month int) (invsvc.GenerateResult, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceGenerateDrafts(a.ctx, year, month)
+	}
 	log.Printf("InvoiceGenerateDrafts called for %04d-%02d", year, month)
 	res, err := a.inv.GenerateDrafts(a.ctx, year, month)
 	if err != nil {
@@ -427,6 +225,9 @@ func (a *App) InvoiceGenerateDrafts(year, month int) (invsvc.GenerateResult, err
 // InvoiceRebuildStudentDraft rebuilds the draft invoice for a single student
 // in the specified year and month. Issued, paid, and canceled invoices are skipped.
 func (a *App) InvoiceRebuildStudentDraft(studentID, year, month int) (invsvc.GenerateResult, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceRebuildStudentDraft(a.ctx, studentID, year, month)
+	}
 	log.Printf("InvoiceRebuildStudentDraft called for student=%d period=%04d-%02d", studentID, year, month)
 	res, err := a.inv.RebuildStudentDraft(a.ctx, studentID, year, month)
 	if err != nil {
@@ -441,35 +242,42 @@ func (a *App) InvoiceRebuildStudentDraft(studentID, year, month int) (invsvc.Gen
 // InvoiceGet retrieves a single invoice by ID with all its line items.
 // Works for invoices in any status (draft, issued, paid, canceled).
 func (a *App) InvoiceGet(id int) (*InvoiceDTO, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceGet(a.ctx, id)
+	}
 	return a.inv.Get(a.ctx, id)
 }
 
 // InvoiceDeleteDraft deletes a draft invoice and all its line items.
 // Only draft invoices can be deleted; issued/paid/canceled invoices are protected.
 func (a *App) InvoiceDeleteDraft(id int) error {
+	if a.svc != nil {
+		return a.svc.InvoiceDeleteDraft(a.ctx, id)
+	}
 	return a.inv.DeleteDraft(a.ctx, id)
 }
 
 // InvoiceReopenDraft moves an issued invoice with no payments back to draft state.
 // The invoice lines remain unchanged so the draft can be reviewed and issued again.
 func (a *App) InvoiceReopenDraft(id int) error {
+	if a.svc != nil {
+		return a.svc.InvoiceReopenDraft(a.ctx, id)
+	}
 	return a.inv.ReopenDraft(a.ctx, id, a.dirs.Invoices)
 }
 
 // IssueResult contains the result of issuing a single invoice.
-type IssueResult struct {
-	Number string `json:"number"` // The assigned invoice number
-}
+type IssueResult = backend.IssueResult
 
 // IssueAllResult contains the result of issuing all draft invoices for a period.
-type IssueAllResult struct {
-	Count    int      `json:"count"`    // Number of invoices issued
-	PdfPaths []string `json:"pdfPaths"` // Paths to all generated PDF files
-}
+type IssueAllResult = backend.IssueAllResult
 
 // InvoiceList returns invoices for the specified year and month, optionally
 // filtered by status. Status can be "draft", "issued", "paid", "canceled", or "all".
 func (a *App) InvoiceList(year, month int, status string) ([]invsvc.ListItem, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceList(a.ctx, year, month, status)
+	}
 	return a.inv.List(a.ctx, year, month, status)
 }
 
@@ -477,6 +285,9 @@ func (a *App) InvoiceList(year, month int, status string) ([]invsvc.ListItem, er
 // and changing its status to "issued". PDF generation is handled separately
 // by InvoiceEnsurePDF when the user explicitly requests a document.
 func (a *App) InvoiceIssue(id int) (IssueResult, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceIssue(a.ctx, id)
+	}
 	num, err := a.inv.IssueOne(a.ctx, id)
 	if err != nil {
 		return IssueResult{}, err
@@ -495,6 +306,9 @@ func (a *App) InvoiceIssue(id int) (IssueResult, error) {
 // Each invoice is assigned a number, marked as issued, and a PDF is generated.
 // Returns the count of issued invoices and paths to all generated PDFs.
 func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceIssueAll(a.ctx, year, month)
+	}
 	fonts, err := a.resolveFontsDir()
 	if err != nil {
 		return IssueAllResult{}, err
@@ -529,13 +343,22 @@ func (a *App) OpenFile(path string) error {
 		path = abs
 	}
 
-	// Security check: Ensure file is within allowed directories
-	allowedBase := filepath.Clean(a.dirs.Base)
 	cleanPath := filepath.Clean(path)
 
-	// Check if the path is within the StudentDesk directory
-	if !strings.HasPrefix(cleanPath, allowedBase) {
-		return fmt.Errorf("доступ запрещён: файл должен находиться внутри каталога %s", allowedBase)
+	allowedRoots := a.allowedFileRoots()
+	allowed := false
+	for _, root := range allowedRoots {
+		root = filepath.Clean(root)
+		if root == "" {
+			continue
+		}
+		if cleanPath == root || strings.HasPrefix(cleanPath, root+string(os.PathSeparator)) {
+			allowed = true
+			break
+		}
+	}
+	if !allowed {
+		return fmt.Errorf("доступ запрещён: файл должен находиться внутри каталога приложения")
 	}
 
 	info, err := os.Stat(path)
@@ -574,6 +397,9 @@ func (a *App) OpenFile(path string) error {
 // If the PDF already exists, returns its path. Otherwise, regenerates it.
 // Only works for invoices that have been issued (have a number).
 func (a *App) InvoiceEnsurePDF(id int) (string, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceEnsurePDF(a.ctx, id)
+	}
 	dto, err := a.inv.Get(a.ctx, id)
 	if err != nil {
 		return "", err
@@ -603,6 +429,9 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 // InvoiceHasPDF reports whether an issued invoice already has a PDF file on disk.
 // It checks both the current named file convention and the legacy number-only path.
 func (a *App) InvoiceHasPDF(id int) (bool, error) {
+	if a.svc != nil {
+		return a.svc.InvoiceHasPDF(a.ctx, id)
+	}
 	dto, err := a.inv.Get(a.ctx, id)
 	if err != nil {
 		return false, err
@@ -636,6 +465,9 @@ func (a *App) invoicePDFPaths(dto *invsvc.InvoiceDTO) []string {
 // SettingsSetLocale updates the application locale setting.
 // The locale affects date, number, and currency formatting in invoices.
 func (a *App) SettingsSetLocale(loc string) error {
+	if a.svc != nil {
+		return a.svc.SettingsSetLocale(a.ctx, loc)
+	}
 	_, err := a.db.Ent.Settings.
 		Update().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
 		SetLocale(loc).
@@ -645,6 +477,9 @@ func (a *App) SettingsSetLocale(loc string) error {
 
 // SettingsGetLocale returns the saved application locale.
 func (a *App) SettingsGetLocale() (string, error) {
+	if a.svc != nil {
+		return a.svc.SettingsGetLocale(a.ctx)
+	}
 	if a.db == nil || a.db.Ent == nil {
 		return "en-US", nil
 	}
@@ -673,56 +508,104 @@ type RecentPaymentDTO = paysvc.RecentPaymentDTO
 // either "YYYY-MM-DD" format or RFC3339. If invoiceID is provided, the payment
 // is linked to that invoice and the invoice status may be updated automatically.
 func (a *App) PaymentCreate(studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
+	if a.svc != nil {
+		return a.svc.PaymentCreate(a.ctx, studentID, invoiceID, amount, method, paidAt, note)
+	}
 	return a.pay.Create(a.ctx, studentID, invoiceID, amount, method, paidAt, note)
 }
 
 // PaymentDelete deletes a payment record. If the payment was linked to an invoice,
 // the invoice status will be recomputed (e.g., from "paid" back to "issued" if needed).
 func (a *App) PaymentDelete(paymentID int) error {
+	if a.svc != nil {
+		return a.svc.PaymentDelete(a.ctx, paymentID)
+	}
 	return a.pay.Delete(a.ctx, paymentID)
 }
 
 // PaymentListForStudent returns all payments for a specific student,
 // ordered by payment date (most recent first).
 func (a *App) PaymentListForStudent(studentID int) ([]PaymentDTO, error) {
+	if a.svc != nil {
+		return a.svc.PaymentListForStudent(a.ctx, studentID)
+	}
 	return a.pay.ListForStudent(a.ctx, studentID)
 }
 
 // StudentBalance calculates the financial balance for a student, including
 // total invoiced amount, total paid amount, current balance, and debt (if any).
 func (a *App) StudentBalance(studentID int) (*BalanceDTO, error) {
+	if a.svc != nil {
+		return a.svc.StudentBalance(a.ctx, studentID)
+	}
 	return a.pay.StudentBalance(a.ctx, studentID)
 }
 
 // DebtorsList returns a list of all active students who have outstanding debt,
 // sorted by debt amount (highest first).
 func (a *App) DebtorsList() ([]DebtorDTO, error) {
+	if a.svc != nil {
+		return a.svc.DebtorsList(a.ctx)
+	}
 	return a.pay.ListDebtors(a.ctx)
 }
 
 // MonthOverview returns a read-only monthly dashboard snapshot.
 func (a *App) MonthOverview(year, month int) (*MonthOverviewDTO, error) {
+	if a.svc != nil {
+		return a.svc.MonthOverview(a.ctx, year, month)
+	}
 	return a.pay.MonthOverview(a.ctx, year, month)
 }
 
 // RecentPayments returns the latest payments for dashboard activity feeds.
 func (a *App) RecentPayments(limit int) ([]RecentPaymentDTO, error) {
+	if a.svc != nil {
+		return a.svc.RecentPayments(a.ctx, limit)
+	}
 	return a.pay.ListRecent(a.ctx, limit)
 }
 
 // StudentDebtDetails returns open invoice debt details for one student.
 func (a *App) StudentDebtDetails(studentID int) ([]DebtInvoiceDTO, error) {
+	if a.svc != nil {
+		return a.svc.StudentDebtDetails(a.ctx, studentID)
+	}
 	return a.pay.StudentDebtDetails(a.ctx, studentID)
 }
 
 // InvoicePaymentSummary returns a summary of payment status for a specific invoice,
 // including total amount, paid amount, remaining balance, and current status.
 func (a *App) InvoicePaymentSummary(invoiceID int) (*InvoiceSummaryDTO, error) {
+	if a.svc != nil {
+		return a.svc.InvoicePaymentSummary(a.ctx, invoiceID)
+	}
 	return a.pay.InvoiceSummary(a.ctx, invoiceID)
 }
 
 // PaymentQuickCash creates an unlinked cash payment for immediate payment scenarios
 // (e.g., "cash for lesson now"). The payment is not linked to any invoice.
 func (a *App) PaymentQuickCash(studentID int, amount float64, note string) (*PaymentDTO, error) {
+	if a.svc != nil {
+		return a.svc.PaymentQuickCash(a.ctx, studentID, amount, note)
+	}
 	return a.pay.QuickCash(a.ctx, studentID, amount, note)
+}
+
+func (a *App) allowedFileRoots() []string {
+	roots := []string{a.dirs.Base, a.dirs.Data, a.dirs.Backups, a.dirs.Invoices, a.dirs.Exports}
+	seen := make(map[string]struct{}, len(roots))
+	filtered := make([]string, 0, len(roots))
+	for _, root := range roots {
+		root = strings.TrimSpace(root)
+		if root == "" {
+			continue
+		}
+		if _, ok := seen[root]; ok {
+			continue
+		}
+		seen[root] = struct{}{}
+		filtered = append(filtered, root)
+	}
+	return filtered
 }

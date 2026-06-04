@@ -15,6 +15,8 @@ import (
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"langschool/ent/teacher"
+	"langschool/ent/user"
+	"langschool/ent/websession"
 	"reflect"
 	"sync"
 
@@ -90,6 +92,8 @@ func checkColumn(t, c string) error {
 			settings.Table:        settings.ValidColumn,
 			student.Table:         student.ValidColumn,
 			teacher.Table:         teacher.ValidColumn,
+			user.Table:            user.ValidColumn,
+			websession.Table:      websession.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

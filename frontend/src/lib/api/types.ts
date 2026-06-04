@@ -1,0 +1,360 @@
+export type AppDirs = Record<string, string> | null;
+
+export type TransportCapabilities = {
+  isDesktop: boolean;
+  canOpenLocalFiles: boolean;
+  canOpenFolders: boolean;
+  canDownloadPdf: boolean;
+};
+
+export type BootstrapResult = {
+  ready: boolean;
+  locale: string;
+  appDirs: AppDirs;
+  capabilities: TransportCapabilities;
+  authRequired: boolean;
+  session: SessionInfo;
+};
+
+export type SessionUser = {
+  id: number;
+  email: string;
+  role: string;
+};
+
+export type UserDTO = {
+  id: number;
+  email: string;
+  role: string;
+  isActive: boolean;
+};
+
+export type SessionInfo = {
+  authenticated: boolean;
+  user?: SessionUser;
+  locale: string;
+  capabilities: Record<string, boolean>;
+  ready: boolean;
+};
+
+export type BackupResult = {
+  filename: string;
+  path?: string;
+};
+
+export type EnsurePdfResult = {
+  filename: string;
+  localPath?: string;
+  downloadUrl?: string;
+};
+
+export type Row = {
+  enrollmentId: number;
+  studentId: number;
+  studentName: string;
+  courseId: number;
+  courseName: string;
+  courseType: CourseType;
+  billingMode: BillingMode;
+  lessonPrice: number;
+  hours: number;
+  hasRecord: boolean;
+  canDelete: boolean;
+  attendanceLocked: boolean;
+  invoiceStatus?: InvoiceStatus;
+};
+
+export type StudentDTO = {
+  id: number;
+  fullName: string;
+  personalCode: string;
+  phone: string;
+  email: string;
+  note: string;
+  isMinor: boolean;
+  payerName: string;
+  payerRole: string;
+  isActive: boolean;
+};
+
+export type TeacherDTO = {
+  id: number;
+  fullName: string;
+  isActive: boolean;
+};
+
+export type CourseDTO = {
+  id: number;
+  name: string;
+  teacherId?: number;
+  teacherName: string;
+  type: CourseType;
+  lessonPrice: number;
+  subscriptionPrice: number;
+};
+
+export type EnrollmentDTO = {
+  id: number;
+  studentId: number;
+  studentName: string;
+  courseId: number;
+  courseName: string;
+  teacherId?: number;
+  teacherName: string;
+  billingMode: BillingMode;
+  discountPct: number;
+  note: string;
+};
+
+export type InvoiceListItem = {
+  id: number;
+  studentId: number;
+  studentName: string;
+  year: number;
+  month: number;
+  total: number;
+  status: InvoiceStatus;
+  linesCount: number;
+  number?: string;
+};
+
+export type InvoiceListItemView = InvoiceListItem & {
+  pdfReady?: boolean;
+};
+
+export type InvoiceLine = {
+  enrollmentId: number;
+  description: string;
+  qty: number;
+  unitPrice: number;
+  amount: number;
+};
+
+export type InvoiceDTO = {
+  id: number;
+  studentId: number;
+  studentName: string;
+  recipientName: string;
+  recipientPhone: string;
+  recipientEmail: string;
+  childName: string;
+  studentPersonalCode: string;
+  isMinor: boolean;
+  year: number;
+  month: number;
+  total: number;
+  status: InvoiceStatus;
+  number?: string;
+  lines: InvoiceLine[];
+};
+
+export type GenerateResult = {
+  created: number;
+  updated: number;
+  skippedHasInvoice: number;
+  skippedNoLines: number;
+};
+
+export type IssueResult = { number: string };
+export type IssueAllResult = { count: number; pdfPaths: string[] };
+
+export type PaymentDTO = {
+  id: number;
+  studentId: number;
+  invoiceId?: number;
+  paidAt: string;
+  amount: number;
+  method: PaymentMethod;
+  note: string;
+  createdAt: string;
+};
+
+export type DebtorDTO = {
+  studentId: number;
+  studentName: string;
+  debt: number;
+  totalInvoiced: number;
+  totalPaid: number;
+};
+
+export type InvoiceSummaryDTO = {
+  invoiceId: number;
+  total: number;
+  paid: number;
+  remaining: number;
+  status: string;
+  number?: string;
+};
+
+export type DebtInvoiceDTO = {
+  invoiceId: number;
+  year: number;
+  month: number;
+  number?: string;
+  total: number;
+  paid: number;
+  remaining: number;
+  status: string;
+};
+
+export type BalanceDTO = {
+  studentId: number;
+  studentName: string;
+  totalInvoiced: number;
+  totalPaid: number;
+  balance: number;
+  debt: number;
+};
+
+export type MonthOverviewDTO = {
+  year: number;
+  month: number;
+  activeStudents: number;
+  activeCourses: number;
+  enrollments: number;
+  perLessonEnrollments: number;
+  attendanceFilled: number;
+  attendanceMissing: number;
+  draftInvoices: number;
+  issuedInvoices: number;
+  paidInvoices: number;
+  totalIssued: number;
+  totalPaid: number;
+  debtorsCount: number;
+  totalDebt: number;
+};
+
+export type RecentPaymentDTO = {
+  id: number;
+  studentId: number;
+  studentName: string;
+  invoiceId?: number;
+  amount: number;
+  method: string;
+  paidAt: string;
+  note: string;
+};
+
+export type CourseType = "group" | "individual";
+export type BillingMode = "subscription" | "per_lesson";
+export type InvoiceStatus = "draft" | "issued" | "paid" | "canceled";
+export type PaymentMethod = "cash" | "bank";
+
+export interface AppTransport {
+  bootstrap(): Promise<BootstrapResult>;
+  getSession(): Promise<SessionInfo>;
+  login(email: string, password: string): Promise<SessionInfo>;
+  logout(): Promise<void>;
+  getLocale(): Promise<string>;
+  setLocale(locale: string): Promise<void>;
+  createBackup(): Promise<BackupResult>;
+  openLocalPath(path: string): Promise<void>;
+  listUsers(): Promise<UserDTO[]>;
+  createUser(email: string, password: string, role: string): Promise<UserDTO>;
+  updateUser(id: number, email: string, role: string, isActive: boolean): Promise<UserDTO>;
+  setUserPassword(id: number, password: string): Promise<void>;
+  setUserActive(id: number, active: boolean): Promise<UserDTO>;
+
+  listStudents(q: string, includeInactive: boolean): Promise<StudentDTO[]>;
+  getStudent(id: number): Promise<StudentDTO>;
+  createStudent(
+    fullName: string,
+    personalCode: string,
+    phone: string,
+    email: string,
+    note: string,
+    isMinor: boolean,
+    payerName: string,
+    payerRole: string
+  ): Promise<StudentDTO>;
+  updateStudent(
+    id: number,
+    fullName: string,
+    personalCode: string,
+    phone: string,
+    email: string,
+    note: string,
+    isMinor: boolean,
+    payerName: string,
+    payerRole: string
+  ): Promise<StudentDTO>;
+  setStudentActive(id: number, active: boolean): Promise<void>;
+  deleteStudent(id: number): Promise<void>;
+
+  listTeachers(q: string): Promise<TeacherDTO[]>;
+  createTeacher(fullName: string): Promise<TeacherDTO>;
+
+  listCourses(q: string): Promise<CourseDTO[]>;
+  getCourse(id: number): Promise<CourseDTO>;
+  createCourse(
+    name: string,
+    teacherId: number | undefined,
+    courseType: CourseType,
+    lessonPrice: number,
+    subscriptionPrice: number
+  ): Promise<CourseDTO>;
+  updateCourse(
+    id: number,
+    name: string,
+    teacherId: number | undefined,
+    courseType: CourseType,
+    lessonPrice: number,
+    subscriptionPrice: number
+  ): Promise<CourseDTO>;
+  deleteCourse(id: number): Promise<void>;
+
+  listEnrollments(studentId?: number, courseId?: number): Promise<EnrollmentDTO[]>;
+  createEnrollment(
+    studentId: number,
+    courseId: number,
+    billingMode: EnrollmentDTO["billingMode"],
+    discountPct: number,
+    note: string
+  ): Promise<EnrollmentDTO>;
+  updateEnrollment(
+    enrollmentId: number,
+    billingMode: EnrollmentDTO["billingMode"],
+    discountPct: number,
+    note: string
+  ): Promise<EnrollmentDTO>;
+  deleteEnrollment(enrollmentId: number): Promise<void>;
+
+  fetchAttendanceRows(year: number, month: number, courseId?: number): Promise<Row[]>;
+  saveAttendanceHours(
+    studentId: number,
+    courseId: number,
+    year: number,
+    month: number,
+    hours: number
+  ): Promise<void>;
+  addAttendanceHours(year: number, month: number, courseId?: number): Promise<number>;
+
+  listInvoices(year: number, month: number, status: string): Promise<InvoiceListItem[]>;
+  getInvoice(id: number): Promise<InvoiceDTO>;
+  generateDrafts(year: number, month: number): Promise<GenerateResult>;
+  deleteDraft(id: number): Promise<void>;
+  reopenToDraft(id: number): Promise<void>;
+  issueInvoice(id: number): Promise<IssueResult>;
+  rebuildStudentDraft(studentId: number, year: number, month: number): Promise<GenerateResult>;
+  ensurePdf(invoiceId: number): Promise<EnsurePdfResult>;
+  hasPdf(invoiceId: number): Promise<boolean>;
+
+  createPayment(
+    studentId: number,
+    invoiceId: number | undefined,
+    amount: number,
+    method: PaymentMethod,
+    paidAt: string,
+    note: string
+  ): Promise<PaymentDTO>;
+  deletePayment(paymentId: number): Promise<void>;
+  listDebtors(): Promise<DebtorDTO[]>;
+  invoiceSummary(invoiceId: number): Promise<InvoiceSummaryDTO>;
+  studentDebtDetails(studentId: number): Promise<DebtInvoiceDTO[]>;
+  studentBalance(studentId: number): Promise<BalanceDTO>;
+  paymentListForStudent(studentId: number): Promise<PaymentDTO[]>;
+  quickCash(studentId: number, amount: number, note: string): Promise<PaymentDTO>;
+
+  loadMonthOverview(year: number, month: number): Promise<MonthOverviewDTO>;
+  loadRecentPayments(limit?: number): Promise<RecentPaymentDTO[]>;
+}

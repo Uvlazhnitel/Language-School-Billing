@@ -1,100 +1,55 @@
-import {
-  InvoiceGenerateDrafts,
-  InvoiceList,
-  InvoiceGet,
-  InvoiceDeleteDraft,
-  InvoiceReopenDraft,
-  InvoiceIssue,
-  InvoiceRebuildStudentDraft,
-  InvoiceEnsurePDF,
-  InvoiceHasPDF,
-} from "../../wailsjs/go/main/App";
-import { InvoiceStatus } from "./constants";
-
-export type InvoiceListItem = {
-  id: number;
-  studentId: number;
-  studentName: string;
-  year: number;
-  month: number;
-  total: number;
-  status: InvoiceStatus;
-  linesCount: number;
-  number?: string;
-};
-
-export type InvoiceListItemView = InvoiceListItem & {
-  pdfReady?: boolean;
-};
-
-export type InvoiceLine = {
-  enrollmentId: number;
-  description: string;
-  qty: number;
-  unitPrice: number;
-  amount: number;
-};
-
-export type InvoiceDTO = {
-  id: number;
-  studentId: number;
-  studentName: string;
-  recipientName: string;
-  recipientPhone: string;
-  recipientEmail: string;
-  childName: string;
-  studentPersonalCode: string;
-  isMinor: boolean;
-  year: number;
-  month: number;
-  total: number;
-  status: InvoiceStatus;
-  number?: string;
-  lines: InvoiceLine[];
-};
-
-export type GenerateResult = {
-  created: number;
-  updated: number;
-  skippedHasInvoice: number;
-  skippedNoLines: number;
-};
-
-export type IssueResult = { number: string };
-export type IssueAllResult = { count: number; pdfPaths: string[] };
+import { getTransport } from "./api";
+export type {
+  EnsurePdfResult,
+  GenerateResult,
+  InvoiceDTO,
+  InvoiceListItem,
+  InvoiceListItemView,
+  IssueAllResult,
+  IssueResult,
+} from "./api";
 
 export async function genDrafts(year: number, month: number) {
-  return (await InvoiceGenerateDrafts(year, month)) as GenerateResult;
+  const transport = await getTransport();
+  return transport.generateDrafts(year, month);
 }
 
 export async function listInvoices(year: number, month: number, status: string) {
-  return (await InvoiceList(year, month, status)) as InvoiceListItem[];
+  const transport = await getTransport();
+  return transport.listInvoices(year, month, status);
 }
 
 export async function getInvoice(id: number) {
-  return (await InvoiceGet(id)) as InvoiceDTO;
+  const transport = await getTransport();
+  return transport.getInvoice(id);
 }
 
 export async function deleteDraft(id: number) {
-  return await InvoiceDeleteDraft(id);
+  const transport = await getTransport();
+  return transport.deleteDraft(id);
 }
 
 export async function reopenToDraft(id: number) {
-  return await InvoiceReopenDraft(id);
+  const transport = await getTransport();
+  return transport.reopenToDraft(id);
 }
 
 export async function issueOne(id: number) {
-  return (await InvoiceIssue(id)) as IssueResult;
+  const transport = await getTransport();
+  return transport.issueInvoice(id);
 }
 
 export async function rebuildStudentDraft(studentId: number, year: number, month: number) {
-  return (await InvoiceRebuildStudentDraft(studentId, year, month)) as GenerateResult;
+  const transport = await getTransport();
+  return transport.rebuildStudentDraft(studentId, year, month);
 }
 
 export async function ensurePdf(invoiceId: number) {
-  return (await InvoiceEnsurePDF(invoiceId)) as string;
+  const transport = await getTransport();
+  return transport.ensurePdf(invoiceId);
 }
 
 export async function hasPdf(invoiceId: number) {
-  return (await InvoiceHasPDF(invoiceId)) as boolean;
+  const transport = await getTransport();
+  return transport.hasPdf(invoiceId);
 }

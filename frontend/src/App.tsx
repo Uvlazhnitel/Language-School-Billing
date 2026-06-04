@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef, type FormEvent } from "react";
 import "./App.css";
 
 import { fetchRows, saveHours, deleteEnrollment, Row } from "./lib/attendance";
@@ -28,14 +28,6 @@ import {
 
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
-import {
-  AppReady,
-  AppDirs,
-  BackupNow,
-  OpenFile,
-  SettingsGetLocale,
-  SettingsSetLocale,
-} from "../wailsjs/go/main/App";
 import {
   BillingModePerLesson,
   BillingModeSubscription,
@@ -71,7 +63,10 @@ import {
   MonthOverviewDTO,
   RecentPaymentDTO,
 } from "./lib/dashboard";
+import { getTransport, type TransportCapabilities, type UserDTO } from "./lib/api";
+import { AUTH_REQUIRED_EVENT } from "./lib/api/shared";
 import { DashboardOverview } from "./components/DashboardOverview";
+import { LoginScreen } from "./components/LoginScreen";
 import { StudentWorkspace } from "./components/StudentWorkspace";
 import { StudentDetailPanel } from "./components/StudentDetailPanel";
 import {
@@ -82,6 +77,7 @@ import {
   StudentActivityItem,
   StudentNextAction,
 } from "./lib/studentActivity";
+import { canShowInvoiceFolderAction, canShowSettingsFilesCard } from "./lib/uiCapabilities";
 import { createTranslator, getMonthNames, normalizeLocale, TranslateFn, UiLocale } from "./lib/i18n";
 
 const monthsRu = [
@@ -201,6 +197,7 @@ type Tab =
   | "settings";
 type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 type InvoiceMenuPosition = { top: number; left: number; openUpward: boolean };
+type UserDraft = { email: string; role: string; isActive: boolean };
 
 function buildTabMeta(t: TranslateFn): Record<Tab, { eyebrow: string; title: string }> {
   return {
@@ -320,11 +317,35 @@ function buildDebtReminderMessage(
 
 export default function App() {
   const now = new Date();
+  const [transportCapabilities, setTransportCapabilities] = useState<TransportCapabilities>({
+    isDesktop: false,
+    canOpenLocalFiles: false,
+    canOpenFolders: false,
+    canDownloadPdf: true,
+  });
   const [tab, setTab] = useState<Tab>("dashboard");
   const [appReady, setAppReady] = useState(false);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  const [, setCurrentSessionUser] = useState<{ id: number; email: string; role: string } | null>(null);
+  const [sessionCapabilities, setSessionCapabilities] = useState<Record<string, boolean>>({});
+  const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [loginPending, setLoginPending] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
   const [uiLocale, setUiLocale] = useState<UiLocale>("en-US");
   const [appDirs, setAppDirs] = useState<Record<string, string> | null>(null);
   const [creatingBackup, setCreatingBackup] = useState(false);
+  const [users, setUsers] = useState<UserDTO[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserRole, setNewUserRole] = useState("staff");
+  const [userDrafts, setUserDrafts] = useState<Record<number, UserDraft>>({});
+  const [userPasswordDrafts, setUserPasswordDrafts] = useState<Record<number, string>>({});
 
   // Global message display
   const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
@@ -338,13 +359,13 @@ export default function App() {
     confirmButtonLabel?: string;
   } | null>(null);
 
-  const showConfirm = (
+  const showConfirm = useCallback((
     messageText: string,
     onConfirm: () => void | Promise<void>,
     confirmButtonLabel?: string
   ) => {
     setConfirmDialog({ isOpen: true, message: messageText, onConfirm, confirmButtonLabel });
-  };
+  }, []);
 
   const handleConfirmYes = async () => {
     try {
@@ -394,26 +415,21 @@ export default function App() {
 
     const bootstrap = async () => {
       try {
-        for (let attempt = 0; attempt < 50; attempt += 1) {
-          if (cancelled) return;
-          const ready = await AppReady().catch(() => false);
-          if (ready) {
-            const [dirs, locale] = await Promise.all([
-              AppDirs(),
-              SettingsGetLocale().catch(() => "en-US"),
-            ]);
-            if (cancelled) return;
-            setAppDirs(dirs);
-            setUiLocale(normalizeLocale(locale));
-            setAppReady(true);
-            return;
-          }
-          await new Promise((resolve) => window.setTimeout(resolve, 100));
-        }
-
-        throw new Error("backend startup timed out");
+        const transport = await getTransport();
+        const bootstrapResult = await transport.bootstrap();
+        if (cancelled) return;
+        setAppDirs(bootstrapResult.appDirs);
+        setTransportCapabilities(bootstrapResult.capabilities);
+        setUiLocale(normalizeLocale(bootstrapResult.locale));
+        setAuthRequired(bootstrapResult.authRequired);
+        setIsAuthenticated(bootstrapResult.session.authenticated);
+        setCurrentSessionUser(bootstrapResult.session.user ?? null);
+        setSessionCapabilities(bootstrapResult.session.capabilities ?? {});
+        setAppReady(bootstrapResult.ready && (!bootstrapResult.authRequired || bootstrapResult.session.authenticated));
+        setAuthLoading(false);
       } catch (e: any) {
         if (!cancelled) {
+          setAuthLoading(false);
           showMessage(
             createTranslator("en-US")("msg.loadingFoldersError", {
               message: String(e?.message ?? e),
@@ -431,9 +447,32 @@ export default function App() {
     };
   }, [showMessage]);
 
+  useEffect(() => {
+    const onAuthRequired = () => {
+      setIsAuthenticated(false);
+      setCurrentSessionUser(null);
+      setSessionCapabilities({});
+      setAppReady(false);
+      setLoginPassword("");
+      setLoginError(null);
+      setSessionExpired(true);
+    };
+
+    window.addEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
+    return () => {
+      window.removeEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
+    };
+  }, []);
+
   const t = useMemo(() => createTranslator(uiLocale), [uiLocale]);
   const uiMonths = useMemo(() => getMonthNames(uiLocale), [uiLocale]);
   const tabMeta = useMemo(() => buildTabMeta(t), [t]);
+  const canManageUsers = Boolean(sessionCapabilities.manageUsers) || transportCapabilities.isDesktop;
+  const canManageSettings = Boolean(sessionCapabilities.manageSettings) || transportCapabilities.isDesktop;
+  const canCreateBackups = Boolean(sessionCapabilities.backups) || transportCapabilities.isDesktop;
+  const canDeleteStudents = Boolean(sessionCapabilities.deleteStudents) || transportCapabilities.isDesktop;
+  const canDeleteCourses = Boolean(sessionCapabilities.deleteCourses) || transportCapabilities.isDesktop;
+  const canDeletePayments = Boolean(sessionCapabilities.deletePayments) || transportCapabilities.isDesktop;
 
   const localizedPayerRoleLabel = useCallback(
     (relation: string) => payerRoleLabel(relation, t),
@@ -518,16 +557,6 @@ export default function App() {
     if (!appReady) return;
     if (tab === "students") loadStudents();
   }, [appReady, tab, loadStudents]);
-
-  useEffect(() => {
-    if (tab !== "students" || studentLoading || studentList.length === 0) return;
-    if (
-      !selectedStudentCard ||
-      !studentList.some((student) => student.id === selectedStudentCard.id)
-    ) {
-      void openStudentCard(studentList[0], { inline: true });
-    }
-  }, [tab, studentLoading, studentList, selectedStudentCard]);
 
   useEffect(() => {
     if (!appReady) return;
@@ -659,7 +688,7 @@ export default function App() {
     );
   }
 
-  async function refreshStudentCardData(studentId: number) {
+  const refreshStudentCardData = useCallback(async (studentId: number) => {
     try {
       const [enr, bal, debts, payments, monthInvoices] = await Promise.all([
         listEnrollments(studentId, undefined),
@@ -701,9 +730,17 @@ export default function App() {
     } catch (e: any) {
       showMessage(t("msg.studentCardLoadError", { message: String(e?.message ?? e) }), "error");
     }
-  }
+  }, [
+    localizedBillingModeLabel,
+    localizedPaymentMethodLabel,
+    month,
+    showMessage,
+    t,
+    uiMonths,
+    year,
+  ]);
 
-  async function openStudentCard(s: StudentDTO, options?: { inline?: boolean }) {
+  const openStudentCard = useCallback(async (s: StudentDTO, options?: { inline?: boolean }) => {
     setSelectedStudentCard(s);
     setStudentCardOpen(!(options?.inline || tab === "students"));
     setStudentCardLoading(true);
@@ -719,7 +756,17 @@ export default function App() {
     } finally {
       setStudentCardLoading(false);
     }
-  }
+  }, [refreshStudentCardData, tab]);
+
+  useEffect(() => {
+    if (tab !== "students" || studentLoading || studentList.length === 0) return;
+    if (
+      !selectedStudentCard ||
+      !studentList.some((student) => student.id === selectedStudentCard.id)
+    ) {
+      void openStudentCard(studentList[0], { inline: true });
+    }
+  }, [openStudentCard, tab, studentLoading, studentList, selectedStudentCard]);
 
   async function openStudentCardById(studentId: number) {
     const existing = allStudents.find((s) => s.id === studentId);
@@ -749,7 +796,7 @@ export default function App() {
     if (!selectedStudentCard) return;
     if (tab !== "students" && !studentCardOpen) return;
     void refreshStudentCardData(selectedStudentCard.id);
-  }, [month, selectedStudentCard, studentCardOpen, tab, year]);
+  }, [month, refreshStudentCardData, selectedStudentCard, studentCardOpen, tab, year]);
 
   async function resolveDebtReminderRecipient(studentId: number, studentName: string) {
     const student =
@@ -1393,7 +1440,7 @@ export default function App() {
         setLoadingInv(false);
       }
     },
-    [year, month, invStatus, ensureStudentsLoaded, showMessage, syncDraftInvoices]
+    [year, month, invStatus, ensureStudentsLoaded, showMessage, syncDraftInvoices, t]
   );
 
   useEffect(() => {
@@ -1520,7 +1567,7 @@ export default function App() {
     });
   }, [invItems, invQ, studentIndex]);
 
-  const loadInvoiceDetails = async (id: number) => {
+  const loadInvoiceDetails = useCallback(async (id: number) => {
     const iv = await getInvoice(id);
     setSelectedInv(iv);
     if (iv.status !== "draft") {
@@ -1531,7 +1578,7 @@ export default function App() {
       setInvSummary(null);
       return { invoice: iv, summary: null };
     }
-  };
+  }, []);
 
   const onOpenInvoice = async (id: number) => {
     try {
@@ -1688,7 +1735,7 @@ export default function App() {
     }
   };
 
-  const onReopenToDraft = async (id: number) => {
+  const onReopenToDraft = useCallback(async (id: number) => {
     closeInvoiceMenu();
     showConfirm(
       t("msg.invoiceReopenConfirm"),
@@ -1706,30 +1753,38 @@ export default function App() {
       },
       t("button.reopenDraft")
     );
-  };
+  }, [closeInvoiceMenu, invoiceDetailsOpen, loadInvoiceDetails, loadInvoices, selectedInv, showConfirm, showMessage, t]);
 
-  const onGeneratePdf = async (id: number) => {
+  const onGeneratePdf = useCallback(async (id: number) => {
     try {
       closeInvoiceMenu();
-      const path = await ensurePdf(id);
+      const pdf = await ensurePdf(id);
       setInvItems((prev) =>
         prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
       );
-      showMessage(t("msg.pdfReady", { path }));
+      showMessage(t("msg.pdfReady", { path: pdf.localPath ?? pdf.filename }));
+      if (!transportCapabilities.isDesktop && pdf.downloadUrl) {
+        window.open(pdf.downloadUrl, "_blank", "noopener,noreferrer");
+      }
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
-  };
+  }, [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]);
 
-  const onRevealInvoiceFile = async (id: number) => {
+  const onRevealInvoiceFile = useCallback(async (id: number) => {
     try {
       closeInvoiceMenu();
-      const path = await ensurePdf(id);
-      await OpenFile(path);
+      const pdf = await ensurePdf(id);
+      if (!pdf.localPath) {
+        showMessage(t("msg.folderUnavailable", { label: t("tabs.invoice").toLowerCase() }), "error");
+        return;
+      }
+      const transport = await getTransport();
+      await transport.openLocalPath(pdf.localPath);
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
-  };
+  }, [closeInvoiceMenu, showMessage, t]);
 
   const buildInvoiceMenuItems = useCallback(
     (invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean }) => {
@@ -1742,10 +1797,12 @@ export default function App() {
         });
       }
       if (invoice.status !== "draft") {
-        menuItems.push({
-          label: t("button.showInFolder"),
-          onClick: () => void onRevealInvoiceFile(invoice.id),
-        });
+        if (canShowInvoiceFolderAction(transportCapabilities)) {
+          menuItems.push({
+            label: t("button.showInFolder"),
+            onClick: () => void onRevealInvoiceFile(invoice.id),
+          });
+        }
         if (!invoice.pdfReady) {
           menuItems.push({
             label: t("button.createPdf"),
@@ -1756,7 +1813,7 @@ export default function App() {
 
       return menuItems;
     },
-    [onGeneratePdf, onReopenToDraft, onRevealInvoiceFile, t]
+    [onGeneratePdf, onReopenToDraft, onRevealInvoiceFile, t, transportCapabilities]
   );
 
   const openInvoiceMenuAtTrigger = useCallback(
@@ -1833,7 +1890,7 @@ export default function App() {
   useEffect(() => {
     if (!openInvoiceMenu) return;
     closeInvoiceMenu();
-  }, [closeInvoiceMenu, invoiceDetailsOpen, tab]);
+  }, [closeInvoiceMenu, invoiceDetailsOpen, openInvoiceMenu, tab]);
 
   const renderInvoiceActionsMenu = (
     invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
@@ -1866,7 +1923,8 @@ export default function App() {
       return;
     }
     try {
-      await OpenFile(path);
+      const transport = await getTransport();
+      await transport.openLocalPath(path);
     } catch (e: any) {
       showMessage(
         t("msg.folderOpenError", { label, message: String(e?.message ?? e) }),
@@ -1878,8 +1936,9 @@ export default function App() {
   const createManualBackup = async () => {
     try {
       setCreatingBackup(true);
-      const backupPath = await BackupNow();
-      showMessage(t("msg.backupCreated", { path: backupPath }));
+      const transport = await getTransport();
+      const backup = await transport.createBackup();
+      showMessage(t("msg.backupCreated", { path: backup.path ?? backup.filename }));
     } catch (e: any) {
       showMessage(t("msg.backupCreateError", { message: String(e?.message ?? e) }), "error");
     } finally {
@@ -1887,11 +1946,88 @@ export default function App() {
     }
   };
 
+  const loadUsers = useCallback(async () => {
+    if (!canManageUsers) return;
+    try {
+      setUsersLoading(true);
+      const transport = await getTransport();
+      const items = await transport.listUsers();
+      setUsers(items);
+      setUserDrafts(
+        Object.fromEntries(
+          items.map((item) => [item.id, { email: item.email, role: item.role, isActive: item.isActive }])
+        )
+      );
+    } catch (e: any) {
+      showMessage(String(e?.message ?? e), "error");
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [canManageUsers, showMessage]);
+
+  useEffect(() => {
+    if (isAuthenticated && canManageUsers) {
+      void loadUsers();
+    }
+  }, [isAuthenticated, canManageUsers, loadUsers]);
+
+  const handleCreateUser = async () => {
+    try {
+      setCreatingUser(true);
+      const transport = await getTransport();
+      const created = await transport.createUser(newUserEmail, newUserPassword, newUserRole);
+      setUsers((prev) => [...prev, created]);
+      setUserDrafts((prev) => ({
+        ...prev,
+        [created.id]: { email: created.email, role: created.role, isActive: created.isActive },
+      }));
+      setNewUserEmail("");
+      setNewUserPassword("");
+      setNewUserRole("staff");
+      showMessage("User created");
+    } catch (e: any) {
+      showMessage(String(e?.message ?? e), "error");
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const handleSaveUser = async (userId: number) => {
+    const draft = userDrafts[userId];
+    if (!draft) return;
+    try {
+      const transport = await getTransport();
+      const updated = await transport.updateUser(userId, draft.email, draft.role, draft.isActive);
+      setUsers((prev) => prev.map((item) => (item.id === userId ? updated : item)));
+      setUserDrafts((prev) => ({ ...prev, [userId]: { email: updated.email, role: updated.role, isActive: updated.isActive } }));
+      showMessage("User updated");
+    } catch (e: any) {
+      showMessage(String(e?.message ?? e), "error");
+    }
+  };
+
+  const handleResetUserPassword = async (userId: number) => {
+    const password = userPasswordDrafts[userId]?.trim() ?? "";
+    if (!password) {
+      showMessage("Password is required", "error");
+      return;
+    }
+    try {
+      const transport = await getTransport();
+      await transport.setUserPassword(userId, password);
+      setUserPasswordDrafts((prev) => ({ ...prev, [userId]: "" }));
+      showMessage("Password reset");
+    } catch (e: any) {
+      showMessage(String(e?.message ?? e), "error");
+    }
+  };
+
   const handleLocaleChange = async (nextLocale: UiLocale) => {
     const previousLocale = uiLocale;
     setUiLocale(nextLocale);
     try {
-      await SettingsSetLocale(nextLocale);
+      const transport = await getTransport();
+      await transport.setLocale(nextLocale);
       showMessage(createTranslator(nextLocale)("settings.languageSaved"));
     } catch (e: any) {
       setUiLocale(previousLocale);
@@ -1918,6 +2054,53 @@ export default function App() {
     const rowInvoice = invItems.find((item) => item.id === openInvoiceMenu.invoiceId);
     return rowInvoice ? buildInvoiceMenuItems(rowInvoice) : [];
   }, [buildInvoiceMenuItems, invItems, openInvoiceMenu, selectedInv, selectedInvPdfReady]);
+
+  const handleLogin = useCallback(
+    async (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setLoginPending(true);
+      setLoginError(null);
+      try {
+        const transport = await getTransport();
+        const session = await transport.login(loginEmail, loginPassword);
+        setUiLocale(normalizeLocale(session.locale));
+        setCurrentSessionUser(session.user ?? null);
+        setSessionCapabilities(session.capabilities ?? {});
+        setTransportCapabilities({
+          isDesktop: false,
+          canOpenLocalFiles: false,
+          canOpenFolders: false,
+          canDownloadPdf: Boolean(session.capabilities?.pdfDownload),
+        });
+        setIsAuthenticated(session.authenticated);
+        setAppReady(session.ready && session.authenticated);
+        setLoginError(null);
+        setLoginPassword("");
+        setSessionExpired(false);
+      } catch (e: any) {
+        setLoginError(String(e?.message ?? e));
+      } finally {
+        setLoginPending(false);
+      }
+    },
+    [loginEmail, loginPassword]
+  );
+
+  const handleLogout = useCallback(async () => {
+    try {
+      const transport = await getTransport();
+      await transport.logout();
+    } catch (error) {
+      void error;
+    }
+    setIsAuthenticated(false);
+    setCurrentSessionUser(null);
+    setSessionCapabilities({});
+    setAppReady(false);
+    setLoginPassword("");
+    setLoginError(null);
+    setSessionExpired(false);
+  }, []);
 
   return (
     <div className="container">
@@ -2023,6 +2206,27 @@ export default function App() {
         </div>
       )}
 
+      {authLoading ? (
+        <div className="authShell">
+          <section className="authCard">
+            <div className="workspaceEyebrow">{t("auth.eyebrow")}</div>
+            <h1>{t("label.loading")}</h1>
+          </section>
+        </div>
+      ) : authRequired && !isAuthenticated ? (
+        <LoginScreen
+          email={loginEmail}
+          password={loginPassword}
+          pending={loginPending}
+          error={loginError}
+          sessionExpired={sessionExpired}
+          onEmailChange={setLoginEmail}
+          onPasswordChange={setLoginPassword}
+          onSubmit={handleLogin}
+          t={t}
+        />
+      ) : (
+        <>
       <div className="appShell">
         <section className="workspaceCard">
           <div className="workspaceTopbar">
@@ -2056,6 +2260,15 @@ export default function App() {
               >
                 {t("button.filesAndCopies")}
               </button>
+              {authRequired && !transportCapabilities.isDesktop && (
+                <button
+                  type="button"
+                  className="workspaceActionButton"
+                  onClick={() => void handleLogout()}
+                >
+                  {t("auth.logout")}
+                </button>
+              )}
             </div>
           </div>
 
@@ -2151,6 +2364,8 @@ export default function App() {
                 onDeletePayment={deleteStudentPayment}
                 onManageEnrollments={() => setTab("enrollments")}
                 onOpenInvoices={() => setTab("invoice")}
+                canDeleteStudent={canDeleteStudents}
+                canDeletePayment={canDeletePayments}
                 payerRoleLabel={localizedPayerRoleLabel}
                 billingModeLabel={localizedBillingModeLabel}
                 paymentMethodLabel={localizedPaymentMethodLabel}
@@ -2273,7 +2488,9 @@ export default function App() {
                         <td style={{ textAlign: "right" }}>{formatEUR(c.subscriptionPrice)}</td>
                         <td>
                           <button onClick={() => openEditCourse(c)}>{t("button.edit")}</button>
-                          <button onClick={() => removeCourse(c.id)}>{t("button.delete")}</button>
+                          {canDeleteCourses && (
+                            <button onClick={() => removeCourse(c.id)}>{t("button.delete")}</button>
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -3033,6 +3250,7 @@ export default function App() {
                   <label>{t("settings.locale")}</label>
                   <select
                     value={uiLocale}
+                    disabled={!canManageSettings}
                     onChange={(e) => void handleLocaleChange(e.target.value as UiLocale)}
                   >
                     <option value="en-US">{t("settings.languageEnglish")}</option>
@@ -3051,53 +3269,181 @@ export default function App() {
                     type="button"
                     className="workspaceActionButton workspaceActionButtonPrimary"
                     onClick={() => void createManualBackup()}
-                    disabled={creatingBackup}
+                    disabled={creatingBackup || !canCreateBackups}
                   >
                     {creatingBackup ? `${t("button.createBackup")}...` : t("button.createBackup")}
                   </button>
-                  <button
-                    type="button"
-                    className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.backups, t("field.backups").toLowerCase())}
-                    disabled={!appDirs?.backups}
-                  >
-                    {t("button.backupsFolder")}
-                  </button>
+                  {canShowInvoiceFolderAction(transportCapabilities) && (
+                    <button
+                      type="button"
+                      className="workspaceActionButton"
+                      onClick={() => void openAppFolder(appDirs?.backups, t("field.backups").toLowerCase())}
+                      disabled={!appDirs?.backups}
+                    >
+                      {t("button.backupsFolder")}
+                    </button>
+                  )}
                 </div>
               </section>
 
-              <section className="detailCard">
-                <div className="detailCardHeader">
-                  <h3>{t("settings.filesTitle")}</h3>
-                </div>
-                <p className="mutedInline">{t("settings.filesDesc")}</p>
-                <div className="settingsActions">
-                  <button
-                    type="button"
-                    className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.invoices, t("tabs.invoice").toLowerCase())}
-                    disabled={!appDirs?.invoices}
-                  >
-                    {t("button.invoicesFolder")}
-                  </button>
-                  <button
-                    type="button"
-                    className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.exports, "exports")}
-                    disabled={!appDirs?.exports}
-                  >
-                    {t("button.exportsFolder")}
-                  </button>
-                  <button
-                    type="button"
-                    className="workspaceActionButton"
-                    onClick={() => void openAppFolder(appDirs?.data, "data")}
-                    disabled={!appDirs?.data}
-                  >
-                    {t("button.dataFolder")}
-                  </button>
-                </div>
-              </section>
+              {canShowSettingsFilesCard(transportCapabilities) && (
+                <section className="detailCard">
+                  <div className="detailCardHeader">
+                    <h3>{t("settings.filesTitle")}</h3>
+                  </div>
+                  <p className="mutedInline">{t("settings.filesDesc")}</p>
+                  <div className="settingsActions">
+                    <button
+                      type="button"
+                      className="workspaceActionButton"
+                      onClick={() => void openAppFolder(appDirs?.invoices, t("tabs.invoice").toLowerCase())}
+                      disabled={!appDirs?.invoices}
+                    >
+                      {t("button.invoicesFolder")}
+                    </button>
+                    <button
+                      type="button"
+                      className="workspaceActionButton"
+                      onClick={() => void openAppFolder(appDirs?.exports, "exports")}
+                      disabled={!appDirs?.exports}
+                    >
+                      {t("button.exportsFolder")}
+                    </button>
+                    <button
+                      type="button"
+                      className="workspaceActionButton"
+                      onClick={() => void openAppFolder(appDirs?.data, "data")}
+                      disabled={!appDirs?.data}
+                    >
+                      {t("button.dataFolder")}
+                    </button>
+                  </div>
+                </section>
+              )}
+
+              {canManageUsers && (
+                <section className="detailCard">
+                  <div className="detailCardHeader">
+                    <h3>Users</h3>
+                  </div>
+                  <p className="mutedInline">Manage admin and staff accounts for the web app.</p>
+
+                  <div className="formRow">
+                    <label>Email</label>
+                    <input value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} />
+                  </div>
+                  <div className="formRow">
+                    <label>Password</label>
+                    <input
+                      type="password"
+                      value={newUserPassword}
+                      onChange={(e) => setNewUserPassword(e.target.value)}
+                    />
+                  </div>
+                  <div className="formRow">
+                    <label>Role</label>
+                    <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)}>
+                      <option value="staff">staff</option>
+                      <option value="admin">admin</option>
+                    </select>
+                  </div>
+                  <div className="settingsActions">
+                    <button
+                      type="button"
+                      className="workspaceActionButton workspaceActionButtonPrimary"
+                      onClick={() => void handleCreateUser()}
+                      disabled={creatingUser}
+                    >
+                      {creatingUser ? "Create..." : "Create user"}
+                    </button>
+                    <button type="button" className="workspaceActionButton" onClick={() => void loadUsers()}>
+                      {t("button.refresh")}
+                    </button>
+                  </div>
+
+                  {usersLoading ? (
+                    <div className="empty">{t("label.loading")}</div>
+                  ) : (
+                    <div className="tableWrap">
+                      <table>
+                        <thead>
+                          <tr>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Active</th>
+                            <th>Password reset</th>
+                            <th>{t("field.actions")}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {users.map((user) => {
+                            const draft = userDrafts[user.id] ?? {
+                              email: user.email,
+                              role: user.role,
+                              isActive: user.isActive,
+                            };
+                            return (
+                              <tr key={user.id}>
+                                <td>
+                                  <input
+                                    value={draft.email}
+                                    onChange={(e) =>
+                                      setUserDrafts((prev) => ({
+                                        ...prev,
+                                        [user.id]: { ...draft, email: e.target.value },
+                                      }))
+                                    }
+                                  />
+                                </td>
+                                <td>
+                                  <select
+                                    value={draft.role}
+                                    onChange={(e) =>
+                                      setUserDrafts((prev) => ({
+                                        ...prev,
+                                        [user.id]: { ...draft, role: e.target.value },
+                                      }))
+                                    }
+                                  >
+                                    <option value="staff">staff</option>
+                                    <option value="admin">admin</option>
+                                  </select>
+                                </td>
+                                <td>
+                                  <input
+                                    type="checkbox"
+                                    checked={draft.isActive}
+                                    onChange={(e) =>
+                                      setUserDrafts((prev) => ({
+                                        ...prev,
+                                        [user.id]: { ...draft, isActive: e.target.checked },
+                                      }))
+                                    }
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="password"
+                                    value={userPasswordDrafts[user.id] ?? ""}
+                                    onChange={(e) =>
+                                      setUserPasswordDrafts((prev) => ({ ...prev, [user.id]: e.target.value }))
+                                    }
+                                    placeholder="New password"
+                                  />
+                                </td>
+                                <td>
+                                  <button onClick={() => void handleSaveUser(user.id)}>{t("button.save")}</button>
+                                  <button onClick={() => void handleResetUserPassword(user.id)}>Reset password</button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </section>
+              )}
             </div>
           )}
         </section>
@@ -3259,7 +3605,7 @@ export default function App() {
                   {t("button.reopenDraft")}
                 </button>
               )}
-              {selectedInv.status !== "draft" && (
+              {selectedInv.status !== "draft" && canShowInvoiceFolderAction(transportCapabilities) && (
                 <button onClick={() => void onRevealInvoiceFile(selectedInv.id)}>
                   {t("button.showInFolder")}
                 </button>
@@ -3367,6 +3713,7 @@ export default function App() {
               formatEUR={formatEUR}
               months={uiMonths}
               deletingPaymentId={studentCardDeletingPaymentId}
+              canDeletePayment={canDeletePayments}
               onEditStudent={() => {
                 setStudentCardOpen(false);
                 openEditStudent(selectedStudentCard);
@@ -3419,6 +3766,8 @@ export default function App() {
             </button>
           ))}
         </div>
+      )}
+        </>
       )}
     </div>
   );

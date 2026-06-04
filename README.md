@@ -1,12 +1,15 @@
-# Language School Billing (Go + Wails)
+# Language School Billing (Go + Wails + Web)
 
-A **single-user desktop application** for a language school owner/administrator.
+A billing app for a language school owner/administrator that can run as:
+- a **desktop app** via Wails
+- a **web app** via the Go HTTP server
 
 It helps manage **students, courses, enrollments, monthly attendance**, and **invoices (PDF)**.
 
 **Tech stack**
 - Backend: **Go 1.22+**
 - Desktop framework: **Wails v2**
+- Web server: **net/http**
 - ORM: **ent**
 - Database: **SQLite** (local file on the user’s machine)
 - Frontend: **React + Vite + TypeScript**
@@ -153,6 +156,239 @@ npm run build
 cd ..
 
 wails dev
+```
+
+## Web development
+
+Run the Go API/server:
+
+```bash
+go run ./cmd/web
+```
+
+In a second terminal, run the frontend dev server:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+By default, Vite proxies `/api` and `/healthz` to `http://127.0.0.1:8080`.
+
+If your Go server runs somewhere else, set:
+
+```bash
+cd frontend
+cp .env.example .env.local
+```
+
+Then edit `VITE_DEV_API_TARGET`.
+
+## Web production-style run
+
+Build the frontend:
+
+```bash
+cd frontend
+npm install
+npm run build
+cd ..
+```
+
+Start the Go server:
+
+```bash
+go run ./cmd/web
+```
+
+If `frontend/dist` exists, the Go server serves both:
+- the React app
+- the JSON API under `/api`
+
+If `frontend/dist` does not exist, the server still starts in API-only mode.
+
+Optional environment variables:
+- `ADDR` or `HOST` + `PORT` for the listen address
+- `WEB_DIST_DIR` to point the server at a different built frontend directory
+- `APP_DATA_DIR`, `INVOICES_DIR`, `BACKUPS_DIR`, `LS_FONTS_DIR` for server-side storage
+- `ADMIN_EMAIL` and `ADMIN_PASSWORD` for the bootstrap admin account
+- `SESSION_SECRET` for signed web sessions
+
+## Docker deploy
+
+For servers where Go and Node are not installed, the project can run through Docker.
+
+1. Copy the repository to the server.
+2. Create `.env` from `.env.example`.
+3. Create persistent directories for:
+   - data
+   - invoices
+   - backups
+4. Start the app:
+
+```bash
+docker compose up -d --build
+```
+
+The included `compose.yaml` publishes the app on `8082` and stores SQLite,
+generated invoices, and backups in bind-mounted host directories.
+
+Health check example:
+
+```bash
+curl http://127.0.0.1:8082/healthz
+```
+
+## Backup and restore
+
+This project now uses two backup types:
+
+- `app-*.sqlite` for lightweight DB-only rollback points
+- `full-*.tar.gz` for disaster recovery with PDFs
+
+Use the full backup flow when you need database + invoice PDFs together. A full
+backup archive contains:
+
+- `data/app.sqlite`
+- the full `invoices/` tree
+- `manifest.json`
+
+Archives are stored in `BACKUPS_DIR` with names like:
+
+```text
+full-20260604-142500.tar.gz
+```
+
+Retention defaults:
+
+- latest `30` DB-only backups
+- latest `8` full backups
+
+### Create a DB-only backup on the server
+
+From the repo root on the server:
+
+```bash
+./scripts/create-db-backup.sh
+```
+
+That script writes a new `app-YYYYMMDD-HHMMSS.sqlite` into the backup folder and
+keeps the newest `30`.
+
+### Create a full backup on the server
+
+From the repo root on the server:
+
+```bash
+./scripts/create-full-backup.sh
+```
+
+That script runs the bundled `langschool-backupctl` inside Docker and prints the
+new archive path.
+
+### Restore from a full backup on the server
+
+From the repo root on the server:
+
+```bash
+./scripts/restore-backup.sh full-20260604-142500.tar.gz
+```
+
+The restore script:
+
+- stops the app container
+- creates a pre-restore full backup of the current state
+- restores `app.sqlite` and `invoices/` from the selected archive
+- starts the app again
+- verifies `http://127.0.0.1:8082/healthz`
+
+### Pull backups to a Mac over Tailscale
+
+On your Mac, run:
+
+```bash
+./scripts/pull-backups-mac.sh
+```
+
+By default it pulls:
+
+- from `home-java:/home/ilya/langschool-data/backups/`
+- into `~/Backups/langschool/`
+
+The script copies:
+
+- `app-*.sqlite`
+- `full-*.tar.gz`
+
+and then prunes local history to:
+
+- latest `30` DB backups
+- latest `8` full backups
+
+It also appends a small sync log to `~/Backups/langschool/pull.log`.
+
+### Automate server backup creation
+
+On `home-java`, install the cron jobs:
+
+```bash
+cd /home/ilya/langschool
+./scripts/install-server-backup-cron.sh
+```
+
+Default schedules:
+
+- DB-only backup: every day at `03:15`
+- Full backup: every Sunday at `04:00`
+
+Default log files:
+
+- `/home/ilya/langschool-data/backups/create-db-backup.log`
+- `/home/ilya/langschool-data/backups/create-full-backup.log`
+
+Verify:
+
+```bash
+crontab -l
+```
+
+### Automate Mac backup pulls
+
+On the Mac, install the `launchd` job:
+
+```bash
+cd /Users/uvlazhnitel/Documents/coding/langschool/langschool
+./scripts/install-mac-backup-launchd.sh
+```
+
+Default schedule:
+
+- `09:00`
+- `21:00`
+
+Default log files:
+
+- `~/Backups/langschool/launchd.stdout.log`
+- `~/Backups/langschool/launchd.stderr.log`
+- `~/Backups/langschool/pull.log`
+
+Verify:
+
+```bash
+launchctl list | grep com.langschool.pull-backups
+```
+
+Manual trigger:
+
+```bash
+launchctl kickstart -k gui/$(id -u)/com.langschool.pull-backups
+```
+
+Unload later if needed:
+
+```bash
+launchctl unload ~/Library/LaunchAgents/com.langschool.pull-backups.plist
 ```
 
 ---

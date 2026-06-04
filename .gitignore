@@ -1,4 +1,4 @@
-# OS files
+# OS / Finder / Explorer
 .DS_Store
 ._*
 Thumbs.db
@@ -8,56 +8,14 @@ $RECYCLE.BIN/
 .Spotlight-V100/
 .Trashes/
 
-# Editors / IDE
+# Editors / IDEs
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
-# Go binaries and test artifacts
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
-*.a
-*.o
-*.obj
-*.test
-*.out
-
-# Go coverage / profiling
-*.coverprofile
-coverage.out
-cover.out
-cover.html
-*.pprof
-cpu.prof
-mem.prof
-heap.pprof
-profile.out
-
-# Build outputs
-build/
-dist/
-
-# Frontend / Node
-node_modules/
-frontend/node_modules/
-frontend/dist/
-frontend/.vite/
-frontend/.cache/
-frontend/.eslintcache
-*.tsbuildinfo
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Wails
-wails.log
-
-# Environment files
+# Local environment files
 .env
 .env.local
 .env.*.local
@@ -70,7 +28,55 @@ frontend/.env.*.local
 !/.env.example
 !/frontend/.env.example
 
-# Local databases
+# Logs
+*.log
+log/
+logs/
+wails.log
+
+# Go build / test / profiling artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.a
+*.o
+*.obj
+*.test
+*.out
+*.coverprofile
+coverage.out
+cover.out
+cover.html
+*.pprof
+cpu.prof
+mem.prof
+heap.pprof
+profile.out
+
+# Frontend / Node / Vite
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/.cache/
+frontend/.eslintcache
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build outputs
+build/
+dist/
+bin/
+
+# Docker / local runtime junk
+docker-compose.override.yml
+
+# Local databases and backup artifacts
 *.db
 *.db-shm
 *.db-wal
@@ -78,13 +84,11 @@ frontend/.env.*.local
 *.sqlite3
 *.sqlite-shm
 *.sqlite-wal
+app-*.sqlite
+pre-migration-*.sqlite
+full-*.tar.gz
 
-# Logs
-*.log
-log/
-logs/
-
-# Temporary files
+# Temporary / cache files
 .cache/
 tmp/
 temp/
@@ -93,6 +97,6 @@ temp/
 *.orig
 *.rej
 
-# Generated screenshots / snapshots
+# Test snapshots / screenshots
 __snapshots__/
 screenshots/
