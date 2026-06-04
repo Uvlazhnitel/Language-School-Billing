@@ -19,6 +19,7 @@ COPY . ./
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/langschool-web ./cmd/web
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/langschool-backupctl ./cmd/backupctl
 
 FROM debian:bookworm-slim AS runtime
 
@@ -29,6 +30,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --from=backend-builder /out/langschool-web /usr/local/bin/langschool-web
+COPY --from=backend-builder /out/langschool-backupctl /usr/local/bin/langschool-backupctl
 COPY --from=backend-builder /app/frontend/dist ./frontend/dist
 COPY --from=backend-builder /app/Fonts ./Fonts
 

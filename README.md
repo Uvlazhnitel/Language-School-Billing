@@ -240,6 +240,70 @@ Health check example:
 curl http://127.0.0.1:8082/healthz
 ```
 
+## Full backup and restore
+
+For disaster recovery on the server, use the full backup flow instead of the
+lightweight `app-*.sqlite` copies. A full backup archive contains:
+
+- `data/app.sqlite`
+- the full `invoices/` tree
+- `manifest.json`
+
+Archives are stored in `BACKUPS_DIR` with names like:
+
+```text
+full-20260604-142500.tar.gz
+```
+
+The app keeps the latest `7` full backups and removes older full archives after
+creating a new one.
+
+### Create a full backup on the server
+
+From the repo root on the server:
+
+```bash
+./scripts/create-full-backup.sh
+```
+
+That script runs the bundled `langschool-backupctl` inside Docker and prints the
+new archive path.
+
+### Restore from a full backup on the server
+
+From the repo root on the server:
+
+```bash
+./scripts/restore-backup.sh full-20260604-142500.tar.gz
+```
+
+The restore script:
+
+- stops the app container
+- creates a pre-restore full backup of the current state
+- restores `app.sqlite` and `invoices/` from the selected archive
+- starts the app again
+- verifies `http://127.0.0.1:8082/healthz`
+
+### Pull backups to a Mac over Tailscale
+
+On your Mac, run:
+
+```bash
+./scripts/pull-backups-mac.sh
+```
+
+By default it pulls:
+
+- from `home-java:/home/ilya/langschool-data/backups/`
+- into `~/Backups/langschool/`
+
+The script copies only `full-*.tar.gz` archives and appends a small sync log to
+`~/Backups/langschool/pull.log`.
+
+You can schedule it later with `launchd`, but it also works fine as a manual
+command.
+
 ---
 
 ## Build a distributable application

@@ -201,6 +201,17 @@ func (s *Service) BackupNow() (string, error) {
 	return appruntime.BackupNow(s.rt.AppDBPath, s.rt.Dirs.Backups)
 }
 
+func (s *Service) FullBackupNow() (string, error) {
+	path, err := appruntime.FullBackupNow(s.rt.AppDBPath, s.rt.Dirs.Invoices, s.rt.Dirs.Backups)
+	if err != nil {
+		return "", err
+	}
+	if err := appruntime.CleanupOldFullBackups(s.rt.Dirs.Backups, appruntime.FullBackupLimit); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
 func (s *Service) AttendanceListPerLesson(ctx context.Context, year, month int, courseID *int) ([]attendance.Row, error) {
 	return s.rt.Attendance.ListPerLesson(ctx, year, month, courseID)
 }
