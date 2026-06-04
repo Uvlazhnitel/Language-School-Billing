@@ -32,7 +32,7 @@ RUN apt-get update \
 COPY --from=backend-builder /out/langschool-web /usr/local/bin/langschool-web
 COPY --from=backend-builder /out/langschool-backupctl /usr/local/bin/langschool-backupctl
 COPY --from=backend-builder /app/frontend/dist ./frontend/dist
-COPY --from=backend-builder /app/fonts ./fonts
+COPY --from=backend-builder /app/Fonts ./Fonts
 
 EXPOSE 8080
 
