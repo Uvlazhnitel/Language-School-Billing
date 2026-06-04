@@ -1,0 +1,22 @@
+services:
+  langschool:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: langschool
+    restart: unless-stopped
+    ports:
+      - "8082:8080"
+    env_file:
+      - .env
+    environment:
+      HOST: 0.0.0.0
+      PORT: 8080
+      APP_DATA_DIR: /var/lib/langschool/data
+      INVOICES_DIR: /var/lib/langschool/invoices
+      BACKUPS_DIR: /var/lib/langschool/backups
+      LS_FONTS_DIR: /app/Fonts
+    volumes:
+      - /home/ilya/langschool-data/data:/var/lib/langschool/data
+      - /home/ilya/langschool-data/invoices:/var/lib/langschool/invoices
+      - /home/ilya/langschool-data/backups:/var/lib/langschool/backups

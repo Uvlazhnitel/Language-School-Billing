@@ -215,6 +215,31 @@ Optional environment variables:
 - `ADMIN_EMAIL` and `ADMIN_PASSWORD` for the bootstrap admin account
 - `SESSION_SECRET` for signed web sessions
 
+## Docker deploy
+
+For servers where Go and Node are not installed, the project can run through Docker.
+
+1. Copy the repository to the server.
+2. Create `.env` from `.env.example`.
+3. Create persistent directories for:
+   - data
+   - invoices
+   - backups
+4. Start the app:
+
+```bash
+docker compose up -d --build
+```
+
+The included `compose.yaml` publishes the app on `8082` and stores SQLite,
+generated invoices, and backups in bind-mounted host directories.
+
+Health check example:
+
+```bash
+curl http://127.0.0.1:8082/healthz
+```
+
 ---
 
 ## Build a distributable application
