@@ -20,7 +20,10 @@ import (
 	_ "github.com/ncruces/go-sqlite3/embed"
 )
 
-const FullBackupLimit = 7
+const (
+	DBBackupLimit   = 30
+	FullBackupLimit = 8
+)
 
 type FullBackupManifest struct {
 	CreatedAt         string `json:"createdAt"`
@@ -40,6 +43,59 @@ func BackupNow(dbPath, backupsDir string) (string, error) {
 		return "", err
 	}
 	return dst, nil
+}
+
+func CleanupOldDBBackups(backupsDir string, limit int) error {
+	if limit <= 0 {
+		return fmt.Errorf("backup retention limit must be positive")
+	}
+
+	entries, err := os.ReadDir(backupsDir)
+	if err != nil {
+		return err
+	}
+
+	type backupFile struct {
+		path    string
+		modTime time.Time
+	}
+
+	backups := make([]backupFile, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		if !strings.HasPrefix(name, "app-") || !strings.HasSuffix(name, ".sqlite") {
+			continue
+		}
+
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+
+		backups = append(backups, backupFile{
+			path:    filepath.Join(backupsDir, name),
+			modTime: info.ModTime(),
+		})
+	}
+
+	if len(backups) <= limit {
+		return nil
+	}
+
+	sort.Slice(backups, func(i, j int) bool {
+		return backups[i].modTime.After(backups[j].modTime)
+	})
+
+	for _, backup := range backups[limit:] {
+		if err := os.Remove(backup.path); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func BackupBeforeMigration(dbPath, backupsDir string) (string, error) {

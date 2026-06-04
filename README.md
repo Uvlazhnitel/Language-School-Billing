@@ -240,10 +240,15 @@ Health check example:
 curl http://127.0.0.1:8082/healthz
 ```
 
-## Full backup and restore
+## Backup and restore
 
-For disaster recovery on the server, use the full backup flow instead of the
-lightweight `app-*.sqlite` copies. A full backup archive contains:
+This project now uses two backup types:
+
+- `app-*.sqlite` for lightweight DB-only rollback points
+- `full-*.tar.gz` for disaster recovery with PDFs
+
+Use the full backup flow when you need database + invoice PDFs together. A full
+backup archive contains:
 
 - `data/app.sqlite`
 - the full `invoices/` tree
@@ -255,8 +260,21 @@ Archives are stored in `BACKUPS_DIR` with names like:
 full-20260604-142500.tar.gz
 ```
 
-The app keeps the latest `7` full backups and removes older full archives after
-creating a new one.
+Retention defaults:
+
+- latest `30` DB-only backups
+- latest `8` full backups
+
+### Create a DB-only backup on the server
+
+From the repo root on the server:
+
+```bash
+./scripts/create-db-backup.sh
+```
+
+That script writes a new `app-YYYYMMDD-HHMMSS.sqlite` into the backup folder and
+keeps the newest `30`.
 
 ### Create a full backup on the server
 
@@ -298,24 +316,35 @@ By default it pulls:
 - from `home-java:/home/ilya/langschool-data/backups/`
 - into `~/Backups/langschool/`
 
-The script copies only `full-*.tar.gz` archives and appends a small sync log to
-`~/Backups/langschool/pull.log`.
+The script copies:
+
+- `app-*.sqlite`
+- `full-*.tar.gz`
+
+and then prunes local history to:
+
+- latest `30` DB backups
+- latest `8` full backups
+
+It also appends a small sync log to `~/Backups/langschool/pull.log`.
 
 ### Automate server backup creation
 
-On `home-java`, install the nightly cron job:
+On `home-java`, install the cron jobs:
 
 ```bash
 cd /home/ilya/langschool
 ./scripts/install-server-backup-cron.sh
 ```
 
-Default schedule:
+Default schedules:
 
-- every day at `03:15`
+- DB-only backup: every day at `03:15`
+- Full backup: every Sunday at `04:00`
 
-Default log file:
+Default log files:
 
+- `/home/ilya/langschool-data/backups/create-db-backup.log`
 - `/home/ilya/langschool-data/backups/create-full-backup.log`
 
 Verify:

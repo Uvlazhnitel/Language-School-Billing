@@ -58,7 +58,7 @@ func TestCleanupOldFullBackupsKeepsNewestOnly(t *testing.T) {
 		}
 	}
 
-	if err := CleanupOldFullBackups(backupsDir, 7); err != nil {
+	if err := CleanupOldFullBackups(backupsDir, 8); err != nil {
 		t.Fatalf("CleanupOldFullBackups returned error: %v", err)
 	}
 
@@ -72,8 +72,40 @@ func TestCleanupOldFullBackupsKeepsNewestOnly(t *testing.T) {
 			count++
 		}
 	}
-	if count != 7 {
-		t.Fatalf("full backup count = %d, want 7", count)
+	if count != 8 {
+		t.Fatalf("full backup count = %d, want 8", count)
+	}
+}
+
+func TestCleanupOldDBBackupsKeepsNewestOnly(t *testing.T) {
+	backupsDir := t.TempDir()
+	for i := 0; i < 32; i++ {
+		name := filepath.Join(backupsDir, "app-"+time.Date(2026, 6, 1, 10, 0, i, 0, time.UTC).Format("20060102-150405")+".sqlite")
+		if err := os.WriteFile(name, []byte("backup"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		modTime := time.Date(2026, 6, 1, 10, 0, i, 0, time.UTC)
+		if err := os.Chtimes(name, modTime, modTime); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := CleanupOldDBBackups(backupsDir, 30); err != nil {
+		t.Fatalf("CleanupOldDBBackups returned error: %v", err)
+	}
+
+	entries, err := os.ReadDir(backupsDir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	count := 0
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), "app-") && strings.HasSuffix(entry.Name(), ".sqlite") {
+			count++
+		}
+	}
+	if count != 30 {
+		t.Fatalf("db backup count = %d, want 30", count)
 	}
 }
 

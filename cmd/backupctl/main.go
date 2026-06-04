@@ -19,6 +19,10 @@ func main() {
 	}
 
 	switch os.Args[1] {
+	case "create-db":
+		if err := createDB(); err != nil {
+			log.Fatal(err)
+		}
 	case "create-full":
 		if err := createFull(); err != nil {
 			log.Fatal(err)
@@ -31,6 +35,25 @@ func main() {
 		usage()
 		os.Exit(2)
 	}
+}
+
+func createDB() error {
+	cfg := appruntime.LoadConfig(appruntime.UserHome())
+	dirs, err := appruntime.ResolveDirs(cfg)
+	if err != nil {
+		return err
+	}
+
+	backupPath, err := appruntime.BackupNow(filepath.Join(dirs.Data, "app.sqlite"), dirs.Backups)
+	if err != nil {
+		return err
+	}
+	if err := appruntime.CleanupOldDBBackups(dirs.Backups, appruntime.DBBackupLimit); err != nil {
+		return err
+	}
+
+	fmt.Println(backupPath)
+	return nil
 }
 
 func createFull() error {
@@ -85,6 +108,7 @@ func restoreFull(args []string) error {
 
 func usage() {
 	fmt.Fprintln(os.Stderr, "Usage:")
+	fmt.Fprintln(os.Stderr, "  langschool-backupctl create-db")
 	fmt.Fprintln(os.Stderr, "  langschool-backupctl create-full")
 	fmt.Fprintln(os.Stderr, "  langschool-backupctl restore-full --archive /path/to/full-YYYYMMDD-HHMMSS.tar.gz")
 }
