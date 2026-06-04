@@ -16,13 +16,14 @@ mkdir -p "$DEST_DIR"
     --exclude='*' \
     "${SOURCE_HOST}:${SOURCE_DIR}" \
     "${DEST_DIR}/"
-  find "${DEST_DIR}" -maxdepth 1 -type f -name 'app-*.sqlite' -print0 \
-    | xargs -0 ls -1t \
-    | awk 'NR>30' \
-    | xargs -r rm -f
-  find "${DEST_DIR}" -maxdepth 1 -type f -name 'full-*.tar.gz' -print0 \
-    | xargs -0 ls -1t \
-    | awk 'NR>8' \
-    | xargs -r rm -f
+  shopt -s nullglob
+  app_files=( "${DEST_DIR}"/app-*.sqlite )
+  if ((${#app_files[@]} > 30)); then
+    ls -1t "${app_files[@]}" | tail -n +31 | while IFS= read -r f; do rm -f -- "$f"; done
+  fi
+  full_files=( "${DEST_DIR}"/full-*.tar.gz )
+  if ((${#full_files[@]} > 8)); then
+    ls -1t "${full_files[@]}" | tail -n +9 | while IFS= read -r f; do rm -f -- "$f"; done
+  fi
   printf '[%s] Backup pull finished\n' "$(date '+%Y-%m-%d %H:%M:%S')"
 } | tee -a "$LOG_FILE"
