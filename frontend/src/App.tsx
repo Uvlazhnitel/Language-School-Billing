@@ -272,6 +272,32 @@ function formatEUR(value: number): string {
   return `€${value.toFixed(2)}`;
 }
 
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-9999px";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    const copied = document.execCommand("copy");
+    if (!copied) {
+      throw new Error("Clipboard copy is unavailable");
+    }
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
 function normalizeQuarterHours(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0;
   return Math.round(value * 4) / 4;
@@ -846,7 +872,7 @@ export default function App() {
         selectedStudentCard.fullName
       );
       const text = buildDebtReminderMessage(locale, debtorLike, studentCardDebts, recipientName);
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       showMessage(locale === "ru" ? t("msg.debtReminderRuCopied") : t("msg.debtReminderLvCopied"));
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
@@ -1717,7 +1743,7 @@ export default function App() {
         selectedDebtor.studentName
       );
       const text = buildDebtReminderMessage(locale, selectedDebtor, debtDetails, recipientName);
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       showMessage(locale === "ru" ? t("msg.debtReminderRuCopied") : t("msg.debtReminderLvCopied"));
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
@@ -1735,7 +1761,7 @@ export default function App() {
         return;
       }
       const text = buildDebtReminderMessage(locale, debtor, details, recipientName);
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       showMessage(locale === "ru" ? t("msg.copyRu") : t("msg.copyLv"));
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
