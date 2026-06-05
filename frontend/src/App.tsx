@@ -3797,7 +3797,7 @@ export default function App() {
               )}
 
               {canManageUsers && (
-                <section className="detailCard">
+                <section className="detailCard detailCard--wide">
                   <div className="detailCardHeader">
                     <h3>Users</h3>
                   </div>
