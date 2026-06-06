@@ -55,11 +55,41 @@ var (
 			},
 		},
 	}
+	// CourseMonthStatsColumns holds the columns for the "course_month_stats" table.
+	CourseMonthStatsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "year", Type: field.TypeInt},
+		{Name: "month", Type: field.TypeInt},
+		{Name: "subscription_lessons_held", Type: field.TypeFloat64, Default: 0},
+		{Name: "course_id", Type: field.TypeInt},
+	}
+	// CourseMonthStatsTable holds the schema information for the "course_month_stats" table.
+	CourseMonthStatsTable = &schema.Table{
+		Name:       "course_month_stats",
+		Columns:    CourseMonthStatsColumns,
+		PrimaryKey: []*schema.Column{CourseMonthStatsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "course_month_stats_courses_month_stats",
+				Columns:    []*schema.Column{CourseMonthStatsColumns[4]},
+				RefColumns: []*schema.Column{CoursesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "coursemonthstat_course_id_year_month",
+				Unique:  true,
+				Columns: []*schema.Column{CourseMonthStatsColumns[4], CourseMonthStatsColumns[1], CourseMonthStatsColumns[2]},
+			},
+		},
+	}
 	// EnrollmentsColumns holds the columns for the "enrollments" table.
 	EnrollmentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "billing_mode", Type: field.TypeEnum, Enums: []string{"subscription", "per_lesson"}},
 		{Name: "discount_pct", Type: field.TypeFloat64, Default: 0},
+		{Name: "subscription_discount_pct", Type: field.TypeFloat64, Default: 20},
 		{Name: "note", Type: field.TypeString, Default: ""},
 		{Name: "course_id", Type: field.TypeInt},
 		{Name: "student_id", Type: field.TypeInt},
@@ -72,13 +102,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "enrollments_courses_enrollments",
-				Columns:    []*schema.Column{EnrollmentsColumns[4]},
+				Columns:    []*schema.Column{EnrollmentsColumns[5]},
 				RefColumns: []*schema.Column{CoursesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "enrollments_students_enrollments",
-				Columns:    []*schema.Column{EnrollmentsColumns[5]},
+				Columns:    []*schema.Column{EnrollmentsColumns[6]},
 				RefColumns: []*schema.Column{StudentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -87,7 +117,7 @@ var (
 			{
 				Name:    "enrollment_student_id_course_id",
 				Unique:  true,
-				Columns: []*schema.Column{EnrollmentsColumns[5], EnrollmentsColumns[4]},
+				Columns: []*schema.Column{EnrollmentsColumns[6], EnrollmentsColumns[5]},
 			},
 		},
 	}
@@ -299,6 +329,7 @@ var (
 	Tables = []*schema.Table{
 		AttendanceMonthsTable,
 		CoursesTable,
+		CourseMonthStatsTable,
 		EnrollmentsTable,
 		InvoicesTable,
 		InvoiceLinesTable,
@@ -313,6 +344,7 @@ var (
 
 func init() {
 	CoursesTable.ForeignKeys[0].RefTable = TeachersTable
+	CourseMonthStatsTable.ForeignKeys[0].RefTable = CoursesTable
 	EnrollmentsTable.ForeignKeys[0].RefTable = CoursesTable
 	EnrollmentsTable.ForeignKeys[1].RefTable = StudentsTable
 	InvoicesTable.ForeignKeys[0].RefTable = StudentsTable

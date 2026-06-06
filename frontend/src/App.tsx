@@ -1,7 +1,14 @@
 import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef, type FormEvent } from "react";
 import "./App.css";
 
-import { fetchRows, saveHours, deleteEnrollment, Row } from "./lib/attendance";
+import {
+  fetchRows,
+  saveHours,
+  deleteEnrollment,
+  listCourseMonthSubscriptions,
+  saveCourseMonthSubscriptionLessons,
+  Row,
+} from "./lib/attendance";
 
 import {
   listInvoices,
@@ -197,7 +204,7 @@ type Tab =
   | "settings";
 type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 type InvoiceMenuPosition = { top: number; left: number; openUpward: boolean };
-type UserDraft = { email: string; role: string; isActive: boolean };
+type UserDraft = { username: string; role: string; isActive: boolean };
 
 function buildTabMeta(t: TranslateFn): Record<Tab, { eyebrow: string; title: string }> {
   return {
@@ -265,6 +272,32 @@ function formatEUR(value: number): string {
   return `€${value.toFixed(2)}`;
 }
 
+async function copyTextToClipboard(text: string) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.top = "-9999px";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  textarea.setSelectionRange(0, textarea.value.length);
+
+  try {
+    const copied = document.execCommand("copy");
+    if (!copied) {
+      throw new Error("Clipboard copy is unavailable");
+    }
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
 function normalizeQuarterHours(value: number): number {
   if (!Number.isFinite(value) || value <= 0) return 0;
   return Math.round(value * 4) / 4;
@@ -275,6 +308,24 @@ function formatHoursValue(value: number): string {
     return String(Math.round(value));
   }
   return value.toFixed(2).replace(/\.?0+$/, "");
+}
+
+function clampPct(value: number): number {
+  if (!Number.isFinite(value)) return 0;
+  return Math.max(0, Math.min(100, value));
+}
+
+function subscriptionTotal(row: Row, lessonsHeld: number): number {
+  const totalDiscountPct = clampPct(row.discountPct + row.subscriptionDiscountPct);
+  const base = row.lessonPrice * lessonsHeld;
+  return Math.round(base * (1 - totalDiscountPct / 100) * 100) / 100;
+}
+
+function normalizeHoursDraftInput(value: string): string | null {
+  const normalized = value.replace(",", ".");
+  if (normalized === "") return "";
+  if (/^\d*(\.\d{0,2})?$/.test(normalized)) return normalized;
+  return null;
 }
 
 function debtMonthLabel(month: number, year: number, locale: "ru" | "lv"): string {
@@ -328,10 +379,11 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [, setCurrentSessionUser] = useState<{ id: number; email: string; role: string } | null>(null);
+  const [currentSessionUser, setCurrentSessionUser] = useState<{ id: number; username: string; role: string } | null>(null);
   const [sessionCapabilities, setSessionCapabilities] = useState<Record<string, boolean>>({});
-  const [loginEmail, setLoginEmail] = useState("");
+  const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
+  const [loginRememberMe, setLoginRememberMe] = useState(true);
   const [loginPending, setLoginPending] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
@@ -341,7 +393,7 @@ export default function App() {
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
-  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserUsername, setNewUserUsername] = useState("");
   const [newUserPassword, setNewUserPassword] = useState("");
   const [newUserRole, setNewUserRole] = useState("staff");
   const [userDrafts, setUserDrafts] = useState<Record<number, UserDraft>>({});
@@ -820,7 +872,7 @@ export default function App() {
         selectedStudentCard.fullName
       );
       const text = buildDebtReminderMessage(locale, debtorLike, studentCardDebts, recipientName);
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       showMessage(locale === "ru" ? t("msg.debtReminderRuCopied") : t("msg.debtReminderLvCopied"));
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
@@ -1064,6 +1116,7 @@ export default function App() {
   const [efCourseId, setEfCourseId] = useState<number>(0);
   const [efMode, setEfMode] = useState<"subscription" | "per_lesson">("per_lesson");
   const [efDiscount, setEfDiscount] = useState(0);
+  const [efSubscriptionDiscount, setEfSubscriptionDiscount] = useState(20);
   const [efNote, setEfNote] = useState("");
 
   const activeStudents = useMemo(() => allStudents.filter((s) => s.isActive), [allStudents]);
@@ -1141,6 +1194,7 @@ export default function App() {
     setEfCourseId(initialCourseId);
     setEfMode("per_lesson");
     setEfDiscount(0);
+    setEfSubscriptionDiscount(20);
     setEfNote("");
     setEnrModalOpen(true);
   }
@@ -1153,6 +1207,7 @@ export default function App() {
     setEfCourseId(e.courseId);
     setEfMode(e.billingMode);
     setEfDiscount(e.discountPct);
+    setEfSubscriptionDiscount(e.subscriptionDiscountPct);
     setEfNote(e.note);
     setEnrModalOpen(true);
   }
@@ -1166,14 +1221,31 @@ export default function App() {
       showMessage(t("msg.discountRange"), "error");
       return;
     }
+    if (efSubscriptionDiscount < 0 || efSubscriptionDiscount > 100) {
+      showMessage(t("msg.discountRange"), "error");
+      return;
+    }
 
     try {
       let result: EnrollmentDTO;
       if (editingEnr) {
-        result = await updateEnrollment(editingEnr.id, efMode, efDiscount, efNote);
+        result = await updateEnrollment(
+          editingEnr.id,
+          efMode,
+          efDiscount,
+          efMode === "subscription" ? efSubscriptionDiscount : 0,
+          efNote
+        );
         showMessage(t("msg.enrollmentUpdated"));
       } else {
-        result = await createEnrollment(efStudentId, efCourseId, efMode, efDiscount, efNote);
+        result = await createEnrollment(
+          efStudentId,
+          efCourseId,
+          efMode,
+          efDiscount,
+          efMode === "subscription" ? efSubscriptionDiscount : 0,
+          efNote
+        );
 
         const matchesFilters =
           (enrStudentFilter === undefined || enrStudentFilter === result.studentId) &&
@@ -1210,6 +1282,12 @@ export default function App() {
   const [attQ, setAttQ] = useState("");
   const [attFilter, setAttFilter] = useState<"all" | "missing" | "filled" | "zero">("all");
   const [attendanceSavingRows, setAttendanceSavingRows] = useState<Record<number, boolean>>({});
+  const attendanceSavingRowsRef = useRef<Record<number, boolean>>({});
+  const [attendanceInputDrafts, setAttendanceInputDrafts] = useState<Record<number, string>>({});
+  const attendancePendingSelectRef = useRef<number | null>(null);
+  const [subscriptionMonthLessons, setSubscriptionMonthLessons] = useState<Record<number, number>>({});
+  const [subscriptionMonthDrafts, setSubscriptionMonthDrafts] = useState<Record<number, string>>({});
+  const [subscriptionMonthSaving, setSubscriptionMonthSaving] = useState<Record<number, boolean>>({});
 
   // For search by phone we need students list (shared with invoices and attendance)
   const studentIndex = useMemo(() => {
@@ -1233,8 +1311,15 @@ export default function App() {
     try {
       await ensureStudentsLoaded();
       await ensureCoursesLoaded();
-      const data = await fetchRows(year, month, courseFilter);
+      const [data, subscriptionData] = await Promise.all([
+        fetchRows(year, month, courseFilter),
+        listCourseMonthSubscriptions(year, month, courseFilter),
+      ]);
       setRows(data);
+      setSubscriptionMonthLessons(
+        Object.fromEntries(subscriptionData.map((item) => [item.courseId, item.lessonsHeld]))
+      );
+      setSubscriptionMonthDrafts({});
     } finally {
       setLoadingAtt(false);
     }
@@ -1244,6 +1329,10 @@ export default function App() {
     if (!appReady) return;
     if (tab === "attendance") loadAttendance();
   }, [appReady, tab, loadAttendance]);
+
+  useEffect(() => {
+    attendanceSavingRowsRef.current = attendanceSavingRows;
+  }, [attendanceSavingRows]);
 
   const perLessonTotal = useMemo(
     () =>
@@ -1303,7 +1392,19 @@ export default function App() {
     return { filled, missing, zero, total: editableRows.length };
   }, [rows]);
 
-  const onChangeHours = async (r: Row, v: number) => {
+  const subscriptionLeadEnrollmentIds = useMemo(() => {
+    const seen = new Set<number>();
+    const leadIds = new Set<number>();
+    for (const row of filteredAttendanceRows) {
+      if (row.billingMode !== BillingModeSubscription) continue;
+      if (seen.has(row.courseId)) continue;
+      seen.add(row.courseId);
+      leadIds.add(row.enrollmentId);
+    }
+    return leadIds;
+  }, [filteredAttendanceRows]);
+
+  const onChangeHours = useCallback(async (r: Row, v: number) => {
     if (r.billingMode !== BillingModePerLesson) return;
     if (r.attendanceLocked) {
       showMessage(
@@ -1316,7 +1417,7 @@ export default function App() {
     }
     if (!Number.isFinite(v)) return;
     const n = normalizeQuarterHours(v);
-    if (attendanceSavingRows[r.enrollmentId]) return;
+    if (attendanceSavingRowsRef.current[r.enrollmentId]) return;
 
     try {
       setAttendanceSavingRows((prev) => ({ ...prev, [r.enrollmentId]: true }));
@@ -1345,7 +1446,138 @@ export default function App() {
         return next;
       });
     }
-  };
+  }, [localizedInvoiceStatusLabel, month, showMessage, t, year]);
+
+  const setAttendanceDraft = useCallback((enrollmentId: number, value: string) => {
+    setAttendanceInputDrafts((prev) => ({ ...prev, [enrollmentId]: value }));
+  }, []);
+
+  const clearAttendanceDraft = useCallback((enrollmentId: number) => {
+    setAttendanceInputDrafts((prev) => {
+      if (!(enrollmentId in prev)) return prev;
+      const next = { ...prev };
+      delete next[enrollmentId];
+      return next;
+    });
+  }, []);
+
+  const commitAttendanceDraft = useCallback(
+    async (r: Row) => {
+      const draft = attendanceInputDrafts[r.enrollmentId];
+      if (draft === undefined) return;
+
+      const trimmed = draft.trim();
+      if (trimmed === "") {
+        clearAttendanceDraft(r.enrollmentId);
+        return;
+      }
+
+      const parsed = Number(trimmed.replace(",", "."));
+      if (!Number.isFinite(parsed)) {
+        clearAttendanceDraft(r.enrollmentId);
+        showMessage(t("msg.errorGeneric", { message: "Invalid hours value" }), "error");
+        return;
+      }
+
+      if (normalizeQuarterHours(parsed) === r.hours) {
+        clearAttendanceDraft(r.enrollmentId);
+        return;
+      }
+
+      try {
+        await onChangeHours(r, parsed);
+      } finally {
+        clearAttendanceDraft(r.enrollmentId);
+      }
+    },
+    [attendanceInputDrafts, clearAttendanceDraft, onChangeHours, showMessage, t]
+  );
+
+  const getAttendanceInputValue = useCallback(
+    (r: Row) => attendanceInputDrafts[r.enrollmentId] ?? formatHoursValue(r.hours),
+    [attendanceInputDrafts]
+  );
+
+  const getAttendanceStepBase = useCallback(
+    (r: Row) => {
+      const draft = attendanceInputDrafts[r.enrollmentId];
+      if (draft === undefined || draft.trim() === "") return r.hours;
+      const parsed = Number(draft.replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : r.hours;
+    },
+    [attendanceInputDrafts]
+  );
+
+  const getSubscriptionMonthLessonsValue = useCallback(
+    (courseId: number) => {
+      const draft = subscriptionMonthDrafts[courseId];
+      if (draft !== undefined) return draft;
+      return formatHoursValue(subscriptionMonthLessons[courseId] ?? 0);
+    },
+    [subscriptionMonthDrafts, subscriptionMonthLessons]
+  );
+
+  const setSubscriptionMonthLessonsDraft = useCallback((courseId: number, value: string) => {
+    setSubscriptionMonthDrafts((prev) => ({ ...prev, [courseId]: value }));
+  }, []);
+
+  const clearSubscriptionMonthLessonsDraft = useCallback((courseId: number) => {
+    setSubscriptionMonthDrafts((prev) => {
+      if (!(courseId in prev)) return prev;
+      const next = { ...prev };
+      delete next[courseId];
+      return next;
+    });
+  }, []);
+
+  const commitSubscriptionMonthLessonsDraft = useCallback(
+    async (row: Row) => {
+      const draft = subscriptionMonthDrafts[row.courseId];
+      if (draft === undefined) return;
+      const trimmed = draft.trim();
+      if (trimmed === "") {
+        clearSubscriptionMonthLessonsDraft(row.courseId);
+        return;
+      }
+      const parsed = Number(trimmed.replace(",", "."));
+      if (!Number.isFinite(parsed) || parsed < 0) {
+        clearSubscriptionMonthLessonsDraft(row.courseId);
+        showMessage(t("msg.errorGeneric", { message: "Invalid lessons value" }), "error");
+        return;
+      }
+      const normalized = normalizeQuarterHours(parsed);
+      if (normalized === (subscriptionMonthLessons[row.courseId] ?? 0)) {
+        clearSubscriptionMonthLessonsDraft(row.courseId);
+        return;
+      }
+
+      try {
+        setSubscriptionMonthSaving((prev) => ({ ...prev, [row.courseId]: true }));
+        const updated = await saveCourseMonthSubscriptionLessons(row.courseId, year, month, normalized);
+        setSubscriptionMonthLessons((prev) => ({ ...prev, [row.courseId]: updated.lessonsHeld }));
+        await loadAttendance();
+      } catch (e: any) {
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+      } finally {
+        clearSubscriptionMonthLessonsDraft(row.courseId);
+        setSubscriptionMonthSaving((prev) => {
+          const next = { ...prev };
+          delete next[row.courseId];
+          return next;
+        });
+      }
+    },
+    [
+      clearSubscriptionMonthLessonsDraft,
+      loadAttendance,
+      month,
+      showMessage,
+      subscriptionMonthDrafts,
+      subscriptionMonthLessons,
+      t,
+      year,
+    ]
+  );
 
   const onDeleteEnrollmentFromSheet = async (id: number) => {
     showConfirm(
@@ -1516,7 +1748,7 @@ export default function App() {
         selectedDebtor.studentName
       );
       const text = buildDebtReminderMessage(locale, selectedDebtor, debtDetails, recipientName);
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       showMessage(locale === "ru" ? t("msg.debtReminderRuCopied") : t("msg.debtReminderLvCopied"));
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
@@ -1534,7 +1766,7 @@ export default function App() {
         return;
       }
       const text = buildDebtReminderMessage(locale, debtor, details, recipientName);
-      await navigator.clipboard.writeText(text);
+      await copyTextToClipboard(text);
       showMessage(locale === "ru" ? t("msg.copyRu") : t("msg.copyLv"));
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
@@ -1771,6 +2003,44 @@ export default function App() {
     }
   }, [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]);
 
+  const onDownloadPdf = useCallback(async (id: number) => {
+    try {
+      closeInvoiceMenu();
+      const pdf = await ensurePdf(id);
+      setInvItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
+      );
+
+      if (transportCapabilities.isDesktop) {
+        if (!pdf.localPath) {
+          showMessage(t("msg.errorGeneric", { message: t("msg.pdfDownloadUnavailable") }), "error");
+          return;
+        }
+        const transport = await getTransport();
+        await transport.openLocalPath(pdf.localPath);
+        showMessage(t("msg.pdfReady", { path: pdf.localPath }));
+        return;
+      }
+
+      if (!pdf.downloadUrl) {
+        showMessage(t("msg.errorGeneric", { message: t("msg.pdfDownloadUnavailable") }), "error");
+        return;
+      }
+
+      const link = document.createElement("a");
+      link.href = pdf.downloadUrl;
+      link.download = pdf.filename;
+      link.rel = "noopener";
+      link.style.display = "none";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      showMessage(t("msg.pdfDownloaded", { filename: pdf.filename }));
+    } catch (e: any) {
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    }
+  }, [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]);
+
   const onRevealInvoiceFile = useCallback(async (id: number) => {
     try {
       closeInvoiceMenu();
@@ -1803,7 +2073,7 @@ export default function App() {
             onClick: () => void onRevealInvoiceFile(invoice.id),
           });
         }
-        if (!invoice.pdfReady) {
+        if (transportCapabilities.isDesktop && !invoice.pdfReady) {
           menuItems.push({
             label: t("button.createPdf"),
             onClick: () => void onGeneratePdf(invoice.id),
@@ -1887,9 +2157,19 @@ export default function App() {
     };
   }, [closeInvoiceMenu, openInvoiceMenu]);
 
+  const previousInvoiceDetailsOpenRef = useRef(invoiceDetailsOpen);
+  const previousTabRef = useRef(tab);
+
   useEffect(() => {
-    if (!openInvoiceMenu) return;
-    closeInvoiceMenu();
+    const invoiceDetailsChanged = previousInvoiceDetailsOpenRef.current !== invoiceDetailsOpen;
+    const tabChanged = previousTabRef.current !== tab;
+
+    previousInvoiceDetailsOpenRef.current = invoiceDetailsOpen;
+    previousTabRef.current = tab;
+
+    if ((invoiceDetailsChanged || tabChanged) && openInvoiceMenu) {
+      closeInvoiceMenu();
+    }
   }, [closeInvoiceMenu, invoiceDetailsOpen, openInvoiceMenu, tab]);
 
   const renderInvoiceActionsMenu = (
@@ -1909,7 +2189,13 @@ export default function App() {
           className="invoiceActionsMenuTrigger"
           aria-haspopup="menu"
           aria-expanded={isOpen}
-          onClick={(event) => toggleInvoiceMenu(kind, invoice, event.currentTarget)}
+          onMouseDown={(event) => {
+            event.stopPropagation();
+          }}
+          onClick={(event) => {
+            event.stopPropagation();
+            toggleInvoiceMenu(kind, invoice, event.currentTarget);
+          }}
         >
           {t("msg.more")}
         </button>
@@ -1955,7 +2241,7 @@ export default function App() {
       setUsers(items);
       setUserDrafts(
         Object.fromEntries(
-          items.map((item) => [item.id, { email: item.email, role: item.role, isActive: item.isActive }])
+          items.map((item) => [item.id, { username: item.username, role: item.role, isActive: item.isActive }])
         )
       );
     } catch (e: any) {
@@ -1975,13 +2261,13 @@ export default function App() {
     try {
       setCreatingUser(true);
       const transport = await getTransport();
-      const created = await transport.createUser(newUserEmail, newUserPassword, newUserRole);
+      const created = await transport.createUser(newUserUsername, newUserPassword, newUserRole);
       setUsers((prev) => [...prev, created]);
       setUserDrafts((prev) => ({
         ...prev,
-        [created.id]: { email: created.email, role: created.role, isActive: created.isActive },
+        [created.id]: { username: created.username, role: created.role, isActive: created.isActive },
       }));
-      setNewUserEmail("");
+      setNewUserUsername("");
       setNewUserPassword("");
       setNewUserRole("staff");
       showMessage("User created");
@@ -1997,13 +2283,42 @@ export default function App() {
     if (!draft) return;
     try {
       const transport = await getTransport();
-      const updated = await transport.updateUser(userId, draft.email, draft.role, draft.isActive);
+      const updated = await transport.updateUser(userId, draft.username, draft.role, draft.isActive);
       setUsers((prev) => prev.map((item) => (item.id === userId ? updated : item)));
-      setUserDrafts((prev) => ({ ...prev, [userId]: { email: updated.email, role: updated.role, isActive: updated.isActive } }));
+      setUserDrafts((prev) => ({ ...prev, [userId]: { username: updated.username, role: updated.role, isActive: updated.isActive } }));
       showMessage("User updated");
     } catch (e: any) {
       showMessage(String(e?.message ?? e), "error");
     }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    const target = users.find((item) => item.id === userId);
+    if (!target) return;
+    showConfirm(
+      `Delete user "${target.username}"? This cannot be undone.`,
+      async () => {
+        try {
+          const transport = await getTransport();
+          await transport.deleteUser(userId);
+          setUsers((prev) => prev.filter((item) => item.id !== userId));
+          setUserDrafts((prev) => {
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+          });
+          setUserPasswordDrafts((prev) => {
+            const next = { ...prev };
+            delete next[userId];
+            return next;
+          });
+          showMessage("User deleted");
+        } catch (e: any) {
+          showMessage(String(e?.message ?? e), "error");
+        }
+      },
+      "Delete user"
+    );
   };
 
   const handleResetUserPassword = async (userId: number) => {
@@ -2062,7 +2377,7 @@ export default function App() {
       setLoginError(null);
       try {
         const transport = await getTransport();
-        const session = await transport.login(loginEmail, loginPassword);
+        const session = await transport.login(loginUsername, loginPassword, loginRememberMe);
         setUiLocale(normalizeLocale(session.locale));
         setCurrentSessionUser(session.user ?? null);
         setSessionCapabilities(session.capabilities ?? {});
@@ -2083,7 +2398,7 @@ export default function App() {
         setLoginPending(false);
       }
     },
-    [loginEmail, loginPassword]
+    [loginRememberMe, loginPassword, loginUsername]
   );
 
   const handleLogout = useCallback(async () => {
@@ -2215,13 +2530,15 @@ export default function App() {
         </div>
       ) : authRequired && !isAuthenticated ? (
         <LoginScreen
-          email={loginEmail}
+          username={loginUsername}
           password={loginPassword}
+          rememberMe={loginRememberMe}
           pending={loginPending}
           error={loginError}
           sessionExpired={sessionExpired}
-          onEmailChange={setLoginEmail}
+          onUsernameChange={setLoginUsername}
           onPasswordChange={setLoginPassword}
+          onRememberMeChange={setLoginRememberMe}
           onSubmit={handleLogin}
           t={t}
         />
@@ -2287,6 +2604,12 @@ export default function App() {
             </button>
             <button className={tab === "courses" ? "active" : ""} onClick={() => setTab("courses")}>
               {t("tabs.courses")}
+            </button>
+            <button
+              className={tab === "enrollments" ? "active" : ""}
+              onClick={() => setTab("enrollments")}
+            >
+              {t("tabs.enrollments")}
             </button>
             <button
               className={tab === "attendance" ? "active" : ""}
@@ -2776,6 +3099,20 @@ export default function App() {
                       />
                     </div>
 
+                    {efMode === "subscription" && (
+                      <div className="formRow">
+                        <label>{t("field.subscriptionDiscount")} %</label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step="0.1"
+                          value={efSubscriptionDiscount}
+                          onChange={(e) => setEfSubscriptionDiscount(numOrZero(e.target.value))}
+                        />
+                      </div>
+                    )}
+
                     <div className="formRow">
                       <label>{t("field.note")}</label>
                       <input value={efNote} onChange={(e) => setEfNote(e.target.value)} />
@@ -2901,7 +3238,7 @@ export default function App() {
                           )}
                         </td>
                         <td style={{ textAlign: "right" }}>
-                          {r.billingMode === BillingModePerLesson ? formatEUR(r.lessonPrice) : "—"}
+                          {formatEUR(r.lessonPrice)}
                         </td>
                         <td style={{ textAlign: "right" }}>
                           {r.billingMode === BillingModePerLesson && !r.hasRecord && (
@@ -2917,45 +3254,192 @@ export default function App() {
                               <button
                                 type="button"
                                 className="attendanceStepperButton"
-                                onClick={() => onChangeHours(r, r.hours - 0.25)}
-                                disabled={attendanceSavingRows[r.enrollmentId] || r.hours <= 0}
+                                onClick={() =>
+                                  onChangeHours(r, Math.max(0, getAttendanceStepBase(r) - 1))
+                                }
+                                disabled={
+                                  attendanceSavingRows[r.enrollmentId] ||
+                                  getAttendanceStepBase(r) <= 0
+                                }
                                 aria-label={`Decrease hours for ${r.studentName}`}
                               >
                                 −
                               </button>
                               <input
-                                type="number"
-                                min={0}
-                                step={0.25}
-                                value={formatHoursValue(r.hours)}
+                                type="text"
+                                inputMode="decimal"
+                                value={getAttendanceInputValue(r)}
                                 disabled={attendanceSavingRows[r.enrollmentId]}
-                                onChange={(e) => onChangeHours(r, Number(e.target.value))}
+                                onChange={(e) => {
+                                  const nextValue = normalizeHoursDraftInput(e.target.value);
+                                  if (nextValue !== null) {
+                                    setAttendanceDraft(r.enrollmentId, nextValue);
+                                  }
+                                }}
+                                onPointerDown={() => {
+                                  attendancePendingSelectRef.current = r.enrollmentId;
+                                }}
+                                onFocus={(e) => {
+                                  if (attendancePendingSelectRef.current !== r.enrollmentId) {
+                                    e.currentTarget.select();
+                                  }
+                                }}
+                                onMouseUp={(e) => {
+                                  if (attendancePendingSelectRef.current === r.enrollmentId) {
+                                    e.preventDefault();
+                                    e.currentTarget.select();
+                                    attendancePendingSelectRef.current = null;
+                                  }
+                                }}
+                                onBlur={() => {
+                                  if (attendancePendingSelectRef.current === r.enrollmentId) {
+                                    attendancePendingSelectRef.current = null;
+                                  }
+                                  void commitAttendanceDraft(r);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    void commitAttendanceDraft(r);
+                                  }
+                                  if (e.key === "Escape") {
+                                    e.preventDefault();
+                                    clearAttendanceDraft(r.enrollmentId);
+                                    e.currentTarget.blur();
+                                  }
+                                }}
                                 className="attendanceStepperInput"
                                 aria-label={`Hours for ${r.studentName}`}
                               />
                               <button
                                 type="button"
                                 className="attendanceStepperButton"
-                                onClick={() => onChangeHours(r, r.hours + 0.25)}
+                                onClick={() => onChangeHours(r, getAttendanceStepBase(r) + 1)}
                                 disabled={attendanceSavingRows[r.enrollmentId]}
                                 aria-label={`Increase hours for ${r.studentName}`}
                               >
                                 +
                               </button>
                             </div>
+                          ) : r.billingMode === BillingModeSubscription ? (
+                            subscriptionLeadEnrollmentIds.has(r.enrollmentId) ? (
+                              <div className="attendanceStepper">
+                                <button
+                                  type="button"
+                                  className="attendanceStepperButton"
+                                  onClick={() => {
+                                    const current = subscriptionMonthLessons[r.courseId] ?? 0;
+                                    void saveCourseMonthSubscriptionLessons(
+                                      r.courseId,
+                                      year,
+                                      month,
+                                      Math.max(0, current - 1)
+                                    )
+                                      .then((updated) => {
+                                        setSubscriptionMonthLessons((prev) => ({
+                                          ...prev,
+                                          [r.courseId]: updated.lessonsHeld,
+                                        }));
+                                        return loadAttendance();
+                                      })
+                                      .catch((e: any) => {
+                                        showMessage(
+                                          t("msg.errorGeneric", {
+                                            message: String(e?.message ?? e),
+                                          }),
+                                          "error"
+                                        );
+                                      });
+                                  }}
+                                  disabled={
+                                    subscriptionMonthSaving[r.courseId] ||
+                                    (subscriptionMonthLessons[r.courseId] ?? 0) <= 0
+                                  }
+                                  aria-label={`Decrease subscription lessons for ${r.courseName}`}
+                                >
+                                  −
+                                </button>
+                                <input
+                                  type="text"
+                                  inputMode="decimal"
+                                  value={getSubscriptionMonthLessonsValue(r.courseId)}
+                                  disabled={subscriptionMonthSaving[r.courseId]}
+                                  onChange={(e) => {
+                                    const nextValue = normalizeHoursDraftInput(e.target.value);
+                                    if (nextValue !== null) {
+                                      setSubscriptionMonthLessonsDraft(r.courseId, nextValue);
+                                    }
+                                  }}
+                                  onFocus={(e) => e.currentTarget.select()}
+                                  onBlur={() => {
+                                    void commitSubscriptionMonthLessonsDraft(r);
+                                  }}
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                      e.preventDefault();
+                                      void commitSubscriptionMonthLessonsDraft(r);
+                                    }
+                                    if (e.key === "Escape") {
+                                      e.preventDefault();
+                                      clearSubscriptionMonthLessonsDraft(r.courseId);
+                                      e.currentTarget.blur();
+                                    }
+                                  }}
+                                  className="attendanceStepperInput"
+                                  aria-label={`Subscription lessons held for ${r.courseName}`}
+                                />
+                                <button
+                                  type="button"
+                                  className="attendanceStepperButton"
+                                  onClick={() => {
+                                    const current = subscriptionMonthLessons[r.courseId] ?? 0;
+                                    void saveCourseMonthSubscriptionLessons(
+                                      r.courseId,
+                                      year,
+                                      month,
+                                      current + 1
+                                    )
+                                      .then((updated) => {
+                                        setSubscriptionMonthLessons((prev) => ({
+                                          ...prev,
+                                          [r.courseId]: updated.lessonsHeld,
+                                        }));
+                                        return loadAttendance();
+                                      })
+                                      .catch((e: any) => {
+                                        showMessage(
+                                          t("msg.errorGeneric", {
+                                            message: String(e?.message ?? e),
+                                          }),
+                                          "error"
+                                        );
+                                      });
+                                  }}
+                                  disabled={subscriptionMonthSaving[r.courseId]}
+                                  aria-label={`Increase subscription lessons for ${r.courseName}`}
+                                >
+                                  +
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="attendanceReadOnly">
+                                <span className="attBadge attBadge--subscription">
+                                  {t("msg.readOnly")}
+                                </span>
+                                <span className="mutedInline">{t("msg.subscriptionSharedValue")}</span>
+                              </div>
+                            )
                           ) : (
                             <div className="attendanceReadOnly">
                               <span className="attBadge attBadge--subscription">{t("msg.readOnly")}</span>
                               <span className="mutedInline">
-                                {r.billingMode === BillingModeSubscription
-                                  ? t("msg.subscriptionStudent")
-                                  : r.invoiceStatus === InvoiceStatusIssued
-                                    ? t("msg.lockedIssuedInvoice")
-                                    : r.invoiceStatus === InvoiceStatusPaid
-                                      ? t("msg.lockedPaidInvoice")
-                                      : r.invoiceStatus === InvoiceStatusCanceled
-                                        ? t("msg.lockedCanceledInvoice")
-                                        : t("msg.lockedUntilDraft")}
+                                {r.invoiceStatus === InvoiceStatusIssued
+                                  ? t("msg.lockedIssuedInvoice")
+                                  : r.invoiceStatus === InvoiceStatusPaid
+                                    ? t("msg.lockedPaidInvoice")
+                                    : r.invoiceStatus === InvoiceStatusCanceled
+                                      ? t("msg.lockedCanceledInvoice")
+                                      : t("msg.lockedUntilDraft")}
                               </span>
                             </div>
                           )}
@@ -2963,7 +3447,7 @@ export default function App() {
                         <td style={{ textAlign: "right" }}>
                           {r.billingMode === BillingModePerLesson
                             ? formatEUR(r.hours * r.lessonPrice)
-                            : "—"}
+                            : formatEUR(subscriptionTotal(r, subscriptionMonthLessons[r.courseId] ?? 0))}
                         </td>
                         <td>
                           {r.billingMode === BillingModePerLesson &&
@@ -3093,6 +3577,11 @@ export default function App() {
                                 onClick={() => onIssueOne(it.id)}
                               >
                                 {t("button.issue")}
+                              </button>
+                            )}
+                            {it.status !== "draft" && (
+                              <button onClick={() => void onDownloadPdf(it.id)}>
+                                {t("button.downloadPdf")}
                               </button>
                             )}
                             {it.status !== "draft" && (
@@ -3322,15 +3811,15 @@ export default function App() {
               )}
 
               {canManageUsers && (
-                <section className="detailCard">
+                <section className="detailCard detailCard--wide">
                   <div className="detailCardHeader">
                     <h3>Users</h3>
                   </div>
                   <p className="mutedInline">Manage admin and staff accounts for the web app.</p>
 
                   <div className="formRow">
-                    <label>Email</label>
-                    <input value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} />
+                    <label>Username</label>
+                    <input value={newUserUsername} onChange={(e) => setNewUserUsername(e.target.value)} />
                   </div>
                   <div className="formRow">
                     <label>Password</label>
@@ -3368,7 +3857,7 @@ export default function App() {
                       <table>
                         <thead>
                           <tr>
-                            <th>Email</th>
+                            <th>Username</th>
                             <th>Role</th>
                             <th>Active</th>
                             <th>Password reset</th>
@@ -3378,7 +3867,7 @@ export default function App() {
                         <tbody>
                           {users.map((user) => {
                             const draft = userDrafts[user.id] ?? {
-                              email: user.email,
+                              username: user.username,
                               role: user.role,
                               isActive: user.isActive,
                             };
@@ -3386,11 +3875,11 @@ export default function App() {
                               <tr key={user.id}>
                                 <td>
                                   <input
-                                    value={draft.email}
+                                    value={draft.username}
                                     onChange={(e) =>
                                       setUserDrafts((prev) => ({
                                         ...prev,
-                                        [user.id]: { ...draft, email: e.target.value },
+                                        [user.id]: { ...draft, username: e.target.value },
                                       }))
                                     }
                                   />
@@ -3434,6 +3923,12 @@ export default function App() {
                                 <td>
                                   <button onClick={() => void handleSaveUser(user.id)}>{t("button.save")}</button>
                                   <button onClick={() => void handleResetUserPassword(user.id)}>Reset password</button>
+                                  <button
+                                    onClick={() => void handleDeleteUser(user.id)}
+                                    disabled={currentSessionUser?.id === user.id}
+                                  >
+                                    Delete
+                                  </button>
                                 </td>
                               </tr>
                             );
@@ -3596,6 +4091,11 @@ export default function App() {
                 <button onClick={() => onIssueOne(selectedInv.id)}>{t("button.issue")}</button>
               )}
               {selectedInv.status !== "draft" && (
+                <button onClick={() => void onDownloadPdf(selectedInv.id)}>
+                  {t("button.downloadPdf")}
+                </button>
+              )}
+              {selectedInv.status !== "draft" && (
                 <button onClick={() => openPaymentModal(selectedInv, invSummary)}>
                   {t("button.recordPayment")}
                 </button>
@@ -3610,7 +4110,7 @@ export default function App() {
                   {t("button.showInFolder")}
                 </button>
               )}
-              {selectedInv.status !== "draft" && !selectedInvPdfReady && (
+              {transportCapabilities.isDesktop && selectedInv.status !== "draft" && !selectedInvPdfReady && (
                 <button onClick={() => onGeneratePdf(selectedInv.id)}>{t("button.createPdf")}</button>
               )}
               <button onClick={() => setInvoiceDetailsOpen(false)}>{t("button.close")}</button>
@@ -3745,6 +4245,9 @@ export default function App() {
           ref={invoiceMenuRef}
           className={`invoiceActionsMenuPanel ${invoiceMenuPosition.openUpward ? "invoiceActionsMenuPanelUpward" : ""}`}
           role="menu"
+          onMouseDown={(event) => {
+            event.stopPropagation();
+          }}
           style={{
             position: "fixed",
             top: invoiceMenuPosition.top,

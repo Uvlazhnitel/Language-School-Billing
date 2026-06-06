@@ -127,8 +127,8 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 	periodStart := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.Local)
 	periodEnd := periodStart.AddDate(0, 1, -1)
 
-	p := fpdf.New("P", "mm", "A4", "")
-	p.SetTitle(fmt.Sprintf("Rēķins %s — %s", *iv.Number, subjectName), false)
+	p := fpdf.New("P", "mm", "A4", fontsDir)
+	p.SetTitle(fmt.Sprintf("Rēķins %s - %s", *iv.Number, subjectName), true)
 	p.SetAuthor(provider.DisplayName, false)
 	p.SetMargins(10, 10, 10)
 	p.SetAutoPageBreak(true, 18)
@@ -167,10 +167,17 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 }
 
 func addArtLabFonts(p *fpdf.Fpdf, fontsDir string) error {
-	regular := filepath.Join(fontsDir, "DejaVuSans.ttf")
-	bold := filepath.Join(fontsDir, "DejaVuSans-Bold.ttf")
-	italic := filepath.Join(fontsDir, "DejaVuSans-Oblique.ttf")
-	boldItalic := filepath.Join(fontsDir, "DejaVuSans-BoldOblique.ttf")
+	const (
+		regularFile    = "DejaVuSans.ttf"
+		boldFile       = "DejaVuSans-Bold.ttf"
+		italicFile     = "DejaVuSans-Oblique.ttf"
+		boldItalicFile = "DejaVuSans-BoldOblique.ttf"
+	)
+
+	regular := filepath.Join(fontsDir, regularFile)
+	bold := filepath.Join(fontsDir, boldFile)
+	italic := filepath.Join(fontsDir, italicFile)
+	boldItalic := filepath.Join(fontsDir, boldItalicFile)
 
 	required := []string{regular, bold}
 	for _, path := range required {
@@ -179,19 +186,19 @@ func addArtLabFonts(p *fpdf.Fpdf, fontsDir string) error {
 		}
 	}
 
-	p.AddUTF8Font("DejaVu", "", regular)
-	p.AddUTF8Font("DejaVu", "B", bold)
+	p.AddUTF8Font("DejaVu", "", regularFile)
+	p.AddUTF8Font("DejaVu", "B", boldFile)
 
 	if _, err := os.Stat(italic); err == nil {
-		p.AddUTF8Font("DejaVu", "I", italic)
+		p.AddUTF8Font("DejaVu", "I", italicFile)
 	} else {
-		p.AddUTF8Font("DejaVu", "I", regular)
+		p.AddUTF8Font("DejaVu", "I", regularFile)
 	}
 
 	if _, err := os.Stat(boldItalic); err == nil {
-		p.AddUTF8Font("DejaVu", "BI", boldItalic)
+		p.AddUTF8Font("DejaVu", "BI", boldItalicFile)
 	} else {
-		p.AddUTF8Font("DejaVu", "BI", bold)
+		p.AddUTF8Font("DejaVu", "BI", boldFile)
 	}
 
 	return nil
@@ -358,7 +365,7 @@ func drawServiceRow(p *fpdf.Fpdf, no int, name, term, unit string, qty float64, 
 	wPrice := 19.0
 	wAmount := 18.0
 
-	descLines := p.SplitLines([]byte(name), wName-3)
+	descLines := wrapPDFText(p, name, wName-3)
 	rowH := math.Max(10, float64(len(descLines))*4.2+4)
 
 	if y0+rowH > 268 {
@@ -382,8 +389,10 @@ func drawServiceRow(p *fpdf.Fpdf, no int, name, term, unit string, qty float64, 
 	p.CellFormat(wNo, 4, fmt.Sprintf("%d.", no), "", 0, "C", false, 0, "")
 
 	p.SetFont("DejaVu", "", 8)
-	p.SetXY(x0+wNo+1.5, y0+2)
-	p.MultiCell(wName-3, 4.2, name, "", "L", false)
+	for idx, line := range descLines {
+		p.SetXY(x0+wNo+1.5, y0+2+float64(idx)*4.2)
+		p.CellFormat(wName-3, 4.2, line, "", 0, "L", false, 0, "")
+	}
 
 	p.SetXY(x0+wNo+wName, y0+(rowH/2)-2)
 	p.CellFormat(wTerm, 4, term, "", 0, "C", false, 0, "")
@@ -402,6 +411,90 @@ func drawServiceRow(p *fpdf.Fpdf, no int, name, term, unit string, qty float64, 
 
 	p.SetY(y0 + rowH)
 	_ = currency
+}
+
+func wrapPDFText(p *fpdf.Fpdf, text string, width float64) []string {
+	text = strings.TrimSpace(text)
+	if text == "" {
+		return []string{""}
+	}
+
+	paragraphs := strings.Split(text, "\n")
+	lines := make([]string, 0, len(paragraphs))
+
+	for _, paragraph := range paragraphs {
+		paragraph = strings.TrimSpace(paragraph)
+		if paragraph == "" {
+			lines = append(lines, "")
+			continue
+		}
+
+		words := strings.Fields(paragraph)
+		if len(words) == 0 {
+			lines = append(lines, "")
+			continue
+		}
+
+		current := words[0]
+		for _, word := range words[1:] {
+			candidate := current + " " + word
+			if p.GetStringWidth(candidate) <= width {
+				current = candidate
+				continue
+			}
+
+			if p.GetStringWidth(current) > width {
+				lines = append(lines, breakLongPDFWord(p, current, width)...)
+			} else {
+				lines = append(lines, current)
+			}
+			current = word
+		}
+
+		if p.GetStringWidth(current) > width {
+			lines = append(lines, breakLongPDFWord(p, current, width)...)
+		} else {
+			lines = append(lines, current)
+		}
+	}
+
+	if len(lines) == 0 {
+		return []string{""}
+	}
+	return lines
+}
+
+func breakLongPDFWord(p *fpdf.Fpdf, word string, width float64) []string {
+	runes := []rune(word)
+	if len(runes) == 0 {
+		return []string{""}
+	}
+
+	lines := make([]string, 0, 2)
+	start := 0
+	for start < len(runes) {
+		end := start + 1
+		for end <= len(runes) {
+			chunk := string(runes[start:end])
+			if p.GetStringWidth(chunk) > width {
+				if end == start+1 {
+					lines = append(lines, chunk)
+					start = end
+				} else {
+					lines = append(lines, string(runes[start:end-1]))
+					start = end - 1
+				}
+				break
+			}
+			if end == len(runes) {
+				lines = append(lines, chunk)
+				start = end
+				break
+			}
+			end++
+		}
+	}
+	return lines
 }
 
 func formatInvoiceQty(qty float64) string {

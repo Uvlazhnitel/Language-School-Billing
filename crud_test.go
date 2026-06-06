@@ -138,7 +138,7 @@ func TestEnrollmentListIncludesTeacherName(t *testing.T) {
 		t.Fatalf("CourseCreate: %v", err)
 	}
 
-	_, err = app.EnrollmentCreate(st.ID, crs.ID, "per_lesson", 5, "evening group")
+	_, err = app.EnrollmentCreate(st.ID, crs.ID, "per_lesson", 5, 0, "evening group")
 	if err != nil {
 		t.Fatalf("EnrollmentCreate: %v", err)
 	}

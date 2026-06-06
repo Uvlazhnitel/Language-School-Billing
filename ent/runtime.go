@@ -5,6 +5,7 @@ package ent
 import (
 	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
+	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
@@ -45,14 +46,24 @@ func init() {
 	courseDescIsActive := courseFields[6].Descriptor()
 	// course.DefaultIsActive holds the default value on creation for the is_active field.
 	course.DefaultIsActive = courseDescIsActive.Default.(bool)
+	coursemonthstatFields := schema.CourseMonthStat{}.Fields()
+	_ = coursemonthstatFields
+	// coursemonthstatDescSubscriptionLessonsHeld is the schema descriptor for subscription_lessons_held field.
+	coursemonthstatDescSubscriptionLessonsHeld := coursemonthstatFields[3].Descriptor()
+	// coursemonthstat.DefaultSubscriptionLessonsHeld holds the default value on creation for the subscription_lessons_held field.
+	coursemonthstat.DefaultSubscriptionLessonsHeld = coursemonthstatDescSubscriptionLessonsHeld.Default.(float64)
 	enrollmentFields := schema.Enrollment{}.Fields()
 	_ = enrollmentFields
 	// enrollmentDescDiscountPct is the schema descriptor for discount_pct field.
 	enrollmentDescDiscountPct := enrollmentFields[3].Descriptor()
 	// enrollment.DefaultDiscountPct holds the default value on creation for the discount_pct field.
 	enrollment.DefaultDiscountPct = enrollmentDescDiscountPct.Default.(float64)
+	// enrollmentDescSubscriptionDiscountPct is the schema descriptor for subscription_discount_pct field.
+	enrollmentDescSubscriptionDiscountPct := enrollmentFields[4].Descriptor()
+	// enrollment.DefaultSubscriptionDiscountPct holds the default value on creation for the subscription_discount_pct field.
+	enrollment.DefaultSubscriptionDiscountPct = enrollmentDescSubscriptionDiscountPct.Default.(float64)
 	// enrollmentDescNote is the schema descriptor for note field.
-	enrollmentDescNote := enrollmentFields[4].Descriptor()
+	enrollmentDescNote := enrollmentFields[5].Descriptor()
 	// enrollment.DefaultNote holds the default value on creation for the note field.
 	enrollment.DefaultNote = enrollmentDescNote.Default.(string)
 	invoiceFields := schema.Invoice{}.Fields()

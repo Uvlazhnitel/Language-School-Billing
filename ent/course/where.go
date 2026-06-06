@@ -400,6 +400,29 @@ func HasEnrollmentsWith(preds ...predicate.Enrollment) predicate.Course {
 	})
 }
 
+// HasMonthStats applies the HasEdge predicate on the "month_stats" edge.
+func HasMonthStats() predicate.Course {
+	return predicate.Course(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, MonthStatsTable, MonthStatsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasMonthStatsWith applies the HasEdge predicate on the "month_stats" edge with a given conditions (other predicates).
+func HasMonthStatsWith(preds ...predicate.CourseMonthStat) predicate.Course {
+	return predicate.Course(func(s *sql.Selector) {
+		step := newMonthStatsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // And groups predicates with the AND operator between them.
 func And(predicates ...predicate.Course) predicate.Course {
 	return predicate.Course(sql.AndPredicates(predicates...))

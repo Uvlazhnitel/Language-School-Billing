@@ -15,6 +15,10 @@ export function AttendanceListPerLesson(arg1:number,arg2:number,arg3:any):Promis
 
 export function AttendanceUpsert(arg1:number,arg2:number,arg3:number,arg4:number,arg5:number):Promise<void>;
 
+export function CourseMonthSubscriptionList(arg1:number,arg2:number,arg3:any):Promise<Array<any>>;
+
+export function CourseMonthSubscriptionUpsert(arg1:number,arg2:number,arg3:number,arg4:number):Promise<any>;
+
 export function BackupNow():Promise<string>;
 
 export function CourseCreate(arg1:string,arg2:any,arg3:string,arg4:number,arg5:number):Promise<main.CourseDTO>;
@@ -29,13 +33,13 @@ export function CourseUpdate(arg1:number,arg2:string,arg3:any,arg4:string,arg5:n
 
 export function DebtorsList():Promise<Array<payment.DebtorDTO>>;
 
-export function EnrollmentCreate(arg1:number,arg2:number,arg3:string,arg4:number,arg5:string):Promise<main.EnrollmentDTO>;
+export function EnrollmentCreate(arg1:number,arg2:number,arg3:string,arg4:number,arg5:number,arg6:string):Promise<main.EnrollmentDTO>;
 
 export function EnrollmentDelete(arg1:number):Promise<void>;
 
 export function EnrollmentList(arg1:any,arg2:any):Promise<Array<main.EnrollmentDTO>>;
 
-export function EnrollmentUpdate(arg1:number,arg2:string,arg3:number,arg4:string):Promise<main.EnrollmentDTO>;
+export function EnrollmentUpdate(arg1:number,arg2:string,arg3:number,arg4:number,arg5:string):Promise<main.EnrollmentDTO>;
 
 export function InvoiceDeleteDraft(arg1:number):Promise<void>;
 

@@ -71,6 +71,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/attendance/per-lesson", s.handleAttendanceList)
 	s.mux.HandleFunc("PUT /api/attendance", s.handleAttendanceUpsert)
 	s.mux.HandleFunc("POST /api/attendance/add-one", s.handleAttendanceAddOne)
+	s.mux.HandleFunc("GET /api/attendance/subscription-month", s.handleAttendanceSubscriptionMonthList)
+	s.mux.HandleFunc("PUT /api/attendance/subscription-month", s.handleAttendanceSubscriptionMonthUpsert)
 
 	s.mux.HandleFunc("GET /api/invoices", s.handleInvoicesList)
 	s.mux.HandleFunc("GET /api/invoices/{id}", s.handleInvoicesGet)
@@ -90,6 +92,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/users", s.handleUsersList)
 	s.mux.HandleFunc("POST /api/users", s.handleUsersCreate)
 	s.mux.HandleFunc("PUT /api/users/{id}", s.handleUsersUpdate)
+	s.mux.HandleFunc("DELETE /api/users/{id}", s.handleUsersDelete)
 	s.mux.HandleFunc("POST /api/users/{id}/password", s.handleUsersSetPassword)
 	s.mux.HandleFunc("POST /api/users/{id}/active", s.handleUsersSetActive)
 
@@ -158,24 +161,25 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Username   string `json:"username"`
+		Password   string `json:"password"`
+		RememberMe bool   `json:"rememberMe"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
 
-	currentUser, signedToken, expiresAt, err := s.svc.Login(r.Context(), req.Email, req.Password)
+	currentUser, signedToken, expiresAt, persistent, err := s.svc.Login(r.Context(), req.Username, req.Password, req.RememberMe)
 	if err != nil {
 		if errors.Is(err, auth.ErrUnauthorized) {
-			writeUnauthorized(w, "invalid email or password")
+			writeUnauthorized(w, "invalid username or password")
 			return
 		}
 		writeError(w, err)
 		return
 	}
 
-	http.SetCookie(w, s.svc.SessionCookie(signedToken, expiresAt))
+	http.SetCookie(w, s.svc.SessionCookie(signedToken, expiresAt, persistent))
 
 	session, err := s.svc.SessionState(r.Context(), currentUser)
 	if err != nil {
@@ -443,7 +447,7 @@ func (s *Server) handleEnrollmentsCreate(w http.ResponseWriter, r *http.Request)
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.EnrollmentCreate(r.Context(), req.StudentID, req.CourseID, req.BillingMode, req.DiscountPct, req.Note)
+	item, err := s.svc.EnrollmentCreate(r.Context(), req.StudentID, req.CourseID, req.BillingMode, req.DiscountPct, req.SubscriptionDiscountPct, req.Note)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -460,7 +464,7 @@ func (s *Server) handleEnrollmentsUpdate(w http.ResponseWriter, r *http.Request)
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.EnrollmentUpdate(r.Context(), id, req.BillingMode, req.DiscountPct, req.Note)
+	item, err := s.svc.EnrollmentUpdate(r.Context(), id, req.BillingMode, req.DiscountPct, req.SubscriptionDiscountPct, req.Note)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -537,6 +541,48 @@ func (s *Server) handleAttendanceAddOne(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]int{"count": count})
+}
+
+func (s *Server) handleAttendanceSubscriptionMonthList(w http.ResponseWriter, r *http.Request) {
+	year, err := parseRequiredQueryInt(r, "year")
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	month, err := parseRequiredQueryInt(r, "month")
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	courseID, err := parseOptionalInt(r.URL.Query().Get("courseId"))
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	items, err := s.svc.CourseMonthSubscriptionList(r.Context(), year, month, courseID)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+func (s *Server) handleAttendanceSubscriptionMonthUpsert(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		CourseID    int     `json:"courseId"`
+		Year        int     `json:"year"`
+		Month       int     `json:"month"`
+		LessonsHeld float64 `json:"lessonsHeld"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	item, err := s.svc.CourseMonthSubscriptionUpsert(r.Context(), req.CourseID, req.Year, req.Month, req.LessonsHeld)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
 }
 
 func (s *Server) handleInvoicesList(w http.ResponseWriter, r *http.Request) {
@@ -730,14 +776,14 @@ func (s *Server) handleUsersList(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleUsersCreate(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Email    string `json:"email"`
+		Username string `json:"username"`
 		Password string `json:"password"`
 		Role     string `json:"role"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.UserCreate(r.Context(), req.Email, req.Password, req.Role)
+	item, err := s.svc.UserCreate(r.Context(), req.Username, req.Password, req.Role)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -751,14 +797,14 @@ func (s *Server) handleUsersUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Email    string `json:"email"`
+		Username string `json:"username"`
 		Role     string `json:"role"`
 		IsActive bool   `json:"isActive"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.UserUpdate(r.Context(), id, req.Email, req.Role, req.IsActive)
+	item, err := s.svc.UserUpdate(r.Context(), id, req.Username, req.Role, req.IsActive)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -782,6 +828,28 @@ func (s *Server) handleUsersSetPassword(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (s *Server) handleUsersDelete(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt(w, r, "id")
+	if !ok {
+		return
+	}
+	currentUser := currentUserFromContext(r.Context())
+	if currentUser == nil {
+		writeUnauthorized(w, "authentication required")
+		return
+	}
+	if err := s.svc.UserDelete(r.Context(), currentUser.ID, id); err != nil {
+		switch {
+		case errors.Is(err, auth.ErrDeleteSelf), errors.Is(err, auth.ErrDeleteLastAdmin):
+			writeBadRequest(w, err.Error())
+		default:
+			writeError(w, err)
+		}
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 func (s *Server) handleUsersSetActive(w http.ResponseWriter, r *http.Request) {
@@ -953,17 +1021,19 @@ type courseUpsertRequest struct {
 }
 
 type enrollmentCreateRequest struct {
-	StudentID   int     `json:"studentId"`
-	CourseID    int     `json:"courseId"`
-	BillingMode string  `json:"billingMode"`
-	DiscountPct float64 `json:"discountPct"`
-	Note        string  `json:"note"`
+	StudentID               int     `json:"studentId"`
+	CourseID                int     `json:"courseId"`
+	BillingMode             string  `json:"billingMode"`
+	DiscountPct             float64 `json:"discountPct"`
+	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"`
+	Note                    string  `json:"note"`
 }
 
 type enrollmentUpdateRequest struct {
-	BillingMode string  `json:"billingMode"`
-	DiscountPct float64 `json:"discountPct"`
-	Note        string  `json:"note"`
+	BillingMode             string  `json:"billingMode"`
+	DiscountPct             float64 `json:"discountPct"`
+	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"`
+	Note                    string  `json:"note"`
 }
 
 type periodRequest struct {
@@ -1160,6 +1230,11 @@ const currentUserKey contextKey = "currentUser"
 
 func withCurrentUser(ctx context.Context, currentUser *auth.UserInfo) context.Context {
 	return context.WithValue(ctx, currentUserKey, currentUser)
+}
+
+func currentUserFromContext(ctx context.Context) *auth.UserInfo {
+	currentUser, _ := ctx.Value(currentUserKey).(*auth.UserInfo)
+	return currentUser
 }
 
 func (s *Server) userFromRequest(r *http.Request) (*auth.UserInfo, error) {

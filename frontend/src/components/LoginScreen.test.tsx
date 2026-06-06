@@ -8,20 +8,23 @@ describe("LoginScreen", () => {
   it("renders login fields and session-expired state", () => {
     const markup = renderToStaticMarkup(
       <LoginScreen
-        email="admin@example.com"
+        username="admin"
         password=""
+        rememberMe
         pending={false}
         error={null}
         sessionExpired
-        onEmailChange={vi.fn()}
+        onUsernameChange={vi.fn()}
         onPasswordChange={vi.fn()}
+        onRememberMeChange={vi.fn()}
         onSubmit={vi.fn()}
         t={createTranslator("en-US")}
       />
     );
 
     expect(markup).toContain("Sign in to StudentDesk");
-    expect(markup).toContain("admin@example.com");
+    expect(markup).toContain("admin");
+    expect(markup).toContain("Remember me");
     expect(markup).toContain("Your session expired");
   });
 });

@@ -26,6 +26,8 @@ type Enrollment struct {
 	BillingMode enrollment.BillingMode `json:"billing_mode,omitempty"`
 	// DiscountPct holds the value of the "discount_pct" field.
 	DiscountPct float64 `json:"discount_pct,omitempty"`
+	// SubscriptionDiscountPct holds the value of the "subscription_discount_pct" field.
+	SubscriptionDiscountPct float64 `json:"subscription_discount_pct,omitempty"`
 	// Note holds the value of the "note" field.
 	Note string `json:"note,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -83,7 +85,7 @@ func (*Enrollment) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case enrollment.FieldDiscountPct:
+		case enrollment.FieldDiscountPct, enrollment.FieldSubscriptionDiscountPct:
 			values[i] = new(sql.NullFloat64)
 		case enrollment.FieldID, enrollment.FieldStudentID, enrollment.FieldCourseID:
 			values[i] = new(sql.NullInt64)
@@ -133,6 +135,12 @@ func (_m *Enrollment) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field discount_pct", values[i])
 			} else if value.Valid {
 				_m.DiscountPct = value.Float64
+			}
+		case enrollment.FieldSubscriptionDiscountPct:
+			if value, ok := values[i].(*sql.NullFloat64); !ok {
+				return fmt.Errorf("unexpected type %T for field subscription_discount_pct", values[i])
+			} else if value.Valid {
+				_m.SubscriptionDiscountPct = value.Float64
 			}
 		case enrollment.FieldNote:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -202,6 +210,9 @@ func (_m *Enrollment) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("discount_pct=")
 	builder.WriteString(fmt.Sprintf("%v", _m.DiscountPct))
+	builder.WriteString(", ")
+	builder.WriteString("subscription_discount_pct=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SubscriptionDiscountPct))
 	builder.WriteString(", ")
 	builder.WriteString("note=")
 	builder.WriteString(_m.Note)

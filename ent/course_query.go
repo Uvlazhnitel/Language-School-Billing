@@ -7,6 +7,7 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"langschool/ent/course"
+	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/predicate"
 	"langschool/ent/teacher"
@@ -27,6 +28,7 @@ type CourseQuery struct {
 	predicates      []predicate.Course
 	withTeacher     *TeacherQuery
 	withEnrollments *EnrollmentQuery
+	withMonthStats  *CourseMonthStatQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -100,6 +102,28 @@ func (_q *CourseQuery) QueryEnrollments() *EnrollmentQuery {
 			sqlgraph.From(course.Table, course.FieldID, selector),
 			sqlgraph.To(enrollment.Table, enrollment.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, course.EnrollmentsTable, course.EnrollmentsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryMonthStats chains the current query on the "month_stats" edge.
+func (_q *CourseQuery) QueryMonthStats() *CourseMonthStatQuery {
+	query := (&CourseMonthStatClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(course.Table, course.FieldID, selector),
+			sqlgraph.To(coursemonthstat.Table, coursemonthstat.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, course.MonthStatsTable, course.MonthStatsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -301,6 +325,7 @@ func (_q *CourseQuery) Clone() *CourseQuery {
 		predicates:      append([]predicate.Course{}, _q.predicates...),
 		withTeacher:     _q.withTeacher.Clone(),
 		withEnrollments: _q.withEnrollments.Clone(),
+		withMonthStats:  _q.withMonthStats.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -326,6 +351,17 @@ func (_q *CourseQuery) WithEnrollments(opts ...func(*EnrollmentQuery)) *CourseQu
 		opt(query)
 	}
 	_q.withEnrollments = query
+	return _q
+}
+
+// WithMonthStats tells the query-builder to eager-load the nodes that are connected to
+// the "month_stats" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *CourseQuery) WithMonthStats(opts ...func(*CourseMonthStatQuery)) *CourseQuery {
+	query := (&CourseMonthStatClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withMonthStats = query
 	return _q
 }
 
@@ -407,9 +443,10 @@ func (_q *CourseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cours
 	var (
 		nodes       = []*Course{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withTeacher != nil,
 			_q.withEnrollments != nil,
+			_q.withMonthStats != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -440,6 +477,13 @@ func (_q *CourseQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Cours
 		if err := _q.loadEnrollments(ctx, query, nodes,
 			func(n *Course) { n.Edges.Enrollments = []*Enrollment{} },
 			func(n *Course, e *Enrollment) { n.Edges.Enrollments = append(n.Edges.Enrollments, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withMonthStats; query != nil {
+		if err := _q.loadMonthStats(ctx, query, nodes,
+			func(n *Course) { n.Edges.MonthStats = []*CourseMonthStat{} },
+			func(n *Course, e *CourseMonthStat) { n.Edges.MonthStats = append(n.Edges.MonthStats, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -493,6 +537,36 @@ func (_q *CourseQuery) loadEnrollments(ctx context.Context, query *EnrollmentQue
 	}
 	query.Where(predicate.Enrollment(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(course.EnrollmentsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.CourseID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "course_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *CourseQuery) loadMonthStats(ctx context.Context, query *CourseMonthStatQuery, nodes []*Course, init func(*Course), assign func(*Course, *CourseMonthStat)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*Course)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(coursemonthstat.FieldCourseID)
+	}
+	query.Where(predicate.CourseMonthStat(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(course.MonthStatsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

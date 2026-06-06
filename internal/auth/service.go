@@ -32,33 +32,35 @@ const (
 
 var ErrUnauthorized = errors.New("unauthorized")
 var ErrForbidden = errors.New("forbidden")
+var ErrDeleteSelf = errors.New("cannot delete your own account")
+var ErrDeleteLastAdmin = errors.New("cannot delete the last active admin")
 
 type UserInfo struct {
-	ID    int    `json:"id"`
-	Email string `json:"email"`
-	Role  string `json:"role"`
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	Role     string `json:"role"`
 }
 
 type UserRecord struct {
 	ID       int    `json:"id"`
-	Email    string `json:"email"`
+	Username string `json:"username"`
 	Role     string `json:"role"`
 	IsActive bool   `json:"isActive"`
 }
 
 type Service struct {
 	client        *ent.Client
-	adminEmail    string
+	adminUsername string
 	adminPassword string
 	sessionSecret string
 	baseURL       string
 	now           func() time.Time
 }
 
-func New(client *ent.Client, adminEmail, adminPassword, sessionSecret, baseURL string) *Service {
+func New(client *ent.Client, adminUsername, adminPassword, sessionSecret, baseURL string) *Service {
 	return &Service{
 		client:        client,
-		adminEmail:    strings.TrimSpace(strings.ToLower(adminEmail)),
+		adminUsername: normalizeUsername(adminUsername),
 		adminPassword: adminPassword,
 		sessionSecret: strings.TrimSpace(sessionSecret),
 		baseURL:       strings.TrimSpace(baseURL),
@@ -67,7 +69,7 @@ func New(client *ent.Client, adminEmail, adminPassword, sessionSecret, baseURL s
 }
 
 func (s *Service) BootstrapAdmin(ctx context.Context) error {
-	if s == nil || s.client == nil || s.adminEmail == "" || s.adminPassword == "" {
+	if s == nil || s.client == nil || s.adminUsername == "" || s.adminPassword == "" {
 		return nil
 	}
 
@@ -76,10 +78,10 @@ func (s *Service) BootstrapAdmin(ctx context.Context) error {
 		return err
 	}
 
-	existing, err := s.client.User.Query().Where(user.EmailEQ(s.adminEmail)).Only(ctx)
+	existing, err := s.client.User.Query().Where(user.UsernameEQ(s.adminUsername)).Only(ctx)
 	if ent.IsNotFound(err) {
 		_, err = s.client.User.Create().
-			SetEmail(s.adminEmail).
+			SetUsername(s.adminUsername).
 			SetPasswordHash(passwordHash).
 			SetRole(DefaultAdminRole).
 			SetIsActive(true).
@@ -113,13 +115,13 @@ func (s *Service) ListUsers(ctx context.Context) ([]UserRecord, error) {
 	return out, nil
 }
 
-func (s *Service) CreateUser(ctx context.Context, email, password, role string) (*UserRecord, error) {
+func (s *Service) CreateUser(ctx context.Context, username, password, role string) (*UserRecord, error) {
 	if s == nil || s.client == nil {
 		return nil, ErrUnauthorized
 	}
-	email = strings.TrimSpace(strings.ToLower(email))
-	if email == "" {
-		return nil, errors.New("email is required")
+	username = normalizeUsername(username)
+	if username == "" {
+		return nil, errors.New("username is required")
 	}
 	if password == "" {
 		return nil, errors.New("password is required")
@@ -133,7 +135,7 @@ func (s *Service) CreateUser(ctx context.Context, email, password, role string) 
 		return nil, err
 	}
 	created, err := s.client.User.Create().
-		SetEmail(email).
+		SetUsername(username).
 		SetPasswordHash(passwordHash).
 		SetRole(role).
 		SetIsActive(true).
@@ -145,20 +147,20 @@ func (s *Service) CreateUser(ctx context.Context, email, password, role string) 
 	return &record, nil
 }
 
-func (s *Service) UpdateUser(ctx context.Context, id int, email, role string, isActive bool) (*UserRecord, error) {
+func (s *Service) UpdateUser(ctx context.Context, id int, username, role string, isActive bool) (*UserRecord, error) {
 	if s == nil || s.client == nil {
 		return nil, ErrUnauthorized
 	}
-	email = strings.TrimSpace(strings.ToLower(email))
-	if email == "" {
-		return nil, errors.New("email is required")
+	username = normalizeUsername(username)
+	if username == "" {
+		return nil, errors.New("username is required")
 	}
 	role, err := normalizeRole(role)
 	if err != nil {
 		return nil, err
 	}
 	item, err := s.client.User.UpdateOneID(id).
-		SetEmail(email).
+		SetUsername(username).
 		SetRole(role).
 		SetIsActive(isActive).
 		Save(ctx)
@@ -198,46 +200,81 @@ func (s *Service) SetUserActive(ctx context.Context, id int, isActive bool) (*Us
 	return &record, nil
 }
 
-func (s *Service) Login(ctx context.Context, email, password string) (*UserInfo, string, time.Time, error) {
+func (s *Service) DeleteUser(ctx context.Context, currentUserID, targetUserID int) error {
 	if s == nil || s.client == nil {
-		return nil, "", time.Time{}, ErrUnauthorized
+		return ErrUnauthorized
+	}
+	if currentUserID == targetUserID {
+		return ErrDeleteSelf
+	}
+
+	target, err := s.client.User.Get(ctx, targetUserID)
+	if err != nil {
+		return err
+	}
+
+	if target.Role == RoleAdmin && target.IsActive {
+		adminCount, err := s.client.User.Query().
+			Where(user.RoleEQ(RoleAdmin), user.IsActiveEQ(true)).
+			Count(ctx)
+		if err != nil {
+			return err
+		}
+		if adminCount <= 1 {
+			return ErrDeleteLastAdmin
+		}
+	}
+
+	if _, err := s.client.WebSession.Delete().
+		Where(websession.HasUserWith(user.IDEQ(targetUserID))).
+		Exec(ctx); err != nil {
+		return err
+	}
+
+	return s.client.User.DeleteOneID(targetUserID).Exec(ctx)
+}
+
+func (s *Service) Login(ctx context.Context, username, password string, rememberMe bool) (*UserInfo, string, time.Time, bool, error) {
+	if s == nil || s.client == nil {
+		return nil, "", time.Time{}, false, ErrUnauthorized
 	}
 	if s.sessionSecret == "" {
-		return nil, "", time.Time{}, errors.New("SESSION_SECRET is required for web authentication")
+		return nil, "", time.Time{}, false, errors.New("SESSION_SECRET is required for web authentication")
 	}
-	if strings.TrimSpace(email) == "" || password == "" {
-		return nil, "", time.Time{}, ErrUnauthorized
+	username = normalizeUsername(username)
+	if username == "" || password == "" {
+		return nil, "", time.Time{}, false, ErrUnauthorized
 	}
 
 	u, err := s.client.User.Query().
-		Where(user.EmailEQ(strings.TrimSpace(strings.ToLower(email))), user.IsActiveEQ(true)).
+		Where(user.UsernameEQ(username), user.IsActiveEQ(true)).
 		Only(ctx)
 	if err != nil {
 		if ent.IsNotFound(err) {
-			return nil, "", time.Time{}, ErrUnauthorized
+			return nil, "", time.Time{}, false, ErrUnauthorized
 		}
-		return nil, "", time.Time{}, err
+		return nil, "", time.Time{}, false, err
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)); err != nil {
-		return nil, "", time.Time{}, ErrUnauthorized
+		return nil, "", time.Time{}, false, ErrUnauthorized
 	}
 
 	rawToken, err := randomToken(32)
 	if err != nil {
-		return nil, "", time.Time{}, err
+		return nil, "", time.Time{}, false, err
 	}
-	expiresAt := s.now().Add(DefaultSessionTTL)
+	expiresAt := s.now().Add(sessionTTL(rememberMe))
 
 	if _, err := s.client.WebSession.Create().
 		SetTokenHash(hashToken(rawToken)).
 		SetExpiresAt(expiresAt).
 		SetUserID(u.ID).
 		Save(ctx); err != nil {
-		return nil, "", time.Time{}, err
+		return nil, "", time.Time{}, false, err
 	}
 
-	return userInfoFromEnt(u), s.signToken(rawToken), expiresAt, nil
+	return userInfoFromEnt(u), s.signToken(rawToken), expiresAt, rememberMe, nil
 }
 
 func (s *Service) Session(ctx context.Context, signedToken string) (*UserInfo, error) {
@@ -281,17 +318,20 @@ func (s *Service) Logout(ctx context.Context, signedToken string) error {
 	return err
 }
 
-func (s *Service) SessionCookie(signedToken string, expiresAt time.Time) *http.Cookie {
-	return &http.Cookie{
+func (s *Service) SessionCookie(signedToken string, expiresAt time.Time, persistent bool) *http.Cookie {
+	cookie := &http.Cookie{
 		Name:     CookieName,
 		Value:    signedToken,
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
 		Secure:   s.cookieSecure(),
-		Expires:  expiresAt,
-		MaxAge:   int(time.Until(expiresAt).Seconds()),
 	}
+	if persistent {
+		cookie.Expires = expiresAt
+		cookie.MaxAge = int(time.Until(expiresAt).Seconds())
+	}
+	return cookie
 }
 
 func (s *Service) ClearSessionCookie() *http.Cookie {
@@ -343,19 +383,30 @@ func userInfoFromEnt(u *ent.User) *UserInfo {
 		return nil
 	}
 	return &UserInfo{
-		ID:    u.ID,
-		Email: u.Email,
-		Role:  u.Role,
+		ID:       u.ID,
+		Username: u.Username,
+		Role:     u.Role,
 	}
 }
 
 func userRecordFromEnt(u *ent.User) UserRecord {
 	return UserRecord{
 		ID:       u.ID,
-		Email:    u.Email,
+		Username: u.Username,
 		Role:     u.Role,
 		IsActive: u.IsActive,
 	}
+}
+
+func normalizeUsername(value string) string {
+	return strings.TrimSpace(strings.ToLower(value))
+}
+
+func sessionTTL(rememberMe bool) time.Duration {
+	if rememberMe {
+		return 30 * 24 * time.Hour
+	}
+	return DefaultSessionTTL
 }
 
 func normalizeRole(role string) (string, error) {

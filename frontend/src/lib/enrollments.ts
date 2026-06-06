@@ -18,18 +18,33 @@ export async function createEnrollment(
   courseId: number,
   billingMode: EnrollmentDTO["billingMode"],
   discountPct: number,
+  subscriptionDiscountPct: number,
   note: string
 ): Promise<EnrollmentDTO> {
   const transport = await getTransport();
-  return transport.createEnrollment(studentId, courseId, billingMode, discountPct, note);
+  return transport.createEnrollment(
+    studentId,
+    courseId,
+    billingMode,
+    discountPct,
+    subscriptionDiscountPct,
+    note
+  );
 }
 
 export async function updateEnrollment(
   enrollmentId: number,
   billingMode: EnrollmentDTO["billingMode"],
   discountPct: number,
+  subscriptionDiscountPct: number,
   note: string
 ): Promise<EnrollmentDTO> {
   const transport = await getTransport();
-  return transport.updateEnrollment(enrollmentId, billingMode, discountPct, note);
+  return transport.updateEnrollment(
+    enrollmentId,
+    billingMode,
+    discountPct,
+    subscriptionDiscountPct,
+    note
+  );
 }

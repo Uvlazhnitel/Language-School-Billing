@@ -18,13 +18,13 @@ export type BootstrapResult = {
 
 export type SessionUser = {
   id: number;
-  email: string;
+  username: string;
   role: string;
 };
 
 export type UserDTO = {
   id: number;
-  email: string;
+  username: string;
   role: string;
   isActive: boolean;
 };
@@ -57,6 +57,8 @@ export type Row = {
   courseType: CourseType;
   billingMode: BillingMode;
   lessonPrice: number;
+  discountPct: number;
+  subscriptionDiscountPct: number;
   hours: number;
   hasRecord: boolean;
   canDelete: boolean;
@@ -103,7 +105,15 @@ export type EnrollmentDTO = {
   teacherName: string;
   billingMode: BillingMode;
   discountPct: number;
+  subscriptionDiscountPct: number;
   note: string;
+};
+
+export type CourseMonthSubscriptionDTO = {
+  courseId: number;
+  year: number;
+  month: number;
+  lessonsHeld: number;
 };
 
 export type InvoiceListItem = {
@@ -243,15 +253,16 @@ export type PaymentMethod = "cash" | "bank";
 export interface AppTransport {
   bootstrap(): Promise<BootstrapResult>;
   getSession(): Promise<SessionInfo>;
-  login(email: string, password: string): Promise<SessionInfo>;
+  login(username: string, password: string, rememberMe: boolean): Promise<SessionInfo>;
   logout(): Promise<void>;
   getLocale(): Promise<string>;
   setLocale(locale: string): Promise<void>;
   createBackup(): Promise<BackupResult>;
   openLocalPath(path: string): Promise<void>;
   listUsers(): Promise<UserDTO[]>;
-  createUser(email: string, password: string, role: string): Promise<UserDTO>;
-  updateUser(id: number, email: string, role: string, isActive: boolean): Promise<UserDTO>;
+  createUser(username: string, password: string, role: string): Promise<UserDTO>;
+  updateUser(id: number, username: string, role: string, isActive: boolean): Promise<UserDTO>;
+  deleteUser(id: number): Promise<void>;
   setUserPassword(id: number, password: string): Promise<void>;
   setUserActive(id: number, active: boolean): Promise<UserDTO>;
 
@@ -309,17 +320,30 @@ export interface AppTransport {
     courseId: number,
     billingMode: EnrollmentDTO["billingMode"],
     discountPct: number,
+    subscriptionDiscountPct: number,
     note: string
   ): Promise<EnrollmentDTO>;
   updateEnrollment(
     enrollmentId: number,
     billingMode: EnrollmentDTO["billingMode"],
     discountPct: number,
+    subscriptionDiscountPct: number,
     note: string
   ): Promise<EnrollmentDTO>;
   deleteEnrollment(enrollmentId: number): Promise<void>;
 
   fetchAttendanceRows(year: number, month: number, courseId?: number): Promise<Row[]>;
+  listCourseMonthSubscriptions(
+    year: number,
+    month: number,
+    courseId?: number
+  ): Promise<CourseMonthSubscriptionDTO[]>;
+  saveCourseMonthSubscriptionLessons(
+    courseId: number,
+    year: number,
+    month: number,
+    lessonsHeld: number
+  ): Promise<CourseMonthSubscriptionDTO>;
   saveAttendanceHours(
     studentId: number,
     courseId: number,

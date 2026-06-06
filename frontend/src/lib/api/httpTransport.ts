@@ -138,11 +138,11 @@ export const httpTransport: AppTransport = {
     return request<SessionInfo>("/auth/session");
   },
 
-  login(email, password) {
+  login(username, password, rememberMe) {
     return request<SessionInfo>("/auth/login", {
       method: "POST",
       suppressAuthEvent: true,
-      ...body({ email, password }),
+      ...body({ username, password, rememberMe }),
     });
   },
 
@@ -172,11 +172,14 @@ export const httpTransport: AppTransport = {
   async listUsers() {
     return request<UserDTO[]>("/users");
   },
-  async createUser(email, password, role) {
-    return request<UserDTO>("/users", { method: "POST", ...body({ email, password, role }) });
+  async createUser(username, password, role) {
+    return request<UserDTO>("/users", { method: "POST", ...body({ username, password, role }) });
   },
-  async updateUser(id, email, role, isActive) {
-    return request<UserDTO>(`/users/${id}`, { method: "PUT", ...body({ email, role, isActive }) });
+  async updateUser(id, username, role, isActive) {
+    return request<UserDTO>(`/users/${id}`, { method: "PUT", ...body({ username, role, isActive }) });
+  },
+  async deleteUser(id) {
+    await requestVoid(`/users/${id}`, { method: "DELETE" });
   },
   async setUserPassword(id, password) {
     await requestVoid(`/users/${id}/password`, { method: "POST", ...body({ password }) });
@@ -252,16 +255,23 @@ export const httpTransport: AppTransport = {
     const query = params.toString();
     return request<EnrollmentDTO[]>(`/enrollments${query ? `?${query}` : ""}`);
   },
-  async createEnrollment(studentId, courseId, billingMode, discountPct, note) {
+  async createEnrollment(studentId, courseId, billingMode, discountPct, subscriptionDiscountPct, note) {
     return request<EnrollmentDTO>("/enrollments", {
       method: "POST",
-      ...body({ studentId, courseId, billingMode, discountPct, note }),
+      ...body({
+        studentId,
+        courseId,
+        billingMode,
+        discountPct,
+        subscriptionDiscountPct,
+        note,
+      }),
     });
   },
-  async updateEnrollment(enrollmentId, billingMode, discountPct, note) {
+  async updateEnrollment(enrollmentId, billingMode, discountPct, subscriptionDiscountPct, note) {
     return request<EnrollmentDTO>(`/enrollments/${enrollmentId}`, {
       method: "PUT",
-      ...body({ billingMode, discountPct, note }),
+      ...body({ billingMode, discountPct, subscriptionDiscountPct, note }),
     });
   },
   async deleteEnrollment(enrollmentId) {
@@ -272,6 +282,17 @@ export const httpTransport: AppTransport = {
     const params = new URLSearchParams({ year: String(year), month: String(month) });
     if (typeof courseId === "number") params.set("courseId", String(courseId));
     return request<Row[]>(`/attendance/per-lesson?${params.toString()}`);
+  },
+  async listCourseMonthSubscriptions(year, month, courseId) {
+    const params = new URLSearchParams({ year: String(year), month: String(month) });
+    if (typeof courseId === "number") params.set("courseId", String(courseId));
+    return request(`/attendance/subscription-month?${params.toString()}`);
+  },
+  async saveCourseMonthSubscriptionLessons(courseId, year, month, lessonsHeld) {
+    return request("/attendance/subscription-month", {
+      method: "PUT",
+      ...body({ courseId, year, month, lessonsHeld }),
+    });
   },
   async saveAttendanceHours(studentId, courseId, year, month, hours) {
     await requestVoid("/attendance", {

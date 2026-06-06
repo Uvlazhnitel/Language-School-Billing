@@ -3,6 +3,8 @@ import {
   AppReady,
   AttendanceAddOne,
   AttendanceListPerLesson,
+  CourseMonthSubscriptionList,
+  CourseMonthSubscriptionUpsert,
   AttendanceUpsert,
   BackupNow,
   CourseCreate,
@@ -92,7 +94,7 @@ export const wailsTransport: AppTransport = {
             authenticated: true,
             user: {
               id: 0,
-              email: "desktop@local",
+              username: "desktop",
               role: "admin",
             },
             locale,
@@ -118,7 +120,7 @@ export const wailsTransport: AppTransport = {
       authenticated: true,
       user: {
         id: 0,
-        email: "desktop@local",
+        username: "desktop",
         role: "admin",
       },
       locale,
@@ -132,13 +134,13 @@ export const wailsTransport: AppTransport = {
     };
   },
 
-  async login() {
+  async login(_username, _password, _rememberMe) {
     const locale = await SettingsGetLocale().catch(() => "en-US");
     return {
       authenticated: true,
       user: {
         id: 0,
-        email: "desktop@local",
+        username: "desktop",
         role: "admin",
       },
       locale,
@@ -166,17 +168,18 @@ export const wailsTransport: AppTransport = {
   },
 
   async listUsers(): Promise<UserDTO[]> {
-    return [{ id: 0, email: "desktop@local", role: "admin", isActive: true }];
+    return [{ id: 0, username: "desktop", role: "admin", isActive: true }];
   },
-  async createUser(email, _password, role): Promise<UserDTO> {
-    return { id: Date.now(), email, role, isActive: true };
+  async createUser(username, _password, role): Promise<UserDTO> {
+    return { id: Date.now(), username, role, isActive: true };
   },
-  async updateUser(id, email, role, isActive): Promise<UserDTO> {
-    return { id, email, role, isActive };
+  async updateUser(id, username, role, isActive): Promise<UserDTO> {
+    return { id, username, role, isActive };
   },
+  async deleteUser() {},
   async setUserPassword() {},
   async setUserActive(id, active): Promise<UserDTO> {
-    return { id, email: "desktop@local", role: "admin", isActive: active };
+    return { id, username: "desktop", role: "admin", isActive: active };
   },
 
   openLocalPath: OpenFile,
@@ -256,17 +259,37 @@ export const wailsTransport: AppTransport = {
     const cid = typeof courseId === "number" && courseId > 0 ? courseId : null;
     return (await EnrollmentList(sid, cid)) as any;
   },
-  async createEnrollment(studentId, courseId, billingMode, discountPct, note) {
-    return (await EnrollmentCreate(studentId, courseId, billingMode, discountPct, note)) as any;
+  async createEnrollment(studentId, courseId, billingMode, discountPct, subscriptionDiscountPct, note) {
+    return (await EnrollmentCreate(
+      studentId,
+      courseId,
+      billingMode,
+      discountPct,
+      subscriptionDiscountPct,
+      note
+    )) as any;
   },
-  async updateEnrollment(enrollmentId, billingMode, discountPct, note) {
-    return (await EnrollmentUpdate(enrollmentId, billingMode, discountPct, note)) as any;
+  async updateEnrollment(enrollmentId, billingMode, discountPct, subscriptionDiscountPct, note) {
+    return (await EnrollmentUpdate(
+      enrollmentId,
+      billingMode,
+      discountPct,
+      subscriptionDiscountPct,
+      note
+    )) as any;
   },
   deleteEnrollment: EnrollmentDelete,
 
   async fetchAttendanceRows(year, month, courseId) {
     const cid = typeof courseId === "number" && courseId > 0 ? courseId : undefined;
     return (await AttendanceListPerLesson(year, month, cid)) as Row[];
+  },
+  async listCourseMonthSubscriptions(year, month, courseId) {
+    const cid = typeof courseId === "number" && courseId > 0 ? courseId : undefined;
+    return (await CourseMonthSubscriptionList(year, month, cid)) as any;
+  },
+  async saveCourseMonthSubscriptionLessons(courseId, year, month, lessonsHeld) {
+    return (await CourseMonthSubscriptionUpsert(courseId, year, month, lessonsHeld)) as any;
   },
   saveAttendanceHours: AttendanceUpsert,
   async addAttendanceHours(year, month, courseId) {

@@ -22,6 +22,14 @@ export function AttendanceUpsert(arg1, arg2, arg3, arg4, arg5) {
   return window['go']['main']['App']['AttendanceUpsert'](arg1, arg2, arg3, arg4, arg5);
 }
 
+export function CourseMonthSubscriptionList(arg1, arg2, arg3) {
+  return window['go']['main']['App']['CourseMonthSubscriptionList'](arg1, arg2, arg3);
+}
+
+export function CourseMonthSubscriptionUpsert(arg1, arg2, arg3, arg4) {
+  return window['go']['main']['App']['CourseMonthSubscriptionUpsert'](arg1, arg2, arg3, arg4);
+}
+
 export function BackupNow() {
   return window['go']['main']['App']['BackupNow']();
 }
@@ -50,8 +58,8 @@ export function DebtorsList() {
   return window['go']['main']['App']['DebtorsList']();
 }
 
-export function EnrollmentCreate(arg1, arg2, arg3, arg4, arg5) {
-  return window['go']['main']['App']['EnrollmentCreate'](arg1, arg2, arg3, arg4, arg5);
+export function EnrollmentCreate(arg1, arg2, arg3, arg4, arg5, arg6) {
+  return window['go']['main']['App']['EnrollmentCreate'](arg1, arg2, arg3, arg4, arg5, arg6);
 }
 
 export function EnrollmentDelete(arg1) {
@@ -62,8 +70,8 @@ export function EnrollmentList(arg1, arg2) {
   return window['go']['main']['App']['EnrollmentList'](arg1, arg2);
 }
 
-export function EnrollmentUpdate(arg1, arg2, arg3, arg4) {
-  return window['go']['main']['App']['EnrollmentUpdate'](arg1, arg2, arg3, arg4);
+export function EnrollmentUpdate(arg1, arg2, arg3, arg4, arg5) {
+  return window['go']['main']['App']['EnrollmentUpdate'](arg1, arg2, arg3, arg4, arg5);
 }
 
 export function InvoiceDeleteDraft(arg1) {
