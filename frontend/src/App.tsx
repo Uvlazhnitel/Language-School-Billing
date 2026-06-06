@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef, type FormEvent } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef, type FormEvent } from "react";
 import "./App.css";
 
 import {
@@ -70,6 +70,7 @@ import {
   MonthOverviewDTO,
   RecentPaymentDTO,
 } from "./lib/dashboard";
+import { AuditLogItem, listAuditLogs } from "./lib/audit";
 import { getTransport, type TransportCapabilities, type UserDTO } from "./lib/api";
 import { AUTH_REQUIRED_EVENT } from "./lib/api/shared";
 import { DashboardOverview } from "./components/DashboardOverview";
@@ -193,6 +194,10 @@ function invoiceStatusLabel(status: string, t: TranslateFn): string {
   }
 }
 
+function auditActionLabel(action: string): string {
+  return action.replaceAll("_", " ").replaceAll(".", " ");
+}
+
 type Tab =
   | "dashboard"
   | "students"
@@ -201,6 +206,7 @@ type Tab =
   | "attendance"
   | "invoice"
   | "debtors"
+  | "audit"
   | "settings";
 type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 type InvoiceMenuPosition = { top: number; left: number; openUpward: boolean };
@@ -235,6 +241,10 @@ function buildTabMeta(t: TranslateFn): Record<Tab, { eyebrow: string; title: str
     debtors: {
       eyebrow: t("eyebrow.debtors"),
       title: t("title.debtors"),
+    },
+    audit: {
+      eyebrow: t("eyebrow.audit"),
+      title: t("title.audit"),
     },
     settings: {
       eyebrow: t("eyebrow.settings"),
@@ -525,6 +535,7 @@ export default function App() {
   const canDeleteStudents = Boolean(sessionCapabilities.deleteStudents) || transportCapabilities.isDesktop;
   const canDeleteCourses = Boolean(sessionCapabilities.deleteCourses) || transportCapabilities.isDesktop;
   const canDeletePayments = Boolean(sessionCapabilities.deletePayments) || transportCapabilities.isDesktop;
+  const canViewAuditLog = Boolean(sessionCapabilities.viewAuditLog) || transportCapabilities.isDesktop;
 
   const localizedPayerRoleLabel = useCallback(
     (relation: string) => payerRoleLabel(relation, t),
@@ -552,6 +563,18 @@ export default function App() {
   const [overview, setOverview] = useState<MonthOverviewDTO | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [recentPayments, setRecentPayments] = useState<RecentPaymentDTO[]>([]);
+  const [auditItems, setAuditItems] = useState<AuditLogItem[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditQ, setAuditQ] = useState("");
+  const [auditActorFilter, setAuditActorFilter] = useState("");
+  const [auditEntityTypeFilter, setAuditEntityTypeFilter] = useState("");
+  const [auditActionFilter, setAuditActionFilter] = useState("");
+  const [auditDateFrom, setAuditDateFrom] = useState("");
+  const [auditDateTo, setAuditDateTo] = useState("");
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize] = useState(50);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditExpandedId, setAuditExpandedId] = useState<number | null>(null);
 
   // ---------------- Students ----------------
   const [studentList, setStudentList] = useState<StudentDTO[]>([]);
@@ -640,6 +663,46 @@ export default function App() {
       void loadDashboard();
     }
   }, [appReady, loadDashboard, tab]);
+
+  const loadAuditLog = useCallback(async () => {
+    if (!canViewAuditLog) return;
+    setAuditLoading(true);
+    try {
+      const result = await listAuditLogs({
+        q: auditQ,
+        actorLabel: auditActorFilter,
+        entityType: auditEntityTypeFilter,
+        action: auditActionFilter,
+        dateFrom: auditDateFrom,
+        dateTo: auditDateTo,
+        page: auditPage,
+        pageSize: auditPageSize,
+      });
+      setAuditItems(result.items);
+      setAuditTotal(result.total);
+    } catch (e: any) {
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [
+    canViewAuditLog,
+    auditQ,
+    auditActorFilter,
+    auditEntityTypeFilter,
+    auditActionFilter,
+    auditDateFrom,
+    auditDateTo,
+    auditPage,
+    auditPageSize,
+    showMessage,
+    t,
+  ]);
+
+  useEffect(() => {
+    if (!appReady || tab !== "audit") return;
+    void loadAuditLog();
+  }, [appReady, tab, loadAuditLog]);
 
   function openAddStudent() {
     setEditingStudent(null);
@@ -2623,6 +2686,11 @@ export default function App() {
             <button className={tab === "debtors" ? "active" : ""} onClick={() => setTab("debtors")}>
               {t("tabs.debtors")}
             </button>
+            {canViewAuditLog && (
+              <button className={tab === "audit" ? "active" : ""} onClick={() => setTab("audit")}>
+                {t("tabs.audit")}
+              </button>
+            )}
             <button
               className={tab === "settings" ? "active" : ""}
               onClick={() => setTab("settings")}
@@ -3724,6 +3792,156 @@ export default function App() {
                     </tr>
                   </tfoot>
                 </table>
+              )}
+            </>
+          )}
+
+          {tab === "audit" && canViewAuditLog && (
+            <>
+              <div className="sectionBanner">
+                <div>
+                  <div className="dashboardCardEyebrow">{t("eyebrow.audit")}</div>
+                  <strong>{t("title.audit")}</strong>
+                  <span className="mutedInline">{t("audit.subtitle")}</span>
+                </div>
+                <div className="sectionBannerActions">
+                  <button className="workspaceActionButton" onClick={() => void loadAuditLog()}>
+                    {t("button.refresh")}
+                  </button>
+                </div>
+              </div>
+
+              <div className="controls controlsWrap">
+                <input
+                  className="searchField searchFieldWide"
+                  placeholder={t("audit.searchPlaceholder")}
+                  value={auditQ}
+                  onChange={(e) => setAuditQ(e.target.value)}
+                />
+                <input
+                  className="searchField"
+                  placeholder={t("audit.actorPlaceholder")}
+                  value={auditActorFilter}
+                  onChange={(e) => setAuditActorFilter(e.target.value)}
+                />
+                <select
+                  value={auditEntityTypeFilter}
+                  onChange={(e) => setAuditEntityTypeFilter(e.target.value)}
+                >
+                  <option value="">{t("audit.allEntities")}</option>
+                  <option value="invoice">{t("tabs.invoice")}</option>
+                  <option value="payment">{t("field.payment")}</option>
+                  <option value="invoice_batch">{t("audit.batchEntity")}</option>
+                </select>
+                <select value={auditActionFilter} onChange={(e) => setAuditActionFilter(e.target.value)}>
+                  <option value="">{t("audit.allActions")}</option>
+                  <option value="invoice.generate_drafts">invoice.generate_drafts</option>
+                  <option value="invoice.rebuild_student_draft">invoice.rebuild_student_draft</option>
+                  <option value="invoice.delete_draft">invoice.delete_draft</option>
+                  <option value="invoice.reopen_draft">invoice.reopen_draft</option>
+                  <option value="invoice.issue">invoice.issue</option>
+                  <option value="invoice.issue_all">invoice.issue_all</option>
+                  <option value="payment.create">payment.create</option>
+                  <option value="payment.allocate_or_credit">payment.allocate_or_credit</option>
+                  <option value="payment.delete">payment.delete</option>
+                </select>
+                <input type="date" value={auditDateFrom} onChange={(e) => setAuditDateFrom(e.target.value)} />
+                <input type="date" value={auditDateTo} onChange={(e) => setAuditDateTo(e.target.value)} />
+                <button
+                  onClick={() => {
+                    setAuditPage(1);
+                    void loadAuditLog();
+                  }}
+                >
+                  {t("button.refresh")}
+                </button>
+              </div>
+
+              {auditLoading ? (
+                <div>{t("label.loading")}</div>
+              ) : auditItems.length === 0 ? (
+                <div className="empty">{t("audit.empty")}</div>
+              ) : (
+                <>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>{t("field.date")}</th>
+                        <th>{t("field.user")}</th>
+                        <th>{t("field.entity")}</th>
+                        <th>{t("field.action")}</th>
+                        <th>{t("field.summary")}</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {auditItems.map((item) => (
+                        <Fragment key={item.id}>
+                          <tr key={item.id}>
+                            <td>{new Date(item.createdAt).toLocaleString()}</td>
+                            <td>{item.actorLabel || "system"}</td>
+                            <td>
+                              {item.entityType}
+                              {typeof item.entityId === "number" ? ` #${item.entityId}` : ""}
+                            </td>
+                            <td>{auditActionLabel(item.action)}</td>
+                            <td>{item.summary}</td>
+                            <td>
+                              <button
+                                onClick={() =>
+                                  setAuditExpandedId((current) => (current === item.id ? null : item.id))
+                                }
+                              >
+                                {auditExpandedId === item.id ? t("button.hide") : t("button.open")}
+                              </button>
+                            </td>
+                          </tr>
+                          {auditExpandedId === item.id && (
+                            <tr>
+                              <td colSpan={6}>
+                                <div className="auditDetails">
+                                  <div className="auditDetailMeta">
+                                    <span>{t("field.studentId")}: {item.studentId ?? "—"}</span>
+                                    <span>{t("field.invoiceId")}: {item.invoiceId ?? "—"}</span>
+                                  </div>
+                                  <div className="auditJsonGrid">
+                                    <div>
+                                      <h4>{t("audit.before")}</h4>
+                                      <pre>{item.beforeJson || "{}"}</pre>
+                                    </div>
+                                    <div>
+                                      <h4>{t("audit.after")}</h4>
+                                      <pre>{item.afterJson || "{}"}</pre>
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </Fragment>
+                      ))}
+                    </tbody>
+                  </table>
+
+                  <div className="auditPager">
+                    <span>{t("audit.totalRows", { count: auditTotal })}</span>
+                    <div className="inlineActions">
+                      <button
+                        disabled={auditPage <= 1}
+                        onClick={() => setAuditPage((page) => Math.max(1, page - 1))}
+                      >
+                        {t("button.prev")}
+                      </button>
+                      <span>{t("audit.pageLabel", { page: auditPage })}</span>
+                      <button
+                        disabled={auditPage * auditPageSize >= auditTotal}
+                        onClick={() => setAuditPage((page) => page + 1)}
+                      >
+                        {t("button.next")}
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </>
           )}

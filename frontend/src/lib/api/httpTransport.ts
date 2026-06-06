@@ -1,5 +1,6 @@
 import type {
   AppTransport,
+  AuditLogListResult,
   BackupResult,
   BalanceDTO,
   BootstrapResult,
@@ -380,6 +381,19 @@ export const httpTransport: AppTransport = {
       method: "POST",
       ...body({ studentId, amount, note }),
     });
+  },
+
+  async listAuditLogs(filters) {
+    const params = new URLSearchParams();
+    if (filters.q) params.set("q", filters.q);
+    if (filters.actorLabel) params.set("actor", filters.actorLabel);
+    if (filters.entityType) params.set("entityType", filters.entityType);
+    if (filters.action) params.set("action", filters.action);
+    if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
+    if (filters.dateTo) params.set("dateTo", filters.dateTo);
+    params.set("page", String(filters.page ?? 1));
+    params.set("pageSize", String(filters.pageSize ?? 50));
+    return request<AuditLogListResult>(`/audit-logs?${params.toString()}`);
   },
 
   async loadMonthOverview(year, month) {

@@ -89,6 +89,7 @@ func (s *Server) routes() {
 
 	s.mux.HandleFunc("GET /api/settings/locale", s.handleSettingsGetLocale)
 	s.mux.HandleFunc("POST /api/settings/locale", s.handleSettingsSetLocale)
+	s.mux.HandleFunc("GET /api/audit-logs", s.handleAuditLogsList)
 	s.mux.HandleFunc("GET /api/users", s.handleUsersList)
 	s.mux.HandleFunc("POST /api/users", s.handleUsersCreate)
 	s.mux.HandleFunc("PUT /api/users/{id}", s.handleUsersUpdate)
@@ -152,7 +153,9 @@ func (s *Server) serveAPI(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	s.mux.ServeHTTP(w, r.WithContext(withCurrentUser(r.Context(), currentUser)))
+	ctx := withCurrentUser(r.Context(), currentUser)
+	ctx = backend.WithActor(ctx, currentUser)
+	s.mux.ServeHTTP(w, r.WithContext(ctx))
 }
 
 func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
@@ -222,6 +225,25 @@ func (s *Server) handleMeta(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, meta)
+}
+
+func (s *Server) handleAuditLogsList(w http.ResponseWriter, r *http.Request) {
+	filter := backend.AuditLogListFilter{
+		Query:      strings.TrimSpace(r.URL.Query().Get("q")),
+		ActorLabel: strings.TrimSpace(r.URL.Query().Get("actor")),
+		EntityType: strings.TrimSpace(r.URL.Query().Get("entityType")),
+		Action:     strings.TrimSpace(r.URL.Query().Get("action")),
+		DateFrom:   strings.TrimSpace(r.URL.Query().Get("dateFrom")),
+		DateTo:     strings.TrimSpace(r.URL.Query().Get("dateTo")),
+		Page:       intQuery(r, "page", 1),
+		PageSize:   intQuery(r, "pageSize", 50),
+	}
+	result, err := s.svc.AuditLogList(r.Context(), filter)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (s *Server) handleBackupsCreate(w http.ResponseWriter, r *http.Request) {
@@ -1158,6 +1180,14 @@ func parseQueryIntDefault(raw string, fallback int) (int, error) {
 	return value, nil
 }
 
+func intQuery(r *http.Request, name string, fallback int) int {
+	value, err := parseQueryIntDefault(r.URL.Query().Get(name), fallback)
+	if err != nil {
+		return fallback
+	}
+	return value
+}
+
 func normalizeDistDir(dir string) string {
 	dir = strings.TrimSpace(dir)
 	if dir == "" {
@@ -1210,6 +1240,8 @@ func isAdminOnlyAPIPath(method, path string) bool {
 	case method == http.MethodPost && path == "/api/backups":
 		return true
 	case method == http.MethodPost && path == "/api/settings/locale":
+		return true
+	case method == http.MethodGet && path == "/api/audit-logs":
 		return true
 	case strings.HasPrefix(path, "/api/users"):
 		return true

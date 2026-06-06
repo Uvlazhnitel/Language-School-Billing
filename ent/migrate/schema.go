@@ -30,6 +30,67 @@ var (
 			},
 		},
 	}
+	// AuditLogsColumns holds the columns for the "audit_logs" table.
+	AuditLogsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "actor_label", Type: field.TypeString, Default: "system"},
+		{Name: "entity_type", Type: field.TypeString},
+		{Name: "entity_id", Type: field.TypeInt, Nullable: true},
+		{Name: "action", Type: field.TypeString},
+		{Name: "summary", Type: field.TypeString},
+		{Name: "before_json", Type: field.TypeString, Default: ""},
+		{Name: "after_json", Type: field.TypeString, Default: ""},
+		{Name: "student_id", Type: field.TypeInt, Nullable: true},
+		{Name: "invoice_id", Type: field.TypeInt, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "actor_user_id", Type: field.TypeInt, Nullable: true},
+	}
+	// AuditLogsTable holds the schema information for the "audit_logs" table.
+	AuditLogsTable = &schema.Table{
+		Name:       "audit_logs",
+		Columns:    AuditLogsColumns,
+		PrimaryKey: []*schema.Column{AuditLogsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "audit_logs_users_audit_logs",
+				Columns:    []*schema.Column{AuditLogsColumns[11]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "auditlog_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{AuditLogsColumns[10]},
+			},
+			{
+				Name:    "auditlog_actor_user_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{AuditLogsColumns[11], AuditLogsColumns[10]},
+			},
+			{
+				Name:    "auditlog_entity_type_entity_id",
+				Unique:  false,
+				Columns: []*schema.Column{AuditLogsColumns[2], AuditLogsColumns[3]},
+			},
+			{
+				Name:    "auditlog_action_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{AuditLogsColumns[4], AuditLogsColumns[10]},
+			},
+			{
+				Name:    "auditlog_student_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{AuditLogsColumns[8], AuditLogsColumns[10]},
+			},
+			{
+				Name:    "auditlog_invoice_id_created_at",
+				Unique:  false,
+				Columns: []*schema.Column{AuditLogsColumns[9], AuditLogsColumns[10]},
+			},
+		},
+	}
 	// CoursesColumns holds the columns for the "courses" table.
 	CoursesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -328,6 +389,7 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		AttendanceMonthsTable,
+		AuditLogsTable,
 		CoursesTable,
 		CourseMonthStatsTable,
 		EnrollmentsTable,
@@ -343,6 +405,7 @@ var (
 )
 
 func init() {
+	AuditLogsTable.ForeignKeys[0].RefTable = UsersTable
 	CoursesTable.ForeignKeys[0].RefTable = TeachersTable
 	CourseMonthStatsTable.ForeignKeys[0].RefTable = CoursesTable
 	EnrollmentsTable.ForeignKeys[0].RefTable = CoursesTable

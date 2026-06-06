@@ -1717,3 +1717,55 @@ tfoot td {
   border-radius: 8px;
   display: inline-block;
 }
+
+.controlsWrap {
+  flex-wrap: wrap;
+}
+
+.auditDetails {
+  display: grid;
+  gap: 14px;
+}
+
+.auditDetailMeta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.auditJsonGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.auditJsonGrid h4 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+
+.auditJsonGrid pre {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(17, 24, 39, 0.06);
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.auditPager {
+  margin-top: 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
