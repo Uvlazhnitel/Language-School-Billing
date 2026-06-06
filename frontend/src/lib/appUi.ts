@@ -49,6 +49,7 @@ export type AppTabId =
   | "attendance"
   | "invoice"
   | "debtors"
+  | "audit"
   | "settings";
 
 export function payerRoleLabel(relation: string, t: TranslateFn): string {
@@ -127,6 +128,7 @@ export function buildTabMeta(t: TranslateFn): Record<AppTabId, { eyebrow: string
     attendance: { eyebrow: t("eyebrow.attendance"), title: t("title.attendance") },
     invoice: { eyebrow: t("eyebrow.invoice"), title: t("title.invoice") },
     debtors: { eyebrow: t("eyebrow.debtors"), title: t("title.debtors") },
+    audit: { eyebrow: t("eyebrow.audit"), title: t("title.audit") },
     settings: { eyebrow: t("eyebrow.settings"), title: t("title.settings") },
   };
 }

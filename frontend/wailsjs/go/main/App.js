@@ -10,6 +10,10 @@ export function AppReady() {
   return window['go']['main']['App']['AppReady']();
 }
 
+export function AuditLogList(arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8) {
+  return window['go']['main']['App']['AuditLogList'](arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+}
+
 export function AttendanceAddOne(arg1, arg2, arg3) {
   return window['go']['main']['App']['AttendanceAddOne'](arg1, arg2, arg3);
 }

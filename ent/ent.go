@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"langschool/ent/attendancemonth"
+	"langschool/ent/auditlog"
 	"langschool/ent/course"
 	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
@@ -85,6 +86,7 @@ func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			attendancemonth.Table: attendancemonth.ValidColumn,
+			auditlog.Table:        auditlog.ValidColumn,
 			course.Table:          course.ValidColumn,
 			coursemonthstat.Table: coursemonthstat.ValidColumn,
 			enrollment.Table:      enrollment.ValidColumn,

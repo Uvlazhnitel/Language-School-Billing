@@ -1,6 +1,7 @@
 import {
   AppDirs,
   AppReady,
+  AuditLogList,
   AttendanceAddOne,
   AttendanceListPerLesson,
   CourseMonthSubscriptionList,
@@ -49,6 +50,7 @@ import {
 } from "../../../wailsjs/go/main/App";
 import type {
   AppTransport,
+  AuditLogListResult,
   BackupResult,
   BootstrapResult,
   CourseDTO,
@@ -345,6 +347,19 @@ export const wailsTransport: AppTransport = {
   },
   async quickCash(studentId, amount, note) {
     return (await PaymentQuickCash(studentId, amount, note)) as any;
+  },
+
+  async listAuditLogs(filters) {
+    return (await AuditLogList(
+      filters.q ?? "",
+      filters.actorLabel ?? "",
+      filters.entityType ?? "",
+      filters.action ?? "",
+      filters.dateFrom ?? "",
+      filters.dateTo ?? "",
+      filters.page ?? 1,
+      filters.pageSize ?? 50
+    )) as AuditLogListResult;
   },
 
   async loadMonthOverview(year, month) {

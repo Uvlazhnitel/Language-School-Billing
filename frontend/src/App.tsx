@@ -70,6 +70,7 @@ import {
   MonthOverviewDTO,
   RecentPaymentDTO,
 } from "./lib/dashboard";
+import { AuditLogItem, listAuditLogs } from "./lib/audit";
 import { getTransport, type TransportCapabilities, type UserDTO } from "./lib/api";
 import { AUTH_REQUIRED_EVENT } from "./lib/api/shared";
 import { AppShell, type AppTab } from "./components/AppShell";
@@ -114,6 +115,7 @@ import {
   subscriptionTotal,
 } from "./lib/appUi";
 import { AttendanceScreen } from "./screens/AttendanceScreen";
+import { AuditScreen } from "./screens/AuditScreen";
 import { CoursesScreen } from "./screens/CoursesScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { DebtorsScreen } from "./screens/DebtorsScreen";
@@ -126,6 +128,10 @@ type Tab = AppTabId;
 type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 type InvoiceMenuPosition = { top: number; left: number; openUpward: boolean };
 type UserDraft = { username: string; role: string; isActive: boolean };
+
+function auditActionLabel(action: string): string {
+  return action.replaceAll("_", " ").replaceAll(".", " ");
+}
 
 export default function App() {
   const now = new Date();
@@ -225,6 +231,7 @@ export default function App() {
   const canDeleteStudents = Boolean(sessionCapabilities.deleteStudents) || transportCapabilities.isDesktop;
   const canDeleteCourses = Boolean(sessionCapabilities.deleteCourses) || transportCapabilities.isDesktop;
   const canDeletePayments = Boolean(sessionCapabilities.deletePayments) || transportCapabilities.isDesktop;
+  const canViewAuditLog = Boolean(sessionCapabilities.viewAuditLog) || transportCapabilities.isDesktop;
 
   const localizedPayerRoleLabel = useCallback(
     (relation: string) => payerRoleLabel(relation, t),
@@ -252,6 +259,18 @@ export default function App() {
   const [overview, setOverview] = useState<MonthOverviewDTO | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
   const [recentPayments, setRecentPayments] = useState<RecentPaymentDTO[]>([]);
+  const [auditItems, setAuditItems] = useState<AuditLogItem[]>([]);
+  const [auditLoading, setAuditLoading] = useState(false);
+  const [auditQ, setAuditQ] = useState("");
+  const [auditActorFilter, setAuditActorFilter] = useState("");
+  const [auditEntityTypeFilter, setAuditEntityTypeFilter] = useState("");
+  const [auditActionFilter, setAuditActionFilter] = useState("");
+  const [auditDateFrom, setAuditDateFrom] = useState("");
+  const [auditDateTo, setAuditDateTo] = useState("");
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditPageSize] = useState(50);
+  const [auditTotal, setAuditTotal] = useState(0);
+  const [auditExpandedId, setAuditExpandedId] = useState<number | null>(null);
 
   // ---------------- Students ----------------
   const [studentList, setStudentList] = useState<StudentDTO[]>([]);
@@ -340,6 +359,46 @@ export default function App() {
       void loadDashboard();
     }
   }, [appReady, loadDashboard, tab]);
+
+  const loadAuditLog = useCallback(async () => {
+    if (!canViewAuditLog) return;
+    setAuditLoading(true);
+    try {
+      const result = await listAuditLogs({
+        q: auditQ,
+        actorLabel: auditActorFilter,
+        entityType: auditEntityTypeFilter,
+        action: auditActionFilter,
+        dateFrom: auditDateFrom,
+        dateTo: auditDateTo,
+        page: auditPage,
+        pageSize: auditPageSize,
+      });
+      setAuditItems(result.items);
+      setAuditTotal(result.total);
+    } catch (e: any) {
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    } finally {
+      setAuditLoading(false);
+    }
+  }, [
+    canViewAuditLog,
+    auditQ,
+    auditActorFilter,
+    auditEntityTypeFilter,
+    auditActionFilter,
+    auditDateFrom,
+    auditDateTo,
+    auditPage,
+    auditPageSize,
+    showMessage,
+    t,
+  ]);
+
+  useEffect(() => {
+    if (!appReady || tab !== "audit") return;
+    void loadAuditLog();
+  }, [appReady, tab, loadAuditLog]);
 
   function openAddStudent() {
     setEditingStudent(null);
@@ -2126,9 +2185,10 @@ export default function App() {
       { id: "attendance", label: t("tabs.attendance"), ...tabMeta.attendance },
       { id: "invoice", label: t("tabs.invoice"), ...tabMeta.invoice },
       { id: "debtors", label: t("tabs.debtors"), ...tabMeta.debtors },
+      ...(canViewAuditLog ? [{ id: "audit", label: t("tabs.audit"), ...tabMeta.audit }] : []),
       { id: "settings", label: t("tabs.settings"), ...tabMeta.settings },
     ],
-    [t, tabMeta]
+    [canViewAuditLog, t, tabMeta]
   );
 
   const secondaryActions = useMemo(
@@ -2479,6 +2539,40 @@ export default function App() {
                 onCopyDebtForStudentLv={(studentId) => void copyDebtMessageForStudentId(studentId, "lv")}
                 onCopyDebtForDebtorRu={(debtor) => void copyDebtMessageForDebtor(debtor, "ru")}
                 onCopyDebtForDebtorLv={(debtor) => void copyDebtMessageForDebtor(debtor, "lv")}
+                t={t}
+              />
+            )}
+
+            {tab === "audit" && canViewAuditLog && (
+              <AuditScreen
+                loading={auditLoading}
+                items={auditItems}
+                total={auditTotal}
+                page={auditPage}
+                pageSize={auditPageSize}
+                expandedId={auditExpandedId}
+                q={auditQ}
+                actorFilter={auditActorFilter}
+                entityTypeFilter={auditEntityTypeFilter}
+                actionFilter={auditActionFilter}
+                dateFrom={auditDateFrom}
+                dateTo={auditDateTo}
+                onQChange={setAuditQ}
+                onActorFilterChange={setAuditActorFilter}
+                onEntityTypeFilterChange={setAuditEntityTypeFilter}
+                onActionFilterChange={setAuditActionFilter}
+                onDateFromChange={setAuditDateFrom}
+                onDateToChange={setAuditDateTo}
+                onRefresh={() => {
+                  setAuditPage(1);
+                  void loadAuditLog();
+                }}
+                onToggleExpanded={(id) =>
+                  setAuditExpandedId((current) => (current === id ? null : id))
+                }
+                onPrevPage={() => setAuditPage((page) => Math.max(1, page - 1))}
+                onNextPage={() => setAuditPage((page) => page + 1)}
+                actionLabel={auditActionLabel}
                 t={t}
               />
             )}

@@ -245,6 +245,28 @@ export type RecentPaymentDTO = {
   note: string;
 };
 
+export type AuditLogItem = {
+  id: number;
+  actorUserId?: number;
+  actorLabel: string;
+  entityType: string;
+  entityId?: number;
+  action: string;
+  summary: string;
+  beforeJson: string;
+  afterJson: string;
+  studentId?: number;
+  invoiceId?: number;
+  createdAt: string;
+};
+
+export type AuditLogListResult = {
+  items: AuditLogItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 export type CourseType = "group" | "individual";
 export type BillingMode = "subscription" | "per_lesson";
 export type InvoiceStatus = "draft" | "issued" | "paid" | "canceled";
@@ -378,6 +400,16 @@ export interface AppTransport {
   studentBalance(studentId: number): Promise<BalanceDTO>;
   paymentListForStudent(studentId: number): Promise<PaymentDTO[]>;
   quickCash(studentId: number, amount: number, note: string): Promise<PaymentDTO>;
+  listAuditLogs(filters: {
+    q?: string;
+    actorLabel?: string;
+    entityType?: string;
+    action?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<AuditLogListResult>;
 
   loadMonthOverview(year: number, month: number): Promise<MonthOverviewDTO>;
   loadRecentPayments(limit?: number): Promise<RecentPaymentDTO[]>;

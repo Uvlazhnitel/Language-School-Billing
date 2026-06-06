@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"testing"
 
 	"langschool/ent/user"
@@ -174,6 +175,97 @@ func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 	}
 }
 
+func TestAuditLogCapturesFinanceActions(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "Audit Student"})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Audit Course",
+		"type":              "group",
+		"lessonPrice":       30,
+		"subscriptionPrice": 90,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":   st.ID,
+		"courseId":    course.ID,
+		"billingMode": "per_lesson",
+		"discountPct": 0,
+		"note":        "",
+	})
+
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      2026,
+		"month":     7,
+		"hours":     1.0,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{"year": 2026, "month": 7})
+
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=7&status=all")
+	if len(invoices) != 1 {
+		t.Fatalf("invoice count = %d, want 1", len(invoices))
+	}
+	invoiceID := invoices[0].ID
+
+	postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/issue", map[string]any{})
+	payment := postJSON[backend.PaymentDTO](t, env.Client, env.Server.URL, "/api/payments", map[string]any{
+		"studentId": st.ID,
+		"invoiceId": invoiceID,
+		"amount":    30,
+		"method":    "cash",
+		"paidAt":    "2026-07-02",
+		"note":      "audit payment",
+	})
+
+	resp := getJSON[backend.AuditLogListResult](t, env.Client, env.Server.URL, "/api/audit-logs?page=1&pageSize=20")
+	if resp.Total < 3 {
+		t.Fatalf("audit total = %d, want at least 3", resp.Total)
+	}
+
+	var seenGenerate, seenIssue, seenPayment bool
+	for _, item := range resp.Items {
+		switch item.Action {
+		case "invoice.generate_drafts":
+			seenGenerate = item.ActorLabel == env.AdminUsername && item.AfterJSON != ""
+		case "invoice.issue":
+			seenIssue = item.InvoiceID != nil && *item.InvoiceID == invoiceID && item.StudentID != nil && *item.StudentID == st.ID
+		case "payment.create":
+			seenPayment = item.EntityID != nil && *item.EntityID == payment.ID && strings.Contains(item.AfterJSON, "audit payment")
+		}
+	}
+	if !seenGenerate {
+		t.Fatal("expected invoice.generate_drafts audit entry")
+	}
+	if !seenIssue {
+		t.Fatal("expected invoice.issue audit entry")
+	}
+	if !seenPayment {
+		t.Fatal("expected payment.create audit entry")
+	}
+
+	deleteResp, _ := rawRequest(t, env.Client, http.MethodDelete, env.Server.URL+"/api/payments/"+strconv.Itoa(payment.ID), nil)
+	if deleteResp.StatusCode != http.StatusNoContent {
+		t.Fatalf("delete payment status = %d, want 204", deleteResp.StatusCode)
+	}
+
+	filtered := getJSON[backend.AuditLogListResult](t, env.Client, env.Server.URL, "/api/audit-logs?action=payment.delete&page=1&pageSize=20")
+	if filtered.Total < 1 {
+		t.Fatal("expected payment.delete audit entry")
+	}
+	foundDelete := false
+	for _, item := range filtered.Items {
+		if item.Action == "payment.delete" && item.EntityID != nil && *item.EntityID == payment.ID {
+			foundDelete = strings.Contains(item.BeforeJSON, "\"deletedPayment\"")
+			break
+		}
+	}
+	if !foundDelete {
+		t.Fatal("expected payment.delete entry with deletedPayment snapshot")
+	}
+}
+
 func TestLocaleBackupAndErrors(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
@@ -312,6 +404,11 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/users/"+strconv.Itoa(created.ID), nil)
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("staff delete user status = %d, want 403", resp.StatusCode)
+	}
+
+	resp, _ = rawRequest(t, staffClient, http.MethodGet, env.Server.URL+"/api/audit-logs", nil)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("staff audit logs status = %d, want 403", resp.StatusCode)
 	}
 
 	updated := putJSON[backend.UserDTO](t, env.Client, env.Server.URL, "/api/users/"+strconv.Itoa(created.ID), map[string]any{
