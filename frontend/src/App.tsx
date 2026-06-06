@@ -1282,6 +1282,7 @@ export default function App() {
   const [attQ, setAttQ] = useState("");
   const [attFilter, setAttFilter] = useState<"all" | "missing" | "filled" | "zero">("all");
   const [attendanceSavingRows, setAttendanceSavingRows] = useState<Record<number, boolean>>({});
+  const attendanceSavingRowsRef = useRef<Record<number, boolean>>({});
   const [attendanceInputDrafts, setAttendanceInputDrafts] = useState<Record<number, string>>({});
   const attendancePendingSelectRef = useRef<number | null>(null);
   const [subscriptionMonthLessons, setSubscriptionMonthLessons] = useState<Record<number, number>>({});
@@ -1328,6 +1329,10 @@ export default function App() {
     if (!appReady) return;
     if (tab === "attendance") loadAttendance();
   }, [appReady, tab, loadAttendance]);
+
+  useEffect(() => {
+    attendanceSavingRowsRef.current = attendanceSavingRows;
+  }, [attendanceSavingRows]);
 
   const perLessonTotal = useMemo(
     () =>
@@ -1399,7 +1404,7 @@ export default function App() {
     return leadIds;
   }, [filteredAttendanceRows]);
 
-  const onChangeHours = async (r: Row, v: number) => {
+  const onChangeHours = useCallback(async (r: Row, v: number) => {
     if (r.billingMode !== BillingModePerLesson) return;
     if (r.attendanceLocked) {
       showMessage(
@@ -1412,7 +1417,7 @@ export default function App() {
     }
     if (!Number.isFinite(v)) return;
     const n = normalizeQuarterHours(v);
-    if (attendanceSavingRows[r.enrollmentId]) return;
+    if (attendanceSavingRowsRef.current[r.enrollmentId]) return;
 
     try {
       setAttendanceSavingRows((prev) => ({ ...prev, [r.enrollmentId]: true }));
@@ -1441,7 +1446,7 @@ export default function App() {
         return next;
       });
     }
-  };
+  }, [localizedInvoiceStatusLabel, month, showMessage, t, year]);
 
   const setAttendanceDraft = useCallback((enrollmentId: number, value: string) => {
     setAttendanceInputDrafts((prev) => ({ ...prev, [enrollmentId]: value }));
@@ -2152,11 +2157,20 @@ export default function App() {
     };
   }, [closeInvoiceMenu, openInvoiceMenu]);
 
+  const previousInvoiceDetailsOpenRef = useRef(invoiceDetailsOpen);
+  const previousTabRef = useRef(tab);
+
   useEffect(() => {
-    if (openInvoiceMenu) {
+    const invoiceDetailsChanged = previousInvoiceDetailsOpenRef.current !== invoiceDetailsOpen;
+    const tabChanged = previousTabRef.current !== tab;
+
+    previousInvoiceDetailsOpenRef.current = invoiceDetailsOpen;
+    previousTabRef.current = tab;
+
+    if ((invoiceDetailsChanged || tabChanged) && openInvoiceMenu) {
       closeInvoiceMenu();
     }
-  }, [closeInvoiceMenu, invoiceDetailsOpen, tab]);
+  }, [closeInvoiceMenu, invoiceDetailsOpen, openInvoiceMenu, tab]);
 
   const renderInvoiceActionsMenu = (
     invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
