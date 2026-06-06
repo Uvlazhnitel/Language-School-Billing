@@ -1,4 +1,6 @@
-type AppTab = {
+import type { ReactNode } from "react";
+
+export type AppTab = {
   id: string;
   label: string;
   eyebrow: string;
@@ -18,7 +20,7 @@ type AppShellProps = {
   onMonthChange: (month: number) => void;
   onYearChange: (year: number) => void;
   showMonthPicker: boolean;
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
 export function AppShell({

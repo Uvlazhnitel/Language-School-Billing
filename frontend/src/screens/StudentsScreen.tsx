@@ -1,0 +1,127 @@
+import { StudentWorkspace } from "../components/StudentWorkspace";
+import { StudentFormModal } from "../components/modals/StudentFormModal";
+import type { EnrollmentDTO } from "../lib/enrollments";
+import type { InvoiceListItemView } from "../lib/invoices";
+import type { BalanceDTO, DebtInvoiceDTO, PaymentDTO } from "../lib/payments";
+import type { StudentDTO } from "../lib/students";
+import type { StudentActivityItem, StudentNextAction } from "../lib/studentActivity";
+import type { TranslateFn } from "../lib/i18n";
+
+type StudentsScreenProps = {
+  students: StudentDTO[];
+  loading: boolean;
+  query: string;
+  includeInactive: boolean;
+  selectedStudent: StudentDTO | null;
+  detailLoading: boolean;
+  detailEnrollments: EnrollmentDTO[];
+  detailBalance: BalanceDTO | null;
+  detailDebts: DebtInvoiceDTO[];
+  detailPayments: PaymentDTO[];
+  detailMonthInvoices: InvoiceListItemView[];
+  detailNextAction: StudentNextAction | null;
+  detailActivity: StudentActivityItem[];
+  deletingPaymentId: number | null;
+  canDeleteStudent: boolean;
+  canDeletePayment: boolean;
+  payerRoleLabel: (role: string) => string;
+  billingModeLabel: (mode: string) => string;
+  paymentMethodLabel: (method: string) => string;
+  invoiceStatusLabel: (status: string) => string;
+  formatEUR: (value: number) => string;
+  months: string[];
+  onQueryChange: (value: string) => void;
+  onIncludeInactiveChange: (value: boolean) => void;
+  onRefresh: () => void;
+  onAddStudent: () => void;
+  onSelectStudent: (student: StudentDTO) => void | Promise<void>;
+  onEditStudent: (student: StudentDTO) => void;
+  onToggleActive: (student: StudentDTO) => void | Promise<void>;
+  onDeleteStudent: (studentId: number) => void | Promise<void>;
+  onAddPayment: () => void;
+  onCopyDebtRu: () => void | Promise<void>;
+  onCopyDebtLv: () => void | Promise<void>;
+  onDeletePayment: (payment: PaymentDTO) => void | Promise<void>;
+  onManageEnrollments: () => void;
+  onOpenInvoices: () => void;
+  studentModalOpen: boolean;
+  editingStudent: boolean;
+  sfName: string;
+  sfPersonalCode: string;
+  sfPhone: string;
+  sfEmail: string;
+  sfNote: string;
+  sfIsMinor: boolean;
+  sfPayerName: string;
+  sfPayerRole: string;
+  payerRoleOptions: readonly string[];
+  onSfNameChange: (value: string) => void;
+  onSfPersonalCodeChange: (value: string) => void;
+  onSfPhoneChange: (value: string) => void;
+  onSfEmailChange: (value: string) => void;
+  onSfNoteChange: (value: string) => void;
+  onSfIsMinorChange: (value: boolean) => void;
+  onSfPayerNameChange: (value: string) => void;
+  onSfPayerRoleChange: (value: string) => void;
+  onSaveStudent: () => void;
+  onCloseStudentModal: () => void;
+  t: TranslateFn;
+};
+
+export function StudentsScreen({
+  studentModalOpen,
+  editingStudent,
+  sfName,
+  sfPersonalCode,
+  sfPhone,
+  sfEmail,
+  sfNote,
+  sfIsMinor,
+  sfPayerName,
+  sfPayerRole,
+  payerRoleOptions,
+  onSfNameChange,
+  onSfPersonalCodeChange,
+  onSfPhoneChange,
+  onSfEmailChange,
+  onSfNoteChange,
+  onSfIsMinorChange,
+  onSfPayerNameChange,
+  onSfPayerRoleChange,
+  onSaveStudent,
+  onCloseStudentModal,
+  t,
+  ...workspaceProps
+}: StudentsScreenProps) {
+  return (
+    <>
+      <StudentWorkspace {...workspaceProps} t={t} />
+      {studentModalOpen && (
+        <StudentFormModal
+          editing={editingStudent}
+          name={sfName}
+          personalCode={sfPersonalCode}
+          phone={sfPhone}
+          email={sfEmail}
+          note={sfNote}
+          isMinor={sfIsMinor}
+          payerName={sfPayerName}
+          payerRole={sfPayerRole}
+          payerRoleOptions={payerRoleOptions}
+          payerRoleLabel={workspaceProps.payerRoleLabel}
+          onNameChange={onSfNameChange}
+          onPersonalCodeChange={onSfPersonalCodeChange}
+          onPhoneChange={onSfPhoneChange}
+          onEmailChange={onSfEmailChange}
+          onNoteChange={onSfNoteChange}
+          onIsMinorChange={onSfIsMinorChange}
+          onPayerNameChange={onSfPayerNameChange}
+          onPayerRoleChange={onSfPayerRoleChange}
+          onSave={onSaveStudent}
+          onCancel={onCloseStudentModal}
+          t={t}
+        />
+      )}
+    </>
+  );
+}

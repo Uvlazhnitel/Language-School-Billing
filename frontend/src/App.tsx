@@ -72,10 +72,16 @@ import {
 } from "./lib/dashboard";
 import { getTransport, type TransportCapabilities, type UserDTO } from "./lib/api";
 import { AUTH_REQUIRED_EVENT } from "./lib/api/shared";
-import { DashboardOverview } from "./components/DashboardOverview";
+import { AppShell, type AppTab } from "./components/AppShell";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import { LoginScreen } from "./components/LoginScreen";
-import { StudentWorkspace } from "./components/StudentWorkspace";
-import { StudentDetailPanel } from "./components/StudentDetailPanel";
+import { NotificationToast } from "./components/NotificationToast";
+import { DebtDetailsModal } from "./components/modals/DebtDetailsModal";
+import { InvoiceDetailsModal } from "./components/modals/InvoiceDetailsModal";
+import { PaymentModal } from "./components/modals/PaymentModal";
+import { StudentCardModal } from "./components/modals/StudentCardModal";
+import { useConfirmDialog } from "./hooks/useConfirmDialog";
+import { useNotifications } from "./hooks/useNotifications";
 import {
   buildDebtorActionQueue,
   buildStudentActivity,
@@ -86,285 +92,40 @@ import {
 } from "./lib/studentActivity";
 import { canShowInvoiceFolderAction, canShowSettingsFilesCard } from "./lib/uiCapabilities";
 import { createTranslator, getMonthNames, normalizeLocale, TranslateFn, UiLocale } from "./lib/i18n";
+import {
+  AppTabId,
+  billingModeLabel,
+  buildDebtReminderMessage,
+  buildTabMeta,
+  copyTextToClipboard,
+  courseTypeLabel,
+  decimalOrZero,
+  formatEUR,
+  formatHoursValue,
+  intOrUndef,
+  invoiceStatusLabel,
+  normalizeHoursDraftInput,
+  normalizeMoneyInput,
+  normalizeQuarterHours,
+  numOrZero,
+  payerRoleLabel,
+  payerRoleOptions,
+  paymentMethodLabel,
+  subscriptionTotal,
+} from "./lib/appUi";
+import { AttendanceScreen } from "./screens/AttendanceScreen";
+import { CoursesScreen } from "./screens/CoursesScreen";
+import { DashboardScreen } from "./screens/DashboardScreen";
+import { DebtorsScreen } from "./screens/DebtorsScreen";
+import { EnrollmentsScreen } from "./screens/EnrollmentsScreen";
+import { InvoicesScreen } from "./screens/InvoicesScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
+import { StudentsScreen } from "./screens/StudentsScreen";
 
-const monthsRu = [
-  "Январь",
-  "Февраль",
-  "Март",
-  "Апрель",
-  "Май",
-  "Июнь",
-  "Июль",
-  "Август",
-  "Сентябрь",
-  "Октябрь",
-  "Ноябрь",
-  "Декабрь",
-];
-
-const monthsLv = [
-  "Janvāris",
-  "Februāris",
-  "Marts",
-  "Aprīlis",
-  "Maijs",
-  "Jūnijs",
-  "Jūlijs",
-  "Augusts",
-  "Septembris",
-  "Oktobris",
-  "Novembris",
-  "Decembris",
-];
-
-const payerRoleOptions = [
-  "mother",
-  "father",
-  "grandmother",
-  "grandfather",
-  "guardian",
-  "other",
-] as const;
-
-function payerRoleLabel(relation: string, t: TranslateFn): string {
-  switch (relation) {
-    case "mother":
-      return t("student.mother");
-    case "father":
-      return t("student.father");
-    case "grandmother":
-      return t("student.grandmother");
-    case "grandfather":
-      return t("student.grandfather");
-    case "guardian":
-      return t("student.guardian");
-    default:
-      return t("student.other");
-  }
-}
-
-function courseTypeLabel(type: string, t: TranslateFn): string {
-  switch (type) {
-    case "group":
-      return t("course.group");
-    case "individual":
-      return t("course.individual");
-    default:
-      return type;
-  }
-}
-
-function billingModeLabel(mode: string, t: TranslateFn): string {
-  switch (mode) {
-    case "per_lesson":
-      return t("billing.perLesson");
-    case "subscription":
-      return t("billing.subscription");
-    default:
-      return mode;
-  }
-}
-
-function paymentMethodLabel(method: string, t: TranslateFn): string {
-  switch (method) {
-    case "cash":
-      return t("payment.cash");
-    case "bank":
-      return t("payment.bank");
-    default:
-      return method;
-  }
-}
-
-function invoiceStatusLabel(status: string, t: TranslateFn): string {
-  switch (status) {
-    case "draft":
-      return t("status.draft");
-    case "issued":
-      return t("status.issued");
-    case "paid":
-      return t("status.paid");
-    case "canceled":
-      return t("status.canceled");
-    case "all":
-      return t("status.all");
-    default:
-      return status;
-  }
-}
-
-type Tab =
-  | "dashboard"
-  | "students"
-  | "courses"
-  | "enrollments"
-  | "attendance"
-  | "invoice"
-  | "debtors"
-  | "settings";
+type Tab = AppTabId;
 type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 type InvoiceMenuPosition = { top: number; left: number; openUpward: boolean };
 type UserDraft = { username: string; role: string; isActive: boolean };
-
-function buildTabMeta(t: TranslateFn): Record<Tab, { eyebrow: string; title: string }> {
-  return {
-    dashboard: {
-      eyebrow: t("eyebrow.dashboard"),
-      title: t("title.dashboard"),
-    },
-    students: {
-      eyebrow: t("eyebrow.students"),
-      title: t("title.students"),
-    },
-    courses: {
-      eyebrow: t("eyebrow.courses"),
-      title: t("title.courses"),
-    },
-    enrollments: {
-      eyebrow: t("eyebrow.students"),
-      title: t("button.manageEnrollments"),
-    },
-    attendance: {
-      eyebrow: t("eyebrow.attendance"),
-      title: t("title.attendance"),
-    },
-    invoice: {
-      eyebrow: t("eyebrow.invoice"),
-      title: t("title.invoice"),
-    },
-    debtors: {
-      eyebrow: t("eyebrow.debtors"),
-      title: t("title.debtors"),
-    },
-    settings: {
-      eyebrow: t("eyebrow.settings"),
-      title: t("title.settings"),
-    },
-  };
-}
-
-function numOrZero(s: string): number {
-  if (s.trim() === "") return 0;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function intOrUndef(s: string): number | undefined {
-  if (s.trim() === "") return undefined;
-  const n = Number(s);
-  return Number.isFinite(n) ? Math.trunc(n) : undefined;
-}
-
-function decimalOrZero(s: string): number {
-  if (s.trim() === "") return 0;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : 0;
-}
-
-function normalizeMoneyInput(value: string): string | null {
-  const normalized = value.replace(",", ".");
-  if (normalized === "") return "";
-  if (/^\d+(\.\d{0,2})?$/.test(normalized)) return normalized;
-  return null;
-}
-
-function formatEUR(value: number): string {
-  return `€${value.toFixed(2)}`;
-}
-
-async function copyTextToClipboard(text: string) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.setAttribute("readonly", "");
-  textarea.style.position = "fixed";
-  textarea.style.top = "-9999px";
-  textarea.style.left = "-9999px";
-  document.body.appendChild(textarea);
-  textarea.select();
-  textarea.setSelectionRange(0, textarea.value.length);
-
-  try {
-    const copied = document.execCommand("copy");
-    if (!copied) {
-      throw new Error("Clipboard copy is unavailable");
-    }
-  } finally {
-    document.body.removeChild(textarea);
-  }
-}
-
-function normalizeQuarterHours(value: number): number {
-  if (!Number.isFinite(value) || value <= 0) return 0;
-  return Math.round(value * 4) / 4;
-}
-
-function formatHoursValue(value: number): string {
-  if (Math.abs(value - Math.round(value)) < 0.0001) {
-    return String(Math.round(value));
-  }
-  return value.toFixed(2).replace(/\.?0+$/, "");
-}
-
-function clampPct(value: number): number {
-  if (!Number.isFinite(value)) return 0;
-  return Math.max(0, Math.min(100, value));
-}
-
-function subscriptionTotal(row: Row, lessonsHeld: number): number {
-  const totalDiscountPct = clampPct(row.discountPct + row.subscriptionDiscountPct);
-  const base = row.lessonPrice * lessonsHeld;
-  return Math.round(base * (1 - totalDiscountPct / 100) * 100) / 100;
-}
-
-function normalizeHoursDraftInput(value: string): string | null {
-  const normalized = value.replace(",", ".");
-  if (normalized === "") return "";
-  if (/^\d*(\.\d{0,2})?$/.test(normalized)) return normalized;
-  return null;
-}
-
-function debtMonthLabel(month: number, year: number, locale: "ru" | "lv"): string {
-  const labels = locale === "ru" ? monthsRu : monthsLv;
-  return `${labels[month - 1]} ${year}`;
-}
-
-function buildDebtReminderMessage(
-  locale: "ru" | "lv",
-  debtor: DebtorDTO,
-  details: DebtInvoiceDTO[],
-  recipientName?: string
-): string {
-  const intro =
-    locale === "ru"
-      ? "Здравствуйте! Напоминаю об оплате за занятия."
-      : "Sveiki! Atgādinu par apmaksu par nodarbībām.";
-
-  const lines = details.map(
-    (item) => `${debtMonthLabel(item.month, item.year, locale)}: ${formatEUR(item.remaining)}`
-  );
-
-  const totalLine =
-    locale === "ru"
-      ? `Итого к оплате: ${formatEUR(debtor.debt)}`
-      : `Kopā apmaksai: ${formatEUR(debtor.debt)}`;
-
-  const closing = locale === "ru" ? "Спасибо! ArtLab" : "Paldies! ArtLab";
-
-  const recipientLine = recipientName?.trim()
-    ? locale === "ru"
-      ? `Получатель: ${recipientName.trim()}`
-      : `Saņēmējs: ${recipientName.trim()}`
-    : null;
-
-  return [intro, recipientLine, recipientLine ? "" : null, ...lines, "", totalLine, "", closing]
-    .filter((value): value is string => value !== null)
-    .join("\n");
-}
 
 export default function App() {
   const now = new Date();
@@ -398,69 +159,8 @@ export default function App() {
   const [newUserRole, setNewUserRole] = useState("staff");
   const [userDrafts, setUserDrafts] = useState<Record<number, UserDraft>>({});
   const [userPasswordDrafts, setUserPasswordDrafts] = useState<Record<number, string>>({});
-
-  // Global message display
-  const [message, setMessage] = useState<{ text: string; type: "success" | "error" } | null>(null);
-  const messageTimeoutRef = useRef<number | null>(null);
-
-  // Global confirmation dialog
-  const [confirmDialog, setConfirmDialog] = useState<{
-    isOpen: boolean;
-    message: string;
-    onConfirm: () => void | Promise<void>;
-    confirmButtonLabel?: string;
-  } | null>(null);
-
-  const showConfirm = useCallback((
-    messageText: string,
-    onConfirm: () => void | Promise<void>,
-    confirmButtonLabel?: string
-  ) => {
-    setConfirmDialog({ isOpen: true, message: messageText, onConfirm, confirmButtonLabel });
-  }, []);
-
-  const handleConfirmYes = async () => {
-    try {
-      if (confirmDialog?.onConfirm) {
-        await confirmDialog.onConfirm();
-      }
-    } finally {
-      setConfirmDialog(null);
-    }
-  };
-
-  const handleConfirmNo = () => {
-    setConfirmDialog(null);
-  };
-
-  const showMessage = useCallback((text: string, type: "success" | "error" = "success") => {
-    console.log(`[${type.toUpperCase()}] ${text}`);
-
-    // Clear any existing timeout
-    if (messageTimeoutRef.current) {
-      clearTimeout(messageTimeoutRef.current);
-      messageTimeoutRef.current = null;
-    }
-
-    setMessage({ text, type });
-
-    // Auto-dismiss success messages after 5 seconds
-    if (type === "success") {
-      messageTimeoutRef.current = window.setTimeout(() => {
-        setMessage(null);
-        messageTimeoutRef.current = null;
-      }, 5000);
-    }
-  }, []);
-
-  // Cleanup timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (messageTimeoutRef.current) {
-        clearTimeout(messageTimeoutRef.current);
-      }
-    };
-  }, []);
+  const { message, showMessage, clearMessage } = useNotifications();
+  const { confirmDialog, showConfirm, handleConfirmYes, handleConfirmNo } = useConfirmDialog();
 
   useEffect(() => {
     let cancelled = false;
@@ -2417,108 +2117,79 @@ export default function App() {
     setSessionExpired(false);
   }, []);
 
+  const tabs = useMemo<AppTab[]>(
+    () => [
+      { id: "dashboard", label: t("tabs.dashboard"), ...tabMeta.dashboard },
+      { id: "students", label: t("tabs.students"), ...tabMeta.students },
+      { id: "courses", label: t("tabs.courses"), ...tabMeta.courses },
+      { id: "enrollments", label: t("tabs.enrollments"), ...tabMeta.enrollments },
+      { id: "attendance", label: t("tabs.attendance"), ...tabMeta.attendance },
+      { id: "invoice", label: t("tabs.invoice"), ...tabMeta.invoice },
+      { id: "debtors", label: t("tabs.debtors"), ...tabMeta.debtors },
+      { id: "settings", label: t("tabs.settings"), ...tabMeta.settings },
+    ],
+    [t, tabMeta]
+  );
+
+  const secondaryActions = useMemo(
+    () =>
+      [
+        {
+          id: "files",
+          label: t("button.filesAndCopies"),
+          onClick: () => setTab("settings"),
+        },
+        authRequired && !transportCapabilities.isDesktop
+          ? {
+              id: "logout",
+              label: t("auth.logout"),
+              onClick: () => {
+                void handleLogout();
+              },
+            }
+          : null,
+      ].filter((value): value is { id: string; label: string; onClick: () => void } => value !== null),
+    [authRequired, handleLogout, t, transportCapabilities.isDesktop]
+  );
+
+  const adjustSubscriptionLessons = useCallback(
+    async (courseId: number, nextValue: number) => {
+      try {
+        setSubscriptionMonthSaving((prev) => ({ ...prev, [courseId]: true }));
+        const updated = await saveCourseMonthSubscriptionLessons(courseId, year, month, nextValue);
+        setSubscriptionMonthLessons((prev) => ({
+          ...prev,
+          [courseId]: updated.lessonsHeld,
+        }));
+        await loadAttendance();
+      } catch (e: any) {
+        showMessage(
+          t("msg.errorGeneric", {
+            message: String(e?.message ?? e),
+          }),
+          "error"
+        );
+      } finally {
+        setSubscriptionMonthSaving((prev) => {
+          const next = { ...prev };
+          delete next[courseId];
+          return next;
+        });
+      }
+    },
+    [loadAttendance, month, showMessage, t, year]
+  );
+
   return (
     <div className="container">
-      {/* Global message display */}
-      {message && (
-        <div
-          className={`messageToast ${message.type}`}
-          style={{
-            position: "fixed",
-            top: "20px",
-            right: "20px",
-            padding: "16px 24px",
-            backgroundColor: message.type === "success" ? "#4caf50" : "#f44336",
-            color: "white",
-            borderRadius: "4px",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
-            zIndex: 10000,
-            maxWidth: "400px",
-            fontSize: "14px",
-            lineHeight: "1.5",
-          }}
-          role={message.type === "error" ? "alert" : "status"}
-          aria-live={message.type === "error" ? "assertive" : "polite"}
-          onClick={() => setMessage(null)}
-        >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: "12px",
-            }}
-          >
-            <span>{message.text}</span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMessage(null);
-                }}
-              aria-label={t("msg.closeNotification")}
-              style={{
-                background: "none",
-                border: "none",
-                color: "white",
-                cursor: "pointer",
-                fontSize: "18px",
-                padding: "0",
-                lineHeight: "1",
-              }}
-            >
-              ×
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Global confirmation dialog */}
+      {message && <NotificationToast message={message} onDismiss={clearMessage} t={t} />}
       {confirmDialog?.isOpen && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0, 0, 0, 0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 10100,
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "white",
-              padding: "24px",
-              borderRadius: "8px",
-              maxWidth: "500px",
-              boxShadow: "0 4px 16px rgba(0,0,0,0.3)",
-            }}
-          >
-            <h3 style={{ marginTop: 0, marginBottom: "16px" }}>{t("modal.confirm")}</h3>
-            <p style={{ marginBottom: "24px", lineHeight: "1.5" }}>{confirmDialog.message}</p>
-            <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-              <button onClick={handleConfirmNo} style={{ padding: "8px 16px" }}>
-                {t("button.cancel")}
-              </button>
-              <button
-                onClick={handleConfirmYes}
-                style={{
-                  padding: "8px 16px",
-                  backgroundColor: "#f44336",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "pointer",
-                }}
-              >
-                {confirmDialog.confirmButtonLabel ?? t("msg.confirmDelete")}
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDialog
+          dialog={confirmDialog}
+          onConfirm={handleConfirmYes}
+          onCancel={handleConfirmNo}
+          t={t}
+        />
       )}
 
       {authLoading ? (
@@ -2544,120 +2215,42 @@ export default function App() {
         />
       ) : (
         <>
-      <div className="appShell">
-        <section className="workspaceCard">
-          <div className="workspaceTopbar">
-            <div className="workspaceHeading">
-              <div className="workspaceEyebrow">{currentMeta.eyebrow}</div>
-              <h1>{currentMeta.title}</h1>
-            </div>
-            {showMonthPicker && (
-              <div className="monthpickers monthpickersTopbar">
-                <select value={month} onChange={(e) => setMonth(parseInt(e.target.value))}>
-                  {uiMonths.map((m, i) => (
-                    <option key={m} value={i + 1}>
-                      {m}
-                    </option>
-                  ))}
-                </select>
-                <select value={year} onChange={(e) => setYear(parseInt(e.target.value))}>
-                  {[year - 1, year, year + 1].map((y) => (
-                    <option key={y} value={y}>
-                      {y}
-                    </option>
-                  ))}
-                </select>
-              </div>
+          <AppShell
+            tabs={tabs}
+            activeTab={tab}
+            secondaryActions={secondaryActions}
+            onTabChange={(nextTab) => setTab(nextTab as Tab)}
+            currentMeta={tabs.find((item) => item.id === tab) ?? tabs[0]}
+            month={month}
+            year={year}
+            monthLabels={uiMonths}
+            onMonthChange={setMonth}
+            onYearChange={setYear}
+            showMonthPicker={showMonthPicker}
+          >
+            {tab === "dashboard" && (
+              <DashboardScreen
+                overview={overview}
+                loading={overviewLoading}
+                monthLabel={currentMonthLabel}
+                t={t}
+                formatEUR={formatEUR}
+                paymentMethodLabel={localizedPaymentMethodLabel}
+                onOpenAttendance={() => setTab("attendance")}
+                onOpenInvoices={() => setTab("invoice")}
+                onOpenDebtors={() => setTab("debtors")}
+                onOpenStudents={() => setTab("students")}
+                onOpenStudent={(studentId) => void openStudentInWorkspaceById(studentId)}
+                onOpenPaymentQueueStudent={openDebtorPaymentModalByStudentId}
+                onCopyDebtQueueRu={(studentId) => void copyDebtMessageForStudentId(studentId, "ru")}
+                onCopyDebtQueueLv={(studentId) => void copyDebtMessageForStudentId(studentId, "lv")}
+                recentPayments={recentPayments}
+                actionQueue={debtorActionQueue}
+              />
             )}
-            <div className="workspaceActions" aria-label={t("msg.systemSectionsNav")}>
-              <button
-                type="button"
-                className="workspaceActionButton"
-                onClick={() => setTab("settings")}
-              >
-                {t("button.filesAndCopies")}
-              </button>
-              {authRequired && !transportCapabilities.isDesktop && (
-                <button
-                  type="button"
-                  className="workspaceActionButton"
-                  onClick={() => void handleLogout()}
-                >
-                  {t("auth.logout")}
-                </button>
-              )}
-            </div>
-          </div>
 
-          <nav className="tabs">
-            <button
-              className={tab === "dashboard" ? "active" : ""}
-              onClick={() => setTab("dashboard")}
-            >
-              {t("tabs.dashboard")}
-            </button>
-            <button
-              className={tab === "students" ? "active" : ""}
-              onClick={() => setTab("students")}
-            >
-              {t("tabs.students")}
-            </button>
-            <button className={tab === "courses" ? "active" : ""} onClick={() => setTab("courses")}>
-              {t("tabs.courses")}
-            </button>
-            <button
-              className={tab === "enrollments" ? "active" : ""}
-              onClick={() => setTab("enrollments")}
-            >
-              {t("tabs.enrollments")}
-            </button>
-            <button
-              className={tab === "attendance" ? "active" : ""}
-              onClick={() => setTab("attendance")}
-            >
-              {t("tabs.attendance")}
-            </button>
-            <button className={tab === "invoice" ? "active" : ""} onClick={() => setTab("invoice")}>
-              {t("tabs.invoice")}
-            </button>
-            <button className={tab === "debtors" ? "active" : ""} onClick={() => setTab("debtors")}>
-              {t("tabs.debtors")}
-            </button>
-            <button
-              className={tab === "settings" ? "active" : ""}
-              onClick={() => setTab("settings")}
-            >
-              {t("tabs.settings")}
-            </button>
-          </nav>
-
-          {tab === "dashboard" && (
-            <DashboardOverview
-              overview={overview}
-              loading={overviewLoading}
-              monthLabel={currentMonthLabel}
-              t={t}
-              formatEUR={formatEUR}
-              paymentMethodLabel={localizedPaymentMethodLabel}
-              onOpenAttendance={() => setTab("attendance")}
-              onOpenInvoices={() => setTab("invoice")}
-              onOpenDebtors={() => setTab("debtors")}
-              onOpenStudents={() => setTab("students")}
-              onOpenStudent={(studentId) => void openStudentInWorkspaceById(studentId)}
-              onOpenPaymentQueueStudent={(studentId) =>
-                openDebtorPaymentModalByStudentId(studentId)
-              }
-              onCopyDebtQueueRu={(studentId) => void copyDebtMessageForStudentId(studentId, "ru")}
-              onCopyDebtQueueLv={(studentId) => void copyDebtMessageForStudentId(studentId, "lv")}
-              recentPayments={recentPayments}
-              actionQueue={debtorActionQueue}
-            />
-          )}
-
-          {/* ---------------- Students ---------------- */}
-          {tab === "students" && (
-            <>
-              <StudentWorkspace
+            {tab === "students" && (
+              <StudentsScreen
                 students={studentList}
                 loading={studentLoading}
                 query={studentQ}
@@ -2695,1507 +2288,296 @@ export default function App() {
                 invoiceStatusLabel={localizedInvoiceStatusLabel}
                 formatEUR={formatEUR}
                 months={uiMonths}
+                studentModalOpen={studentModalOpen}
+                editingStudent={Boolean(editingStudent)}
+                sfName={sfName}
+                sfPersonalCode={sfPersonalCode}
+                sfPhone={sfPhone}
+                sfEmail={sfEmail}
+                sfNote={sfNote}
+                sfIsMinor={sfIsMinor}
+                sfPayerName={sfPayerName}
+                sfPayerRole={sfPayerRole}
+                payerRoleOptions={payerRoleOptions}
+                onSfNameChange={setSfName}
+                onSfPersonalCodeChange={setSfPersonalCode}
+                onSfPhoneChange={setSfPhone}
+                onSfEmailChange={setSfEmail}
+                onSfNoteChange={setSfNote}
+                onSfIsMinorChange={setSfIsMinor}
+                onSfPayerNameChange={setSfPayerName}
+                onSfPayerRoleChange={setSfPayerRole}
+                onSaveStudent={() => void saveStudent()}
+                onCloseStudentModal={() => setStudentModalOpen(false)}
               />
-
-              {studentModalOpen && (
-                <div className="modal">
-                  <div className="modalBody">
-                    <h3>{editingStudent ? t("modal.editStudent") : t("modal.addStudent")}</h3>
-                    <div className="formRow">
-                      <label>{t("field.name")}</label>
-                      <input value={sfName} onChange={(e) => setSfName(e.target.value)} />
-                    </div>
-                    <div className="formRow">
-                      <label>{t("field.personalCode")}</label>
-                      <input
-                        value={sfPersonalCode}
-                        onChange={(e) => setSfPersonalCode(e.target.value)}
-                      />
-                    </div>
-                    <div className="formRow">
-                      <label>{sfIsMinor ? t("student.parentPhone") : t("field.phone")}</label>
-                      <input value={sfPhone} onChange={(e) => setSfPhone(e.target.value)} />
-                    </div>
-                    <div className="formRow">
-                      <label>{sfIsMinor ? t("student.parentEmail") : t("field.email")}</label>
-                      <input value={sfEmail} onChange={(e) => setSfEmail(e.target.value)} />
-                    </div>
-                    <div className="formRow">
-                      <label>{t("field.note")}</label>
-                      <input value={sfNote} onChange={(e) => setSfNote(e.target.value)} />
-                    </div>
-                    <div className="formRow">
-                      <label>{t("field.studentType")}</label>
-                      <label className="inline">
-                        <input
-                          type="checkbox"
-                          checked={sfIsMinor}
-                          onChange={(e) => setSfIsMinor(e.target.checked)}
-                        />
-                        {t("student.minor")}
-                      </label>
-                    </div>
-                    {sfIsMinor && (
-                      <>
-                        <div className="formRow">
-                          <label>{t("field.payerName")}</label>
-                          <input
-                            value={sfPayerName}
-                            onChange={(e) => setSfPayerName(e.target.value)}
-                          />
-                        </div>
-                        <div className="formRow">
-                          <label>{t("field.payerRole")}</label>
-                          <select
-                            value={sfPayerRole}
-                            onChange={(e) => setSfPayerRole(e.target.value)}
-                          >
-                            <option value="">{t("filter.selectRole")}</option>
-                            {payerRoleOptions.map((role) => (
-                              <option key={role} value={role}>
-                                {localizedPayerRoleLabel(role)}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </>
-                    )}
-
-                    <div className="modalActions">
-                      <button onClick={saveStudent}>{t("button.save")}</button>
-                      <button onClick={() => setStudentModalOpen(false)}>{t("button.cancel")}</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ---------------- Courses ---------------- */}
-          {tab === "courses" && (
-            <>
-              <div className="controls">
-                <button onClick={openAddCourse}>{t("button.addCourse")}</button>
-                <input
-                  className="searchField"
-                  placeholder={t("msg.searchPlaceholderCourse")}
-                  value={courseQ}
-                  onChange={(e) => setCourseQ(e.target.value)}
-                />
-                <button onClick={loadCourses}>{t("button.refresh")}</button>
-              </div>
-
-              {courseLoading ? (
-                <div>{t("label.loading")}</div>
-              ) : courseList.length === 0 ? (
-                <div className="empty">{t("msg.noCoursesYet")}</div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t("field.name")}</th>
-                      <th>{t("field.teacher")}</th>
-                      <th>{t("field.type")}</th>
-                      <th style={{ textAlign: "right" }}>{t("field.lessonPrice")} (EUR)</th>
-                      <th style={{ textAlign: "right" }}>{t("field.subscriptionPrice")} (EUR)</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {courseList.map((c) => (
-                      <tr key={c.id}>
-                        <td>{c.name}</td>
-                        <td>{c.teacherName || "—"}</td>
-                        <td>{localizedCourseTypeLabel(c.type)}</td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(c.lessonPrice)}</td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(c.subscriptionPrice)}</td>
-                        <td>
-                          <button onClick={() => openEditCourse(c)}>{t("button.edit")}</button>
-                          {canDeleteCourses && (
-                            <button onClick={() => removeCourse(c.id)}>{t("button.delete")}</button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-
-              {courseModalOpen && (
-                <div className="modal">
-                  <div className="modalBody">
-                    <h3>{editingCourse ? t("modal.editCourse") : t("modal.addCourse")}</h3>
-
-                    <div className="formRow">
-                      <label>{t("field.name")}</label>
-                      <input value={cfName} onChange={(e) => setCfName(e.target.value)} />
-                    </div>
-
-                    <div className="formRow">
-                      <label>{t("field.teacher")}</label>
-                      <div className="comboBox" ref={cfTeacherComboRef}>
-                        <input
-                          value={selectedCourseTeacher?.fullName ?? cfTeacherSearch}
-                          onChange={(e) => {
-                            setCfTeacherSearch(e.target.value);
-                            setCfTeacherId(undefined);
-                            setCfTeacherPickerOpen(true);
-                          }}
-                          onFocus={() => setCfTeacherPickerOpen(true)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Escape") {
-                              setCfTeacherPickerOpen(false);
-                            }
-                          }}
-                          placeholder={t("filter.selectTeacher")}
-                        />
-                        {cfTeacherPickerOpen && (
-                          <div className="comboBoxMenu">
-                            {filteredTeachers.map((t) => (
-                              <button
-                                key={t.id}
-                                type="button"
-                                className={`comboBoxOption ${t.id === cfTeacherId ? "active" : ""}`}
-                                onClick={() => {
-                                  setCfTeacherId(t.id);
-                                  setCfTeacherSearch(t.fullName);
-                                  setCfTeacherPickerOpen(false);
-                                }}
-                              >
-                                <span className="comboBoxPrimary">{t.fullName}</span>
-                              </button>
-                            ))}
-                            {!exactTeacherMatch && cfTeacherSearch.trim() && (
-                              <button
-                                type="button"
-                                className="comboBoxOption"
-                                onClick={() => void addTeacherFromCourseForm()}
-                                disabled={cfTeacherCreating}
-                              >
-                                <span className="comboBoxPrimary">
-                                  {cfTeacherCreating
-                                    ? `${t("field.teacher")}...`
-                                    : `${t("button.addCourse")}: ${cfTeacherSearch.trim()}`}
-                                </span>
-                                <span className="comboBoxMeta">
-                                  {t("field.teacher")}
-                                </span>
-                              </button>
-                            )}
-                            {filteredTeachers.length === 0 && !cfTeacherSearch.trim() && (
-                              <div className="comboBoxEmpty">{t("msg.noTeachers")}</div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="formRow">
-                      <label>{t("field.type")}</label>
-                      <select value={cfType} onChange={(e) => setCfType(e.target.value as any)}>
-                        <option value="group">{t("course.group")}</option>
-                        <option value="individual">{t("course.individual")}</option>
-                      </select>
-                    </div>
-
-                    <div className="formRow">
-                      <label>{t("field.lessonPrice")} (EUR)</label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        min={0}
-                        step="0.01"
-                        value={cfLessonPrice}
-                        onChange={(e) => handleCoursePriceChange(e.target.value, setCfLessonPrice)}
-                      />
-                    </div>
-
-                    <div className="formRow">
-                      <label>{t("field.subscriptionPrice")} (EUR)</label>
-                      <input
-                        type="text"
-                        inputMode="decimal"
-                        min={0}
-                        step="0.01"
-                        value={cfSubscriptionPrice}
-                        onChange={(e) =>
-                          handleCoursePriceChange(e.target.value, setCfSubscriptionPrice)
-                        }
-                      />
-                    </div>
-
-                    <div className="modalActions">
-                      <button onClick={saveCourse}>{t("button.save")}</button>
-                      <button onClick={() => setCourseModalOpen(false)}>{t("button.cancel")}</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ---------------- Enrollments ---------------- */}
-          {tab === "enrollments" && (
-            <>
-              <div className="controls">
-                <button onClick={openAddEnrollment}>{t("button.addEnrollment")}</button>
-
-                <select
-                  value={enrStudentFilter ?? ""}
-                  onChange={(e) => setEnrStudentFilter(intOrUndef(e.target.value))}
-                >
-                  <option value="">{t("filter.allStudents")}</option>
-                  {allStudents.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.fullName}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={enrCourseFilter ?? ""}
-                  onChange={(e) => setEnrCourseFilter(intOrUndef(e.target.value))}
-                >
-                  <option value="">{t("filter.allCourses")}</option>
-                  {allCourses.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
-                    </option>
-                  ))}
-                </select>
-
-                <button onClick={loadEnrollments}>{t("button.refresh")}</button>
-              </div>
-
-              {enrLoading ? (
-                <div>{t("label.loading")}</div>
-              ) : enrollments.length === 0 ? (
-                <div className="empty">{t("msg.noEnrollmentsYet")}</div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t("field.student")}</th>
-                      <th>{t("field.course")}</th>
-                      <th>{t("field.teacher")}</th>
-                      <th>{t("field.billing")}</th>
-                      <th style={{ textAlign: "right" }}>{t("field.discount")}</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {enrollments.map((e) => (
-                      <tr key={e.id}>
-                        <td>
-                          <button
-                            className="linkButton"
-                            onClick={() => void openStudentCardById(e.studentId)}
-                          >
-                            {e.studentName}
-                          </button>
-                        </td>
-                        <td>{e.courseName}</td>
-                        <td>{e.teacherName || "—"}</td>
-                        <td>{localizedBillingModeLabel(e.billingMode)}</td>
-                        <td style={{ textAlign: "right" }}>{e.discountPct.toFixed(1)}%</td>
-                        <td>
-                          <button onClick={() => openEditEnrollment(e)}>{t("button.edit")}</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-
-              {enrModalOpen && (
-                <div className="modal">
-                  <div className="modalBody">
-                    <h3>{editingEnr ? t("modal.editEnrollment") : t("modal.addEnrollment")}</h3>
-
-                    <div className="formRow">
-                      <label>{t("field.student")}</label>
-                      {editingEnr ? (
-                        <input
-                          value={selectedEnrollmentStudent?.fullName ?? efStudentSearch}
-                          disabled
-                        />
-                      ) : (
-                        <div className="comboBox" ref={efStudentComboRef}>
-                          <input
-                            value={efStudentSearch}
-                            onChange={(e) => {
-                              setEfStudentSearch(e.target.value);
-                              setEfStudentPickerOpen(true);
-                            }}
-                            onFocus={() => setEfStudentPickerOpen(true)}
-                            onKeyDown={(e) => {
-                              if (e.key === "Escape") {
-                                setEfStudentPickerOpen(false);
-                              }
-                            }}
-                            placeholder={t("msg.searchPlaceholderStudent")}
-                          />
-                          {efStudentPickerOpen && (
-                            <div className="comboBoxMenu">
-                              {filteredEnrollmentStudents.length === 0 ? (
-                                <div className="comboBoxEmpty">{t("msg.noStudentsFound")}</div>
-                              ) : (
-                                filteredEnrollmentStudents.map((s) => (
-                                  <button
-                                    key={s.id}
-                                    type="button"
-                                    className={`comboBoxOption ${s.id === efStudentId ? "active" : ""}`}
-                                    onClick={() => {
-                                      setEfStudentId(s.id);
-                                      setEfStudentSearch(s.fullName);
-                                      setEfStudentPickerOpen(false);
-                                    }}
-                                  >
-                                    <span className="comboBoxPrimary">{s.fullName}</span>
-                                    <span className="comboBoxMeta">
-                                      {[s.phone, s.email].filter(Boolean).join(" · ")}
-                                    </span>
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="formRow">
-                      <label>{t("field.course")}</label>
-                      <select
-                        value={efCourseId}
-                        disabled={!!editingEnr}
-                        onChange={(e) => setEfCourseId(parseInt(e.target.value))}
-                      >
-                        {allCourses.map((c) => (
-                          <option key={c.id} value={c.id}>
-                            {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="formRow">
-                      <label>{t("field.billing")}</label>
-                      <select value={efMode} onChange={(e) => setEfMode(e.target.value as any)}>
-                        <option value="per_lesson">{t("billing.perLesson")}</option>
-                        <option value="subscription">{t("billing.subscription")}</option>
-                      </select>
-                    </div>
-
-                    <div className="formRow">
-                      <label>{t("field.discount")} %</label>
-                      <input
-                        type="number"
-                        min={0}
-                        max={100}
-                        step="0.1"
-                        value={efDiscount}
-                        onChange={(e) => setEfDiscount(numOrZero(e.target.value))}
-                      />
-                    </div>
-
-                    {efMode === "subscription" && (
-                      <div className="formRow">
-                        <label>{t("field.subscriptionDiscount")} %</label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          step="0.1"
-                          value={efSubscriptionDiscount}
-                          onChange={(e) => setEfSubscriptionDiscount(numOrZero(e.target.value))}
-                        />
-                      </div>
-                    )}
-
-                    <div className="formRow">
-                      <label>{t("field.note")}</label>
-                      <input value={efNote} onChange={(e) => setEfNote(e.target.value)} />
-                    </div>
-
-                    <div className="modalActions">
-                      <button onClick={saveEnrollment}>{t("button.save")}</button>
-                      <button onClick={() => setEnrModalOpen(false)}>{t("button.cancel")}</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-
-          {/* ---------------- Attendance ---------------- */}
-          {tab === "attendance" && (
-            <>
-              <div className="sectionBanner">
-                <div>
-                  <div className="dashboardCardEyebrow">{t("msg.monthStatus")}</div>
-                  <strong>
-                    {attendanceSummary.missing > 0
-                      ? t("msg.monthStatusMissing", { count: attendanceSummary.missing })
-                      : attendanceSummary.total > 0
-                        ? t("msg.monthStatusDone")
-                        : t("msg.monthStatusEmpty")}
-                  </strong>
-                </div>
-                <div className="sectionBannerActions">
-                  <button className="workspaceActionButton" onClick={() => void loadAttendance()}>
-                    {t("msg.refreshSheet")}
-                  </button>
-                  <button
-                    className="workspaceActionButton workspaceActionButtonPrimary"
-                    onClick={() => setTab("invoice")}
-                    disabled={attendanceSummary.total === 0}
-                  >
-                    {t("msg.openMonthInvoices")}
-                  </button>
-                </div>
-              </div>
-
-              <div className="controls">
-                <select
-                  value={courseFilter ?? ""}
-                  onChange={(e) => setCourseFilter(intOrUndef(e.target.value))}
-                >
-                  <option value="">{t("filter.allGroups")}</option>
-                  {allCourses.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.teacherName ? `${c.name} — ${c.teacherName}` : c.name}
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  className="searchField"
-                  placeholder={t("msg.searchPlaceholderAttendance")}
-                  value={attQ}
-                  onChange={(e) => setAttQ(e.target.value)}
-                />
-
-                <select
-                  value={attFilter}
-                  onChange={(e) => setAttFilter(e.target.value as typeof attFilter)}
-                >
-                  <option value="all">{t("status.showAll")}</option>
-                  <option value="missing">{t("status.onlyMissing")}</option>
-                  <option value="filled">{t("status.onlyFilled")}</option>
-                  <option value="zero">{t("status.zeroLessons")}</option>
-                </select>
-
-                <button onClick={loadAttendance}>{t("button.refresh")}</button>
-              </div>
-
-              {rows.length > 0 && (
-                <div className="attSummary">
-                  {t("msg.attFilled")}: {attendanceSummary.filled} / {attendanceSummary.total}
-                  &nbsp;·&nbsp;{t("msg.attMissing")}: {attendanceSummary.missing}
-                  &nbsp;·&nbsp;{t("msg.attZero")}: {attendanceSummary.zero}
-                </div>
-              )}
-
-              {loadingAtt ? (
-                <div>{t("label.loading")}</div>
-              ) : filteredAttendanceRows.length === 0 ? (
-                <div className="empty">
-                  {attQ.trim() || attFilter !== "all"
-                    ? t("msg.noSearchResults")
-                    : t("msg.noAttendanceRows")}
-                </div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t("field.student")}</th>
-                      <th>{t("field.course")}</th>
-                      <th style={{ textAlign: "right" }}>{t("field.lessonPrice")} (EUR)</th>
-                      <th style={{ textAlign: "right" }}>{t("field.quantity")}</th>
-                      <th style={{ textAlign: "right" }}>{t("field.totalEur")}</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredAttendanceRows.map((r) => (
-                      <tr key={r.enrollmentId}>
-                        <td>
-                          <button
-                            className="linkButton"
-                            onClick={() => void openStudentCardById(r.studentId)}
-                          >
-                            {r.studentName}
-                          </button>
-                        </td>
-                        <td>
-                          {r.courseName} ({localizedCourseTypeLabel(r.courseType)})
-                          {r.billingMode === BillingModeSubscription && (
-                            <>
-                              {" "}
-                              <span className="attBadge attBadge--subscription">{t("billing.subscription")}</span>
-                            </>
-                          )}
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {formatEUR(r.lessonPrice)}
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {r.billingMode === BillingModePerLesson && !r.hasRecord && (
-                            <span className="attBadge attBadge--missing">{t("msg.attMissing")}</span>
-                          )}
-                          {r.billingMode === BillingModePerLesson &&
-                            r.hasRecord &&
-                            r.hours === 0 && (
-                              <span className="attBadge attBadge--zero">0h</span>
-                            )}
-                          {r.billingMode === BillingModePerLesson && !r.attendanceLocked ? (
-                            <div className="attendanceStepper">
-                              <button
-                                type="button"
-                                className="attendanceStepperButton"
-                                onClick={() =>
-                                  onChangeHours(r, Math.max(0, getAttendanceStepBase(r) - 1))
-                                }
-                                disabled={
-                                  attendanceSavingRows[r.enrollmentId] ||
-                                  getAttendanceStepBase(r) <= 0
-                                }
-                                aria-label={`Decrease hours for ${r.studentName}`}
-                              >
-                                −
-                              </button>
-                              <input
-                                type="text"
-                                inputMode="decimal"
-                                value={getAttendanceInputValue(r)}
-                                disabled={attendanceSavingRows[r.enrollmentId]}
-                                onChange={(e) => {
-                                  const nextValue = normalizeHoursDraftInput(e.target.value);
-                                  if (nextValue !== null) {
-                                    setAttendanceDraft(r.enrollmentId, nextValue);
-                                  }
-                                }}
-                                onPointerDown={() => {
-                                  attendancePendingSelectRef.current = r.enrollmentId;
-                                }}
-                                onFocus={(e) => {
-                                  if (attendancePendingSelectRef.current !== r.enrollmentId) {
-                                    e.currentTarget.select();
-                                  }
-                                }}
-                                onMouseUp={(e) => {
-                                  if (attendancePendingSelectRef.current === r.enrollmentId) {
-                                    e.preventDefault();
-                                    e.currentTarget.select();
-                                    attendancePendingSelectRef.current = null;
-                                  }
-                                }}
-                                onBlur={() => {
-                                  if (attendancePendingSelectRef.current === r.enrollmentId) {
-                                    attendancePendingSelectRef.current = null;
-                                  }
-                                  void commitAttendanceDraft(r);
-                                }}
-                                onKeyDown={(e) => {
-                                  if (e.key === "Enter") {
-                                    e.preventDefault();
-                                    void commitAttendanceDraft(r);
-                                  }
-                                  if (e.key === "Escape") {
-                                    e.preventDefault();
-                                    clearAttendanceDraft(r.enrollmentId);
-                                    e.currentTarget.blur();
-                                  }
-                                }}
-                                className="attendanceStepperInput"
-                                aria-label={`Hours for ${r.studentName}`}
-                              />
-                              <button
-                                type="button"
-                                className="attendanceStepperButton"
-                                onClick={() => onChangeHours(r, getAttendanceStepBase(r) + 1)}
-                                disabled={attendanceSavingRows[r.enrollmentId]}
-                                aria-label={`Increase hours for ${r.studentName}`}
-                              >
-                                +
-                              </button>
-                            </div>
-                          ) : r.billingMode === BillingModeSubscription ? (
-                            subscriptionLeadEnrollmentIds.has(r.enrollmentId) ? (
-                              <div className="attendanceStepper">
-                                <button
-                                  type="button"
-                                  className="attendanceStepperButton"
-                                  onClick={() => {
-                                    const current = subscriptionMonthLessons[r.courseId] ?? 0;
-                                    void saveCourseMonthSubscriptionLessons(
-                                      r.courseId,
-                                      year,
-                                      month,
-                                      Math.max(0, current - 1)
-                                    )
-                                      .then((updated) => {
-                                        setSubscriptionMonthLessons((prev) => ({
-                                          ...prev,
-                                          [r.courseId]: updated.lessonsHeld,
-                                        }));
-                                        return loadAttendance();
-                                      })
-                                      .catch((e: any) => {
-                                        showMessage(
-                                          t("msg.errorGeneric", {
-                                            message: String(e?.message ?? e),
-                                          }),
-                                          "error"
-                                        );
-                                      });
-                                  }}
-                                  disabled={
-                                    subscriptionMonthSaving[r.courseId] ||
-                                    (subscriptionMonthLessons[r.courseId] ?? 0) <= 0
-                                  }
-                                  aria-label={`Decrease subscription lessons for ${r.courseName}`}
-                                >
-                                  −
-                                </button>
-                                <input
-                                  type="text"
-                                  inputMode="decimal"
-                                  value={getSubscriptionMonthLessonsValue(r.courseId)}
-                                  disabled={subscriptionMonthSaving[r.courseId]}
-                                  onChange={(e) => {
-                                    const nextValue = normalizeHoursDraftInput(e.target.value);
-                                    if (nextValue !== null) {
-                                      setSubscriptionMonthLessonsDraft(r.courseId, nextValue);
-                                    }
-                                  }}
-                                  onFocus={(e) => e.currentTarget.select()}
-                                  onBlur={() => {
-                                    void commitSubscriptionMonthLessonsDraft(r);
-                                  }}
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      void commitSubscriptionMonthLessonsDraft(r);
-                                    }
-                                    if (e.key === "Escape") {
-                                      e.preventDefault();
-                                      clearSubscriptionMonthLessonsDraft(r.courseId);
-                                      e.currentTarget.blur();
-                                    }
-                                  }}
-                                  className="attendanceStepperInput"
-                                  aria-label={`Subscription lessons held for ${r.courseName}`}
-                                />
-                                <button
-                                  type="button"
-                                  className="attendanceStepperButton"
-                                  onClick={() => {
-                                    const current = subscriptionMonthLessons[r.courseId] ?? 0;
-                                    void saveCourseMonthSubscriptionLessons(
-                                      r.courseId,
-                                      year,
-                                      month,
-                                      current + 1
-                                    )
-                                      .then((updated) => {
-                                        setSubscriptionMonthLessons((prev) => ({
-                                          ...prev,
-                                          [r.courseId]: updated.lessonsHeld,
-                                        }));
-                                        return loadAttendance();
-                                      })
-                                      .catch((e: any) => {
-                                        showMessage(
-                                          t("msg.errorGeneric", {
-                                            message: String(e?.message ?? e),
-                                          }),
-                                          "error"
-                                        );
-                                      });
-                                  }}
-                                  disabled={subscriptionMonthSaving[r.courseId]}
-                                  aria-label={`Increase subscription lessons for ${r.courseName}`}
-                                >
-                                  +
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="attendanceReadOnly">
-                                <span className="attBadge attBadge--subscription">
-                                  {t("msg.readOnly")}
-                                </span>
-                                <span className="mutedInline">{t("msg.subscriptionSharedValue")}</span>
-                              </div>
-                            )
-                          ) : (
-                            <div className="attendanceReadOnly">
-                              <span className="attBadge attBadge--subscription">{t("msg.readOnly")}</span>
-                              <span className="mutedInline">
-                                {r.invoiceStatus === InvoiceStatusIssued
-                                  ? t("msg.lockedIssuedInvoice")
-                                  : r.invoiceStatus === InvoiceStatusPaid
-                                    ? t("msg.lockedPaidInvoice")
-                                    : r.invoiceStatus === InvoiceStatusCanceled
-                                      ? t("msg.lockedCanceledInvoice")
-                                      : t("msg.lockedUntilDraft")}
-                              </span>
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          {r.billingMode === BillingModePerLesson
-                            ? formatEUR(r.hours * r.lessonPrice)
-                            : formatEUR(subscriptionTotal(r, subscriptionMonthLessons[r.courseId] ?? 0))}
-                        </td>
-                        <td>
-                          {r.billingMode === BillingModePerLesson &&
-                            !r.attendanceLocked &&
-                            !r.hasRecord && (
-                              <button
-                                onClick={() => onChangeHours(r, 0)}
-                                disabled={attendanceSavingRows[r.enrollmentId]}
-                                style={{ marginRight: "0.5rem" }}
-                              >
-                                {t("msg.setZeroHours")}
-                              </button>
-                            )}
-                          {r.canDelete ? (
-                            <button onClick={() => onDeleteEnrollmentFromSheet(r.enrollmentId)}>
-                              {t("msg.deleteEnrollment")}
-                            </button>
-                          ) : (
-                            <span className="mutedInline">
-                              {t("msg.deleteEnrollmentBlocked")}
-                            </span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan={4} style={{ textAlign: "right" }}>
-                        {t("msg.lessonsTotalEur")}:
-                      </td>
-                      <td style={{ textAlign: "right" }}>{formatEUR(perLessonTotal)}</td>
-                      <td></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              )}
-            </>
-          )}
-
-          {/* ---------------- Invoices ---------------- */}
-          {tab === "invoice" && (
-            <>
-              <div className="sectionBanner">
-                <div>
-                  <div className="dashboardCardEyebrow">{t("msg.billing")}</div>
-                  <strong>{currentMonthLabel}</strong>
-                  <span className="mutedInline">
-                    {t("title.invoice")}
-                  </span>
-                </div>
-                <div className="sectionBannerActions">
-                  <button className="workspaceActionButton" onClick={() => void loadInvoices()}>
-                    {t("button.sync")}
-                  </button>
-                </div>
-              </div>
-
-              <div className="controls">
-                <select value={invStatus} onChange={(e) => setInvStatus(e.target.value)}>
-                  <option value="draft">{t("filter.selectStatusDraft")}</option>
-                  <option value="issued">{t("filter.selectStatusIssued")}</option>
-                  <option value="paid">{t("filter.selectStatusPaid")}</option>
-                  <option value="all">{t("filter.selectStatusAll")}</option>
-                </select>
-
-                <input
-                  className="searchField searchFieldWide"
-                  placeholder={t("msg.searchPlaceholderInvoice")}
-                  value={invQ}
-                  onChange={(e) => setInvQ(e.target.value)}
-                />
-
-                <button onClick={() => void loadInvoices()}>{t("button.refresh")}</button>
-              </div>
-
-              {loadingInv ? (
-                <div>{t("label.loading")}</div>
-              ) : filteredInvItems.length === 0 ? (
-                <div className="empty">{t("msg.noInvoiceResults")}</div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t("field.student")}</th>
-                      <th>{t("field.period")}</th>
-                      <th style={{ textAlign: "right" }}>{t("field.amount")} (EUR)</th>
-                      <th>{t("field.status")}</th>
-                      <th>{t("field.number")}</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredInvItems.map((it) => (
-                      <tr key={it.id}>
-                        <td>
-                          <button
-                            className="linkButton"
-                            onClick={() => void openStudentCardById(it.studentId)}
-                          >
-                            {it.studentName}
-                          </button>
-                        </td>
-                        <td>
-                          {uiMonths[it.month - 1]} {it.year}
-                        </td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(it.total)}</td>
-                        <td>
-                          <span className={`statusPill statusPill--${it.status}`}>
-                            {localizedInvoiceStatusLabel(it.status)}
-                          </span>
-                        </td>
-                        <td>
-                          {it.number ?? ""}
-                          {it.pdfReady && (
-                            <div className="badgeRow">
-                              <span className="attBadge attBadge--pdfReady">PDF</span>
-                            </div>
-                          )}
-                        </td>
-                        <td>
-                          <div className="invoiceRowActions">
-                            <button onClick={() => onOpenInvoice(it.id)}>{t("button.open")}</button>
-                            {it.status === "draft" && (
-                              <button
-                                className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
-                                onClick={() => onIssueOne(it.id)}
-                              >
-                                {t("button.issue")}
-                              </button>
-                            )}
-                            {it.status !== "draft" && (
-                              <button onClick={() => void onDownloadPdf(it.id)}>
-                                {t("button.downloadPdf")}
-                              </button>
-                            )}
-                            {it.status !== "draft" && (
-                              <button onClick={() => void openPaymentModalForInvoice(it.id)}>
-                                {t("button.recordPayment")}
-                              </button>
-                            )}
-                            {renderInvoiceActionsMenu(it)}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </>
-          )}
-
-          {/* ---------------- Debtors ---------------- */}
-          {tab === "debtors" && (
-            <>
-              <div className="sectionBanner">
-                <div>
-                  <div className="dashboardCardEyebrow">{t("msg.collection")}</div>
-                  <strong>
-                    {t("label.needsAction")}
-                  </strong>
-                </div>
-                <div className="sectionBannerActions">
-                  <button className="workspaceActionButton" onClick={loadDebtors}>
-                    {t("button.refresh")}
-                  </button>
-                </div>
-              </div>
-
-              {debtorActionQueue.length > 0 && (
-                <div className="detailCard detailCard--wide actionQueuePanel">
-                  <div className="detailCardHeader">
-                    <h3>{t("label.needsAction")}</h3>
-                    <span className="statusPill warning">{t("msg.queueCount", { count: debtorActionQueue.length })}</span>
-                  </div>
-                  <div className="actionQueueList">
-                    {debtorActionQueue.map((item) => (
-                      <div key={item.studentId} className="actionQueueItem">
-                        <div>
-                          <strong>{item.studentName}</strong>
-                          <span>{item.subtitle}</span>
-                        </div>
-                        <div className="actionQueueMeta">
-                          <strong>{formatEUR(item.debt)}</strong>
-                          <div className="inlineActions">
-                            <button
-                              className="workspaceActionButton workspaceActionButtonPrimary"
-                              onClick={() => openDebtorPaymentModalByStudentId(item.studentId)}
-                            >
-                              {t("button.takePayment")}
-                            </button>
-                            <button
-                              className="secondaryActionButton"
-                              onClick={() => void openStudentInWorkspaceById(item.studentId)}
-                            >
-                              {t("button.card")}
-                            </button>
-                            <button
-                              className="secondaryActionButton"
-                              onClick={() => void copyDebtMessageForStudentId(item.studentId, "ru")}
-                            >
-                              RU
-                            </button>
-                            <button
-                              className="secondaryActionButton"
-                              onClick={() => void copyDebtMessageForStudentId(item.studentId, "lv")}
-                            >
-                              LV
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {debtorsLoading ? (
-                <div>{t("label.loading")}</div>
-              ) : debtors.length === 0 ? (
-                <div className="empty">{t("msg.noDebtors")}</div>
-              ) : (
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t("field.student")}</th>
-                      <th style={{ textAlign: "right" }}>{t("field.debtEur")}</th>
-                      <th style={{ textAlign: "right" }}>{t("field.totalEur")}</th>
-                      <th style={{ textAlign: "right" }}>{t("field.paidEur")}</th>
-                      <th></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {debtors.map((d) => (
-                      <tr key={d.studentId}>
-                        <td>
-                          <button
-                            className="linkButton"
-                            onClick={() => void openStudentCardById(d.studentId)}
-                          >
-                            {d.studentName}
-                          </button>
-                        </td>
-                        <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
-                          {formatEUR(d.debt)}
-                        </td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(d.totalInvoiced)}</td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(d.totalPaid)}</td>
-                        <td>
-                          <button
-                            className="workspaceActionButton workspaceActionButtonPrimary"
-                            onClick={() => openDebtorPaymentModal(d)}
-                          >
-                            {t("button.takePayment")}
-                          </button>
-                          <button onClick={() => openDebtDetails(d)}>{t("modal.debtBreakdown")}</button>
-                          <button onClick={() => void copyDebtMessageForDebtor(d, "ru")}>
-                            {t("button.copyRu")}
-                          </button>
-                          <button onClick={() => void copyDebtMessageForDebtor(d, "lv")}>
-                            {t("button.copyLv")}
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td style={{ fontWeight: "bold" }}>{t("field.debtEur")}:</td>
-                      <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
-                        {formatEUR(debtors.reduce((sum, d) => sum + d.debt, 0))}
-                      </td>
-                      <td colSpan={3}></td>
-                    </tr>
-                  </tfoot>
-                </table>
-              )}
-            </>
-          )}
-
-          {tab === "settings" && (
-            <div className="settingsGrid">
-              <section className="detailCard">
-                <div className="detailCardHeader">
-                  <h3>{t("settings.languageTitle")}</h3>
-                </div>
-                <p className="mutedInline">{t("settings.languageDesc")}</p>
-                <div className="formRow">
-                  <label>{t("settings.locale")}</label>
-                  <select
-                    value={uiLocale}
-                    disabled={!canManageSettings}
-                    onChange={(e) => void handleLocaleChange(e.target.value as UiLocale)}
-                  >
-                    <option value="en-US">{t("settings.languageEnglish")}</option>
-                    <option value="ru-RU">{t("settings.languageRussian")}</option>
-                  </select>
-                </div>
-              </section>
-
-              <section className="detailCard">
-                <div className="detailCardHeader">
-                  <h3>{t("settings.backupsTitle")}</h3>
-                </div>
-                <p className="mutedInline">{t("settings.backupDesc")}</p>
-                <div className="settingsActions">
-                  <button
-                    type="button"
-                    className="workspaceActionButton workspaceActionButtonPrimary"
-                    onClick={() => void createManualBackup()}
-                    disabled={creatingBackup || !canCreateBackups}
-                  >
-                    {creatingBackup ? `${t("button.createBackup")}...` : t("button.createBackup")}
-                  </button>
-                  {canShowInvoiceFolderAction(transportCapabilities) && (
-                    <button
-                      type="button"
-                      className="workspaceActionButton"
-                      onClick={() => void openAppFolder(appDirs?.backups, t("field.backups").toLowerCase())}
-                      disabled={!appDirs?.backups}
-                    >
-                      {t("button.backupsFolder")}
-                    </button>
-                  )}
-                </div>
-              </section>
-
-              {canShowSettingsFilesCard(transportCapabilities) && (
-                <section className="detailCard">
-                  <div className="detailCardHeader">
-                    <h3>{t("settings.filesTitle")}</h3>
-                  </div>
-                  <p className="mutedInline">{t("settings.filesDesc")}</p>
-                  <div className="settingsActions">
-                    <button
-                      type="button"
-                      className="workspaceActionButton"
-                      onClick={() => void openAppFolder(appDirs?.invoices, t("tabs.invoice").toLowerCase())}
-                      disabled={!appDirs?.invoices}
-                    >
-                      {t("button.invoicesFolder")}
-                    </button>
-                    <button
-                      type="button"
-                      className="workspaceActionButton"
-                      onClick={() => void openAppFolder(appDirs?.exports, "exports")}
-                      disabled={!appDirs?.exports}
-                    >
-                      {t("button.exportsFolder")}
-                    </button>
-                    <button
-                      type="button"
-                      className="workspaceActionButton"
-                      onClick={() => void openAppFolder(appDirs?.data, "data")}
-                      disabled={!appDirs?.data}
-                    >
-                      {t("button.dataFolder")}
-                    </button>
-                  </div>
-                </section>
-              )}
-
-              {canManageUsers && (
-                <section className="detailCard detailCard--wide">
-                  <div className="detailCardHeader">
-                    <h3>Users</h3>
-                  </div>
-                  <p className="mutedInline">Manage admin and staff accounts for the web app.</p>
-
-                  <div className="formRow">
-                    <label>Username</label>
-                    <input value={newUserUsername} onChange={(e) => setNewUserUsername(e.target.value)} />
-                  </div>
-                  <div className="formRow">
-                    <label>Password</label>
-                    <input
-                      type="password"
-                      value={newUserPassword}
-                      onChange={(e) => setNewUserPassword(e.target.value)}
-                    />
-                  </div>
-                  <div className="formRow">
-                    <label>Role</label>
-                    <select value={newUserRole} onChange={(e) => setNewUserRole(e.target.value)}>
-                      <option value="staff">staff</option>
-                      <option value="admin">admin</option>
-                    </select>
-                  </div>
-                  <div className="settingsActions">
-                    <button
-                      type="button"
-                      className="workspaceActionButton workspaceActionButtonPrimary"
-                      onClick={() => void handleCreateUser()}
-                      disabled={creatingUser}
-                    >
-                      {creatingUser ? "Create..." : "Create user"}
-                    </button>
-                    <button type="button" className="workspaceActionButton" onClick={() => void loadUsers()}>
-                      {t("button.refresh")}
-                    </button>
-                  </div>
-
-                  {usersLoading ? (
-                    <div className="empty">{t("label.loading")}</div>
-                  ) : (
-                    <div className="tableWrap">
-                      <table>
-                        <thead>
-                          <tr>
-                            <th>Username</th>
-                            <th>Role</th>
-                            <th>Active</th>
-                            <th>Password reset</th>
-                            <th>{t("field.actions")}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {users.map((user) => {
-                            const draft = userDrafts[user.id] ?? {
-                              username: user.username,
-                              role: user.role,
-                              isActive: user.isActive,
-                            };
-                            return (
-                              <tr key={user.id}>
-                                <td>
-                                  <input
-                                    value={draft.username}
-                                    onChange={(e) =>
-                                      setUserDrafts((prev) => ({
-                                        ...prev,
-                                        [user.id]: { ...draft, username: e.target.value },
-                                      }))
-                                    }
-                                  />
-                                </td>
-                                <td>
-                                  <select
-                                    value={draft.role}
-                                    onChange={(e) =>
-                                      setUserDrafts((prev) => ({
-                                        ...prev,
-                                        [user.id]: { ...draft, role: e.target.value },
-                                      }))
-                                    }
-                                  >
-                                    <option value="staff">staff</option>
-                                    <option value="admin">admin</option>
-                                  </select>
-                                </td>
-                                <td>
-                                  <input
-                                    type="checkbox"
-                                    checked={draft.isActive}
-                                    onChange={(e) =>
-                                      setUserDrafts((prev) => ({
-                                        ...prev,
-                                        [user.id]: { ...draft, isActive: e.target.checked },
-                                      }))
-                                    }
-                                  />
-                                </td>
-                                <td>
-                                  <input
-                                    type="password"
-                                    value={userPasswordDrafts[user.id] ?? ""}
-                                    onChange={(e) =>
-                                      setUserPasswordDrafts((prev) => ({ ...prev, [user.id]: e.target.value }))
-                                    }
-                                    placeholder="New password"
-                                  />
-                                </td>
-                                <td>
-                                  <button onClick={() => void handleSaveUser(user.id)}>{t("button.save")}</button>
-                                  <button onClick={() => void handleResetUserPassword(user.id)}>Reset password</button>
-                                  <button
-                                    onClick={() => void handleDeleteUser(user.id)}
-                                    disabled={currentSessionUser?.id === user.id}
-                                  >
-                                    Delete
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-                </section>
-              )}
-            </div>
-          )}
-        </section>
-      </div>
-
-      {paymentModalOpen && paymentStudentId > 0 && (
-        <div className="modal" onClick={() => setPaymentModalOpen(false)}>
-          <div className="modalBody" onClick={(e) => e.stopPropagation()}>
-            <h3>{t("modal.paymentTitle")}</h3>
-            <div className="formRow">
-              <label>{t("tabs.students")}</label>
-              <input value={paymentStudentName} disabled />
-            </div>
-            {paymentInvoiceId && (
-              <div className="formRow">
-                <label>{t("field.course")}</label>
-                <input value={`Счёт #${paymentInvoiceId}`} disabled />
-              </div>
-            )}
-            <div className="formRow">
-              <label>{t("field.amount")} (EUR):</label>
-              <input
-                type="number"
-                step="0.01"
-                value={paymentAmount}
-                onChange={(e) => setPaymentAmount(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="formRow">
-              <label>{t("field.method")}:</label>
-              <select
-                value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as "cash" | "bank")}
-              >
-                <option value="cash">{t("payment.cash")}</option>
-                <option value="bank">{t("payment.bank")}</option>
-              </select>
-            </div>
-            <div className="formRow">
-              <label>{t("field.note")}:</label>
-              <input
-                type="text"
-                value={paymentNote}
-                onChange={(e) => setPaymentNote(e.target.value)}
-                placeholder={t("field.note")}
-              />
-            </div>
-            <div className="modalActions">
-              <button onClick={closePaymentModal}>{t("button.cancel")}</button>
-              <button onClick={handleCreatePayment}>{t("button.recordPayment")}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {invoiceDetailsOpen && selectedInv && (
-        <div className="modal" onClick={() => setInvoiceDetailsOpen(false)}>
-          <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
-            <div style={{ marginBottom: "1rem" }}>
-              <h3>
-                {t("modal.invoiceTitle")} {selectedInv.number ? `#${selectedInv.number}` : ""} —{" "}
-                <button
-                  className="linkButton"
-                  onClick={() => void openStudentCardById(selectedInv.studentId)}
-                >
-                  {selectedInv.studentName}
-                </button>{" "}
-                — {uiMonths[selectedInv.month - 1]} {selectedInv.year}
-              </h3>
-            </div>
-
-            {invSummary && selectedInv.status !== "draft" && (
-              <div className="invSummary">
-                <div className="invSummaryRow">
-                  <span>{t("field.recipient")}:</span>
-                  <span>{selectedInv.recipientName || selectedInv.studentName}</span>
-                </div>
-                {selectedInv.studentPersonalCode && (
-                  <div className="invSummaryRow">
-                    <span>
-                      {selectedInv.isMinor ? `${t("field.personalCode")} child:` : `${t("field.personalCode")}:`}
-                    </span>
-                    <span>{selectedInv.studentPersonalCode}</span>
-                  </div>
-                )}
-                {selectedInv.isMinor && (
-                  <div className="invSummaryRow">
-                    <span>{t("field.forChild")}:</span>
-                    <span>{selectedInv.childName}</span>
-                  </div>
-                )}
-                <div className="invSummaryRow">
-                  <span>{t("field.amount")}:</span>
-                  <span className="money">{formatEUR(invSummary.total)}</span>
-                </div>
-
-                <div className="invSummaryRow">
-                  <span>{t("label.paid")}:</span>
-                  <span className="money good">{formatEUR(invSummary.paid)}</span>
-                </div>
-
-                <div className="invSummaryRow">
-                  <span>{t("field.remaining")}:</span>
-                  <span className={`money ${invSummary.remaining > 0 ? "bad" : "good"}`}>
-                    {formatEUR(invSummary.remaining)}
-                  </span>
-                </div>
-
-                <div className="invSummaryRow">
-                  <span>{t("field.status")}:</span>
-                  <span className="money">{localizedInvoiceStatusLabel(invSummary.status)}</span>
-                </div>
-              </div>
             )}
 
-            <div style={{ overflowX: "auto" }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>{t("field.description")}</th>
-                    <th style={{ textAlign: "right" }}>{t("field.quantity")}</th>
-                    <th style={{ textAlign: "right" }}>{t("field.lessonPrice")} (EUR)</th>
-                    <th style={{ textAlign: "right" }}>{t("field.amount")} (EUR)</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedInv.lines.map((l, idx) => (
-                    <tr key={idx}>
-                      <td>{l.description}</td>
-                      <td style={{ textAlign: "right" }}>{formatHoursValue(l.qty)}</td>
-                      <td style={{ textAlign: "right" }}>{formatEUR(l.unitPrice)}</td>
-                      <td style={{ textAlign: "right" }}>{formatEUR(l.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={3} style={{ textAlign: "right" }}>
-                      {t("field.totalEur")}:
-                    </td>
-                    <td style={{ textAlign: "right" }}>{formatEUR(selectedInv.total)}</td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-
-            <div className="modalActions">
-              {selectedInv.status === "draft" && (
-                <button onClick={() => onIssueOne(selectedInv.id)}>{t("button.issue")}</button>
-              )}
-              {selectedInv.status !== "draft" && (
-                <button onClick={() => void onDownloadPdf(selectedInv.id)}>
-                  {t("button.downloadPdf")}
-                </button>
-              )}
-              {selectedInv.status !== "draft" && (
-                <button onClick={() => openPaymentModal(selectedInv, invSummary)}>
-                  {t("button.recordPayment")}
-                </button>
-              )}
-              {selectedInv.status === "issued" && (
-                <button onClick={() => void onReopenToDraft(selectedInv.id)}>
-                  {t("button.reopenDraft")}
-                </button>
-              )}
-              {selectedInv.status !== "draft" && canShowInvoiceFolderAction(transportCapabilities) && (
-                <button onClick={() => void onRevealInvoiceFile(selectedInv.id)}>
-                  {t("button.showInFolder")}
-                </button>
-              )}
-              {transportCapabilities.isDesktop && selectedInv.status !== "draft" && !selectedInvPdfReady && (
-                <button onClick={() => onGeneratePdf(selectedInv.id)}>{t("button.createPdf")}</button>
-              )}
-              <button onClick={() => setInvoiceDetailsOpen(false)}>{t("button.close")}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {debtDetailsOpen && selectedDebtor && (
-        <div className="modal" onClick={() => setDebtDetailsOpen(false)}>
-          <div className="modalBody" onClick={(e) => e.stopPropagation()}>
-            <h3>{t("modal.debtBreakdown")}</h3>
-
-            <div className="invSummary">
-              <div className="invSummaryRow">
-                <span>{t("field.student")}</span>
-                <button
-                  className="linkButton"
-                  onClick={() => void openStudentCardById(selectedDebtor.studentId)}
-                >
-                  {selectedDebtor.studentName}
-                </button>
-              </div>
-              <div className="invSummaryRow">
-                <span>{t("field.debtEur")}</span>
-                <strong className="money bad">{formatEUR(selectedDebtor.debt)}</strong>
-              </div>
-            </div>
-
-            {debtDetailsLoading ? (
-              <div>{t("label.loading")}</div>
-            ) : debtDetails.length === 0 ? (
-              <div className="empty">{t("msg.noOpenDebts")}</div>
-            ) : (
-              <div style={{ overflowX: "auto" }}>
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{t("field.month")}</th>
-                      <th>{t("field.number")}</th>
-                      <th style={{ textAlign: "right" }}>{t("field.amount")}</th>
-                      <th style={{ textAlign: "right" }}>{t("label.paid")}</th>
-                      <th style={{ textAlign: "right" }}>{t("field.remaining")}</th>
-                      <th>{t("field.status")}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {debtDetails.map((x) => (
-                      <tr key={x.invoiceId}>
-                        <td>
-                          {uiMonths[x.month - 1]} {x.year}
-                        </td>
-                        <td>{x.number ?? t("msg.noInvoiceNumber")}</td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(x.total)}</td>
-                        <td style={{ textAlign: "right" }}>{formatEUR(x.paid)}</td>
-                        <td style={{ textAlign: "right" }}>
-                          <strong className="money bad">{formatEUR(x.remaining)}</strong>
-                        </td>
-                        <td>{localizedInvoiceStatusLabel(x.status)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+            {tab === "courses" && (
+              <CoursesScreen
+                loading={courseLoading}
+                courses={courseList}
+                query={courseQ}
+                canDeleteCourses={canDeleteCourses}
+                courseTypeLabel={localizedCourseTypeLabel}
+                formatEUR={formatEUR}
+                onQueryChange={setCourseQ}
+                onRefresh={() => void loadCourses()}
+                onAddCourse={openAddCourse}
+                onEditCourse={openEditCourse}
+                onDeleteCourse={(courseId) => void removeCourse(courseId)}
+                courseModalOpen={courseModalOpen}
+                editingCourse={Boolean(editingCourse)}
+                cfName={cfName}
+                cfTeacherSearch={cfTeacherSearch}
+                cfTeacherId={cfTeacherId}
+                cfTeacherPickerOpen={cfTeacherPickerOpen}
+                selectedCourseTeacher={selectedCourseTeacher}
+                filteredTeachers={filteredTeachers}
+                exactTeacherMatch={exactTeacherMatch}
+                cfTeacherCreating={cfTeacherCreating}
+                cfType={cfType}
+                cfLessonPrice={cfLessonPrice}
+                cfSubscriptionPrice={cfSubscriptionPrice}
+                cfTeacherComboRef={cfTeacherComboRef}
+                onCfNameChange={setCfName}
+                onCfTeacherSearchChange={setCfTeacherSearch}
+                onCfTeacherIdChange={setCfTeacherId}
+                onCfTeacherPickerOpenChange={setCfTeacherPickerOpen}
+                onAddTeacherFromCourseForm={addTeacherFromCourseForm}
+                onCfTypeChange={setCfType}
+                onCfLessonPriceChange={(value) => handleCoursePriceChange(value, setCfLessonPrice)}
+                onCfSubscriptionPriceChange={(value) =>
+                  handleCoursePriceChange(value, setCfSubscriptionPrice)
+                }
+                onSaveCourse={() => void saveCourse()}
+                onCloseCourseModal={() => setCourseModalOpen(false)}
+                t={t}
+              />
             )}
 
-            <div className="modalActions">
-              {!debtDetailsLoading && debtDetails.length > 0 && (
-                <>
-                  <button onClick={openPaymentFromDebtDetails}>{t("button.recordPayment")}</button>
-                  <button onClick={() => void copyDebtMessage("ru")}>{t("button.copyRu")}</button>
-                  <button onClick={() => void copyDebtMessage("lv")}>{t("button.copyLv")}</button>
-                </>
-              )}
-              <button onClick={() => setDebtDetailsOpen(false)}>{t("button.close")}</button>
-            </div>
-          </div>
-        </div>
-      )}
+            {tab === "enrollments" && (
+              <EnrollmentsScreen
+                loading={enrLoading}
+                enrollments={enrollments}
+                studentFilter={enrStudentFilter}
+                courseFilter={enrCourseFilter}
+                allStudents={allStudents}
+                allCourses={allCourses}
+                billingModeLabel={localizedBillingModeLabel}
+                onStudentFilterChange={setEnrStudentFilter}
+                onCourseFilterChange={setEnrCourseFilter}
+                onRefresh={() => void loadEnrollments()}
+                onAddEnrollment={openAddEnrollment}
+                onOpenStudent={(studentId) => void openStudentCardById(studentId)}
+                onEditEnrollment={openEditEnrollment}
+                enrollmentModalOpen={enrModalOpen}
+                editingEnrollment={editingEnr}
+                studentSearch={efStudentSearch}
+                studentId={efStudentId}
+                studentPickerOpen={efStudentPickerOpen}
+                filteredStudents={filteredEnrollmentStudents}
+                selectedStudent={selectedEnrollmentStudent}
+                enrollmentCourseId={efCourseId}
+                enrollmentMode={efMode}
+                enrollmentDiscount={efDiscount}
+                enrollmentSubscriptionDiscount={efSubscriptionDiscount}
+                enrollmentNote={efNote}
+                studentComboRef={efStudentComboRef}
+                onStudentSearchChange={setEfStudentSearch}
+                onStudentIdChange={(value) => setEfStudentId(value ?? 0)}
+                onStudentPickerOpenChange={setEfStudentPickerOpen}
+                onEnrollmentCourseIdChange={setEfCourseId}
+                onEnrollmentModeChange={setEfMode}
+                onEnrollmentDiscountChange={setEfDiscount}
+                onEnrollmentSubscriptionDiscountChange={setEfSubscriptionDiscount}
+                onEnrollmentNoteChange={setEfNote}
+                onSaveEnrollment={() => void saveEnrollment()}
+                onCloseEnrollmentModal={() => setEnrModalOpen(false)}
+                t={t}
+              />
+            )}
 
-      {/* Student Card Modal */}
-      {studentCardOpen && selectedStudentCard && (
-        <div className="modal" onClick={() => setStudentCardOpen(false)}>
-          <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
-            <StudentDetailPanel
+            {tab === "attendance" && (
+              <AttendanceScreen
+                attendanceSummary={attendanceSummary}
+                courseFilter={courseFilter}
+                allCourses={allCourses}
+                query={attQ}
+                filter={attFilter}
+                rows={rows}
+                filteredRows={filteredAttendanceRows}
+                loading={loadingAtt}
+                attendanceSavingRows={attendanceSavingRows}
+                attendancePendingSelectRef={attendancePendingSelectRef}
+                subscriptionLeadEnrollmentIds={subscriptionLeadEnrollmentIds}
+                subscriptionMonthLessons={subscriptionMonthLessons}
+                subscriptionMonthSaving={subscriptionMonthSaving}
+                year={year}
+                month={month}
+                perLessonTotal={perLessonTotal}
+                courseTypeLabel={localizedCourseTypeLabel}
+                formatEUR={formatEUR}
+                normalizeHoursDraftInput={normalizeHoursDraftInput}
+                getAttendanceStepBase={getAttendanceStepBase}
+                getAttendanceInputValue={getAttendanceInputValue}
+                getSubscriptionMonthLessonsValue={getSubscriptionMonthLessonsValue}
+                setAttendanceDraft={setAttendanceDraft}
+                clearAttendanceDraft={clearAttendanceDraft}
+                commitAttendanceDraft={commitAttendanceDraft}
+                onChangeHours={onChangeHours}
+                setSubscriptionMonthLessonsDraft={setSubscriptionMonthLessonsDraft}
+                clearSubscriptionMonthLessonsDraft={clearSubscriptionMonthLessonsDraft}
+                commitSubscriptionMonthLessonsDraft={commitSubscriptionMonthLessonsDraft}
+                onAdjustSubscriptionLessons={adjustSubscriptionLessons}
+                onRefresh={() => void loadAttendance()}
+                onOpenInvoices={() => setTab("invoice")}
+                onCourseFilterChange={setCourseFilter}
+                onQueryChange={setAttQ}
+                onFilterChange={setAttFilter}
+                onOpenStudent={(studentId) => void openStudentCardById(studentId)}
+                onDeleteEnrollmentFromSheet={(enrollmentId) => void onDeleteEnrollmentFromSheet(enrollmentId)}
+                t={t}
+              />
+            )}
+
+            {tab === "invoice" && (
+              <InvoicesScreen
+                currentMonthLabel={currentMonthLabel}
+                status={invStatus}
+                query={invQ}
+                loading={loadingInv}
+                items={filteredInvItems}
+                months={uiMonths}
+                invoiceStatusLabel={localizedInvoiceStatusLabel}
+                formatEUR={formatEUR}
+                renderInvoiceActionsMenu={(invoice) => renderInvoiceActionsMenu(invoice)}
+                onStatusChange={setInvStatus}
+                onQueryChange={setInvQ}
+                onRefresh={() => void loadInvoices()}
+                onOpenStudent={(studentId) => void openStudentCardById(studentId)}
+                onOpenInvoice={(invoiceId) => void onOpenInvoice(invoiceId)}
+                onIssueOne={(invoiceId) => void onIssueOne(invoiceId)}
+                onDownloadPdf={(invoiceId) => void onDownloadPdf(invoiceId)}
+                onOpenPaymentModal={(invoiceId) => void openPaymentModalForInvoice(invoiceId)}
+                t={t}
+              />
+            )}
+
+            {tab === "debtors" && (
+              <DebtorsScreen
+                loading={debtorsLoading}
+                debtors={debtors}
+                actionQueue={debtorActionQueue}
+                formatEUR={formatEUR}
+                onRefresh={() => void loadDebtors()}
+                onOpenStudent={(studentId) => void openStudentCardById(studentId)}
+                onOpenStudentWorkspace={(studentId) => void openStudentInWorkspaceById(studentId)}
+                onOpenPaymentForStudent={openDebtorPaymentModalByStudentId}
+                onOpenPaymentForDebtor={openDebtorPaymentModal}
+                onOpenDebtDetails={openDebtDetails}
+                onCopyDebtForStudentRu={(studentId) => void copyDebtMessageForStudentId(studentId, "ru")}
+                onCopyDebtForStudentLv={(studentId) => void copyDebtMessageForStudentId(studentId, "lv")}
+                onCopyDebtForDebtorRu={(debtor) => void copyDebtMessageForDebtor(debtor, "ru")}
+                onCopyDebtForDebtorLv={(debtor) => void copyDebtMessageForDebtor(debtor, "lv")}
+                t={t}
+              />
+            )}
+
+            {tab === "settings" && (
+              <SettingsScreen
+                uiLocale={uiLocale}
+                canManageSettings={canManageSettings}
+                canCreateBackups={canCreateBackups}
+                creatingBackup={creatingBackup}
+                transportCapabilities={transportCapabilities}
+                appDirs={appDirs}
+                canManageUsers={canManageUsers}
+                usersLoading={usersLoading}
+                users={users}
+                creatingUser={creatingUser}
+                newUserUsername={newUserUsername}
+                newUserPassword={newUserPassword}
+                newUserRole={newUserRole}
+                userDrafts={userDrafts}
+                userPasswordDrafts={userPasswordDrafts}
+                currentSessionUser={currentSessionUser}
+                onLocaleChange={handleLocaleChange}
+                onCreateBackup={createManualBackup}
+                onOpenAppFolder={openAppFolder}
+                onSetTab={setTab}
+                onNewUserUsernameChange={setNewUserUsername}
+                onNewUserPasswordChange={setNewUserPassword}
+                onNewUserRoleChange={setNewUserRole}
+                onCreateUser={handleCreateUser}
+                onRefreshUsers={loadUsers}
+                onUserDraftsChange={setUserDrafts}
+                onUserPasswordDraftsChange={setUserPasswordDrafts}
+                onSaveUser={handleSaveUser}
+                onResetUserPassword={handleResetUserPassword}
+                onDeleteUser={handleDeleteUser}
+                t={t}
+              />
+            )}
+          </AppShell>
+
+          {paymentModalOpen && (
+            <PaymentModal
+              studentId={paymentStudentId}
+              studentName={paymentStudentName}
+              invoiceId={paymentInvoiceId ?? null}
+              amount={paymentAmount}
+              method={paymentMethod}
+              note={paymentNote}
+              onAmountChange={setPaymentAmount}
+              onMethodChange={setPaymentMethod}
+              onNoteChange={setPaymentNote}
+              onCancel={closePaymentModal}
+              onSubmit={() => void handleCreatePayment()}
+              t={t}
+            />
+          )}
+
+          {invoiceDetailsOpen && selectedInv && (
+            <InvoiceDetailsModal
+              invoice={selectedInv}
+              summary={invSummary}
+              months={uiMonths}
+              pdfReady={selectedInvPdfReady}
+              transportCapabilities={transportCapabilities}
+              invoiceStatusLabel={localizedInvoiceStatusLabel}
+              formatEUR={formatEUR}
+              formatHoursValue={formatHoursValue}
+              onOpenStudent={(studentId) => void openStudentCardById(studentId)}
+              onIssue={(invoiceId) => void onIssueOne(invoiceId)}
+              onDownloadPdf={(invoiceId) => void onDownloadPdf(invoiceId)}
+              onAddPayment={() => openPaymentModal(selectedInv, invSummary)}
+              onReopenToDraft={(invoiceId) => void onReopenToDraft(invoiceId)}
+              onRevealInvoiceFile={(invoiceId) => void onRevealInvoiceFile(invoiceId)}
+              onGeneratePdf={onGeneratePdf}
+              onClose={() => setInvoiceDetailsOpen(false)}
+              t={t}
+            />
+          )}
+
+          {debtDetailsOpen && selectedDebtor && (
+            <DebtDetailsModal
+              debtor={selectedDebtor}
+              details={debtDetails}
+              loading={debtDetailsLoading}
+              months={uiMonths}
+              invoiceStatusLabel={localizedInvoiceStatusLabel}
+              formatEUR={formatEUR}
+              onOpenStudent={(studentId) => void openStudentCardById(studentId)}
+              onRecordPayment={openPaymentFromDebtDetails}
+              onCopyRu={() => void copyDebtMessage("ru")}
+              onCopyLv={() => void copyDebtMessage("lv")}
+              onClose={() => setDebtDetailsOpen(false)}
+              t={t}
+            />
+          )}
+
+          {studentCardOpen && selectedStudentCard && (
+            <StudentCardModal
               student={selectedStudentCard}
               loading={studentCardLoading}
               enrollments={studentCardEnrollments}
@@ -4205,15 +2587,14 @@ export default function App() {
               monthInvoices={studentCardMonthInvoices}
               nextAction={studentNextAction}
               activity={studentActivity}
-              t={t}
+              deletingPaymentId={studentCardDeletingPaymentId}
+              canDeletePayment={canDeletePayments}
               payerRoleLabel={localizedPayerRoleLabel}
               billingModeLabel={localizedBillingModeLabel}
               paymentMethodLabel={localizedPaymentMethodLabel}
               invoiceStatusLabel={localizedInvoiceStatusLabel}
               formatEUR={formatEUR}
               months={uiMonths}
-              deletingPaymentId={studentCardDeletingPaymentId}
-              canDeletePayment={canDeletePayments}
               onEditStudent={() => {
                 setStudentCardOpen(false);
                 openEditStudent(selectedStudentCard);
@@ -4230,46 +2611,41 @@ export default function App() {
                 setStudentCardOpen(false);
                 setTab("invoice");
               }}
-              footer={
-                <div className="modalActions">
-                  <button onClick={() => setStudentCardOpen(false)}>{t("button.close")}</button>
-                </div>
-              }
+              onClose={() => setStudentCardOpen(false)}
+              t={t}
             />
-          </div>
-        </div>
-      )}
+          )}
 
-      {openInvoiceMenu && invoiceMenuPosition && openInvoiceMenuItems.length > 0 && (
-        <div
-          ref={invoiceMenuRef}
-          className={`invoiceActionsMenuPanel ${invoiceMenuPosition.openUpward ? "invoiceActionsMenuPanelUpward" : ""}`}
-          role="menu"
-          onMouseDown={(event) => {
-            event.stopPropagation();
-          }}
-          style={{
-            position: "fixed",
-            top: invoiceMenuPosition.top,
-            left: invoiceMenuPosition.left,
-          }}
-        >
-          {openInvoiceMenuItems.map((item) => (
-            <button
-              key={item.label}
-              type="button"
-              className="invoiceActionsMenuItem"
-              role="menuitem"
-              onClick={() => {
-                closeInvoiceMenu();
-                item.onClick();
+          {openInvoiceMenu && invoiceMenuPosition && openInvoiceMenuItems.length > 0 && (
+            <div
+              ref={invoiceMenuRef}
+              className={`invoiceActionsMenuPanel ${invoiceMenuPosition.openUpward ? "invoiceActionsMenuPanelUpward" : ""}`}
+              role="menu"
+              onMouseDown={(event) => {
+                event.stopPropagation();
+              }}
+              style={{
+                position: "fixed",
+                top: invoiceMenuPosition.top,
+                left: invoiceMenuPosition.left,
               }}
             >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
+              {openInvoiceMenuItems.map((item) => (
+                <button
+                  key={item.label}
+                  type="button"
+                  className="invoiceActionsMenuItem"
+                  role="menuitem"
+                  onClick={() => {
+                    closeInvoiceMenu();
+                    item.onClick();
+                  }}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          )}
         </>
       )}
     </div>
