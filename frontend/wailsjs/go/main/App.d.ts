@@ -9,6 +9,8 @@ export function AppDirs():Promise<Record<string, string>>;
 
 export function AppReady():Promise<boolean>;
 
+export function AuditLogList(arg1:string,arg2:string,arg3:string,arg4:string,arg5:string,arg6:string,arg7:number,arg8:number):Promise<any>;
+
 export function AttendanceAddOne(arg1:number,arg2:number,arg3:any):Promise<number>;
 
 export function AttendanceListPerLesson(arg1:number,arg2:number,arg3:any):Promise<Array<attendance.Row>>;

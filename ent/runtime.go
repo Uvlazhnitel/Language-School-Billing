@@ -4,6 +4,7 @@ package ent
 
 import (
 	"langschool/ent/attendancemonth"
+	"langschool/ent/auditlog"
 	"langschool/ent/course"
 	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
@@ -28,6 +29,24 @@ func init() {
 	attendancemonthDescHours := attendancemonthFields[4].Descriptor()
 	// attendancemonth.DefaultHours holds the default value on creation for the hours field.
 	attendancemonth.DefaultHours = attendancemonthDescHours.Default.(float64)
+	auditlogFields := schema.AuditLog{}.Fields()
+	_ = auditlogFields
+	// auditlogDescActorLabel is the schema descriptor for actor_label field.
+	auditlogDescActorLabel := auditlogFields[1].Descriptor()
+	// auditlog.DefaultActorLabel holds the default value on creation for the actor_label field.
+	auditlog.DefaultActorLabel = auditlogDescActorLabel.Default.(string)
+	// auditlogDescBeforeJSON is the schema descriptor for before_json field.
+	auditlogDescBeforeJSON := auditlogFields[6].Descriptor()
+	// auditlog.DefaultBeforeJSON holds the default value on creation for the before_json field.
+	auditlog.DefaultBeforeJSON = auditlogDescBeforeJSON.Default.(string)
+	// auditlogDescAfterJSON is the schema descriptor for after_json field.
+	auditlogDescAfterJSON := auditlogFields[7].Descriptor()
+	// auditlog.DefaultAfterJSON holds the default value on creation for the after_json field.
+	auditlog.DefaultAfterJSON = auditlogDescAfterJSON.Default.(string)
+	// auditlogDescCreatedAt is the schema descriptor for created_at field.
+	auditlogDescCreatedAt := auditlogFields[10].Descriptor()
+	// auditlog.DefaultCreatedAt holds the default value on creation for the created_at field.
+	auditlog.DefaultCreatedAt = auditlogDescCreatedAt.Default.(func() time.Time)
 	courseFields := schema.Course{}.Fields()
 	_ = courseFields
 	// courseDescTeacherName is the schema descriptor for teacher_name field.

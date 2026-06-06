@@ -24,6 +24,7 @@ import (
 	"langschool/ent/teacher"
 	sharedapp "langschool/internal/app"
 	"langschool/internal/app/attendance"
+	auditsvc "langschool/internal/app/audit"
 	invsvc "langschool/internal/app/invoice"
 	paysvc "langschool/internal/app/payment"
 	"langschool/internal/app/utils"
@@ -62,17 +63,17 @@ type CourseDTO struct {
 }
 
 type EnrollmentDTO struct {
-	ID          int     `json:"id"`
-	StudentID   int     `json:"studentId"`
-	StudentName string  `json:"studentName"`
-	CourseID    int     `json:"courseId"`
-	CourseName  string  `json:"courseName"`
-	TeacherID   *int    `json:"teacherId,omitempty"`
-	TeacherName string  `json:"teacherName"`
-	BillingMode string  `json:"billingMode"`
-	DiscountPct float64 `json:"discountPct"`
+	ID                      int     `json:"id"`
+	StudentID               int     `json:"studentId"`
+	StudentName             string  `json:"studentName"`
+	CourseID                int     `json:"courseId"`
+	CourseName              string  `json:"courseName"`
+	TeacherID               *int    `json:"teacherId,omitempty"`
+	TeacherName             string  `json:"teacherName"`
+	BillingMode             string  `json:"billingMode"`
+	DiscountPct             float64 `json:"discountPct"`
 	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"`
-	Note        string  `json:"note"`
+	Note                    string  `json:"note"`
 }
 
 type CourseMonthSubscriptionDTO struct {
@@ -283,11 +284,44 @@ func (s *Service) EnrollmentDelete(ctx context.Context, enrollmentID int) error 
 }
 
 func (s *Service) InvoiceGenerateDrafts(ctx context.Context, year, month int) (invsvc.GenerateResult, error) {
-	return s.rt.Invoice.GenerateDrafts(ctx, year, month)
+	before, _ := s.auditSnapshotForPeriod(ctx, year, month)
+	result, err := s.rt.Invoice.GenerateDrafts(ctx, year, month)
+	if err != nil {
+		return result, err
+	}
+	after, _ := s.auditSnapshotForPeriod(ctx, year, month)
+	s.recordAudit(ctx, auditsvc.RecordEvent{
+		EntityType: "invoice_batch",
+		Action:     "invoice.generate_drafts",
+		Summary: fmt.Sprintf(
+			"Generated drafts for %04d-%02d: created %d, updated %d, skipped with invoices %d, skipped empty %d",
+			year, month, result.Created, result.Updated, result.SkippedHasInvoice, result.SkippedNoLines,
+		),
+		Before: before,
+		After:  after,
+	})
+	return result, nil
 }
 
 func (s *Service) InvoiceRebuildStudentDraft(ctx context.Context, studentID, year, month int) (invsvc.GenerateResult, error) {
-	return s.rt.Invoice.RebuildStudentDraft(ctx, studentID, year, month)
+	before, _ := s.auditSnapshotForStudentMonth(ctx, studentID, year, month)
+	result, err := s.rt.Invoice.RebuildStudentDraft(ctx, studentID, year, month)
+	if err != nil {
+		return result, err
+	}
+	after, _ := s.auditSnapshotForStudentMonth(ctx, studentID, year, month)
+	s.recordAudit(ctx, auditsvc.RecordEvent{
+		EntityType: "invoice_batch",
+		Action:     "invoice.rebuild_student_draft",
+		Summary: fmt.Sprintf(
+			"Rebuilt draft invoices for student %d in %04d-%02d: created %d, updated %d, skipped with invoices %d, skipped empty %d",
+			studentID, year, month, result.Created, result.Updated, result.SkippedHasInvoice, result.SkippedNoLines,
+		),
+		Before:    before,
+		After:     after,
+		StudentID: intPtr(studentID),
+	})
+	return result, nil
 }
 
 func (s *Service) InvoiceGet(ctx context.Context, id int) (*InvoiceDTO, error) {
@@ -295,11 +329,52 @@ func (s *Service) InvoiceGet(ctx context.Context, id int) (*InvoiceDTO, error) {
 }
 
 func (s *Service) InvoiceDeleteDraft(ctx context.Context, id int) error {
-	return s.rt.Invoice.DeleteDraft(ctx, id)
+	before, meta, err := s.auditInvoiceSnapshot(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := s.rt.Invoice.DeleteDraft(ctx, id); err != nil {
+		return err
+	}
+	s.recordAudit(ctx, auditsvc.RecordEvent{
+		EntityType: "invoice",
+		EntityID:   intPtr(id),
+		Action:     "invoice.delete_draft",
+		Summary:    fmt.Sprintf("Deleted draft invoice for %s, %04d-%02d", meta.StudentName, meta.Year, meta.Month),
+		Before:     before,
+		After: map[string]any{
+			"deleted":   true,
+			"invoiceId": id,
+		},
+		StudentID: meta.StudentID,
+		InvoiceID: intPtr(id),
+	})
+	return nil
 }
 
 func (s *Service) InvoiceReopenDraft(ctx context.Context, id int) error {
-	return s.rt.Invoice.ReopenDraft(ctx, id, s.rt.Dirs.Invoices)
+	before, meta, err := s.auditInvoiceSnapshot(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := s.rt.Invoice.ReopenDraft(ctx, id, s.rt.Dirs.Invoices); err != nil {
+		return err
+	}
+	after, _, err := s.auditInvoiceSnapshot(ctx, id)
+	if err != nil {
+		return err
+	}
+	s.recordAudit(ctx, auditsvc.RecordEvent{
+		EntityType: "invoice",
+		EntityID:   intPtr(id),
+		Action:     "invoice.reopen_draft",
+		Summary:    fmt.Sprintf("Returned invoice %s to draft", invoiceLabel(meta.Number, id)),
+		Before:     before,
+		After:      after,
+		StudentID:  meta.StudentID,
+		InvoiceID:  intPtr(id),
+	})
+	return nil
 }
 
 func (s *Service) InvoiceList(ctx context.Context, year, month int, status string) ([]invsvc.ListItem, error) {
@@ -307,6 +382,10 @@ func (s *Service) InvoiceList(ctx context.Context, year, month int, status strin
 }
 
 func (s *Service) InvoiceIssue(ctx context.Context, id int) (IssueResult, error) {
+	before, meta, err := s.auditStudentFinanceSnapshotByInvoice(ctx, id)
+	if err != nil {
+		return IssueResult{}, err
+	}
 	num, err := s.rt.Invoice.IssueOne(ctx, id)
 	if err != nil {
 		return IssueResult{}, err
@@ -318,10 +397,24 @@ func (s *Service) InvoiceIssue(ctx context.Context, id int) (IssueResult, error)
 	if err := s.rt.Payment.ApplyCreditToOldestInvoices(ctx, dto.StudentID); err != nil {
 		return IssueResult{}, err
 	}
+	after, _, err := s.auditStudentFinanceSnapshot(ctx, dto.StudentID)
+	if err == nil {
+		s.recordAudit(ctx, auditsvc.RecordEvent{
+			EntityType: "invoice",
+			EntityID:   intPtr(id),
+			Action:     "invoice.issue",
+			Summary:    fmt.Sprintf("Issued invoice %s for %s, total %.2f", num, meta.StudentName, dto.Total),
+			Before:     before,
+			After:      after,
+			StudentID:  intPtr(dto.StudentID),
+			InvoiceID:  intPtr(id),
+		})
+	}
 	return IssueResult{Number: num}, nil
 }
 
 func (s *Service) InvoiceIssueAll(ctx context.Context, year, month int) (IssueAllResult, error) {
+	before, _ := s.auditSnapshotForPeriod(ctx, year, month)
 	fonts, err := appruntime.ResolveFontsDir(s.rt.Config, s.rt.Dirs)
 	if err != nil {
 		return IssueAllResult{}, err
@@ -344,6 +437,14 @@ func (s *Service) InvoiceIssueAll(ctx context.Context, year, month int) (IssueAl
 			return IssueAllResult{}, err
 		}
 	}
+	after, _ := s.auditSnapshotForPeriod(ctx, year, month)
+	s.recordAudit(ctx, auditsvc.RecordEvent{
+		EntityType: "invoice_batch",
+		Action:     "invoice.issue_all",
+		Summary:    fmt.Sprintf("Issued %d invoices for %04d-%02d", cnt, year, month),
+		Before:     before,
+		After:      after,
+	})
 	return IssueAllResult{Count: cnt, PdfPaths: paths}, nil
 }
 
@@ -414,11 +515,62 @@ func (s *Service) SettingsGetLocale(ctx context.Context) (string, error) {
 }
 
 func (s *Service) PaymentCreate(ctx context.Context, studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
-	return s.rt.Payment.Create(ctx, studentID, invoiceID, amount, method, paidAt, note)
+	before, _, err := s.auditStudentFinanceSnapshot(ctx, studentID)
+	if err != nil {
+		return nil, err
+	}
+	item, err := s.rt.Payment.Create(ctx, studentID, invoiceID, amount, method, paidAt, note)
+	if err != nil {
+		return nil, err
+	}
+	after, studentMeta, err := s.auditStudentFinanceSnapshot(ctx, studentID)
+	if err == nil {
+		action := "payment.create"
+		if invoiceID == nil {
+			action = "payment.allocate_or_credit"
+		}
+		summary := fmt.Sprintf("Recorded payment of %.2f for %s", item.Amount, studentMeta.StudentName)
+		if item.InvoiceID != nil {
+			summary = fmt.Sprintf("%s on invoice %d", summary, *item.InvoiceID)
+		} else {
+			summary = fmt.Sprintf("%s as student credit", summary)
+		}
+		s.recordAudit(ctx, auditsvc.RecordEvent{
+			EntityType: "payment",
+			EntityID:   intPtr(item.ID),
+			Action:     action,
+			Summary:    summary,
+			Before:     before,
+			After:      after,
+			StudentID:  intPtr(studentID),
+			InvoiceID:  item.InvoiceID,
+		})
+	}
+	return item, nil
 }
 
 func (s *Service) PaymentDelete(ctx context.Context, paymentID int) error {
-	return s.rt.Payment.Delete(ctx, paymentID)
+	before, meta, err := s.auditPaymentDeleteSnapshot(ctx, paymentID)
+	if err != nil {
+		return err
+	}
+	if err := s.rt.Payment.Delete(ctx, paymentID); err != nil {
+		return err
+	}
+	after, _, err := s.auditStudentFinanceSnapshot(ctx, meta.StudentID)
+	if err == nil {
+		s.recordAudit(ctx, auditsvc.RecordEvent{
+			EntityType: "payment",
+			EntityID:   intPtr(paymentID),
+			Action:     "payment.delete",
+			Summary:    fmt.Sprintf("Deleted payment %d for %s, amount %.2f", paymentID, meta.StudentName, meta.Amount),
+			Before:     before,
+			After:      after,
+			StudentID:  intPtr(meta.StudentID),
+			InvoiceID:  meta.InvoiceID,
+		})
+	}
+	return nil
 }
 
 func (s *Service) PaymentListForStudent(ctx context.Context, studentID int) ([]PaymentDTO, error) {
@@ -940,13 +1092,13 @@ func toCourseDTO(c *ent.Course) CourseDTO {
 
 func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
 	dto := EnrollmentDTO{
-		ID:          e.ID,
-		StudentID:   e.StudentID,
-		CourseID:    e.CourseID,
-		BillingMode: string(e.BillingMode),
-		DiscountPct: e.DiscountPct,
+		ID:                      e.ID,
+		StudentID:               e.StudentID,
+		CourseID:                e.CourseID,
+		BillingMode:             string(e.BillingMode),
+		DiscountPct:             e.DiscountPct,
 		SubscriptionDiscountPct: e.SubscriptionDiscountPct,
-		Note:        e.Note,
+		Note:                    e.Note,
 	}
 	if e.Edges.Student != nil {
 		dto.StudentName = e.Edges.Student.FullName
@@ -1059,6 +1211,7 @@ func capabilitiesForRole(role string, isDesktop bool) map[string]bool {
 		"desktopPaths":   isDesktop,
 		"manageUsers":    isAdmin,
 		"manageSettings": isAdmin,
+		"viewAuditLog":   isAdmin,
 		"deletePayments": isAdmin,
 		"deleteStudents": isAdmin,
 		"deleteCourses":  isAdmin,

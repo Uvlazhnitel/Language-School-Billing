@@ -10,6 +10,7 @@ import (
 	"langschool/ent/settings"
 	sharedapp "langschool/internal/app"
 	"langschool/internal/app/attendance"
+	"langschool/internal/app/audit"
 	invsvc "langschool/internal/app/invoice"
 	paysvc "langschool/internal/app/payment"
 	"langschool/internal/auth"
@@ -30,6 +31,7 @@ type Runtime struct {
 	AppDBPath string
 
 	Attendance *attendance.Service
+	Audit      *audit.Service
 	Invoice    *invsvc.Service
 	Payment    *paysvc.Service
 	Auth       *auth.Service
@@ -80,6 +82,7 @@ func Start(ctx context.Context, cfg Config) (*Runtime, error) {
 		DB:         db,
 		AppDBPath:  dbPath,
 		Attendance: attendance.New(db.Ent),
+		Audit:      audit.New(db.Ent),
 		Invoice:    invsvc.New(db.Ent),
 		Payment:    paysvc.New(db.Ent),
 		Auth:       authService,

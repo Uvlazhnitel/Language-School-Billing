@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// AttendanceMonth is the client for interacting with the AttendanceMonth builders.
 	AttendanceMonth *AttendanceMonthClient
+	// AuditLog is the client for interacting with the AuditLog builders.
+	AuditLog *AuditLogClient
 	// Course is the client for interacting with the Course builders.
 	Course *CourseClient
 	// CourseMonthStat is the client for interacting with the CourseMonthStat builders.
@@ -168,6 +170,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.AttendanceMonth = NewAttendanceMonthClient(tx.config)
+	tx.AuditLog = NewAuditLogClient(tx.config)
 	tx.Course = NewCourseClient(tx.config)
 	tx.CourseMonthStat = NewCourseMonthStatClient(tx.config)
 	tx.Enrollment = NewEnrollmentClient(tx.config)

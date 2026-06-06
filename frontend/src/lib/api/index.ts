@@ -1,5 +1,7 @@
 export type {
   AppTransport,
+  AuditLogItem,
+  AuditLogListResult,
   AppDirs,
   BackupResult,
   BalanceDTO,

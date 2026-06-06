@@ -271,6 +271,8 @@ type IssueResult = backend.IssueResult
 
 // IssueAllResult contains the result of issuing all draft invoices for a period.
 type IssueAllResult = backend.IssueAllResult
+type AuditLogListItem = backend.AuditLogListItem
+type AuditLogListResult = backend.AuditLogListResult
 
 // InvoiceList returns invoices for the specified year and month, optionally
 // filtered by status. Status can be "draft", "issued", "paid", "canceled", or "all".
@@ -590,6 +592,22 @@ func (a *App) PaymentQuickCash(studentID int, amount float64, note string) (*Pay
 		return a.svc.PaymentQuickCash(a.ctx, studentID, amount, note)
 	}
 	return a.pay.QuickCash(a.ctx, studentID, amount, note)
+}
+
+func (a *App) AuditLogList(q, actorLabel, entityType, action, dateFrom, dateTo string, page, pageSize int) (*AuditLogListResult, error) {
+	if a.svc == nil {
+		return &AuditLogListResult{Items: []AuditLogListItem{}, Total: 0, Page: 1, PageSize: 50}, nil
+	}
+	return a.svc.AuditLogList(a.ctx, backend.AuditLogListFilter{
+		Query:      q,
+		ActorLabel: actorLabel,
+		EntityType: entityType,
+		Action:     action,
+		DateFrom:   dateFrom,
+		DateTo:     dateTo,
+		Page:       page,
+		PageSize:   pageSize,
+	})
 }
 
 func (a *App) allowedFileRoots() []string {
