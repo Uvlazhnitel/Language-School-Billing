@@ -56,9 +56,31 @@ func (_c *PaymentCreate) SetNillablePaidAt(v *time.Time) *PaymentCreate {
 	return _c
 }
 
-// SetAmount sets the "amount" field.
-func (_c *PaymentCreate) SetAmount(v float64) *PaymentCreate {
-	_c.mutation.SetAmount(v)
+// SetLegacyAmount sets the "legacy_amount" field.
+func (_c *PaymentCreate) SetLegacyAmount(v float64) *PaymentCreate {
+	_c.mutation.SetLegacyAmount(v)
+	return _c
+}
+
+// SetNillableLegacyAmount sets the "legacy_amount" field if the given value is not nil.
+func (_c *PaymentCreate) SetNillableLegacyAmount(v *float64) *PaymentCreate {
+	if v != nil {
+		_c.SetLegacyAmount(*v)
+	}
+	return _c
+}
+
+// SetAmountCents sets the "amount_cents" field.
+func (_c *PaymentCreate) SetAmountCents(v int64) *PaymentCreate {
+	_c.mutation.SetAmountCents(v)
+	return _c
+}
+
+// SetNillableAmountCents sets the "amount_cents" field if the given value is not nil.
+func (_c *PaymentCreate) SetNillableAmountCents(v *int64) *PaymentCreate {
+	if v != nil {
+		_c.SetAmountCents(*v)
+	}
 	return _c
 }
 
@@ -145,6 +167,14 @@ func (_c *PaymentCreate) defaults() {
 		v := payment.DefaultPaidAt()
 		_c.mutation.SetPaidAt(v)
 	}
+	if _, ok := _c.mutation.LegacyAmount(); !ok {
+		v := payment.DefaultLegacyAmount
+		_c.mutation.SetLegacyAmount(v)
+	}
+	if _, ok := _c.mutation.AmountCents(); !ok {
+		v := payment.DefaultAmountCents
+		_c.mutation.SetAmountCents(v)
+	}
 	if _, ok := _c.mutation.Note(); !ok {
 		v := payment.DefaultNote
 		_c.mutation.SetNote(v)
@@ -163,8 +193,11 @@ func (_c *PaymentCreate) check() error {
 	if _, ok := _c.mutation.PaidAt(); !ok {
 		return &ValidationError{Name: "paid_at", err: errors.New(`ent: missing required field "Payment.paid_at"`)}
 	}
-	if _, ok := _c.mutation.Amount(); !ok {
-		return &ValidationError{Name: "amount", err: errors.New(`ent: missing required field "Payment.amount"`)}
+	if _, ok := _c.mutation.LegacyAmount(); !ok {
+		return &ValidationError{Name: "legacy_amount", err: errors.New(`ent: missing required field "Payment.legacy_amount"`)}
+	}
+	if _, ok := _c.mutation.AmountCents(); !ok {
+		return &ValidationError{Name: "amount_cents", err: errors.New(`ent: missing required field "Payment.amount_cents"`)}
 	}
 	if _, ok := _c.mutation.Method(); !ok {
 		return &ValidationError{Name: "method", err: errors.New(`ent: missing required field "Payment.method"`)}
@@ -213,9 +246,13 @@ func (_c *PaymentCreate) createSpec() (*Payment, *sqlgraph.CreateSpec) {
 		_spec.SetField(payment.FieldPaidAt, field.TypeTime, value)
 		_node.PaidAt = value
 	}
-	if value, ok := _c.mutation.Amount(); ok {
-		_spec.SetField(payment.FieldAmount, field.TypeFloat64, value)
-		_node.Amount = value
+	if value, ok := _c.mutation.LegacyAmount(); ok {
+		_spec.SetField(payment.FieldLegacyAmount, field.TypeFloat64, value)
+		_node.LegacyAmount = value
+	}
+	if value, ok := _c.mutation.AmountCents(); ok {
+		_spec.SetField(payment.FieldAmountCents, field.TypeInt64, value)
+		_node.AmountCents = value
 	}
 	if value, ok := _c.mutation.Method(); ok {
 		_spec.SetField(payment.FieldMethod, field.TypeEnum, value)

@@ -23,8 +23,10 @@ type Invoice struct {
 	PeriodYear int `json:"period_year,omitempty"`
 	// PeriodMonth holds the value of the "period_month" field.
 	PeriodMonth int `json:"period_month,omitempty"`
-	// TotalAmount holds the value of the "total_amount" field.
-	TotalAmount float64 `json:"total_amount,omitempty"`
+	// LegacyTotalAmount holds the value of the "legacy_total_amount" field.
+	LegacyTotalAmount float64 `json:"legacy_total_amount,omitempty"`
+	// TotalAmountCents holds the value of the "total_amount_cents" field.
+	TotalAmountCents int64 `json:"total_amount_cents,omitempty"`
 	// Status holds the value of the "status" field.
 	Status invoice.Status `json:"status,omitempty"`
 	// Number holds the value of the "number" field.
@@ -82,9 +84,9 @@ func (*Invoice) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case invoice.FieldTotalAmount:
+		case invoice.FieldLegacyTotalAmount:
 			values[i] = new(sql.NullFloat64)
-		case invoice.FieldID, invoice.FieldStudentID, invoice.FieldPeriodYear, invoice.FieldPeriodMonth:
+		case invoice.FieldID, invoice.FieldStudentID, invoice.FieldPeriodYear, invoice.FieldPeriodMonth, invoice.FieldTotalAmountCents:
 			values[i] = new(sql.NullInt64)
 		case invoice.FieldStatus, invoice.FieldNumber:
 			values[i] = new(sql.NullString)
@@ -127,11 +129,17 @@ func (_m *Invoice) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.PeriodMonth = int(value.Int64)
 			}
-		case invoice.FieldTotalAmount:
+		case invoice.FieldLegacyTotalAmount:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field total_amount", values[i])
+				return fmt.Errorf("unexpected type %T for field legacy_total_amount", values[i])
 			} else if value.Valid {
-				_m.TotalAmount = value.Float64
+				_m.LegacyTotalAmount = value.Float64
+			}
+		case invoice.FieldTotalAmountCents:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field total_amount_cents", values[i])
+			} else if value.Valid {
+				_m.TotalAmountCents = value.Int64
 			}
 		case invoice.FieldStatus:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -206,8 +214,11 @@ func (_m *Invoice) String() string {
 	builder.WriteString("period_month=")
 	builder.WriteString(fmt.Sprintf("%v", _m.PeriodMonth))
 	builder.WriteString(", ")
-	builder.WriteString("total_amount=")
-	builder.WriteString(fmt.Sprintf("%v", _m.TotalAmount))
+	builder.WriteString("legacy_total_amount=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LegacyTotalAmount))
+	builder.WriteString(", ")
+	builder.WriteString("total_amount_cents=")
+	builder.WriteString(fmt.Sprintf("%v", _m.TotalAmountCents))
 	builder.WriteString(", ")
 	builder.WriteString("status=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Status))

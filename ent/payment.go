@@ -25,8 +25,10 @@ type Payment struct {
 	InvoiceID *int `json:"invoice_id,omitempty"`
 	// PaidAt holds the value of the "paid_at" field.
 	PaidAt time.Time `json:"paid_at,omitempty"`
-	// Amount holds the value of the "amount" field.
-	Amount float64 `json:"amount,omitempty"`
+	// LegacyAmount holds the value of the "legacy_amount" field.
+	LegacyAmount float64 `json:"legacy_amount,omitempty"`
+	// AmountCents holds the value of the "amount_cents" field.
+	AmountCents int64 `json:"amount_cents,omitempty"`
 	// Method holds the value of the "method" field.
 	Method payment.Method `json:"method,omitempty"`
 	// Note holds the value of the "note" field.
@@ -77,9 +79,9 @@ func (*Payment) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case payment.FieldAmount:
+		case payment.FieldLegacyAmount:
 			values[i] = new(sql.NullFloat64)
-		case payment.FieldID, payment.FieldStudentID, payment.FieldInvoiceID:
+		case payment.FieldID, payment.FieldStudentID, payment.FieldInvoiceID, payment.FieldAmountCents:
 			values[i] = new(sql.NullInt64)
 		case payment.FieldMethod, payment.FieldNote:
 			values[i] = new(sql.NullString)
@@ -125,11 +127,17 @@ func (_m *Payment) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.PaidAt = value.Time
 			}
-		case payment.FieldAmount:
+		case payment.FieldLegacyAmount:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field amount", values[i])
+				return fmt.Errorf("unexpected type %T for field legacy_amount", values[i])
 			} else if value.Valid {
-				_m.Amount = value.Float64
+				_m.LegacyAmount = value.Float64
+			}
+		case payment.FieldAmountCents:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field amount_cents", values[i])
+			} else if value.Valid {
+				_m.AmountCents = value.Int64
 			}
 		case payment.FieldMethod:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -206,8 +214,11 @@ func (_m *Payment) String() string {
 	builder.WriteString("paid_at=")
 	builder.WriteString(_m.PaidAt.Format(time.ANSIC))
 	builder.WriteString(", ")
-	builder.WriteString("amount=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Amount))
+	builder.WriteString("legacy_amount=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LegacyAmount))
+	builder.WriteString(", ")
+	builder.WriteString("amount_cents=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AmountCents))
 	builder.WriteString(", ")
 	builder.WriteString("method=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Method))

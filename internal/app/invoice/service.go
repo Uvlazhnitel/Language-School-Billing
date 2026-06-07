@@ -20,7 +20,7 @@ import (
 	"langschool/ent/student"
 	"langschool/internal/app"
 	"langschool/internal/app/recipient"
-	"langschool/internal/app/utils"
+	"langschool/internal/money"
 	pdfgen "langschool/internal/pdf"
 )
 
@@ -35,7 +35,7 @@ const (
 	BillingSubscription = app.BillingModeSubscription // Subscription billing mode
 
 	materialsLineDescription = "Mācību materiāli"
-	materialsLineAmount      = 5.0
+	materialsLineAmountCents = int64(500)
 )
 
 // Service provides invoice generation, management, and PDF creation functionality.
@@ -115,7 +115,7 @@ func buildCourseLineDescription(courseName string) string {
 }
 
 // buildPerLessonLine creates an invoice line for per-lesson billing
-func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPrice float64) (*ent.InvoiceLineCreate, float64) {
+func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPriceCents int64) (*ent.InvoiceLineCreate, int64) {
 	// Query attendance for the month
 	am, err := s.db.AttendanceMonth.Query().Where(
 		attendancemonth.StudentIDEQ(en.StudentID),
@@ -135,7 +135,7 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 		qty = am.Hours
 	}
 
-	amount := utils.Round2(qty * lessonPrice)
+	amountCents := money.MulFloatToCents(qty, lessonPriceCents)
 	courseName := ""
 	if c, err := s.db.Course.Get(ctx, en.CourseID); err == nil {
 		courseName = c.Name
@@ -146,15 +146,15 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 		SetEnrollmentID(en.ID).
 		SetDescription(desc).
 		SetQty(qty).
-		SetUnitPrice(lessonPrice).
-		SetAmount(amount)
+		SetUnitPriceCents(lessonPriceCents).
+		SetAmountCents(amountCents)
 
-	return line, amount
+	return line, amountCents
 }
 
 // buildSubscriptionLine creates an invoice line for subscription billing
-func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPrice float64, lessonsHeld float64) (*ent.InvoiceLineCreate, float64) {
-	baseAmount := utils.Round2(lessonPrice * lessonsHeld)
+func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPriceCents int64, lessonsHeld float64) (*ent.InvoiceLineCreate, int64) {
+	baseAmountCents := money.MulFloatToCents(lessonsHeld, lessonPriceCents)
 	totalDiscountPct := en.SubscriptionDiscountPct + en.DiscountPct
 	if totalDiscountPct > 100 {
 		totalDiscountPct = 100
@@ -162,7 +162,7 @@ func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment,
 	if totalDiscountPct < 0 {
 		totalDiscountPct = 0
 	}
-	amount := utils.Round2(baseAmount * (1 - totalDiscountPct/100.0))
+	amountCents := int64(float64(baseAmountCents) * (1 - totalDiscountPct/100.0))
 	courseName := ""
 	if c, err := s.db.Course.Get(ctx, en.CourseID); err == nil {
 		courseName = c.Name
@@ -173,26 +173,24 @@ func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment,
 		SetEnrollmentID(en.ID).
 		SetDescription(desc).
 		SetQty(lessonsHeld).
-		SetUnitPrice(lessonPrice).
-		SetAmount(amount)
+		SetUnitPriceCents(lessonPriceCents).
+		SetAmountCents(amountCents)
 
-	return line, amount
+	return line, amountCents
 }
 
 // buildMaterialsLine creates a fixed invoice line for monthly learning materials.
 // InvoiceLine requires an enrollment reference, so this line is attached to one of
 // the student's enrollments for the billing period.
-func (s *Service) buildMaterialsLine(enrollmentID int) (*ent.InvoiceLineCreate, float64) {
-	amount := utils.Round2(materialsLineAmount)
-
+func (s *Service) buildMaterialsLine(enrollmentID int) (*ent.InvoiceLineCreate, int64) {
 	line := s.db.InvoiceLine.Create().
 		SetEnrollmentID(enrollmentID).
 		SetDescription(materialsLineDescription).
 		SetQty(1).
-		SetUnitPrice(amount).
-		SetAmount(amount)
+		SetUnitPriceCents(materialsLineAmountCents).
+		SetAmountCents(materialsLineAmountCents)
 
-	return line, amount
+	return line, materialsLineAmountCents
 }
 
 // getSettings retrieves the singleton settings record
@@ -208,21 +206,21 @@ func (s *Service) getSettings(ctx context.Context) (*ent.Settings, error) {
 // resolvePrices determines the effective prices for an enrollment in a given period.
 // It uses the course prices and applies the enrollment discount, if any.
 // Returns both lesson price and subscription price.
-func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m int) (lessonPrice, subscriptionPrice float64) {
-	lessonPrice, subscriptionPrice = 0, 0
+func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m int) (lessonPriceCents, subscriptionPriceCents int64) {
+	lessonPriceCents, subscriptionPriceCents = 0, 0
 
 	// Base prices
 	c, err := s.db.Enrollment.Query().Where(enrollment.IDEQ(en.ID)).QueryCourse().Only(ctx)
 	if err == nil && c != nil {
-		lp, sp := c.LessonPrice, c.SubscriptionPrice
+		lp, sp := c.LessonPriceCents, c.SubscriptionPriceCents
 		if en.DiscountPct != 0 {
-			lp = utils.Round2(lp * (1 - en.DiscountPct/100.0))
-			sp = utils.Round2(sp * (1 - en.DiscountPct/100.0))
+			lp = int64(float64(lp) * (1 - en.DiscountPct/100.0))
+			sp = int64(float64(sp) * (1 - en.DiscountPct/100.0))
 		}
-		lessonPrice, subscriptionPrice = lp, sp
+		lessonPriceCents, subscriptionPriceCents = lp, sp
 	}
 
-	return utils.Round2(lessonPrice), utils.Round2(subscriptionPrice)
+	return lessonPriceCents, subscriptionPriceCents
 }
 
 func (s *Service) subscriptionLessonsHeld(ctx context.Context, courseID, y, m int) float64 {
@@ -236,7 +234,7 @@ func (s *Service) subscriptionLessonsHeld(ctx context.Context, courseID, y, m in
 	if err != nil {
 		return 0
 	}
-	return utils.Round2(item.SubscriptionLessonsHeld)
+	return item.SubscriptionLessonsHeld
 }
 
 func (s *Service) hasAnyLessonsInMonth(ctx context.Context, ens []*ent.Enrollment, y, m int) bool {
@@ -279,7 +277,7 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 		lineCapacity = 1
 	}
 	lines := make([]*ent.InvoiceLineCreate, 0, lineCapacity)
-	total := 0.0
+	var totalCents int64
 
 	for _, en := range ens {
 		lp, _ := s.resolvePrices(ctx, en, y, m)
@@ -288,7 +286,7 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 		case BillingPerLesson:
 			line, amount := s.buildPerLessonLine(ctx, en, y, m, lp)
 			lines = append(lines, line)
-			total += amount
+			totalCents += amount
 
 		case BillingSubscription:
 			lessonsHeld := s.subscriptionLessonsHeld(ctx, en.CourseID, y, m)
@@ -297,7 +295,7 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 			}
 			line, amount := s.buildSubscriptionLine(ctx, en, y, m, lp, lessonsHeld)
 			lines = append(lines, line)
-			total += amount
+			totalCents += amount
 
 		default:
 			fmt.Printf("Unexpected billing mode: %s\n", en.BillingMode)
@@ -307,9 +305,8 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 	if len(ens) > 0 && s.hasAnyLessonsInMonth(ctx, ens, y, m) {
 		materialsLine, materialsAmount := s.buildMaterialsLine(ens[0].ID)
 		lines = append(lines, materialsLine)
-		total += materialsAmount
+		totalCents += materialsAmount
 	}
-	total = utils.Round2(total)
 
 	existing, err := s.db.Invoice.Query().Where(
 		invoice.StudentIDEQ(studentID),
@@ -320,7 +317,7 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 		return res, err
 	}
 
-	if total <= 0 {
+	if totalCents <= 0 {
 		if err == nil && existing.Status == StatusDraft {
 			_, _ = s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx)
 			_ = s.db.Invoice.DeleteOneID(existing.ID).Exec(ctx)
@@ -336,7 +333,7 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 			SetPeriodYear(y).
 			SetPeriodMonth(m).
 			SetStatus(StatusDraft).
-			SetTotalAmount(total).
+			SetTotalAmountCents(totalCents).
 			Save(ctx)
 		if createErr != nil {
 			return res, createErr
@@ -355,7 +352,7 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 				fmt.Printf("InvoiceLine save failed (rebuild, invoice %d): %v\n", existing.ID, saveErr)
 			}
 		}
-		_, _ = existing.Update().SetTotalAmount(total).Save(ctx)
+		_, _ = existing.Update().SetTotalAmountCents(totalCents).Save(ctx)
 		res.Updated++
 
 	default:
@@ -433,7 +430,7 @@ func (s *Service) ListDrafts(ctx context.Context, y, m int) ([]ListItem, error) 
 		items = append(items, ListItem{
 			ID: iv.ID, StudentID: iv.StudentID, StudentName: getStudentName(iv),
 			Year: iv.PeriodYear, Month: iv.PeriodMonth,
-			Total: utils.Round2(iv.TotalAmount), Status: string(iv.Status), LinesCount: count, Number: iv.Number,
+			Total: money.CentsToEuros(iv.TotalAmountCents), Status: string(iv.Status), LinesCount: count, Number: iv.Number,
 		})
 	}
 	return items, nil
@@ -466,7 +463,7 @@ func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 		IsMinor:             recipientInfo.IsMinor,
 		Year:                iv.PeriodYear,
 		Month:               iv.PeriodMonth,
-		Total:               utils.Round2(iv.TotalAmount),
+		Total:               money.CentsToEuros(iv.TotalAmountCents),
 		Status:              string(iv.Status),
 		Number:              iv.Number,
 	}
@@ -475,8 +472,8 @@ func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 			EnrollmentID: l.EnrollmentID,
 			Description:  l.Description,
 			Qty:          l.Qty,
-			UnitPrice:    utils.Round2(l.UnitPrice),
-			Amount:       utils.Round2(l.Amount),
+			UnitPrice:    money.CentsToEuros(l.UnitPriceCents),
+			Amount:       money.CentsToEuros(l.AmountCents),
 		})
 	}
 	return dto, nil
@@ -792,7 +789,7 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 			StudentName: getStudentName(iv),
 			Year:        iv.PeriodYear,
 			Month:       iv.PeriodMonth,
-			Total:       utils.Round2(iv.TotalAmount),
+			Total:       money.CentsToEuros(iv.TotalAmountCents),
 			Status:      string(iv.Status),
 			LinesCount:  cnt,
 			Number:      iv.Number,

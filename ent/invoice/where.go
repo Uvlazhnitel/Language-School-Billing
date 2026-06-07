@@ -69,9 +69,14 @@ func PeriodMonth(v int) predicate.Invoice {
 	return predicate.Invoice(sql.FieldEQ(FieldPeriodMonth, v))
 }
 
-// TotalAmount applies equality check predicate on the "total_amount" field. It's identical to TotalAmountEQ.
-func TotalAmount(v float64) predicate.Invoice {
-	return predicate.Invoice(sql.FieldEQ(FieldTotalAmount, v))
+// LegacyTotalAmount applies equality check predicate on the "legacy_total_amount" field. It's identical to LegacyTotalAmountEQ.
+func LegacyTotalAmount(v float64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldLegacyTotalAmount, v))
+}
+
+// TotalAmountCents applies equality check predicate on the "total_amount_cents" field. It's identical to TotalAmountCentsEQ.
+func TotalAmountCents(v int64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldTotalAmountCents, v))
 }
 
 // Number applies equality check predicate on the "number" field. It's identical to NumberEQ.
@@ -179,44 +184,84 @@ func PeriodMonthLTE(v int) predicate.Invoice {
 	return predicate.Invoice(sql.FieldLTE(FieldPeriodMonth, v))
 }
 
-// TotalAmountEQ applies the EQ predicate on the "total_amount" field.
-func TotalAmountEQ(v float64) predicate.Invoice {
-	return predicate.Invoice(sql.FieldEQ(FieldTotalAmount, v))
+// LegacyTotalAmountEQ applies the EQ predicate on the "legacy_total_amount" field.
+func LegacyTotalAmountEQ(v float64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldLegacyTotalAmount, v))
 }
 
-// TotalAmountNEQ applies the NEQ predicate on the "total_amount" field.
-func TotalAmountNEQ(v float64) predicate.Invoice {
-	return predicate.Invoice(sql.FieldNEQ(FieldTotalAmount, v))
+// LegacyTotalAmountNEQ applies the NEQ predicate on the "legacy_total_amount" field.
+func LegacyTotalAmountNEQ(v float64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNEQ(FieldLegacyTotalAmount, v))
 }
 
-// TotalAmountIn applies the In predicate on the "total_amount" field.
-func TotalAmountIn(vs ...float64) predicate.Invoice {
-	return predicate.Invoice(sql.FieldIn(FieldTotalAmount, vs...))
+// LegacyTotalAmountIn applies the In predicate on the "legacy_total_amount" field.
+func LegacyTotalAmountIn(vs ...float64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldIn(FieldLegacyTotalAmount, vs...))
 }
 
-// TotalAmountNotIn applies the NotIn predicate on the "total_amount" field.
-func TotalAmountNotIn(vs ...float64) predicate.Invoice {
-	return predicate.Invoice(sql.FieldNotIn(FieldTotalAmount, vs...))
+// LegacyTotalAmountNotIn applies the NotIn predicate on the "legacy_total_amount" field.
+func LegacyTotalAmountNotIn(vs ...float64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotIn(FieldLegacyTotalAmount, vs...))
 }
 
-// TotalAmountGT applies the GT predicate on the "total_amount" field.
-func TotalAmountGT(v float64) predicate.Invoice {
-	return predicate.Invoice(sql.FieldGT(FieldTotalAmount, v))
+// LegacyTotalAmountGT applies the GT predicate on the "legacy_total_amount" field.
+func LegacyTotalAmountGT(v float64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGT(FieldLegacyTotalAmount, v))
 }
 
-// TotalAmountGTE applies the GTE predicate on the "total_amount" field.
-func TotalAmountGTE(v float64) predicate.Invoice {
-	return predicate.Invoice(sql.FieldGTE(FieldTotalAmount, v))
+// LegacyTotalAmountGTE applies the GTE predicate on the "legacy_total_amount" field.
+func LegacyTotalAmountGTE(v float64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGTE(FieldLegacyTotalAmount, v))
 }
 
-// TotalAmountLT applies the LT predicate on the "total_amount" field.
-func TotalAmountLT(v float64) predicate.Invoice {
-	return predicate.Invoice(sql.FieldLT(FieldTotalAmount, v))
+// LegacyTotalAmountLT applies the LT predicate on the "legacy_total_amount" field.
+func LegacyTotalAmountLT(v float64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLT(FieldLegacyTotalAmount, v))
 }
 
-// TotalAmountLTE applies the LTE predicate on the "total_amount" field.
-func TotalAmountLTE(v float64) predicate.Invoice {
-	return predicate.Invoice(sql.FieldLTE(FieldTotalAmount, v))
+// LegacyTotalAmountLTE applies the LTE predicate on the "legacy_total_amount" field.
+func LegacyTotalAmountLTE(v float64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLTE(FieldLegacyTotalAmount, v))
+}
+
+// TotalAmountCentsEQ applies the EQ predicate on the "total_amount_cents" field.
+func TotalAmountCentsEQ(v int64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldTotalAmountCents, v))
+}
+
+// TotalAmountCentsNEQ applies the NEQ predicate on the "total_amount_cents" field.
+func TotalAmountCentsNEQ(v int64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNEQ(FieldTotalAmountCents, v))
+}
+
+// TotalAmountCentsIn applies the In predicate on the "total_amount_cents" field.
+func TotalAmountCentsIn(vs ...int64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldIn(FieldTotalAmountCents, vs...))
+}
+
+// TotalAmountCentsNotIn applies the NotIn predicate on the "total_amount_cents" field.
+func TotalAmountCentsNotIn(vs ...int64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotIn(FieldTotalAmountCents, vs...))
+}
+
+// TotalAmountCentsGT applies the GT predicate on the "total_amount_cents" field.
+func TotalAmountCentsGT(v int64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGT(FieldTotalAmountCents, v))
+}
+
+// TotalAmountCentsGTE applies the GTE predicate on the "total_amount_cents" field.
+func TotalAmountCentsGTE(v int64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGTE(FieldTotalAmountCents, v))
+}
+
+// TotalAmountCentsLT applies the LT predicate on the "total_amount_cents" field.
+func TotalAmountCentsLT(v int64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLT(FieldTotalAmountCents, v))
+}
+
+// TotalAmountCentsLTE applies the LTE predicate on the "total_amount_cents" field.
+func TotalAmountCentsLTE(v int64) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLTE(FieldTotalAmountCents, v))
 }
 
 // StatusEQ applies the EQ predicate on the "status" field.

@@ -123,6 +123,20 @@ func (_c *SettingsCreate) SetNillableLocale(v *string) *SettingsCreate {
 	return _c
 }
 
+// SetMoneyCentsMigrated sets the "money_cents_migrated" field.
+func (_c *SettingsCreate) SetMoneyCentsMigrated(v bool) *SettingsCreate {
+	_c.mutation.SetMoneyCentsMigrated(v)
+	return _c
+}
+
+// SetNillableMoneyCentsMigrated sets the "money_cents_migrated" field if the given value is not nil.
+func (_c *SettingsCreate) SetNillableMoneyCentsMigrated(v *bool) *SettingsCreate {
+	if v != nil {
+		_c.SetMoneyCentsMigrated(*v)
+	}
+	return _c
+}
+
 // Mutation returns the SettingsMutation object of the builder.
 func (_c *SettingsCreate) Mutation() *SettingsMutation {
 	return _c.mutation
@@ -186,6 +200,10 @@ func (_c *SettingsCreate) defaults() {
 		v := settings.DefaultLocale
 		_c.mutation.SetLocale(v)
 	}
+	if _, ok := _c.mutation.MoneyCentsMigrated(); !ok {
+		v := settings.DefaultMoneyCentsMigrated
+		_c.mutation.SetMoneyCentsMigrated(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -213,6 +231,9 @@ func (_c *SettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.Locale(); !ok {
 		return &ValidationError{Name: "locale", err: errors.New(`ent: missing required field "Settings.locale"`)}
+	}
+	if _, ok := _c.mutation.MoneyCentsMigrated(); !ok {
+		return &ValidationError{Name: "money_cents_migrated", err: errors.New(`ent: missing required field "Settings.money_cents_migrated"`)}
 	}
 	return nil
 }
@@ -271,6 +292,10 @@ func (_c *SettingsCreate) createSpec() (*Settings, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Locale(); ok {
 		_spec.SetField(settings.FieldLocale, field.TypeString, value)
 		_node.Locale = value
+	}
+	if value, ok := _c.mutation.MoneyCentsMigrated(); ok {
+		_spec.SetField(settings.FieldMoneyCentsMigrated, field.TypeBool, value)
+		_node.MoneyCentsMigrated = value
 	}
 	return _node, _spec
 }
