@@ -25,6 +25,9 @@ type StudentDetailPanelProps = {
   deletingPaymentId: number | null;
   canDeletePayment: boolean;
   onEditStudent: () => void;
+  onToggleActive?: () => void;
+  onDeleteStudent?: () => void;
+  canDeleteStudent?: boolean;
   onAddPayment: () => void;
   onCopyDebtRu: () => void;
   onCopyDebtLv: () => void;
@@ -54,6 +57,9 @@ export function StudentDetailPanel({
   deletingPaymentId,
   canDeletePayment,
   onEditStudent,
+  onToggleActive,
+  onDeleteStudent,
+  canDeleteStudent = false,
   onAddPayment,
   onCopyDebtRu,
   onCopyDebtLv,
@@ -136,9 +142,19 @@ export function StudentDetailPanel({
           <button className="workspaceActionButton" onClick={onEditStudent}>
             {t("button.edit")}
           </button>
+          {onToggleActive && (
+            <button className="workspaceActionButton" onClick={onToggleActive}>
+              {student.isActive ? t("button.deactivate") : t("button.activate")}
+            </button>
+          )}
           <button className="workspaceActionButton" onClick={onManageEnrollments}>
             {t("button.manageEnrollments")}
           </button>
+          {!student.isActive && canDeleteStudent && onDeleteStudent && (
+            <button className="workspaceActionButton" onClick={onDeleteStudent}>
+              {t("button.delete")}
+            </button>
+          )}
         </div>
       </div>
 

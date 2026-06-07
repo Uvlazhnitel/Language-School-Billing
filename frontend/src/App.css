@@ -324,6 +324,28 @@ a {
   transform: translateY(1px);
 }
 
+.workspaceNav {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.workspaceNav .tabs {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.secondaryActions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
 .monthpickers {
   display: flex;
   gap: 10px;
@@ -626,8 +648,7 @@ a {
 }
 
 .studentListItemTop,
-.studentListItemMeta,
-.studentMainToolbar {
+.studentListItemMeta {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -653,12 +674,6 @@ a {
 .statusDot.inactive,
 .metricDanger {
   color: var(--bad);
-}
-
-.studentMainToolbar {
-  margin-bottom: 12px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
 }
 
 .studentDetailPanel {
@@ -1585,6 +1600,14 @@ tfoot td {
   .tabs {
     overflow-x: auto;
     flex-wrap: nowrap;
+  }
+
+  .workspaceNav {
+    flex-direction: column;
+  }
+
+  .secondaryActions {
+    justify-content: flex-start;
   }
 }
 

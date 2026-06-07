@@ -140,18 +140,6 @@ export function StudentWorkspace({
       </div>
 
       <div className="studentMainPanel">
-        {selectedStudent && (
-          <div className="studentMainToolbar">
-            <button onClick={() => onEditStudent(selectedStudent)}>{t("button.edit")}</button>
-            <button onClick={() => onToggleActive(selectedStudent)}>
-              {selectedStudent.isActive ? t("button.deactivate") : t("button.activate")}
-            </button>
-            {!selectedStudent.isActive && canDeleteStudent && (
-              <button onClick={() => onDeleteStudent(selectedStudent.id)}>{t("button.delete")}</button>
-            )}
-          </div>
-        )}
-
         <StudentDetailPanel
           student={selectedStudent}
           loading={detailLoading}
@@ -172,6 +160,9 @@ export function StudentWorkspace({
           deletingPaymentId={deletingPaymentId}
           canDeletePayment={canDeletePayment}
           onEditStudent={() => selectedStudent && onEditStudent(selectedStudent)}
+          onToggleActive={() => selectedStudent && onToggleActive(selectedStudent)}
+          onDeleteStudent={() => selectedStudent && onDeleteStudent(selectedStudent.id)}
+          canDeleteStudent={canDeleteStudent}
           onAddPayment={onAddPayment}
           onCopyDebtRu={onCopyDebtRu}
           onCopyDebtLv={onCopyDebtLv}
