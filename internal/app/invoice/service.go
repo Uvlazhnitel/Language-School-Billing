@@ -205,6 +205,26 @@ func (s *Service) getSettings(ctx context.Context) (*ent.Settings, error) {
 	return settings, nil
 }
 
+func (s *Service) getSettingsOrDefaults(ctx context.Context) (string, int, bool, error) {
+	st, err := s.db.Settings.Query().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).Only(ctx)
+	if err != nil {
+		if ent.IsNotFound(err) {
+			return "LS", 1, false, nil
+		}
+		return "", 0, false, fmt.Errorf("failed to get settings: %w", err)
+	}
+
+	prefix := strings.TrimSpace(st.InvoicePrefix)
+	if prefix == "" {
+		prefix = "LS"
+	}
+	seq := st.NextSeq
+	if seq <= 0 {
+		seq = 1
+	}
+	return prefix, seq, true, nil
+}
+
 // resolvePrices determines the effective prices for an enrollment in a given period.
 // It uses the course prices and applies the enrollment discount, if any.
 // Returns both lesson price and subscription price.
@@ -623,22 +643,14 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 		return "", fmt.Errorf("счёт %d не находится в статусе черновика", id)
 	}
 
-	st, err := s.getSettings(ctx)
+	prefix, seq, hasSettings, err := (&Service{db: tx.Client()}).getSettingsOrDefaults(ctx)
 	if err != nil {
 		return "", err
-	}
-	prefix := "LS"
-	seq := 1
-	if st != nil {
-		if st.InvoicePrefix != "" {
-			prefix = st.InvoicePrefix
-		}
-		seq = st.NextSeq
 	}
 	number := FormatNumber(prefix, iv.PeriodYear, iv.PeriodMonth, seq)
 
 	// Increment the counter
-	if st != nil {
+	if hasSettings {
 		if err := tx.Settings.Update().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).SetNextSeq(seq + 1).Exec(ctx); err != nil {
 			return "", err
 		}
