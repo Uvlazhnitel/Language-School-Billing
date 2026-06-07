@@ -265,6 +265,33 @@ func mergeGenerateResult(dst *GenerateResult, src GenerateResult) {
 }
 
 func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m int) (GenerateResult, error) {
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		if err == ent.ErrTxStarted {
+			return s.rebuildDraftForStudentInStore(ctx, studentID, y, m)
+		}
+		return GenerateResult{}, err
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	res, err := (&Service{db: tx.Client()}).rebuildDraftForStudentInStore(ctx, studentID, y, m)
+	if err != nil {
+		return GenerateResult{}, err
+	}
+	if err := tx.Commit(); err != nil {
+		return GenerateResult{}, err
+	}
+	committed = true
+	return res, nil
+}
+
+func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, y, m int) (GenerateResult, error) {
 	res := GenerateResult{}
 
 	ens, err := s.db.Enrollment.Query().
@@ -322,8 +349,12 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 
 	if total <= 0 {
 		if err == nil && existing.Status == StatusDraft {
-			_, _ = s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx)
-			_ = s.db.Invoice.DeleteOneID(existing.ID).Exec(ctx)
+			if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx); err != nil {
+				return res, err
+			}
+			if err := s.db.Invoice.DeleteOneID(existing.ID).Exec(ctx); err != nil {
+				return res, err
+			}
 		}
 		res.SkippedNoLines++
 		return res, nil
@@ -343,19 +374,23 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 		}
 		for _, lc := range lines {
 			if _, saveErr := lc.SetInvoiceID(inv.ID).Save(ctx); saveErr != nil {
-				fmt.Printf("InvoiceLine save failed (student %d, period %04d-%02d): %v\n", studentID, y, m, saveErr)
+				return res, saveErr
 			}
 		}
 		res.Created++
 
 	case existing.Status == StatusDraft:
-		_, _ = s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx)
+		if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx); err != nil {
+			return res, err
+		}
 		for _, lc := range lines {
 			if _, saveErr := lc.SetInvoiceID(existing.ID).Save(ctx); saveErr != nil {
-				fmt.Printf("InvoiceLine save failed (rebuild, invoice %d): %v\n", existing.ID, saveErr)
+				return res, saveErr
 			}
 		}
-		_, _ = existing.Update().SetTotalAmount(total).Save(ctx)
+		if _, err := existing.Update().SetTotalAmount(total).Save(ctx); err != nil {
+			return res, err
+		}
 		res.Updated++
 
 	default:
@@ -393,13 +428,15 @@ func (s *Service) GenerateDrafts(ctx context.Context, y, m int) (GenerateResult,
 
 	for _, st := range studs {
 		ens, err := s.db.Enrollment.Query().Where(enrollment.StudentIDEQ(st.ID)).All(ctx)
-		if err != nil || len(ens) == 0 {
+		if err != nil {
+			return res, err
+		}
+		if len(ens) == 0 {
 			continue
 		}
 		studentRes, rebuildErr := s.rebuildDraftForStudent(ctx, st.ID, y, m)
 		if rebuildErr != nil {
-			fmt.Printf("Invoice rebuild failed (student %d, period %04d-%02d): %v\n", st.ID, y, m, rebuildErr)
-			continue
+			return res, rebuildErr
 		}
 		mergeGenerateResult(&res, studentRes)
 	}

@@ -2,6 +2,7 @@ package invoice
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -602,6 +603,228 @@ func TestRebuildStudentDraft(t *testing.T) {
 	}
 	if count != 0 {
 		t.Fatalf("invoice count after delete = %d, want 0", count)
+	}
+}
+
+func TestRebuildStudentDraftCreateRollsBackOnInvoiceLineError(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-rebuild-create-rollback?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Create Rollback Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Keramika").
+		SetType(course.TypeGroup).
+		SetLessonPrice(25).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	if _, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx); err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(10).
+		SetHours(2).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	wantErr := errors.New("invoice line create failed")
+	failingCreates := 0
+	client.InvoiceLine.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if lineMutation, ok := m.(*ent.InvoiceLineMutation); ok && lineMutation.Op().Is(ent.OpCreate) {
+				failingCreates++
+				if failingCreates == 2 {
+					return nil, wantErr
+				}
+			}
+			return next.Mutate(ctx, m)
+		})
+	})
+
+	res, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 10)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("RebuildStudentDraft error = %v, want %v", err, wantErr)
+	}
+	if res != (GenerateResult{}) {
+		t.Fatalf("unexpected result on error: %+v", res)
+	}
+
+	count, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(10)).
+		Count(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Count: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("invoice count after rollback = %d, want 0", count)
+	}
+
+	lineCount, err := client.InvoiceLine.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Count: %v", err)
+	}
+	if lineCount != 0 {
+		t.Fatalf("invoice line count after rollback = %d, want 0", lineCount)
+	}
+}
+
+func TestRebuildStudentDraftUpdateRollsBackOnInvoiceLineError(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-rebuild-update-rollback?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Update Rollback Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Ilustrācija").
+		SetType(course.TypeGroup).
+		SetLessonPrice(20).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(11).
+		SetHours(2).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	initial, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 11)
+	if err != nil {
+		t.Fatalf("initial RebuildStudentDraft: %v", err)
+	}
+	if initial.Created != 1 {
+		t.Fatalf("initial Created = %d, want 1", initial.Created)
+	}
+
+	iv, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(11)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Query: %v", err)
+	}
+	if iv.TotalAmount != 45 {
+		t.Fatalf("initial invoice total = %v, want 45", iv.TotalAmount)
+	}
+
+	beforeLines, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(iv.ID)).
+		Order(ent.Asc(invoiceline.FieldID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query before update: %v", err)
+	}
+	if len(beforeLines) != 2 {
+		t.Fatalf("initial invoice line count = %d, want 2", len(beforeLines))
+	}
+
+	if _, err := client.AttendanceMonth.Update().
+		Where(
+			attendancemonth.StudentIDEQ(st.ID),
+			attendancemonth.CourseIDEQ(crs.ID),
+			attendancemonth.YearEQ(2026),
+			attendancemonth.MonthEQ(11),
+		).
+		SetHours(3).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Update: %v", err)
+	}
+
+	wantErr := errors.New("invoice line update failed")
+	failingCreates := 0
+	client.InvoiceLine.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if lineMutation, ok := m.(*ent.InvoiceLineMutation); ok && lineMutation.Op().Is(ent.OpCreate) {
+				failingCreates++
+				if failingCreates == 2 {
+					return nil, wantErr
+				}
+			}
+			return next.Mutate(ctx, m)
+		})
+	})
+
+	res, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 11)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("RebuildStudentDraft error = %v, want %v", err, wantErr)
+	}
+	if res != (GenerateResult{}) {
+		t.Fatalf("unexpected result on error: %+v", res)
+	}
+
+	afterInvoice, err := client.Invoice.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Invoice.Get after rollback: %v", err)
+	}
+	if afterInvoice.TotalAmount != 45 {
+		t.Fatalf("invoice total after rollback = %v, want 45", afterInvoice.TotalAmount)
+	}
+
+	afterLines, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(iv.ID)).
+		Order(ent.Asc(invoiceline.FieldID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query after rollback: %v", err)
+	}
+	if len(afterLines) != len(beforeLines) {
+		t.Fatalf("invoice line count after rollback = %d, want %d", len(afterLines), len(beforeLines))
+	}
+	for i := range beforeLines {
+		if afterLines[i].Description != beforeLines[i].Description || afterLines[i].Amount != beforeLines[i].Amount || afterLines[i].Qty != beforeLines[i].Qty || afterLines[i].EnrollmentID != enr.ID {
+			t.Fatalf("invoice line %d changed after rollback: got %+v want %+v", i, afterLines[i], beforeLines[i])
+		}
 	}
 }
 
