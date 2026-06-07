@@ -41,8 +41,8 @@ func TestGenerateDraftsSubscriptionWithoutLessonsDoesNotAddMaterials(t *testing.
 	crs, err := client.Course.Create().
 		SetName("Gleznošana").
 		SetType(course.TypeGroup).
-		SetLessonPrice(20).
-		SetSubscriptionPrice(60).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(money.EurosToCents(60)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -140,8 +140,8 @@ func TestGenerateDraftsPerLessonDescriptionIsLatvian(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Zīmēšana").
 		SetType(course.TypeGroup).
-		SetLessonPrice(25).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(25)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -229,8 +229,8 @@ func TestGenerateDraftsPerLessonSupportsFractionalHours(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Skicēšana").
 		SetType(course.TypeGroup).
-		SetLessonPrice(20).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -318,8 +318,8 @@ func TestGenerateDraftsPerLessonZeroLessonsDoesNotAddMaterials(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Keramika").
 		SetType(course.TypeGroup).
-		SetLessonPrice(25).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(25)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -374,8 +374,8 @@ func TestGenerateDraftsDeletesExistingZeroDraft(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Keramika").
 		SetType(course.TypeGroup).
-		SetLessonPrice(25).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(25)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -398,7 +398,7 @@ func TestGenerateDraftsDeletesExistingZeroDraft(t *testing.T) {
 		SetPeriodYear(2026).
 		SetPeriodMonth(7).
 		SetStatus(StatusDraft).
-		SetTotalAmount(25).
+		SetTotalAmountCents(money.EurosToCents(25)).
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("Invoice.Create: %v", err)
@@ -409,8 +409,8 @@ func TestGenerateDraftsDeletesExistingZeroDraft(t *testing.T) {
 		SetEnrollmentID(enr.ID).
 		SetDescription("Dalības maksa par Keramika").
 		SetQty(1).
-		SetUnitPrice(25).
-		SetAmount(25).
+		SetUnitPriceCents(money.EurosToCents(25)).
+		SetAmountCents(money.EurosToCents(25)).
 		Save(ctx); err != nil {
 		t.Fatalf("InvoiceLine.Create: %v", err)
 	}
@@ -468,8 +468,8 @@ func TestRebuildStudentDraft(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Grafika").
 		SetType(course.TypeGroup).
-		SetLessonPrice(25).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(25)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -626,8 +626,8 @@ func TestRebuildStudentDraftCreateRollsBackOnInvoiceLineError(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Keramika").
 		SetType(course.TypeGroup).
-		SetLessonPrice(25).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(25)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -713,8 +713,8 @@ func TestRebuildStudentDraftUpdateRollsBackOnInvoiceLineError(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Ilustrācija").
 		SetType(course.TypeGroup).
-		SetLessonPrice(20).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -848,8 +848,8 @@ func TestRebuildStudentDraftSkipsIssuedInvoice(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Tēlniecība").
 		SetType(course.TypeGroup).
-		SetLessonPrice(30).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(30)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -873,7 +873,7 @@ func TestRebuildStudentDraftSkipsIssuedInvoice(t *testing.T) {
 		SetPeriodMonth(9).
 		SetStatus(StatusIssued).
 		SetNumber("LS-202609-001").
-		SetTotalAmount(30).
+		SetTotalAmountCents(money.EurosToCents(30)).
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("Invoice.Create: %v", err)
@@ -884,8 +884,8 @@ func TestRebuildStudentDraftSkipsIssuedInvoice(t *testing.T) {
 		SetEnrollmentID(enr.ID).
 		SetDescription("Dalības maksa par Tēlniecība").
 		SetQty(1).
-		SetUnitPrice(30).
-		SetAmount(30).
+		SetUnitPriceCents(money.EurosToCents(30)).
+		SetAmountCents(money.EurosToCents(30)).
 		Save(ctx); err != nil {
 		t.Fatalf("InvoiceLine.Create: %v", err)
 	}
@@ -934,8 +934,8 @@ func TestReopenDraft(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Test Course").
 		SetType(course.TypeGroup).
-		SetLessonPrice(20).
-		SetSubscriptionPrice(60).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(money.EurosToCents(60)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -959,7 +959,7 @@ func TestReopenDraft(t *testing.T) {
 			SetStudentID(st.ID).
 			SetPeriodYear(2026).
 			SetPeriodMonth(4).
-			SetTotalAmount(70).
+			SetTotalAmountCents(money.EurosToCents(70)).
 			SetStatus(StatusIssued).
 			SetNumber(number).
 			Save(ctx)
@@ -971,8 +971,8 @@ func TestReopenDraft(t *testing.T) {
 			SetEnrollmentID(enr.ID).
 			SetDescription("Subscription").
 			SetQty(1).
-			SetUnitPrice(70).
-			SetAmount(70).
+			SetUnitPriceCents(money.EurosToCents(70)).
+			SetAmountCents(money.EurosToCents(70)).
 			Save(ctx); err != nil {
 			t.Fatalf("InvoiceLine.Create: %v", err)
 		}
@@ -1020,7 +1020,7 @@ func TestReopenDraft(t *testing.T) {
 			SetStudentID(st.ID).
 			SetPeriodYear(2026).
 			SetPeriodMonth(8).
-			SetTotalAmount(50).
+			SetTotalAmountCents(money.EurosToCents(50)).
 			SetStatus(StatusIssued).
 			SetNumber(number).
 			Save(ctx)
@@ -1030,7 +1030,7 @@ func TestReopenDraft(t *testing.T) {
 		if _, err := client.Payment.Create().
 			SetStudentID(st.ID).
 			SetInvoiceID(iv.ID).
-			SetAmount(10).
+			SetAmountCents(money.EurosToCents(10)).
 			SetMethod("cash").
 			SetPaidAt(time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)).
 			SetCreatedAt(time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC)).
@@ -1048,7 +1048,7 @@ func TestReopenDraft(t *testing.T) {
 			SetStudentID(st.ID).
 			SetPeriodYear(2026).
 			SetPeriodMonth(5).
-			SetTotalAmount(30).
+			SetTotalAmountCents(money.EurosToCents(30)).
 			SetStatus(StatusPaid).
 			SetNumber("AL-202605-125").
 			Save(ctx)
@@ -1065,7 +1065,7 @@ func TestReopenDraft(t *testing.T) {
 			SetStudentID(st.ID).
 			SetPeriodYear(2026).
 			SetPeriodMonth(9).
-			SetTotalAmount(35).
+			SetTotalAmountCents(money.EurosToCents(35)).
 			SetStatus(StatusCanceled).
 			SetNumber("AL-202605-126").
 			Save(ctx)
@@ -1082,7 +1082,7 @@ func TestReopenDraft(t *testing.T) {
 			SetStudentID(st.ID).
 			SetPeriodYear(2026).
 			SetPeriodMonth(6).
-			SetTotalAmount(40).
+			SetTotalAmountCents(money.EurosToCents(40)).
 			SetStatus(StatusDraft).
 			Save(ctx)
 		if err != nil {
@@ -1111,7 +1111,7 @@ func TestReopenDraft(t *testing.T) {
 			SetStudentID(st.ID).
 			SetPeriodYear(2026).
 			SetPeriodMonth(7).
-			SetTotalAmount(90).
+			SetTotalAmountCents(money.EurosToCents(90)).
 			SetStatus(StatusIssued).
 			SetNumber("AL-202607-041").
 			Save(ctx)
@@ -1165,7 +1165,7 @@ func TestIssueOneUsesTransactionalSettingsSequence(t *testing.T) {
 		SetStudentID(st.ID).
 		SetPeriodYear(2026).
 		SetPeriodMonth(12).
-		SetTotalAmount(90).
+		SetTotalAmountCents(money.EurosToCents(90)).
 		SetStatus(StatusDraft).
 		Save(ctx)
 	if err != nil {
@@ -1234,7 +1234,7 @@ func TestIssueOneAlreadyIssuedDoesNotIncrementSequenceAgain(t *testing.T) {
 		SetStudentID(st.ID).
 		SetPeriodYear(2026).
 		SetPeriodMonth(12).
-		SetTotalAmount(90).
+		SetTotalAmountCents(money.EurosToCents(90)).
 		SetStatus(StatusDraft).
 		Save(ctx)
 	if err != nil {
@@ -1296,7 +1296,7 @@ func TestIssueOneRollsBackWhenSequenceUpdateFails(t *testing.T) {
 		SetStudentID(st.ID).
 		SetPeriodYear(2026).
 		SetPeriodMonth(10).
-		SetTotalAmount(55).
+		SetTotalAmountCents(money.EurosToCents(55)).
 		SetStatus(StatusDraft).
 		Save(ctx)
 	if err != nil {

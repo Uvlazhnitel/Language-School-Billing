@@ -579,8 +579,8 @@ func createTestCourse(t *testing.T, ctx context.Context, client *ent.Client, nam
 	c, err := client.Course.Create().
 		SetName(name).
 		SetType(entcourse.Type(courseType)).
-		SetLessonPrice(10).
-		SetSubscriptionPrice(25).
+		SetLessonPriceCents(money.EurosToCents(10)).
+		SetSubscriptionPriceCents(money.EurosToCents(25)).
 		SetIsActive(isActive).
 		Save(ctx)
 	if err != nil {
@@ -628,7 +628,7 @@ func createTestInvoiceWithNumber(t *testing.T, ctx context.Context, client *ent.
 		SetStudentID(studentID).
 		SetPeriodYear(year).
 		SetPeriodMonth(month).
-		SetTotalAmount(total).
+		SetTotalAmountCents(money.EurosToCents(total)).
 		SetStatus(entinvoice.Status(status))
 	switch n := number.(type) {
 	case nil:
@@ -652,7 +652,7 @@ func createLinkedPayment(t *testing.T, ctx context.Context, client *ent.Client, 
 		SetStudentID(studentID).
 		SetInvoiceID(invoiceID).
 		SetPaidAt(paidAt).
-		SetAmount(amount).
+		SetAmountCents(money.EurosToCents(amount)).
 		SetMethod(entpayment.Method(app.PaymentMethodCash)).
 		Save(ctx)
 	if err != nil {
@@ -666,7 +666,7 @@ func createUnlinkedPayment(t *testing.T, ctx context.Context, client *ent.Client
 	p, err := client.Payment.Create().
 		SetStudentID(studentID).
 		SetPaidAt(paidAt).
-		SetAmount(amount).
+		SetAmountCents(money.EurosToCents(amount)).
 		SetMethod(entpayment.Method(app.PaymentMethodCash)).
 		Save(ctx)
 	if err != nil {
