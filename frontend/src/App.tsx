@@ -38,9 +38,6 @@ import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
 import {
   BillingModePerLesson,
   BillingModeSubscription,
-  InvoiceStatusCanceled,
-  InvoiceStatusIssued,
-  InvoiceStatusPaid,
 } from "./lib/constants";
 
 import {
@@ -91,8 +88,8 @@ import {
   StudentActivityItem,
   StudentNextAction,
 } from "./lib/studentActivity";
-import { canShowInvoiceFolderAction, canShowSettingsFilesCard } from "./lib/uiCapabilities";
-import { createTranslator, getMonthNames, normalizeLocale, TranslateFn, UiLocale } from "./lib/i18n";
+import { canShowInvoiceFolderAction } from "./lib/uiCapabilities";
+import { createTranslator, getMonthNames, normalizeLocale, UiLocale } from "./lib/i18n";
 import {
   AppTabId,
   billingModeLabel,
@@ -103,16 +100,13 @@ import {
   decimalOrZero,
   formatEUR,
   formatHoursValue,
-  intOrUndef,
   invoiceStatusLabel,
   normalizeHoursDraftInput,
   normalizeMoneyInput,
   normalizeQuarterHours,
-  numOrZero,
   payerRoleLabel,
   payerRoleOptions,
   paymentMethodLabel,
-  subscriptionTotal,
 } from "./lib/appUi";
 import { AttendanceScreen } from "./screens/AttendanceScreen";
 import { AuditScreen } from "./screens/AuditScreen";
@@ -254,7 +248,6 @@ export default function App() {
   // Shared month/year for Attendance + Invoices
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const currentMeta = tabMeta[tab];
   const currentMonthLabel = `${uiMonths[month - 1]} ${year}`;
   const [overview, setOverview] = useState<MonthOverviewDTO | null>(null);
   const [overviewLoading, setOverviewLoading] = useState(false);
