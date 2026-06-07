@@ -2,6 +2,7 @@ package payment
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -356,6 +357,220 @@ func TestDeletePaymentRevertsPaidInvoiceBackToIssued(t *testing.T) {
 	assertFloatEqual(t, summary.Paid, 0)
 	assertFloatEqual(t, summary.Remaining, 40)
 	assertEqual(t, summary.Status, app.InvoiceStatusIssued)
+}
+
+func TestCreateDirectPaymentRollsBackOnInvoiceStatusUpdateFailure(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+	st := createTestStudent(t, ctx, client, "Rollback Direct Payment")
+	inv := createTestInvoice(t, ctx, client, st.ID, 2026, 6, 40, app.InvoiceStatusIssued)
+
+	wantErr := errors.New("invoice status update failed")
+	client.Invoice.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			im, ok := m.(*ent.InvoiceMutation)
+			if ok && im.Op().Is(ent.OpUpdateOne) {
+				if id, exists := im.ID(); exists && id == inv.ID {
+					return nil, wantErr
+				}
+			}
+			return next.Mutate(ctx, m)
+		})
+	})
+
+	invoiceID := inv.ID
+	if _, err := svc.Create(ctx, st.ID, &invoiceID, 40, app.PaymentMethodCash, "2026-06-10", "full payment"); !errors.Is(err, wantErr) {
+		t.Fatalf("Create error = %v, want %v", err, wantErr)
+	}
+
+	payments, err := client.Payment.Query().
+		Where(entpayment.StudentIDEQ(st.ID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("query payments after rollback: %v", err)
+	}
+	if len(payments) != 0 {
+		t.Fatalf("payment count after rollback = %d, want 0", len(payments))
+	}
+
+	gotInvoice, err := client.Invoice.Get(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("reload invoice after rollback: %v", err)
+	}
+	assertEqual(t, string(gotInvoice.Status), app.InvoiceStatusIssued)
+
+	summary, err := svc.InvoiceSummary(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("invoice summary after rollback: %v", err)
+	}
+	assertFloatEqual(t, summary.Paid, 0)
+	assertFloatEqual(t, summary.Remaining, 40)
+	assertEqual(t, summary.Status, app.InvoiceStatusIssued)
+}
+
+func TestCreateGlobalPaymentRollsBackOnSecondAllocationFailure(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+	st := createTestStudent(t, ctx, client, "Rollback Global Payment")
+	oldest := createTestInvoice(t, ctx, client, st.ID, 2026, 1, 50, app.InvoiceStatusIssued)
+	newer := createTestInvoice(t, ctx, client, st.ID, 2026, 2, 30, app.InvoiceStatusIssued)
+
+	wantErr := errors.New("second allocation create failed")
+	linkedCreates := 0
+	client.Payment.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			pm, ok := m.(*ent.PaymentMutation)
+			if ok && pm.Op().Is(ent.OpCreate) {
+				if _, linked := pm.InvoiceID(); linked {
+					linkedCreates++
+					if linkedCreates == 2 {
+						return nil, wantErr
+					}
+				}
+			}
+			return next.Mutate(ctx, m)
+		})
+	})
+
+	if _, err := svc.Create(ctx, st.ID, nil, 60, app.PaymentMethodCash, "2026-02-20", "debtor payment"); !errors.Is(err, wantErr) {
+		t.Fatalf("Create error = %v, want %v", err, wantErr)
+	}
+
+	payments, err := client.Payment.Query().
+		Where(entpayment.StudentIDEQ(st.ID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("query payments after rollback: %v", err)
+	}
+	if len(payments) != 0 {
+		t.Fatalf("payment count after rollback = %d, want 0", len(payments))
+	}
+
+	for _, invoiceID := range []int{oldest.ID, newer.ID} {
+		summary, err := svc.InvoiceSummary(ctx, invoiceID)
+		if err != nil {
+			t.Fatalf("invoice summary %d after rollback: %v", invoiceID, err)
+		}
+		assertFloatEqual(t, summary.Paid, 0)
+		assertEqual(t, summary.Status, app.InvoiceStatusIssued)
+	}
+}
+
+func TestApplyCreditRollsBackOnCreditDeleteFailure(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+	st := createTestStudent(t, ctx, client, "Rollback Credit Apply")
+	credit := createUnlinkedPayment(t, ctx, client, st.ID, 20, time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC))
+	inv := createTestInvoice(t, ctx, client, st.ID, 2026, 4, 20, app.InvoiceStatusIssued)
+
+	wantErr := errors.New("credit delete failed")
+	client.Payment.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			pm, ok := m.(*ent.PaymentMutation)
+			if ok && pm.Op().Is(ent.OpDeleteOne) {
+				if id, exists := pm.ID(); exists && id == credit.ID {
+					return nil, wantErr
+				}
+			}
+			return next.Mutate(ctx, m)
+		})
+	})
+
+	if err := svc.ApplyCreditToOldestInvoices(ctx, st.ID); !errors.Is(err, wantErr) {
+		t.Fatalf("ApplyCreditToOldestInvoices error = %v, want %v", err, wantErr)
+	}
+
+	linkedPayments, err := client.Payment.Query().
+		Where(entpayment.StudentIDEQ(st.ID), entpayment.InvoiceIDEQ(inv.ID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("query linked payments after rollback: %v", err)
+	}
+	if len(linkedPayments) != 0 {
+		t.Fatalf("linked payment count after rollback = %d, want 0", len(linkedPayments))
+	}
+
+	gotCredit, err := client.Payment.Get(ctx, credit.ID)
+	if err != nil {
+		t.Fatalf("reload credit after rollback: %v", err)
+	}
+	if gotCredit.InvoiceID != nil {
+		t.Fatalf("credit invoice after rollback = %v, want nil", gotCredit.InvoiceID)
+	}
+	assertFloatEqual(t, money.CentsToEuros(gotCredit.AmountCents), 20)
+
+	summary, err := svc.InvoiceSummary(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("invoice summary after rollback: %v", err)
+	}
+	assertFloatEqual(t, summary.Paid, 0)
+	assertFloatEqual(t, summary.Remaining, 20)
+	assertEqual(t, summary.Status, app.InvoiceStatusIssued)
+}
+
+func TestDeletePaymentRollsBackOnInvoiceStatusUpdateFailure(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+	st := createTestStudent(t, ctx, client, "Rollback Delete Payment")
+	inv := createTestInvoice(t, ctx, client, st.ID, 2026, 5, 40, app.InvoiceStatusIssued)
+
+	invoiceID := inv.ID
+	created, err := svc.Create(ctx, st.ID, &invoiceID, 40, app.PaymentMethodCash, "2026-05-10", "full payment")
+	if err != nil {
+		t.Fatalf("create payment: %v", err)
+	}
+
+	wantErr := errors.New("invoice status update failed")
+	client.Invoice.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			im, ok := m.(*ent.InvoiceMutation)
+			if ok && im.Op().Is(ent.OpUpdateOne) {
+				if id, exists := im.ID(); exists && id == inv.ID {
+					return nil, wantErr
+				}
+			}
+			return next.Mutate(ctx, m)
+		})
+	})
+
+	if err := svc.Delete(ctx, created.ID); !errors.Is(err, wantErr) {
+		t.Fatalf("Delete error = %v, want %v", err, wantErr)
+	}
+
+	gotPayment, err := client.Payment.Get(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("payment after rollback: %v", err)
+	}
+	if gotPayment.InvoiceID == nil || *gotPayment.InvoiceID != inv.ID {
+		t.Fatalf("payment invoice after rollback = %+v, want %d", gotPayment.InvoiceID, inv.ID)
+	}
+	assertFloatEqual(t, money.CentsToEuros(gotPayment.AmountCents), 40)
+
+	gotInvoice, err := client.Invoice.Get(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("invoice after rollback: %v", err)
+	}
+	assertEqual(t, string(gotInvoice.Status), app.InvoiceStatusPaid)
+
+	summary, err := svc.InvoiceSummary(ctx, inv.ID)
+	if err != nil {
+		t.Fatalf("invoice summary after rollback: %v", err)
+	}
+	assertFloatEqual(t, summary.Paid, 40)
+	assertFloatEqual(t, summary.Remaining, 0)
+	assertEqual(t, summary.Status, app.InvoiceStatusPaid)
 }
 
 func TestInvoiceBalance(t *testing.T) {
