@@ -2,6 +2,7 @@ package invoice
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -17,6 +18,7 @@ import (
 	"langschool/ent/enttest"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
+	"langschool/ent/settings"
 	"langschool/internal/app"
 	"langschool/internal/money"
 )
@@ -606,6 +608,228 @@ func TestRebuildStudentDraft(t *testing.T) {
 	}
 }
 
+func TestRebuildStudentDraftCreateRollsBackOnInvoiceLineError(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-rebuild-create-rollback?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Create Rollback Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Keramika").
+		SetType(course.TypeGroup).
+		SetLessonPrice(25).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	if _, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx); err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(10).
+		SetHours(2).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	wantErr := errors.New("invoice line create failed")
+	failingCreates := 0
+	client.InvoiceLine.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if lineMutation, ok := m.(*ent.InvoiceLineMutation); ok && lineMutation.Op().Is(ent.OpCreate) {
+				failingCreates++
+				if failingCreates == 2 {
+					return nil, wantErr
+				}
+			}
+			return next.Mutate(ctx, m)
+		})
+	})
+
+	res, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 10)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("RebuildStudentDraft error = %v, want %v", err, wantErr)
+	}
+	if res != (GenerateResult{}) {
+		t.Fatalf("unexpected result on error: %+v", res)
+	}
+
+	count, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(10)).
+		Count(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Count: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("invoice count after rollback = %d, want 0", count)
+	}
+
+	lineCount, err := client.InvoiceLine.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Count: %v", err)
+	}
+	if lineCount != 0 {
+		t.Fatalf("invoice line count after rollback = %d, want 0", lineCount)
+	}
+}
+
+func TestRebuildStudentDraftUpdateRollsBackOnInvoiceLineError(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-rebuild-update-rollback?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Update Rollback Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Ilustrācija").
+		SetType(course.TypeGroup).
+		SetLessonPrice(20).
+		SetSubscriptionPrice(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(11).
+		SetHours(2).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	initial, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 11)
+	if err != nil {
+		t.Fatalf("initial RebuildStudentDraft: %v", err)
+	}
+	if initial.Created != 1 {
+		t.Fatalf("initial Created = %d, want 1", initial.Created)
+	}
+
+	iv, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(11)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Query: %v", err)
+	}
+	if iv.TotalAmountCents != money.EurosToCents(45) {
+		t.Fatalf("initial invoice total = %v, want 45", money.CentsToEuros(iv.TotalAmountCents))
+	}
+
+	beforeLines, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(iv.ID)).
+		Order(ent.Asc(invoiceline.FieldID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query before update: %v", err)
+	}
+	if len(beforeLines) != 2 {
+		t.Fatalf("initial invoice line count = %d, want 2", len(beforeLines))
+	}
+
+	if _, err := client.AttendanceMonth.Update().
+		Where(
+			attendancemonth.StudentIDEQ(st.ID),
+			attendancemonth.CourseIDEQ(crs.ID),
+			attendancemonth.YearEQ(2026),
+			attendancemonth.MonthEQ(11),
+		).
+		SetHours(3).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Update: %v", err)
+	}
+
+	wantErr := errors.New("invoice line update failed")
+	failingCreates := 0
+	client.InvoiceLine.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if lineMutation, ok := m.(*ent.InvoiceLineMutation); ok && lineMutation.Op().Is(ent.OpCreate) {
+				failingCreates++
+				if failingCreates == 2 {
+					return nil, wantErr
+				}
+			}
+			return next.Mutate(ctx, m)
+		})
+	})
+
+	res, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 11)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("RebuildStudentDraft error = %v, want %v", err, wantErr)
+	}
+	if res != (GenerateResult{}) {
+		t.Fatalf("unexpected result on error: %+v", res)
+	}
+
+	afterInvoice, err := client.Invoice.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Invoice.Get after rollback: %v", err)
+	}
+	if afterInvoice.TotalAmountCents != money.EurosToCents(45) {
+		t.Fatalf("invoice total after rollback = %v, want 45", money.CentsToEuros(afterInvoice.TotalAmountCents))
+	}
+
+	afterLines, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(iv.ID)).
+		Order(ent.Asc(invoiceline.FieldID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query after rollback: %v", err)
+	}
+	if len(afterLines) != len(beforeLines) {
+		t.Fatalf("invoice line count after rollback = %d, want %d", len(afterLines), len(beforeLines))
+	}
+	for i := range beforeLines {
+		if afterLines[i].Description != beforeLines[i].Description || afterLines[i].AmountCents != beforeLines[i].AmountCents || afterLines[i].Qty != beforeLines[i].Qty || afterLines[i].EnrollmentID != enr.ID {
+			t.Fatalf("invoice line %d changed after rollback: got %+v want %+v", i, afterLines[i], beforeLines[i])
+		}
+	}
+}
+
 func TestRebuildStudentDraftSkipsIssuedInvoice(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:invoice-rebuild-student-issued?mode=memory&_fk=1")
@@ -907,4 +1131,214 @@ func TestReopenDraft(t *testing.T) {
 			t.Fatalf("NextSeq = %d, want 42", settings.NextSeq)
 		}
 	})
+}
+
+func TestIssueOneUsesTransactionalSettingsSequence(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-issue-sequence?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Issue Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	if _, err := client.Settings.Create().
+		SetSingletonID(app.SettingsSingletonID).
+		SetOrgName("ArtLab").
+		SetAddress("Latgales iela 260, Rīga, Latvija").
+		SetInvoicePrefix("AL").
+		SetNextSeq(42).
+		SetInvoiceDayOfMonth(1).
+		SetCurrency("EUR").
+		SetLocale("en-IE").
+		Save(ctx); err != nil {
+		t.Fatalf("Settings.Create: %v", err)
+	}
+
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(12).
+		SetTotalAmount(90).
+		SetStatus(StatusDraft).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	number, err := svc.IssueOne(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("IssueOne: %v", err)
+	}
+	if number != "AL-202612-042" {
+		t.Fatalf("number = %q, want %q", number, "AL-202612-042")
+	}
+
+	issued, err := client.Invoice.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Invoice.Get: %v", err)
+	}
+	if issued.Status != StatusIssued {
+		t.Fatalf("Status = %q, want %q", issued.Status, StatusIssued)
+	}
+	if issued.Number == nil || *issued.Number != number {
+		t.Fatalf("Number = %v, want %q", issued.Number, number)
+	}
+
+	settingsItem, err := client.Settings.Query().
+		Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Settings.Query: %v", err)
+	}
+	if settingsItem.NextSeq != 43 {
+		t.Fatalf("NextSeq = %d, want 43", settingsItem.NextSeq)
+	}
+}
+
+func TestIssueOneAlreadyIssuedDoesNotIncrementSequenceAgain(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-issue-idempotent?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Issued Again Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	if _, err := client.Settings.Create().
+		SetSingletonID(app.SettingsSingletonID).
+		SetOrgName("ArtLab").
+		SetAddress("Latgales iela 260, Rīga, Latvija").
+		SetInvoicePrefix("AL").
+		SetNextSeq(50).
+		SetInvoiceDayOfMonth(1).
+		SetCurrency("EUR").
+		SetLocale("en-IE").
+		Save(ctx); err != nil {
+		t.Fatalf("Settings.Create: %v", err)
+	}
+
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(12).
+		SetTotalAmount(90).
+		SetStatus(StatusDraft).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	firstNumber, err := svc.IssueOne(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("first IssueOne: %v", err)
+	}
+	secondNumber, err := svc.IssueOne(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("second IssueOne: %v", err)
+	}
+	if secondNumber != firstNumber {
+		t.Fatalf("secondNumber = %q, want %q", secondNumber, firstNumber)
+	}
+
+	settingsItem, err := client.Settings.Query().
+		Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Settings.Query: %v", err)
+	}
+	if settingsItem.NextSeq != 51 {
+		t.Fatalf("NextSeq = %d, want 51", settingsItem.NextSeq)
+	}
+}
+
+func TestIssueOneRollsBackWhenSequenceUpdateFails(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-issue-rollback?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Rollback Issue Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	if _, err := client.Settings.Create().
+		SetSingletonID(app.SettingsSingletonID).
+		SetOrgName("ArtLab").
+		SetAddress("Latgales iela 260, Rīga, Latvija").
+		SetInvoicePrefix("AL").
+		SetNextSeq(7).
+		SetInvoiceDayOfMonth(1).
+		SetCurrency("EUR").
+		SetLocale("en-IE").
+		Save(ctx); err != nil {
+		t.Fatalf("Settings.Create: %v", err)
+	}
+
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(10).
+		SetTotalAmount(55).
+		SetStatus(StatusDraft).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	wantErr := errors.New("settings update failed")
+	client.Settings.Use(func(next ent.Mutator) ent.Mutator {
+		return ent.MutateFunc(func(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+			if settingsMutation, ok := m.(*ent.SettingsMutation); ok && settingsMutation.Op().Is(ent.OpUpdate|ent.OpUpdateOne) {
+				return nil, wantErr
+			}
+			return next.Mutate(ctx, m)
+		})
+	})
+
+	number, err := svc.IssueOne(ctx, iv.ID)
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("IssueOne error = %v, want %v", err, wantErr)
+	}
+	if number != "" {
+		t.Fatalf("number = %q, want empty", number)
+	}
+
+	gotInvoice, err := client.Invoice.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Invoice.Get: %v", err)
+	}
+	if gotInvoice.Status != StatusDraft {
+		t.Fatalf("Status after rollback = %q, want %q", gotInvoice.Status, StatusDraft)
+	}
+	if gotInvoice.Number != nil {
+		t.Fatalf("Number after rollback = %v, want nil", gotInvoice.Number)
+	}
+
+	settingsItem, err := client.Settings.Query().
+		Where(settings.SingletonIDEQ(app.SettingsSingletonID)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Settings.Query: %v", err)
+	}
+	if settingsItem.NextSeq != 7 {
+		t.Fatalf("NextSeq after rollback = %d, want 7", settingsItem.NextSeq)
+	}
 }
