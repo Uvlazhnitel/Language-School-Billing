@@ -26,10 +26,14 @@ type InvoiceLine struct {
 	Description string `json:"description,omitempty"`
 	// Qty holds the value of the "qty" field.
 	Qty float64 `json:"qty,omitempty"`
-	// UnitPrice holds the value of the "unit_price" field.
-	UnitPrice float64 `json:"unit_price,omitempty"`
-	// Amount holds the value of the "amount" field.
-	Amount float64 `json:"amount,omitempty"`
+	// LegacyUnitPrice holds the value of the "legacy_unit_price" field.
+	LegacyUnitPrice float64 `json:"legacy_unit_price,omitempty"`
+	// LegacyAmount holds the value of the "legacy_amount" field.
+	LegacyAmount float64 `json:"legacy_amount,omitempty"`
+	// UnitPriceCents holds the value of the "unit_price_cents" field.
+	UnitPriceCents int64 `json:"unit_price_cents,omitempty"`
+	// AmountCents holds the value of the "amount_cents" field.
+	AmountCents int64 `json:"amount_cents,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
 	// The values are being populated by the InvoiceLineQuery when eager-loading is set.
 	Edges        InvoiceLineEdges `json:"edges"`
@@ -74,9 +78,9 @@ func (*InvoiceLine) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case invoiceline.FieldQty, invoiceline.FieldUnitPrice, invoiceline.FieldAmount:
+		case invoiceline.FieldQty, invoiceline.FieldLegacyUnitPrice, invoiceline.FieldLegacyAmount:
 			values[i] = new(sql.NullFloat64)
-		case invoiceline.FieldID, invoiceline.FieldInvoiceID, invoiceline.FieldEnrollmentID:
+		case invoiceline.FieldID, invoiceline.FieldInvoiceID, invoiceline.FieldEnrollmentID, invoiceline.FieldUnitPriceCents, invoiceline.FieldAmountCents:
 			values[i] = new(sql.NullInt64)
 		case invoiceline.FieldDescription:
 			values[i] = new(sql.NullString)
@@ -125,17 +129,29 @@ func (_m *InvoiceLine) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Qty = value.Float64
 			}
-		case invoiceline.FieldUnitPrice:
+		case invoiceline.FieldLegacyUnitPrice:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field unit_price", values[i])
+				return fmt.Errorf("unexpected type %T for field legacy_unit_price", values[i])
 			} else if value.Valid {
-				_m.UnitPrice = value.Float64
+				_m.LegacyUnitPrice = value.Float64
 			}
-		case invoiceline.FieldAmount:
+		case invoiceline.FieldLegacyAmount:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field amount", values[i])
+				return fmt.Errorf("unexpected type %T for field legacy_amount", values[i])
 			} else if value.Valid {
-				_m.Amount = value.Float64
+				_m.LegacyAmount = value.Float64
+			}
+		case invoiceline.FieldUnitPriceCents:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field unit_price_cents", values[i])
+			} else if value.Valid {
+				_m.UnitPriceCents = value.Int64
+			}
+		case invoiceline.FieldAmountCents:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field amount_cents", values[i])
+			} else if value.Valid {
+				_m.AmountCents = value.Int64
 			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
@@ -195,11 +211,17 @@ func (_m *InvoiceLine) String() string {
 	builder.WriteString("qty=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Qty))
 	builder.WriteString(", ")
-	builder.WriteString("unit_price=")
-	builder.WriteString(fmt.Sprintf("%v", _m.UnitPrice))
+	builder.WriteString("legacy_unit_price=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LegacyUnitPrice))
 	builder.WriteString(", ")
-	builder.WriteString("amount=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Amount))
+	builder.WriteString("legacy_amount=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LegacyAmount))
+	builder.WriteString(", ")
+	builder.WriteString("unit_price_cents=")
+	builder.WriteString(fmt.Sprintf("%v", _m.UnitPriceCents))
+	builder.WriteString(", ")
+	builder.WriteString("amount_cents=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AmountCents))
 	builder.WriteByte(')')
 	return builder.String()
 }

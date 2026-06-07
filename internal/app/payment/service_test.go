@@ -15,6 +15,7 @@ import (
 	entinvoice "langschool/ent/invoice"
 	entpayment "langschool/ent/payment"
 	"langschool/internal/app"
+	"langschool/internal/money"
 )
 
 func TestCreateDirectPaymentUpdatesInvoiceSummaryAndStatus(t *testing.T) {
@@ -137,7 +138,7 @@ func TestCreateGlobalPaymentLeavesExtraAsCredit(t *testing.T) {
 	if payments[1].InvoiceID != nil {
 		t.Fatalf("expected extra payment to stay unlinked as credit, got invoice_id=%v", *payments[1].InvoiceID)
 	}
-	assertFloatEqual(t, payments[1].Amount, 30)
+	assertFloatEqual(t, money.CentsToEuros(payments[1].AmountCents), 30)
 
 	summary, err := svc.InvoiceSummary(ctx, inv.ID)
 	if err != nil {
@@ -185,7 +186,7 @@ func TestApplyCreditPartialCoversFutureInvoice(t *testing.T) {
 	if len(payments) != 1 {
 		t.Fatalf("expected 1 linked payment for invoice, got %d", len(payments))
 	}
-	assertFloatEqual(t, payments[0].Amount, 20)
+	assertFloatEqual(t, money.CentsToEuros(payments[0].AmountCents), 20)
 
 	// Original credit payment should be gone.
 	credits, err := client.Payment.Query().
@@ -245,7 +246,7 @@ func TestApplyCreditFullyCoversInvoiceLeavesLeftover(t *testing.T) {
 	if len(credits) != 1 {
 		t.Fatalf("expected 1 unlinked credit to remain, got %d", len(credits))
 	}
-	assertFloatEqual(t, credits[0].Amount, 30)
+	assertFloatEqual(t, money.CentsToEuros(credits[0].AmountCents), 30)
 }
 
 func TestApplyCreditMultipleCreditsOldestFirst(t *testing.T) {
@@ -276,7 +277,7 @@ func TestApplyCreditMultipleCreditsOldestFirst(t *testing.T) {
 	}
 	totalLinked := 0.0
 	for _, p := range linkedPayments {
-		totalLinked += p.Amount
+		totalLinked += money.CentsToEuros(p.AmountCents)
 	}
 	assertFloatEqual(t, totalLinked, 20)
 
@@ -297,7 +298,7 @@ func TestApplyCreditMultipleCreditsOldestFirst(t *testing.T) {
 	if len(credits) != 1 {
 		t.Fatalf("expected 1 unlinked credit to remain, got %d", len(credits))
 	}
-	assertFloatEqual(t, credits[0].Amount, 5)
+	assertFloatEqual(t, money.CentsToEuros(credits[0].AmountCents), 5)
 }
 
 func TestApplyCreditNoCreditNoOp(t *testing.T) {
@@ -682,7 +683,7 @@ func assertLinkedPayment(t *testing.T, p *ent.Payment, invoiceID int, amount flo
 	if *p.InvoiceID != invoiceID {
 		t.Fatalf("expected linked invoice %d, got %d", invoiceID, *p.InvoiceID)
 	}
-	assertFloatEqual(t, p.Amount, amount)
+	assertFloatEqual(t, money.CentsToEuros(p.AmountCents), amount)
 }
 
 func assertEqual[T comparable](t *testing.T, got, want T) {

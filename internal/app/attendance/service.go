@@ -16,6 +16,7 @@ import (
 	"langschool/internal/app"
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/app/utils"
+	"langschool/internal/money"
 	"langschool/internal/validation"
 )
 
@@ -147,7 +148,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			CourseName:       c.Name,
 			CourseType:       string(c.Type),
 			BillingMode:      string(e.BillingMode),
-			LessonPrice:      utils.Round2(c.LessonPrice),
+			LessonPrice:      money.CentsToEuros(c.LessonPriceCents),
 			DiscountPct:      utils.Round2(e.DiscountPct),
 			SubscriptionDiscountPct: utils.Round2(e.SubscriptionDiscountPct),
 			Hours:            hours,

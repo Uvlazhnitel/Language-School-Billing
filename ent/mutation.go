@@ -1868,29 +1868,33 @@ func (m *AuditLogMutation) ResetEdge(name string) error {
 // CourseMutation represents an operation that mutates the Course nodes in the graph.
 type CourseMutation struct {
 	config
-	op                    Op
-	typ                   string
-	id                    *int
-	name                  *string
-	teacher_name          *string
-	_type                 *course.Type
-	lesson_price          *float64
-	addlesson_price       *float64
-	subscription_price    *float64
-	addsubscription_price *float64
-	is_active             *bool
-	clearedFields         map[string]struct{}
-	teacher               *int
-	clearedteacher        bool
-	enrollments           map[int]struct{}
-	removedenrollments    map[int]struct{}
-	clearedenrollments    bool
-	month_stats           map[int]struct{}
-	removedmonth_stats    map[int]struct{}
-	clearedmonth_stats    bool
-	done                  bool
-	oldValue              func(context.Context) (*Course, error)
-	predicates            []predicate.Course
+	op                           Op
+	typ                          string
+	id                           *int
+	name                         *string
+	teacher_name                 *string
+	_type                        *course.Type
+	legacy_lesson_price          *float64
+	addlegacy_lesson_price       *float64
+	legacy_subscription_price    *float64
+	addlegacy_subscription_price *float64
+	lesson_price_cents           *int64
+	addlesson_price_cents        *int64
+	subscription_price_cents     *int64
+	addsubscription_price_cents  *int64
+	is_active                    *bool
+	clearedFields                map[string]struct{}
+	teacher                      *int
+	clearedteacher               bool
+	enrollments                  map[int]struct{}
+	removedenrollments           map[int]struct{}
+	clearedenrollments           bool
+	month_stats                  map[int]struct{}
+	removedmonth_stats           map[int]struct{}
+	clearedmonth_stats           bool
+	done                         bool
+	oldValue                     func(context.Context) (*Course, error)
+	predicates                   []predicate.Course
 }
 
 var _ ent.Mutation = (*CourseMutation)(nil)
@@ -2148,116 +2152,228 @@ func (m *CourseMutation) ResetType() {
 	m._type = nil
 }
 
-// SetLessonPrice sets the "lesson_price" field.
-func (m *CourseMutation) SetLessonPrice(f float64) {
-	m.lesson_price = &f
-	m.addlesson_price = nil
+// SetLegacyLessonPrice sets the "legacy_lesson_price" field.
+func (m *CourseMutation) SetLegacyLessonPrice(f float64) {
+	m.legacy_lesson_price = &f
+	m.addlegacy_lesson_price = nil
 }
 
-// LessonPrice returns the value of the "lesson_price" field in the mutation.
-func (m *CourseMutation) LessonPrice() (r float64, exists bool) {
-	v := m.lesson_price
+// LegacyLessonPrice returns the value of the "legacy_lesson_price" field in the mutation.
+func (m *CourseMutation) LegacyLessonPrice() (r float64, exists bool) {
+	v := m.legacy_lesson_price
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldLessonPrice returns the old "lesson_price" field's value of the Course entity.
+// OldLegacyLessonPrice returns the old "legacy_lesson_price" field's value of the Course entity.
 // If the Course object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *CourseMutation) OldLessonPrice(ctx context.Context) (v float64, err error) {
+func (m *CourseMutation) OldLegacyLessonPrice(ctx context.Context) (v float64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldLessonPrice is only allowed on UpdateOne operations")
+		return v, errors.New("OldLegacyLessonPrice is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldLessonPrice requires an ID field in the mutation")
+		return v, errors.New("OldLegacyLessonPrice requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldLessonPrice: %w", err)
+		return v, fmt.Errorf("querying old value for OldLegacyLessonPrice: %w", err)
 	}
-	return oldValue.LessonPrice, nil
+	return oldValue.LegacyLessonPrice, nil
 }
 
-// AddLessonPrice adds f to the "lesson_price" field.
-func (m *CourseMutation) AddLessonPrice(f float64) {
-	if m.addlesson_price != nil {
-		*m.addlesson_price += f
+// AddLegacyLessonPrice adds f to the "legacy_lesson_price" field.
+func (m *CourseMutation) AddLegacyLessonPrice(f float64) {
+	if m.addlegacy_lesson_price != nil {
+		*m.addlegacy_lesson_price += f
 	} else {
-		m.addlesson_price = &f
+		m.addlegacy_lesson_price = &f
 	}
 }
 
-// AddedLessonPrice returns the value that was added to the "lesson_price" field in this mutation.
-func (m *CourseMutation) AddedLessonPrice() (r float64, exists bool) {
-	v := m.addlesson_price
+// AddedLegacyLessonPrice returns the value that was added to the "legacy_lesson_price" field in this mutation.
+func (m *CourseMutation) AddedLegacyLessonPrice() (r float64, exists bool) {
+	v := m.addlegacy_lesson_price
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetLessonPrice resets all changes to the "lesson_price" field.
-func (m *CourseMutation) ResetLessonPrice() {
-	m.lesson_price = nil
-	m.addlesson_price = nil
+// ResetLegacyLessonPrice resets all changes to the "legacy_lesson_price" field.
+func (m *CourseMutation) ResetLegacyLessonPrice() {
+	m.legacy_lesson_price = nil
+	m.addlegacy_lesson_price = nil
 }
 
-// SetSubscriptionPrice sets the "subscription_price" field.
-func (m *CourseMutation) SetSubscriptionPrice(f float64) {
-	m.subscription_price = &f
-	m.addsubscription_price = nil
+// SetLegacySubscriptionPrice sets the "legacy_subscription_price" field.
+func (m *CourseMutation) SetLegacySubscriptionPrice(f float64) {
+	m.legacy_subscription_price = &f
+	m.addlegacy_subscription_price = nil
 }
 
-// SubscriptionPrice returns the value of the "subscription_price" field in the mutation.
-func (m *CourseMutation) SubscriptionPrice() (r float64, exists bool) {
-	v := m.subscription_price
+// LegacySubscriptionPrice returns the value of the "legacy_subscription_price" field in the mutation.
+func (m *CourseMutation) LegacySubscriptionPrice() (r float64, exists bool) {
+	v := m.legacy_subscription_price
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldSubscriptionPrice returns the old "subscription_price" field's value of the Course entity.
+// OldLegacySubscriptionPrice returns the old "legacy_subscription_price" field's value of the Course entity.
 // If the Course object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *CourseMutation) OldSubscriptionPrice(ctx context.Context) (v float64, err error) {
+func (m *CourseMutation) OldLegacySubscriptionPrice(ctx context.Context) (v float64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSubscriptionPrice is only allowed on UpdateOne operations")
+		return v, errors.New("OldLegacySubscriptionPrice is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSubscriptionPrice requires an ID field in the mutation")
+		return v, errors.New("OldLegacySubscriptionPrice requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSubscriptionPrice: %w", err)
+		return v, fmt.Errorf("querying old value for OldLegacySubscriptionPrice: %w", err)
 	}
-	return oldValue.SubscriptionPrice, nil
+	return oldValue.LegacySubscriptionPrice, nil
 }
 
-// AddSubscriptionPrice adds f to the "subscription_price" field.
-func (m *CourseMutation) AddSubscriptionPrice(f float64) {
-	if m.addsubscription_price != nil {
-		*m.addsubscription_price += f
+// AddLegacySubscriptionPrice adds f to the "legacy_subscription_price" field.
+func (m *CourseMutation) AddLegacySubscriptionPrice(f float64) {
+	if m.addlegacy_subscription_price != nil {
+		*m.addlegacy_subscription_price += f
 	} else {
-		m.addsubscription_price = &f
+		m.addlegacy_subscription_price = &f
 	}
 }
 
-// AddedSubscriptionPrice returns the value that was added to the "subscription_price" field in this mutation.
-func (m *CourseMutation) AddedSubscriptionPrice() (r float64, exists bool) {
-	v := m.addsubscription_price
+// AddedLegacySubscriptionPrice returns the value that was added to the "legacy_subscription_price" field in this mutation.
+func (m *CourseMutation) AddedLegacySubscriptionPrice() (r float64, exists bool) {
+	v := m.addlegacy_subscription_price
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetSubscriptionPrice resets all changes to the "subscription_price" field.
-func (m *CourseMutation) ResetSubscriptionPrice() {
-	m.subscription_price = nil
-	m.addsubscription_price = nil
+// ResetLegacySubscriptionPrice resets all changes to the "legacy_subscription_price" field.
+func (m *CourseMutation) ResetLegacySubscriptionPrice() {
+	m.legacy_subscription_price = nil
+	m.addlegacy_subscription_price = nil
+}
+
+// SetLessonPriceCents sets the "lesson_price_cents" field.
+func (m *CourseMutation) SetLessonPriceCents(i int64) {
+	m.lesson_price_cents = &i
+	m.addlesson_price_cents = nil
+}
+
+// LessonPriceCents returns the value of the "lesson_price_cents" field in the mutation.
+func (m *CourseMutation) LessonPriceCents() (r int64, exists bool) {
+	v := m.lesson_price_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLessonPriceCents returns the old "lesson_price_cents" field's value of the Course entity.
+// If the Course object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMutation) OldLessonPriceCents(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLessonPriceCents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLessonPriceCents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLessonPriceCents: %w", err)
+	}
+	return oldValue.LessonPriceCents, nil
+}
+
+// AddLessonPriceCents adds i to the "lesson_price_cents" field.
+func (m *CourseMutation) AddLessonPriceCents(i int64) {
+	if m.addlesson_price_cents != nil {
+		*m.addlesson_price_cents += i
+	} else {
+		m.addlesson_price_cents = &i
+	}
+}
+
+// AddedLessonPriceCents returns the value that was added to the "lesson_price_cents" field in this mutation.
+func (m *CourseMutation) AddedLessonPriceCents() (r int64, exists bool) {
+	v := m.addlesson_price_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLessonPriceCents resets all changes to the "lesson_price_cents" field.
+func (m *CourseMutation) ResetLessonPriceCents() {
+	m.lesson_price_cents = nil
+	m.addlesson_price_cents = nil
+}
+
+// SetSubscriptionPriceCents sets the "subscription_price_cents" field.
+func (m *CourseMutation) SetSubscriptionPriceCents(i int64) {
+	m.subscription_price_cents = &i
+	m.addsubscription_price_cents = nil
+}
+
+// SubscriptionPriceCents returns the value of the "subscription_price_cents" field in the mutation.
+func (m *CourseMutation) SubscriptionPriceCents() (r int64, exists bool) {
+	v := m.subscription_price_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSubscriptionPriceCents returns the old "subscription_price_cents" field's value of the Course entity.
+// If the Course object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMutation) OldSubscriptionPriceCents(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSubscriptionPriceCents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSubscriptionPriceCents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSubscriptionPriceCents: %w", err)
+	}
+	return oldValue.SubscriptionPriceCents, nil
+}
+
+// AddSubscriptionPriceCents adds i to the "subscription_price_cents" field.
+func (m *CourseMutation) AddSubscriptionPriceCents(i int64) {
+	if m.addsubscription_price_cents != nil {
+		*m.addsubscription_price_cents += i
+	} else {
+		m.addsubscription_price_cents = &i
+	}
+}
+
+// AddedSubscriptionPriceCents returns the value that was added to the "subscription_price_cents" field in this mutation.
+func (m *CourseMutation) AddedSubscriptionPriceCents() (r int64, exists bool) {
+	v := m.addsubscription_price_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetSubscriptionPriceCents resets all changes to the "subscription_price_cents" field.
+func (m *CourseMutation) ResetSubscriptionPriceCents() {
+	m.subscription_price_cents = nil
+	m.addsubscription_price_cents = nil
 }
 
 // SetIsActive sets the "is_active" field.
@@ -2465,7 +2581,7 @@ func (m *CourseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 9)
 	if m.name != nil {
 		fields = append(fields, course.FieldName)
 	}
@@ -2478,11 +2594,17 @@ func (m *CourseMutation) Fields() []string {
 	if m._type != nil {
 		fields = append(fields, course.FieldType)
 	}
-	if m.lesson_price != nil {
-		fields = append(fields, course.FieldLessonPrice)
+	if m.legacy_lesson_price != nil {
+		fields = append(fields, course.FieldLegacyLessonPrice)
 	}
-	if m.subscription_price != nil {
-		fields = append(fields, course.FieldSubscriptionPrice)
+	if m.legacy_subscription_price != nil {
+		fields = append(fields, course.FieldLegacySubscriptionPrice)
+	}
+	if m.lesson_price_cents != nil {
+		fields = append(fields, course.FieldLessonPriceCents)
+	}
+	if m.subscription_price_cents != nil {
+		fields = append(fields, course.FieldSubscriptionPriceCents)
 	}
 	if m.is_active != nil {
 		fields = append(fields, course.FieldIsActive)
@@ -2503,10 +2625,14 @@ func (m *CourseMutation) Field(name string) (ent.Value, bool) {
 		return m.TeacherID()
 	case course.FieldType:
 		return m.GetType()
-	case course.FieldLessonPrice:
-		return m.LessonPrice()
-	case course.FieldSubscriptionPrice:
-		return m.SubscriptionPrice()
+	case course.FieldLegacyLessonPrice:
+		return m.LegacyLessonPrice()
+	case course.FieldLegacySubscriptionPrice:
+		return m.LegacySubscriptionPrice()
+	case course.FieldLessonPriceCents:
+		return m.LessonPriceCents()
+	case course.FieldSubscriptionPriceCents:
+		return m.SubscriptionPriceCents()
 	case course.FieldIsActive:
 		return m.IsActive()
 	}
@@ -2526,10 +2652,14 @@ func (m *CourseMutation) OldField(ctx context.Context, name string) (ent.Value, 
 		return m.OldTeacherID(ctx)
 	case course.FieldType:
 		return m.OldType(ctx)
-	case course.FieldLessonPrice:
-		return m.OldLessonPrice(ctx)
-	case course.FieldSubscriptionPrice:
-		return m.OldSubscriptionPrice(ctx)
+	case course.FieldLegacyLessonPrice:
+		return m.OldLegacyLessonPrice(ctx)
+	case course.FieldLegacySubscriptionPrice:
+		return m.OldLegacySubscriptionPrice(ctx)
+	case course.FieldLessonPriceCents:
+		return m.OldLessonPriceCents(ctx)
+	case course.FieldSubscriptionPriceCents:
+		return m.OldSubscriptionPriceCents(ctx)
 	case course.FieldIsActive:
 		return m.OldIsActive(ctx)
 	}
@@ -2569,19 +2699,33 @@ func (m *CourseMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetType(v)
 		return nil
-	case course.FieldLessonPrice:
+	case course.FieldLegacyLessonPrice:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetLessonPrice(v)
+		m.SetLegacyLessonPrice(v)
 		return nil
-	case course.FieldSubscriptionPrice:
+	case course.FieldLegacySubscriptionPrice:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetSubscriptionPrice(v)
+		m.SetLegacySubscriptionPrice(v)
+		return nil
+	case course.FieldLessonPriceCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLessonPriceCents(v)
+		return nil
+	case course.FieldSubscriptionPriceCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSubscriptionPriceCents(v)
 		return nil
 	case course.FieldIsActive:
 		v, ok := value.(bool)
@@ -2598,11 +2742,17 @@ func (m *CourseMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *CourseMutation) AddedFields() []string {
 	var fields []string
-	if m.addlesson_price != nil {
-		fields = append(fields, course.FieldLessonPrice)
+	if m.addlegacy_lesson_price != nil {
+		fields = append(fields, course.FieldLegacyLessonPrice)
 	}
-	if m.addsubscription_price != nil {
-		fields = append(fields, course.FieldSubscriptionPrice)
+	if m.addlegacy_subscription_price != nil {
+		fields = append(fields, course.FieldLegacySubscriptionPrice)
+	}
+	if m.addlesson_price_cents != nil {
+		fields = append(fields, course.FieldLessonPriceCents)
+	}
+	if m.addsubscription_price_cents != nil {
+		fields = append(fields, course.FieldSubscriptionPriceCents)
 	}
 	return fields
 }
@@ -2612,10 +2762,14 @@ func (m *CourseMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *CourseMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case course.FieldLessonPrice:
-		return m.AddedLessonPrice()
-	case course.FieldSubscriptionPrice:
-		return m.AddedSubscriptionPrice()
+	case course.FieldLegacyLessonPrice:
+		return m.AddedLegacyLessonPrice()
+	case course.FieldLegacySubscriptionPrice:
+		return m.AddedLegacySubscriptionPrice()
+	case course.FieldLessonPriceCents:
+		return m.AddedLessonPriceCents()
+	case course.FieldSubscriptionPriceCents:
+		return m.AddedSubscriptionPriceCents()
 	}
 	return nil, false
 }
@@ -2625,19 +2779,33 @@ func (m *CourseMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *CourseMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case course.FieldLessonPrice:
+	case course.FieldLegacyLessonPrice:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddLessonPrice(v)
+		m.AddLegacyLessonPrice(v)
 		return nil
-	case course.FieldSubscriptionPrice:
+	case course.FieldLegacySubscriptionPrice:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddSubscriptionPrice(v)
+		m.AddLegacySubscriptionPrice(v)
+		return nil
+	case course.FieldLessonPriceCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLessonPriceCents(v)
+		return nil
+	case course.FieldSubscriptionPriceCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddSubscriptionPriceCents(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Course numeric field %s", name)
@@ -2687,11 +2855,17 @@ func (m *CourseMutation) ResetField(name string) error {
 	case course.FieldType:
 		m.ResetType()
 		return nil
-	case course.FieldLessonPrice:
-		m.ResetLessonPrice()
+	case course.FieldLegacyLessonPrice:
+		m.ResetLegacyLessonPrice()
 		return nil
-	case course.FieldSubscriptionPrice:
-		m.ResetSubscriptionPrice()
+	case course.FieldLegacySubscriptionPrice:
+		m.ResetLegacySubscriptionPrice()
+		return nil
+	case course.FieldLessonPriceCents:
+		m.ResetLessonPriceCents()
+		return nil
+	case course.FieldSubscriptionPriceCents:
+		m.ResetSubscriptionPriceCents()
 		return nil
 	case course.FieldIsActive:
 		m.ResetIsActive()
@@ -4325,29 +4499,31 @@ func (m *EnrollmentMutation) ResetEdge(name string) error {
 // InvoiceMutation represents an operation that mutates the Invoice nodes in the graph.
 type InvoiceMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *int
-	period_year     *int
-	addperiod_year  *int
-	period_month    *int
-	addperiod_month *int
-	total_amount    *float64
-	addtotal_amount *float64
-	status          *invoice.Status
-	number          *string
-	clearedFields   map[string]struct{}
-	student         *int
-	clearedstudent  bool
-	lines           map[int]struct{}
-	removedlines    map[int]struct{}
-	clearedlines    bool
-	payments        map[int]struct{}
-	removedpayments map[int]struct{}
-	clearedpayments bool
-	done            bool
-	oldValue        func(context.Context) (*Invoice, error)
-	predicates      []predicate.Invoice
+	op                     Op
+	typ                    string
+	id                     *int
+	period_year            *int
+	addperiod_year         *int
+	period_month           *int
+	addperiod_month        *int
+	legacy_total_amount    *float64
+	addlegacy_total_amount *float64
+	total_amount_cents     *int64
+	addtotal_amount_cents  *int64
+	status                 *invoice.Status
+	number                 *string
+	clearedFields          map[string]struct{}
+	student                *int
+	clearedstudent         bool
+	lines                  map[int]struct{}
+	removedlines           map[int]struct{}
+	clearedlines           bool
+	payments               map[int]struct{}
+	removedpayments        map[int]struct{}
+	clearedpayments        bool
+	done                   bool
+	oldValue               func(context.Context) (*Invoice, error)
+	predicates             []predicate.Invoice
 }
 
 var _ ent.Mutation = (*InvoiceMutation)(nil)
@@ -4596,60 +4772,116 @@ func (m *InvoiceMutation) ResetPeriodMonth() {
 	m.addperiod_month = nil
 }
 
-// SetTotalAmount sets the "total_amount" field.
-func (m *InvoiceMutation) SetTotalAmount(f float64) {
-	m.total_amount = &f
-	m.addtotal_amount = nil
+// SetLegacyTotalAmount sets the "legacy_total_amount" field.
+func (m *InvoiceMutation) SetLegacyTotalAmount(f float64) {
+	m.legacy_total_amount = &f
+	m.addlegacy_total_amount = nil
 }
 
-// TotalAmount returns the value of the "total_amount" field in the mutation.
-func (m *InvoiceMutation) TotalAmount() (r float64, exists bool) {
-	v := m.total_amount
+// LegacyTotalAmount returns the value of the "legacy_total_amount" field in the mutation.
+func (m *InvoiceMutation) LegacyTotalAmount() (r float64, exists bool) {
+	v := m.legacy_total_amount
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldTotalAmount returns the old "total_amount" field's value of the Invoice entity.
+// OldLegacyTotalAmount returns the old "legacy_total_amount" field's value of the Invoice entity.
 // If the Invoice object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *InvoiceMutation) OldTotalAmount(ctx context.Context) (v float64, err error) {
+func (m *InvoiceMutation) OldLegacyTotalAmount(ctx context.Context) (v float64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldTotalAmount is only allowed on UpdateOne operations")
+		return v, errors.New("OldLegacyTotalAmount is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldTotalAmount requires an ID field in the mutation")
+		return v, errors.New("OldLegacyTotalAmount requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldTotalAmount: %w", err)
+		return v, fmt.Errorf("querying old value for OldLegacyTotalAmount: %w", err)
 	}
-	return oldValue.TotalAmount, nil
+	return oldValue.LegacyTotalAmount, nil
 }
 
-// AddTotalAmount adds f to the "total_amount" field.
-func (m *InvoiceMutation) AddTotalAmount(f float64) {
-	if m.addtotal_amount != nil {
-		*m.addtotal_amount += f
+// AddLegacyTotalAmount adds f to the "legacy_total_amount" field.
+func (m *InvoiceMutation) AddLegacyTotalAmount(f float64) {
+	if m.addlegacy_total_amount != nil {
+		*m.addlegacy_total_amount += f
 	} else {
-		m.addtotal_amount = &f
+		m.addlegacy_total_amount = &f
 	}
 }
 
-// AddedTotalAmount returns the value that was added to the "total_amount" field in this mutation.
-func (m *InvoiceMutation) AddedTotalAmount() (r float64, exists bool) {
-	v := m.addtotal_amount
+// AddedLegacyTotalAmount returns the value that was added to the "legacy_total_amount" field in this mutation.
+func (m *InvoiceMutation) AddedLegacyTotalAmount() (r float64, exists bool) {
+	v := m.addlegacy_total_amount
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetTotalAmount resets all changes to the "total_amount" field.
-func (m *InvoiceMutation) ResetTotalAmount() {
-	m.total_amount = nil
-	m.addtotal_amount = nil
+// ResetLegacyTotalAmount resets all changes to the "legacy_total_amount" field.
+func (m *InvoiceMutation) ResetLegacyTotalAmount() {
+	m.legacy_total_amount = nil
+	m.addlegacy_total_amount = nil
+}
+
+// SetTotalAmountCents sets the "total_amount_cents" field.
+func (m *InvoiceMutation) SetTotalAmountCents(i int64) {
+	m.total_amount_cents = &i
+	m.addtotal_amount_cents = nil
+}
+
+// TotalAmountCents returns the value of the "total_amount_cents" field in the mutation.
+func (m *InvoiceMutation) TotalAmountCents() (r int64, exists bool) {
+	v := m.total_amount_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTotalAmountCents returns the old "total_amount_cents" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldTotalAmountCents(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTotalAmountCents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTotalAmountCents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTotalAmountCents: %w", err)
+	}
+	return oldValue.TotalAmountCents, nil
+}
+
+// AddTotalAmountCents adds i to the "total_amount_cents" field.
+func (m *InvoiceMutation) AddTotalAmountCents(i int64) {
+	if m.addtotal_amount_cents != nil {
+		*m.addtotal_amount_cents += i
+	} else {
+		m.addtotal_amount_cents = &i
+	}
+}
+
+// AddedTotalAmountCents returns the value that was added to the "total_amount_cents" field in this mutation.
+func (m *InvoiceMutation) AddedTotalAmountCents() (r int64, exists bool) {
+	v := m.addtotal_amount_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetTotalAmountCents resets all changes to the "total_amount_cents" field.
+func (m *InvoiceMutation) ResetTotalAmountCents() {
+	m.total_amount_cents = nil
+	m.addtotal_amount_cents = nil
 }
 
 // SetStatus sets the "status" field.
@@ -4906,7 +5138,7 @@ func (m *InvoiceMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InvoiceMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
 	if m.student != nil {
 		fields = append(fields, invoice.FieldStudentID)
 	}
@@ -4916,8 +5148,11 @@ func (m *InvoiceMutation) Fields() []string {
 	if m.period_month != nil {
 		fields = append(fields, invoice.FieldPeriodMonth)
 	}
-	if m.total_amount != nil {
-		fields = append(fields, invoice.FieldTotalAmount)
+	if m.legacy_total_amount != nil {
+		fields = append(fields, invoice.FieldLegacyTotalAmount)
+	}
+	if m.total_amount_cents != nil {
+		fields = append(fields, invoice.FieldTotalAmountCents)
 	}
 	if m.status != nil {
 		fields = append(fields, invoice.FieldStatus)
@@ -4939,8 +5174,10 @@ func (m *InvoiceMutation) Field(name string) (ent.Value, bool) {
 		return m.PeriodYear()
 	case invoice.FieldPeriodMonth:
 		return m.PeriodMonth()
-	case invoice.FieldTotalAmount:
-		return m.TotalAmount()
+	case invoice.FieldLegacyTotalAmount:
+		return m.LegacyTotalAmount()
+	case invoice.FieldTotalAmountCents:
+		return m.TotalAmountCents()
 	case invoice.FieldStatus:
 		return m.Status()
 	case invoice.FieldNumber:
@@ -4960,8 +5197,10 @@ func (m *InvoiceMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldPeriodYear(ctx)
 	case invoice.FieldPeriodMonth:
 		return m.OldPeriodMonth(ctx)
-	case invoice.FieldTotalAmount:
-		return m.OldTotalAmount(ctx)
+	case invoice.FieldLegacyTotalAmount:
+		return m.OldLegacyTotalAmount(ctx)
+	case invoice.FieldTotalAmountCents:
+		return m.OldTotalAmountCents(ctx)
 	case invoice.FieldStatus:
 		return m.OldStatus(ctx)
 	case invoice.FieldNumber:
@@ -4996,12 +5235,19 @@ func (m *InvoiceMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPeriodMonth(v)
 		return nil
-	case invoice.FieldTotalAmount:
+	case invoice.FieldLegacyTotalAmount:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetTotalAmount(v)
+		m.SetLegacyTotalAmount(v)
+		return nil
+	case invoice.FieldTotalAmountCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTotalAmountCents(v)
 		return nil
 	case invoice.FieldStatus:
 		v, ok := value.(invoice.Status)
@@ -5031,8 +5277,11 @@ func (m *InvoiceMutation) AddedFields() []string {
 	if m.addperiod_month != nil {
 		fields = append(fields, invoice.FieldPeriodMonth)
 	}
-	if m.addtotal_amount != nil {
-		fields = append(fields, invoice.FieldTotalAmount)
+	if m.addlegacy_total_amount != nil {
+		fields = append(fields, invoice.FieldLegacyTotalAmount)
+	}
+	if m.addtotal_amount_cents != nil {
+		fields = append(fields, invoice.FieldTotalAmountCents)
 	}
 	return fields
 }
@@ -5046,8 +5295,10 @@ func (m *InvoiceMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedPeriodYear()
 	case invoice.FieldPeriodMonth:
 		return m.AddedPeriodMonth()
-	case invoice.FieldTotalAmount:
-		return m.AddedTotalAmount()
+	case invoice.FieldLegacyTotalAmount:
+		return m.AddedLegacyTotalAmount()
+	case invoice.FieldTotalAmountCents:
+		return m.AddedTotalAmountCents()
 	}
 	return nil, false
 }
@@ -5071,12 +5322,19 @@ func (m *InvoiceMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddPeriodMonth(v)
 		return nil
-	case invoice.FieldTotalAmount:
+	case invoice.FieldLegacyTotalAmount:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddTotalAmount(v)
+		m.AddLegacyTotalAmount(v)
+		return nil
+	case invoice.FieldTotalAmountCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddTotalAmountCents(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Invoice numeric field %s", name)
@@ -5123,8 +5381,11 @@ func (m *InvoiceMutation) ResetField(name string) error {
 	case invoice.FieldPeriodMonth:
 		m.ResetPeriodMonth()
 		return nil
-	case invoice.FieldTotalAmount:
-		m.ResetTotalAmount()
+	case invoice.FieldLegacyTotalAmount:
+		m.ResetLegacyTotalAmount()
+		return nil
+	case invoice.FieldTotalAmountCents:
+		m.ResetTotalAmountCents()
 		return nil
 	case invoice.FieldStatus:
 		m.ResetStatus()
@@ -5267,24 +5528,28 @@ func (m *InvoiceMutation) ResetEdge(name string) error {
 // InvoiceLineMutation represents an operation that mutates the InvoiceLine nodes in the graph.
 type InvoiceLineMutation struct {
 	config
-	op                Op
-	typ               string
-	id                *int
-	description       *string
-	qty               *float64
-	addqty            *float64
-	unit_price        *float64
-	addunit_price     *float64
-	amount            *float64
-	addamount         *float64
-	clearedFields     map[string]struct{}
-	invoice           *int
-	clearedinvoice    bool
-	enrollment        *int
-	clearedenrollment bool
-	done              bool
-	oldValue          func(context.Context) (*InvoiceLine, error)
-	predicates        []predicate.InvoiceLine
+	op                   Op
+	typ                  string
+	id                   *int
+	description          *string
+	qty                  *float64
+	addqty               *float64
+	legacy_unit_price    *float64
+	addlegacy_unit_price *float64
+	legacy_amount        *float64
+	addlegacy_amount     *float64
+	unit_price_cents     *int64
+	addunit_price_cents  *int64
+	amount_cents         *int64
+	addamount_cents      *int64
+	clearedFields        map[string]struct{}
+	invoice              *int
+	clearedinvoice       bool
+	enrollment           *int
+	clearedenrollment    bool
+	done                 bool
+	oldValue             func(context.Context) (*InvoiceLine, error)
+	predicates           []predicate.InvoiceLine
 }
 
 var _ ent.Mutation = (*InvoiceLineMutation)(nil)
@@ -5549,116 +5814,228 @@ func (m *InvoiceLineMutation) ResetQty() {
 	m.addqty = nil
 }
 
-// SetUnitPrice sets the "unit_price" field.
-func (m *InvoiceLineMutation) SetUnitPrice(f float64) {
-	m.unit_price = &f
-	m.addunit_price = nil
+// SetLegacyUnitPrice sets the "legacy_unit_price" field.
+func (m *InvoiceLineMutation) SetLegacyUnitPrice(f float64) {
+	m.legacy_unit_price = &f
+	m.addlegacy_unit_price = nil
 }
 
-// UnitPrice returns the value of the "unit_price" field in the mutation.
-func (m *InvoiceLineMutation) UnitPrice() (r float64, exists bool) {
-	v := m.unit_price
+// LegacyUnitPrice returns the value of the "legacy_unit_price" field in the mutation.
+func (m *InvoiceLineMutation) LegacyUnitPrice() (r float64, exists bool) {
+	v := m.legacy_unit_price
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldUnitPrice returns the old "unit_price" field's value of the InvoiceLine entity.
+// OldLegacyUnitPrice returns the old "legacy_unit_price" field's value of the InvoiceLine entity.
 // If the InvoiceLine object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *InvoiceLineMutation) OldUnitPrice(ctx context.Context) (v float64, err error) {
+func (m *InvoiceLineMutation) OldLegacyUnitPrice(ctx context.Context) (v float64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldUnitPrice is only allowed on UpdateOne operations")
+		return v, errors.New("OldLegacyUnitPrice is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldUnitPrice requires an ID field in the mutation")
+		return v, errors.New("OldLegacyUnitPrice requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldUnitPrice: %w", err)
+		return v, fmt.Errorf("querying old value for OldLegacyUnitPrice: %w", err)
 	}
-	return oldValue.UnitPrice, nil
+	return oldValue.LegacyUnitPrice, nil
 }
 
-// AddUnitPrice adds f to the "unit_price" field.
-func (m *InvoiceLineMutation) AddUnitPrice(f float64) {
-	if m.addunit_price != nil {
-		*m.addunit_price += f
+// AddLegacyUnitPrice adds f to the "legacy_unit_price" field.
+func (m *InvoiceLineMutation) AddLegacyUnitPrice(f float64) {
+	if m.addlegacy_unit_price != nil {
+		*m.addlegacy_unit_price += f
 	} else {
-		m.addunit_price = &f
+		m.addlegacy_unit_price = &f
 	}
 }
 
-// AddedUnitPrice returns the value that was added to the "unit_price" field in this mutation.
-func (m *InvoiceLineMutation) AddedUnitPrice() (r float64, exists bool) {
-	v := m.addunit_price
+// AddedLegacyUnitPrice returns the value that was added to the "legacy_unit_price" field in this mutation.
+func (m *InvoiceLineMutation) AddedLegacyUnitPrice() (r float64, exists bool) {
+	v := m.addlegacy_unit_price
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetUnitPrice resets all changes to the "unit_price" field.
-func (m *InvoiceLineMutation) ResetUnitPrice() {
-	m.unit_price = nil
-	m.addunit_price = nil
+// ResetLegacyUnitPrice resets all changes to the "legacy_unit_price" field.
+func (m *InvoiceLineMutation) ResetLegacyUnitPrice() {
+	m.legacy_unit_price = nil
+	m.addlegacy_unit_price = nil
 }
 
-// SetAmount sets the "amount" field.
-func (m *InvoiceLineMutation) SetAmount(f float64) {
-	m.amount = &f
-	m.addamount = nil
+// SetLegacyAmount sets the "legacy_amount" field.
+func (m *InvoiceLineMutation) SetLegacyAmount(f float64) {
+	m.legacy_amount = &f
+	m.addlegacy_amount = nil
 }
 
-// Amount returns the value of the "amount" field in the mutation.
-func (m *InvoiceLineMutation) Amount() (r float64, exists bool) {
-	v := m.amount
+// LegacyAmount returns the value of the "legacy_amount" field in the mutation.
+func (m *InvoiceLineMutation) LegacyAmount() (r float64, exists bool) {
+	v := m.legacy_amount
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldAmount returns the old "amount" field's value of the InvoiceLine entity.
+// OldLegacyAmount returns the old "legacy_amount" field's value of the InvoiceLine entity.
 // If the InvoiceLine object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *InvoiceLineMutation) OldAmount(ctx context.Context) (v float64, err error) {
+func (m *InvoiceLineMutation) OldLegacyAmount(ctx context.Context) (v float64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldAmount is only allowed on UpdateOne operations")
+		return v, errors.New("OldLegacyAmount is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldAmount requires an ID field in the mutation")
+		return v, errors.New("OldLegacyAmount requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldAmount: %w", err)
+		return v, fmt.Errorf("querying old value for OldLegacyAmount: %w", err)
 	}
-	return oldValue.Amount, nil
+	return oldValue.LegacyAmount, nil
 }
 
-// AddAmount adds f to the "amount" field.
-func (m *InvoiceLineMutation) AddAmount(f float64) {
-	if m.addamount != nil {
-		*m.addamount += f
+// AddLegacyAmount adds f to the "legacy_amount" field.
+func (m *InvoiceLineMutation) AddLegacyAmount(f float64) {
+	if m.addlegacy_amount != nil {
+		*m.addlegacy_amount += f
 	} else {
-		m.addamount = &f
+		m.addlegacy_amount = &f
 	}
 }
 
-// AddedAmount returns the value that was added to the "amount" field in this mutation.
-func (m *InvoiceLineMutation) AddedAmount() (r float64, exists bool) {
-	v := m.addamount
+// AddedLegacyAmount returns the value that was added to the "legacy_amount" field in this mutation.
+func (m *InvoiceLineMutation) AddedLegacyAmount() (r float64, exists bool) {
+	v := m.addlegacy_amount
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetAmount resets all changes to the "amount" field.
-func (m *InvoiceLineMutation) ResetAmount() {
-	m.amount = nil
-	m.addamount = nil
+// ResetLegacyAmount resets all changes to the "legacy_amount" field.
+func (m *InvoiceLineMutation) ResetLegacyAmount() {
+	m.legacy_amount = nil
+	m.addlegacy_amount = nil
+}
+
+// SetUnitPriceCents sets the "unit_price_cents" field.
+func (m *InvoiceLineMutation) SetUnitPriceCents(i int64) {
+	m.unit_price_cents = &i
+	m.addunit_price_cents = nil
+}
+
+// UnitPriceCents returns the value of the "unit_price_cents" field in the mutation.
+func (m *InvoiceLineMutation) UnitPriceCents() (r int64, exists bool) {
+	v := m.unit_price_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUnitPriceCents returns the old "unit_price_cents" field's value of the InvoiceLine entity.
+// If the InvoiceLine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceLineMutation) OldUnitPriceCents(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUnitPriceCents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUnitPriceCents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUnitPriceCents: %w", err)
+	}
+	return oldValue.UnitPriceCents, nil
+}
+
+// AddUnitPriceCents adds i to the "unit_price_cents" field.
+func (m *InvoiceLineMutation) AddUnitPriceCents(i int64) {
+	if m.addunit_price_cents != nil {
+		*m.addunit_price_cents += i
+	} else {
+		m.addunit_price_cents = &i
+	}
+}
+
+// AddedUnitPriceCents returns the value that was added to the "unit_price_cents" field in this mutation.
+func (m *InvoiceLineMutation) AddedUnitPriceCents() (r int64, exists bool) {
+	v := m.addunit_price_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetUnitPriceCents resets all changes to the "unit_price_cents" field.
+func (m *InvoiceLineMutation) ResetUnitPriceCents() {
+	m.unit_price_cents = nil
+	m.addunit_price_cents = nil
+}
+
+// SetAmountCents sets the "amount_cents" field.
+func (m *InvoiceLineMutation) SetAmountCents(i int64) {
+	m.amount_cents = &i
+	m.addamount_cents = nil
+}
+
+// AmountCents returns the value of the "amount_cents" field in the mutation.
+func (m *InvoiceLineMutation) AmountCents() (r int64, exists bool) {
+	v := m.amount_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAmountCents returns the old "amount_cents" field's value of the InvoiceLine entity.
+// If the InvoiceLine object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceLineMutation) OldAmountCents(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAmountCents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAmountCents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAmountCents: %w", err)
+	}
+	return oldValue.AmountCents, nil
+}
+
+// AddAmountCents adds i to the "amount_cents" field.
+func (m *InvoiceLineMutation) AddAmountCents(i int64) {
+	if m.addamount_cents != nil {
+		*m.addamount_cents += i
+	} else {
+		m.addamount_cents = &i
+	}
+}
+
+// AddedAmountCents returns the value that was added to the "amount_cents" field in this mutation.
+func (m *InvoiceLineMutation) AddedAmountCents() (r int64, exists bool) {
+	v := m.addamount_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAmountCents resets all changes to the "amount_cents" field.
+func (m *InvoiceLineMutation) ResetAmountCents() {
+	m.amount_cents = nil
+	m.addamount_cents = nil
 }
 
 // ClearInvoice clears the "invoice" edge to the Invoice entity.
@@ -5749,7 +6126,7 @@ func (m *InvoiceLineMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InvoiceLineMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 8)
 	if m.invoice != nil {
 		fields = append(fields, invoiceline.FieldInvoiceID)
 	}
@@ -5762,11 +6139,17 @@ func (m *InvoiceLineMutation) Fields() []string {
 	if m.qty != nil {
 		fields = append(fields, invoiceline.FieldQty)
 	}
-	if m.unit_price != nil {
-		fields = append(fields, invoiceline.FieldUnitPrice)
+	if m.legacy_unit_price != nil {
+		fields = append(fields, invoiceline.FieldLegacyUnitPrice)
 	}
-	if m.amount != nil {
-		fields = append(fields, invoiceline.FieldAmount)
+	if m.legacy_amount != nil {
+		fields = append(fields, invoiceline.FieldLegacyAmount)
+	}
+	if m.unit_price_cents != nil {
+		fields = append(fields, invoiceline.FieldUnitPriceCents)
+	}
+	if m.amount_cents != nil {
+		fields = append(fields, invoiceline.FieldAmountCents)
 	}
 	return fields
 }
@@ -5784,10 +6167,14 @@ func (m *InvoiceLineMutation) Field(name string) (ent.Value, bool) {
 		return m.Description()
 	case invoiceline.FieldQty:
 		return m.Qty()
-	case invoiceline.FieldUnitPrice:
-		return m.UnitPrice()
-	case invoiceline.FieldAmount:
-		return m.Amount()
+	case invoiceline.FieldLegacyUnitPrice:
+		return m.LegacyUnitPrice()
+	case invoiceline.FieldLegacyAmount:
+		return m.LegacyAmount()
+	case invoiceline.FieldUnitPriceCents:
+		return m.UnitPriceCents()
+	case invoiceline.FieldAmountCents:
+		return m.AmountCents()
 	}
 	return nil, false
 }
@@ -5805,10 +6192,14 @@ func (m *InvoiceLineMutation) OldField(ctx context.Context, name string) (ent.Va
 		return m.OldDescription(ctx)
 	case invoiceline.FieldQty:
 		return m.OldQty(ctx)
-	case invoiceline.FieldUnitPrice:
-		return m.OldUnitPrice(ctx)
-	case invoiceline.FieldAmount:
-		return m.OldAmount(ctx)
+	case invoiceline.FieldLegacyUnitPrice:
+		return m.OldLegacyUnitPrice(ctx)
+	case invoiceline.FieldLegacyAmount:
+		return m.OldLegacyAmount(ctx)
+	case invoiceline.FieldUnitPriceCents:
+		return m.OldUnitPriceCents(ctx)
+	case invoiceline.FieldAmountCents:
+		return m.OldAmountCents(ctx)
 	}
 	return nil, fmt.Errorf("unknown InvoiceLine field %s", name)
 }
@@ -5846,19 +6237,33 @@ func (m *InvoiceLineMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetQty(v)
 		return nil
-	case invoiceline.FieldUnitPrice:
+	case invoiceline.FieldLegacyUnitPrice:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetUnitPrice(v)
+		m.SetLegacyUnitPrice(v)
 		return nil
-	case invoiceline.FieldAmount:
+	case invoiceline.FieldLegacyAmount:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetAmount(v)
+		m.SetLegacyAmount(v)
+		return nil
+	case invoiceline.FieldUnitPriceCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUnitPriceCents(v)
+		return nil
+	case invoiceline.FieldAmountCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAmountCents(v)
 		return nil
 	}
 	return fmt.Errorf("unknown InvoiceLine field %s", name)
@@ -5871,11 +6276,17 @@ func (m *InvoiceLineMutation) AddedFields() []string {
 	if m.addqty != nil {
 		fields = append(fields, invoiceline.FieldQty)
 	}
-	if m.addunit_price != nil {
-		fields = append(fields, invoiceline.FieldUnitPrice)
+	if m.addlegacy_unit_price != nil {
+		fields = append(fields, invoiceline.FieldLegacyUnitPrice)
 	}
-	if m.addamount != nil {
-		fields = append(fields, invoiceline.FieldAmount)
+	if m.addlegacy_amount != nil {
+		fields = append(fields, invoiceline.FieldLegacyAmount)
+	}
+	if m.addunit_price_cents != nil {
+		fields = append(fields, invoiceline.FieldUnitPriceCents)
+	}
+	if m.addamount_cents != nil {
+		fields = append(fields, invoiceline.FieldAmountCents)
 	}
 	return fields
 }
@@ -5887,10 +6298,14 @@ func (m *InvoiceLineMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	case invoiceline.FieldQty:
 		return m.AddedQty()
-	case invoiceline.FieldUnitPrice:
-		return m.AddedUnitPrice()
-	case invoiceline.FieldAmount:
-		return m.AddedAmount()
+	case invoiceline.FieldLegacyUnitPrice:
+		return m.AddedLegacyUnitPrice()
+	case invoiceline.FieldLegacyAmount:
+		return m.AddedLegacyAmount()
+	case invoiceline.FieldUnitPriceCents:
+		return m.AddedUnitPriceCents()
+	case invoiceline.FieldAmountCents:
+		return m.AddedAmountCents()
 	}
 	return nil, false
 }
@@ -5907,19 +6322,33 @@ func (m *InvoiceLineMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddQty(v)
 		return nil
-	case invoiceline.FieldUnitPrice:
+	case invoiceline.FieldLegacyUnitPrice:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddUnitPrice(v)
+		m.AddLegacyUnitPrice(v)
 		return nil
-	case invoiceline.FieldAmount:
+	case invoiceline.FieldLegacyAmount:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddAmount(v)
+		m.AddLegacyAmount(v)
+		return nil
+	case invoiceline.FieldUnitPriceCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddUnitPriceCents(v)
+		return nil
+	case invoiceline.FieldAmountCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAmountCents(v)
 		return nil
 	}
 	return fmt.Errorf("unknown InvoiceLine numeric field %s", name)
@@ -5960,11 +6389,17 @@ func (m *InvoiceLineMutation) ResetField(name string) error {
 	case invoiceline.FieldQty:
 		m.ResetQty()
 		return nil
-	case invoiceline.FieldUnitPrice:
-		m.ResetUnitPrice()
+	case invoiceline.FieldLegacyUnitPrice:
+		m.ResetLegacyUnitPrice()
 		return nil
-	case invoiceline.FieldAmount:
-		m.ResetAmount()
+	case invoiceline.FieldLegacyAmount:
+		m.ResetLegacyAmount()
+		return nil
+	case invoiceline.FieldUnitPriceCents:
+		m.ResetUnitPriceCents()
+		return nil
+	case invoiceline.FieldAmountCents:
+		m.ResetAmountCents()
 		return nil
 	}
 	return fmt.Errorf("unknown InvoiceLine field %s", name)
@@ -6065,23 +6500,25 @@ func (m *InvoiceLineMutation) ResetEdge(name string) error {
 // PaymentMutation represents an operation that mutates the Payment nodes in the graph.
 type PaymentMutation struct {
 	config
-	op             Op
-	typ            string
-	id             *int
-	paid_at        *time.Time
-	amount         *float64
-	addamount      *float64
-	method         *payment.Method
-	note           *string
-	created_at     *time.Time
-	clearedFields  map[string]struct{}
-	student        *int
-	clearedstudent bool
-	invoice        *int
-	clearedinvoice bool
-	done           bool
-	oldValue       func(context.Context) (*Payment, error)
-	predicates     []predicate.Payment
+	op               Op
+	typ              string
+	id               *int
+	paid_at          *time.Time
+	legacy_amount    *float64
+	addlegacy_amount *float64
+	amount_cents     *int64
+	addamount_cents  *int64
+	method           *payment.Method
+	note             *string
+	created_at       *time.Time
+	clearedFields    map[string]struct{}
+	student          *int
+	clearedstudent   bool
+	invoice          *int
+	clearedinvoice   bool
+	done             bool
+	oldValue         func(context.Context) (*Payment, error)
+	predicates       []predicate.Payment
 }
 
 var _ ent.Mutation = (*PaymentMutation)(nil)
@@ -6303,60 +6740,116 @@ func (m *PaymentMutation) ResetPaidAt() {
 	m.paid_at = nil
 }
 
-// SetAmount sets the "amount" field.
-func (m *PaymentMutation) SetAmount(f float64) {
-	m.amount = &f
-	m.addamount = nil
+// SetLegacyAmount sets the "legacy_amount" field.
+func (m *PaymentMutation) SetLegacyAmount(f float64) {
+	m.legacy_amount = &f
+	m.addlegacy_amount = nil
 }
 
-// Amount returns the value of the "amount" field in the mutation.
-func (m *PaymentMutation) Amount() (r float64, exists bool) {
-	v := m.amount
+// LegacyAmount returns the value of the "legacy_amount" field in the mutation.
+func (m *PaymentMutation) LegacyAmount() (r float64, exists bool) {
+	v := m.legacy_amount
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldAmount returns the old "amount" field's value of the Payment entity.
+// OldLegacyAmount returns the old "legacy_amount" field's value of the Payment entity.
 // If the Payment object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *PaymentMutation) OldAmount(ctx context.Context) (v float64, err error) {
+func (m *PaymentMutation) OldLegacyAmount(ctx context.Context) (v float64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldAmount is only allowed on UpdateOne operations")
+		return v, errors.New("OldLegacyAmount is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldAmount requires an ID field in the mutation")
+		return v, errors.New("OldLegacyAmount requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldAmount: %w", err)
+		return v, fmt.Errorf("querying old value for OldLegacyAmount: %w", err)
 	}
-	return oldValue.Amount, nil
+	return oldValue.LegacyAmount, nil
 }
 
-// AddAmount adds f to the "amount" field.
-func (m *PaymentMutation) AddAmount(f float64) {
-	if m.addamount != nil {
-		*m.addamount += f
+// AddLegacyAmount adds f to the "legacy_amount" field.
+func (m *PaymentMutation) AddLegacyAmount(f float64) {
+	if m.addlegacy_amount != nil {
+		*m.addlegacy_amount += f
 	} else {
-		m.addamount = &f
+		m.addlegacy_amount = &f
 	}
 }
 
-// AddedAmount returns the value that was added to the "amount" field in this mutation.
-func (m *PaymentMutation) AddedAmount() (r float64, exists bool) {
-	v := m.addamount
+// AddedLegacyAmount returns the value that was added to the "legacy_amount" field in this mutation.
+func (m *PaymentMutation) AddedLegacyAmount() (r float64, exists bool) {
+	v := m.addlegacy_amount
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetAmount resets all changes to the "amount" field.
-func (m *PaymentMutation) ResetAmount() {
-	m.amount = nil
-	m.addamount = nil
+// ResetLegacyAmount resets all changes to the "legacy_amount" field.
+func (m *PaymentMutation) ResetLegacyAmount() {
+	m.legacy_amount = nil
+	m.addlegacy_amount = nil
+}
+
+// SetAmountCents sets the "amount_cents" field.
+func (m *PaymentMutation) SetAmountCents(i int64) {
+	m.amount_cents = &i
+	m.addamount_cents = nil
+}
+
+// AmountCents returns the value of the "amount_cents" field in the mutation.
+func (m *PaymentMutation) AmountCents() (r int64, exists bool) {
+	v := m.amount_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAmountCents returns the old "amount_cents" field's value of the Payment entity.
+// If the Payment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentMutation) OldAmountCents(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAmountCents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAmountCents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAmountCents: %w", err)
+	}
+	return oldValue.AmountCents, nil
+}
+
+// AddAmountCents adds i to the "amount_cents" field.
+func (m *PaymentMutation) AddAmountCents(i int64) {
+	if m.addamount_cents != nil {
+		*m.addamount_cents += i
+	} else {
+		m.addamount_cents = &i
+	}
+}
+
+// AddedAmountCents returns the value that was added to the "amount_cents" field in this mutation.
+func (m *PaymentMutation) AddedAmountCents() (r int64, exists bool) {
+	v := m.addamount_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetAmountCents resets all changes to the "amount_cents" field.
+func (m *PaymentMutation) ResetAmountCents() {
+	m.amount_cents = nil
+	m.addamount_cents = nil
 }
 
 // SetMethod sets the "method" field.
@@ -6555,7 +7048,7 @@ func (m *PaymentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PaymentMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
 	if m.student != nil {
 		fields = append(fields, payment.FieldStudentID)
 	}
@@ -6565,8 +7058,11 @@ func (m *PaymentMutation) Fields() []string {
 	if m.paid_at != nil {
 		fields = append(fields, payment.FieldPaidAt)
 	}
-	if m.amount != nil {
-		fields = append(fields, payment.FieldAmount)
+	if m.legacy_amount != nil {
+		fields = append(fields, payment.FieldLegacyAmount)
+	}
+	if m.amount_cents != nil {
+		fields = append(fields, payment.FieldAmountCents)
 	}
 	if m.method != nil {
 		fields = append(fields, payment.FieldMethod)
@@ -6591,8 +7087,10 @@ func (m *PaymentMutation) Field(name string) (ent.Value, bool) {
 		return m.InvoiceID()
 	case payment.FieldPaidAt:
 		return m.PaidAt()
-	case payment.FieldAmount:
-		return m.Amount()
+	case payment.FieldLegacyAmount:
+		return m.LegacyAmount()
+	case payment.FieldAmountCents:
+		return m.AmountCents()
 	case payment.FieldMethod:
 		return m.Method()
 	case payment.FieldNote:
@@ -6614,8 +7112,10 @@ func (m *PaymentMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldInvoiceID(ctx)
 	case payment.FieldPaidAt:
 		return m.OldPaidAt(ctx)
-	case payment.FieldAmount:
-		return m.OldAmount(ctx)
+	case payment.FieldLegacyAmount:
+		return m.OldLegacyAmount(ctx)
+	case payment.FieldAmountCents:
+		return m.OldAmountCents(ctx)
 	case payment.FieldMethod:
 		return m.OldMethod(ctx)
 	case payment.FieldNote:
@@ -6652,12 +7152,19 @@ func (m *PaymentMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetPaidAt(v)
 		return nil
-	case payment.FieldAmount:
+	case payment.FieldLegacyAmount:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetAmount(v)
+		m.SetLegacyAmount(v)
+		return nil
+	case payment.FieldAmountCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAmountCents(v)
 		return nil
 	case payment.FieldMethod:
 		v, ok := value.(payment.Method)
@@ -6688,8 +7195,11 @@ func (m *PaymentMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *PaymentMutation) AddedFields() []string {
 	var fields []string
-	if m.addamount != nil {
-		fields = append(fields, payment.FieldAmount)
+	if m.addlegacy_amount != nil {
+		fields = append(fields, payment.FieldLegacyAmount)
+	}
+	if m.addamount_cents != nil {
+		fields = append(fields, payment.FieldAmountCents)
 	}
 	return fields
 }
@@ -6699,8 +7209,10 @@ func (m *PaymentMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *PaymentMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case payment.FieldAmount:
-		return m.AddedAmount()
+	case payment.FieldLegacyAmount:
+		return m.AddedLegacyAmount()
+	case payment.FieldAmountCents:
+		return m.AddedAmountCents()
 	}
 	return nil, false
 }
@@ -6710,12 +7222,19 @@ func (m *PaymentMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *PaymentMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case payment.FieldAmount:
+	case payment.FieldLegacyAmount:
 		v, ok := value.(float64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddAmount(v)
+		m.AddLegacyAmount(v)
+		return nil
+	case payment.FieldAmountCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddAmountCents(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Payment numeric field %s", name)
@@ -6762,8 +7281,11 @@ func (m *PaymentMutation) ResetField(name string) error {
 	case payment.FieldPaidAt:
 		m.ResetPaidAt()
 		return nil
-	case payment.FieldAmount:
-		m.ResetAmount()
+	case payment.FieldLegacyAmount:
+		m.ResetLegacyAmount()
+		return nil
+	case payment.FieldAmountCents:
+		m.ResetAmountCents()
 		return nil
 	case payment.FieldMethod:
 		m.ResetMethod()
@@ -6887,6 +7409,7 @@ type SettingsMutation struct {
 	addinvoice_day_of_month *int
 	currency                *string
 	locale                  *string
+	money_cents_migrated    *bool
 	clearedFields           map[string]struct{}
 	done                    bool
 	oldValue                func(context.Context) (*Settings, error)
@@ -7339,6 +7862,42 @@ func (m *SettingsMutation) ResetLocale() {
 	m.locale = nil
 }
 
+// SetMoneyCentsMigrated sets the "money_cents_migrated" field.
+func (m *SettingsMutation) SetMoneyCentsMigrated(b bool) {
+	m.money_cents_migrated = &b
+}
+
+// MoneyCentsMigrated returns the value of the "money_cents_migrated" field in the mutation.
+func (m *SettingsMutation) MoneyCentsMigrated() (r bool, exists bool) {
+	v := m.money_cents_migrated
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldMoneyCentsMigrated returns the old "money_cents_migrated" field's value of the Settings entity.
+// If the Settings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SettingsMutation) OldMoneyCentsMigrated(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldMoneyCentsMigrated is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldMoneyCentsMigrated requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldMoneyCentsMigrated: %w", err)
+	}
+	return oldValue.MoneyCentsMigrated, nil
+}
+
+// ResetMoneyCentsMigrated resets all changes to the "money_cents_migrated" field.
+func (m *SettingsMutation) ResetMoneyCentsMigrated() {
+	m.money_cents_migrated = nil
+}
+
 // Where appends a list predicates to the SettingsMutation builder.
 func (m *SettingsMutation) Where(ps ...predicate.Settings) {
 	m.predicates = append(m.predicates, ps...)
@@ -7373,7 +7932,7 @@ func (m *SettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SettingsMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 9)
 	if m.singleton_id != nil {
 		fields = append(fields, settings.FieldSingletonID)
 	}
@@ -7397,6 +7956,9 @@ func (m *SettingsMutation) Fields() []string {
 	}
 	if m.locale != nil {
 		fields = append(fields, settings.FieldLocale)
+	}
+	if m.money_cents_migrated != nil {
+		fields = append(fields, settings.FieldMoneyCentsMigrated)
 	}
 	return fields
 }
@@ -7422,6 +7984,8 @@ func (m *SettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.Currency()
 	case settings.FieldLocale:
 		return m.Locale()
+	case settings.FieldMoneyCentsMigrated:
+		return m.MoneyCentsMigrated()
 	}
 	return nil, false
 }
@@ -7447,6 +8011,8 @@ func (m *SettingsMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldCurrency(ctx)
 	case settings.FieldLocale:
 		return m.OldLocale(ctx)
+	case settings.FieldMoneyCentsMigrated:
+		return m.OldMoneyCentsMigrated(ctx)
 	}
 	return nil, fmt.Errorf("unknown Settings field %s", name)
 }
@@ -7511,6 +8077,13 @@ func (m *SettingsMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLocale(v)
+		return nil
+	case settings.FieldMoneyCentsMigrated:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetMoneyCentsMigrated(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Settings field %s", name)
@@ -7623,6 +8196,9 @@ func (m *SettingsMutation) ResetField(name string) error {
 		return nil
 	case settings.FieldLocale:
 		m.ResetLocale()
+		return nil
+	case settings.FieldMoneyCentsMigrated:
+		m.ResetMoneyCentsMigrated()
 		return nil
 	}
 	return fmt.Errorf("unknown Settings field %s", name)

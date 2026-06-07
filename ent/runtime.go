@@ -9,6 +9,7 @@ import (
 	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
+	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
 	"langschool/ent/schema"
 	"langschool/ent/settings"
@@ -53,16 +54,24 @@ func init() {
 	courseDescTeacherName := courseFields[1].Descriptor()
 	// course.DefaultTeacherName holds the default value on creation for the teacher_name field.
 	course.DefaultTeacherName = courseDescTeacherName.Default.(string)
-	// courseDescLessonPrice is the schema descriptor for lesson_price field.
-	courseDescLessonPrice := courseFields[4].Descriptor()
-	// course.DefaultLessonPrice holds the default value on creation for the lesson_price field.
-	course.DefaultLessonPrice = courseDescLessonPrice.Default.(float64)
-	// courseDescSubscriptionPrice is the schema descriptor for subscription_price field.
-	courseDescSubscriptionPrice := courseFields[5].Descriptor()
-	// course.DefaultSubscriptionPrice holds the default value on creation for the subscription_price field.
-	course.DefaultSubscriptionPrice = courseDescSubscriptionPrice.Default.(float64)
+	// courseDescLegacyLessonPrice is the schema descriptor for legacy_lesson_price field.
+	courseDescLegacyLessonPrice := courseFields[4].Descriptor()
+	// course.DefaultLegacyLessonPrice holds the default value on creation for the legacy_lesson_price field.
+	course.DefaultLegacyLessonPrice = courseDescLegacyLessonPrice.Default.(float64)
+	// courseDescLegacySubscriptionPrice is the schema descriptor for legacy_subscription_price field.
+	courseDescLegacySubscriptionPrice := courseFields[5].Descriptor()
+	// course.DefaultLegacySubscriptionPrice holds the default value on creation for the legacy_subscription_price field.
+	course.DefaultLegacySubscriptionPrice = courseDescLegacySubscriptionPrice.Default.(float64)
+	// courseDescLessonPriceCents is the schema descriptor for lesson_price_cents field.
+	courseDescLessonPriceCents := courseFields[6].Descriptor()
+	// course.DefaultLessonPriceCents holds the default value on creation for the lesson_price_cents field.
+	course.DefaultLessonPriceCents = courseDescLessonPriceCents.Default.(int64)
+	// courseDescSubscriptionPriceCents is the schema descriptor for subscription_price_cents field.
+	courseDescSubscriptionPriceCents := courseFields[7].Descriptor()
+	// course.DefaultSubscriptionPriceCents holds the default value on creation for the subscription_price_cents field.
+	course.DefaultSubscriptionPriceCents = courseDescSubscriptionPriceCents.Default.(int64)
 	// courseDescIsActive is the schema descriptor for is_active field.
-	courseDescIsActive := courseFields[6].Descriptor()
+	courseDescIsActive := courseFields[8].Descriptor()
 	// course.DefaultIsActive holds the default value on creation for the is_active field.
 	course.DefaultIsActive = courseDescIsActive.Default.(bool)
 	coursemonthstatFields := schema.CourseMonthStat{}.Fields()
@@ -87,22 +96,52 @@ func init() {
 	enrollment.DefaultNote = enrollmentDescNote.Default.(string)
 	invoiceFields := schema.Invoice{}.Fields()
 	_ = invoiceFields
-	// invoiceDescTotalAmount is the schema descriptor for total_amount field.
-	invoiceDescTotalAmount := invoiceFields[3].Descriptor()
-	// invoice.DefaultTotalAmount holds the default value on creation for the total_amount field.
-	invoice.DefaultTotalAmount = invoiceDescTotalAmount.Default.(float64)
+	// invoiceDescLegacyTotalAmount is the schema descriptor for legacy_total_amount field.
+	invoiceDescLegacyTotalAmount := invoiceFields[3].Descriptor()
+	// invoice.DefaultLegacyTotalAmount holds the default value on creation for the legacy_total_amount field.
+	invoice.DefaultLegacyTotalAmount = invoiceDescLegacyTotalAmount.Default.(float64)
+	// invoiceDescTotalAmountCents is the schema descriptor for total_amount_cents field.
+	invoiceDescTotalAmountCents := invoiceFields[4].Descriptor()
+	// invoice.DefaultTotalAmountCents holds the default value on creation for the total_amount_cents field.
+	invoice.DefaultTotalAmountCents = invoiceDescTotalAmountCents.Default.(int64)
+	invoicelineFields := schema.InvoiceLine{}.Fields()
+	_ = invoicelineFields
+	// invoicelineDescLegacyUnitPrice is the schema descriptor for legacy_unit_price field.
+	invoicelineDescLegacyUnitPrice := invoicelineFields[4].Descriptor()
+	// invoiceline.DefaultLegacyUnitPrice holds the default value on creation for the legacy_unit_price field.
+	invoiceline.DefaultLegacyUnitPrice = invoicelineDescLegacyUnitPrice.Default.(float64)
+	// invoicelineDescLegacyAmount is the schema descriptor for legacy_amount field.
+	invoicelineDescLegacyAmount := invoicelineFields[5].Descriptor()
+	// invoiceline.DefaultLegacyAmount holds the default value on creation for the legacy_amount field.
+	invoiceline.DefaultLegacyAmount = invoicelineDescLegacyAmount.Default.(float64)
+	// invoicelineDescUnitPriceCents is the schema descriptor for unit_price_cents field.
+	invoicelineDescUnitPriceCents := invoicelineFields[6].Descriptor()
+	// invoiceline.DefaultUnitPriceCents holds the default value on creation for the unit_price_cents field.
+	invoiceline.DefaultUnitPriceCents = invoicelineDescUnitPriceCents.Default.(int64)
+	// invoicelineDescAmountCents is the schema descriptor for amount_cents field.
+	invoicelineDescAmountCents := invoicelineFields[7].Descriptor()
+	// invoiceline.DefaultAmountCents holds the default value on creation for the amount_cents field.
+	invoiceline.DefaultAmountCents = invoicelineDescAmountCents.Default.(int64)
 	paymentFields := schema.Payment{}.Fields()
 	_ = paymentFields
 	// paymentDescPaidAt is the schema descriptor for paid_at field.
 	paymentDescPaidAt := paymentFields[2].Descriptor()
 	// payment.DefaultPaidAt holds the default value on creation for the paid_at field.
 	payment.DefaultPaidAt = paymentDescPaidAt.Default.(func() time.Time)
+	// paymentDescLegacyAmount is the schema descriptor for legacy_amount field.
+	paymentDescLegacyAmount := paymentFields[3].Descriptor()
+	// payment.DefaultLegacyAmount holds the default value on creation for the legacy_amount field.
+	payment.DefaultLegacyAmount = paymentDescLegacyAmount.Default.(float64)
+	// paymentDescAmountCents is the schema descriptor for amount_cents field.
+	paymentDescAmountCents := paymentFields[4].Descriptor()
+	// payment.DefaultAmountCents holds the default value on creation for the amount_cents field.
+	payment.DefaultAmountCents = paymentDescAmountCents.Default.(int64)
 	// paymentDescNote is the schema descriptor for note field.
-	paymentDescNote := paymentFields[5].Descriptor()
+	paymentDescNote := paymentFields[6].Descriptor()
 	// payment.DefaultNote holds the default value on creation for the note field.
 	payment.DefaultNote = paymentDescNote.Default.(string)
 	// paymentDescCreatedAt is the schema descriptor for created_at field.
-	paymentDescCreatedAt := paymentFields[6].Descriptor()
+	paymentDescCreatedAt := paymentFields[7].Descriptor()
 	// payment.DefaultCreatedAt holds the default value on creation for the created_at field.
 	payment.DefaultCreatedAt = paymentDescCreatedAt.Default.(func() time.Time)
 	settingsFields := schema.Settings{}.Fields()
@@ -135,6 +174,10 @@ func init() {
 	settingsDescLocale := settingsFields[7].Descriptor()
 	// settings.DefaultLocale holds the default value on creation for the locale field.
 	settings.DefaultLocale = settingsDescLocale.Default.(string)
+	// settingsDescMoneyCentsMigrated is the schema descriptor for money_cents_migrated field.
+	settingsDescMoneyCentsMigrated := settingsFields[8].Descriptor()
+	// settings.DefaultMoneyCentsMigrated holds the default value on creation for the money_cents_migrated field.
+	settings.DefaultMoneyCentsMigrated = settingsDescMoneyCentsMigrated.Default.(bool)
 	studentFields := schema.Student{}.Fields()
 	_ = studentFields
 	// studentDescPersonalCode is the schema descriptor for personal_code field.

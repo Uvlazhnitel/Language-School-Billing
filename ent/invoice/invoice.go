@@ -20,8 +20,10 @@ const (
 	FieldPeriodYear = "period_year"
 	// FieldPeriodMonth holds the string denoting the period_month field in the database.
 	FieldPeriodMonth = "period_month"
-	// FieldTotalAmount holds the string denoting the total_amount field in the database.
-	FieldTotalAmount = "total_amount"
+	// FieldLegacyTotalAmount holds the string denoting the legacy_total_amount field in the database.
+	FieldLegacyTotalAmount = "total_amount"
+	// FieldTotalAmountCents holds the string denoting the total_amount_cents field in the database.
+	FieldTotalAmountCents = "total_amount_cents"
 	// FieldStatus holds the string denoting the status field in the database.
 	FieldStatus = "status"
 	// FieldNumber holds the string denoting the number field in the database.
@@ -63,7 +65,8 @@ var Columns = []string{
 	FieldStudentID,
 	FieldPeriodYear,
 	FieldPeriodMonth,
-	FieldTotalAmount,
+	FieldLegacyTotalAmount,
+	FieldTotalAmountCents,
 	FieldStatus,
 	FieldNumber,
 }
@@ -79,8 +82,10 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// DefaultTotalAmount holds the default value on creation for the "total_amount" field.
-	DefaultTotalAmount float64
+	// DefaultLegacyTotalAmount holds the default value on creation for the "legacy_total_amount" field.
+	DefaultLegacyTotalAmount float64
+	// DefaultTotalAmountCents holds the default value on creation for the "total_amount_cents" field.
+	DefaultTotalAmountCents int64
 )
 
 // Status defines the type for the "status" enum field.
@@ -134,9 +139,14 @@ func ByPeriodMonth(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPeriodMonth, opts...).ToFunc()
 }
 
-// ByTotalAmount orders the results by the total_amount field.
-func ByTotalAmount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldTotalAmount, opts...).ToFunc()
+// ByLegacyTotalAmount orders the results by the legacy_total_amount field.
+func ByLegacyTotalAmount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLegacyTotalAmount, opts...).ToFunc()
+}
+
+// ByTotalAmountCents orders the results by the total_amount_cents field.
+func ByTotalAmountCents(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldTotalAmountCents, opts...).ToFunc()
 }
 
 // ByStatus orders the results by the status field.

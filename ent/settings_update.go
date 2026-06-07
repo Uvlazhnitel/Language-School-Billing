@@ -160,6 +160,20 @@ func (_u *SettingsUpdate) SetNillableLocale(v *string) *SettingsUpdate {
 	return _u
 }
 
+// SetMoneyCentsMigrated sets the "money_cents_migrated" field.
+func (_u *SettingsUpdate) SetMoneyCentsMigrated(v bool) *SettingsUpdate {
+	_u.mutation.SetMoneyCentsMigrated(v)
+	return _u
+}
+
+// SetNillableMoneyCentsMigrated sets the "money_cents_migrated" field if the given value is not nil.
+func (_u *SettingsUpdate) SetNillableMoneyCentsMigrated(v *bool) *SettingsUpdate {
+	if v != nil {
+		_u.SetMoneyCentsMigrated(*v)
+	}
+	return _u
+}
+
 // Mutation returns the SettingsMutation object of the builder.
 func (_u *SettingsUpdate) Mutation() *SettingsMutation {
 	return _u.mutation
@@ -233,6 +247,9 @@ func (_u *SettingsUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Locale(); ok {
 		_spec.SetField(settings.FieldLocale, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MoneyCentsMigrated(); ok {
+		_spec.SetField(settings.FieldMoneyCentsMigrated, field.TypeBool, value)
 	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
@@ -387,6 +404,20 @@ func (_u *SettingsUpdateOne) SetNillableLocale(v *string) *SettingsUpdateOne {
 	return _u
 }
 
+// SetMoneyCentsMigrated sets the "money_cents_migrated" field.
+func (_u *SettingsUpdateOne) SetMoneyCentsMigrated(v bool) *SettingsUpdateOne {
+	_u.mutation.SetMoneyCentsMigrated(v)
+	return _u
+}
+
+// SetNillableMoneyCentsMigrated sets the "money_cents_migrated" field if the given value is not nil.
+func (_u *SettingsUpdateOne) SetNillableMoneyCentsMigrated(v *bool) *SettingsUpdateOne {
+	if v != nil {
+		_u.SetMoneyCentsMigrated(*v)
+	}
+	return _u
+}
+
 // Mutation returns the SettingsMutation object of the builder.
 func (_u *SettingsUpdateOne) Mutation() *SettingsMutation {
 	return _u.mutation
@@ -490,6 +521,9 @@ func (_u *SettingsUpdateOne) sqlSave(ctx context.Context) (_node *Settings, err 
 	}
 	if value, ok := _u.mutation.Locale(); ok {
 		_spec.SetField(settings.FieldLocale, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.MoneyCentsMigrated(); ok {
+		_spec.SetField(settings.FieldMoneyCentsMigrated, field.TypeBool, value)
 	}
 	_node = &Settings{config: _u.config}
 	_spec.Assign = _node.assignValues

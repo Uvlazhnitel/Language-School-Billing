@@ -27,6 +27,8 @@ const (
 	FieldCurrency = "currency"
 	// FieldLocale holds the string denoting the locale field in the database.
 	FieldLocale = "locale"
+	// FieldMoneyCentsMigrated holds the string denoting the money_cents_migrated field in the database.
+	FieldMoneyCentsMigrated = "money_cents_migrated"
 	// Table holds the table name of the settings in the database.
 	Table = "settings"
 )
@@ -42,6 +44,7 @@ var Columns = []string{
 	FieldInvoiceDayOfMonth,
 	FieldCurrency,
 	FieldLocale,
+	FieldMoneyCentsMigrated,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -69,6 +72,8 @@ var (
 	DefaultCurrency string
 	// DefaultLocale holds the default value on creation for the "locale" field.
 	DefaultLocale string
+	// DefaultMoneyCentsMigrated holds the default value on creation for the "money_cents_migrated" field.
+	DefaultMoneyCentsMigrated bool
 )
 
 // OrderOption defines the ordering options for the Settings queries.
@@ -117,4 +122,9 @@ func ByCurrency(opts ...sql.OrderTermOption) OrderOption {
 // ByLocale orders the results by the locale field.
 func ByLocale(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLocale, opts...).ToFunc()
+}
+
+// ByMoneyCentsMigrated orders the results by the money_cents_migrated field.
+func ByMoneyCentsMigrated(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldMoneyCentsMigrated, opts...).ToFunc()
 }

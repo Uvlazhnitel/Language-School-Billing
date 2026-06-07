@@ -15,8 +15,10 @@ func (InvoiceLine) Fields() []ent.Field {
 		field.Int("enrollment_id"),
 		field.String("description"),
 		field.Float("qty"),
-		field.Float("unit_price"),
-		field.Float("amount"),
+		field.Float("legacy_unit_price").StorageKey("unit_price").Default(0),
+		field.Float("legacy_amount").StorageKey("amount").Default(0),
+		field.Int64("unit_price_cents").Default(0),
+		field.Int64("amount_cents").Default(0),
 	}
 }
 

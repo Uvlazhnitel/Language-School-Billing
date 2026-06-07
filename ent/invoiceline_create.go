@@ -45,15 +45,59 @@ func (_c *InvoiceLineCreate) SetQty(v float64) *InvoiceLineCreate {
 	return _c
 }
 
-// SetUnitPrice sets the "unit_price" field.
-func (_c *InvoiceLineCreate) SetUnitPrice(v float64) *InvoiceLineCreate {
-	_c.mutation.SetUnitPrice(v)
+// SetLegacyUnitPrice sets the "legacy_unit_price" field.
+func (_c *InvoiceLineCreate) SetLegacyUnitPrice(v float64) *InvoiceLineCreate {
+	_c.mutation.SetLegacyUnitPrice(v)
 	return _c
 }
 
-// SetAmount sets the "amount" field.
-func (_c *InvoiceLineCreate) SetAmount(v float64) *InvoiceLineCreate {
-	_c.mutation.SetAmount(v)
+// SetNillableLegacyUnitPrice sets the "legacy_unit_price" field if the given value is not nil.
+func (_c *InvoiceLineCreate) SetNillableLegacyUnitPrice(v *float64) *InvoiceLineCreate {
+	if v != nil {
+		_c.SetLegacyUnitPrice(*v)
+	}
+	return _c
+}
+
+// SetLegacyAmount sets the "legacy_amount" field.
+func (_c *InvoiceLineCreate) SetLegacyAmount(v float64) *InvoiceLineCreate {
+	_c.mutation.SetLegacyAmount(v)
+	return _c
+}
+
+// SetNillableLegacyAmount sets the "legacy_amount" field if the given value is not nil.
+func (_c *InvoiceLineCreate) SetNillableLegacyAmount(v *float64) *InvoiceLineCreate {
+	if v != nil {
+		_c.SetLegacyAmount(*v)
+	}
+	return _c
+}
+
+// SetUnitPriceCents sets the "unit_price_cents" field.
+func (_c *InvoiceLineCreate) SetUnitPriceCents(v int64) *InvoiceLineCreate {
+	_c.mutation.SetUnitPriceCents(v)
+	return _c
+}
+
+// SetNillableUnitPriceCents sets the "unit_price_cents" field if the given value is not nil.
+func (_c *InvoiceLineCreate) SetNillableUnitPriceCents(v *int64) *InvoiceLineCreate {
+	if v != nil {
+		_c.SetUnitPriceCents(*v)
+	}
+	return _c
+}
+
+// SetAmountCents sets the "amount_cents" field.
+func (_c *InvoiceLineCreate) SetAmountCents(v int64) *InvoiceLineCreate {
+	_c.mutation.SetAmountCents(v)
+	return _c
+}
+
+// SetNillableAmountCents sets the "amount_cents" field if the given value is not nil.
+func (_c *InvoiceLineCreate) SetNillableAmountCents(v *int64) *InvoiceLineCreate {
+	if v != nil {
+		_c.SetAmountCents(*v)
+	}
 	return _c
 }
 
@@ -74,6 +118,7 @@ func (_c *InvoiceLineCreate) Mutation() *InvoiceLineMutation {
 
 // Save creates the InvoiceLine in the database.
 func (_c *InvoiceLineCreate) Save(ctx context.Context) (*InvoiceLine, error) {
+	_c.defaults()
 	return withHooks(ctx, _c.sqlSave, _c.mutation, _c.hooks)
 }
 
@@ -99,6 +144,26 @@ func (_c *InvoiceLineCreate) ExecX(ctx context.Context) {
 	}
 }
 
+// defaults sets the default values of the builder before save.
+func (_c *InvoiceLineCreate) defaults() {
+	if _, ok := _c.mutation.LegacyUnitPrice(); !ok {
+		v := invoiceline.DefaultLegacyUnitPrice
+		_c.mutation.SetLegacyUnitPrice(v)
+	}
+	if _, ok := _c.mutation.LegacyAmount(); !ok {
+		v := invoiceline.DefaultLegacyAmount
+		_c.mutation.SetLegacyAmount(v)
+	}
+	if _, ok := _c.mutation.UnitPriceCents(); !ok {
+		v := invoiceline.DefaultUnitPriceCents
+		_c.mutation.SetUnitPriceCents(v)
+	}
+	if _, ok := _c.mutation.AmountCents(); !ok {
+		v := invoiceline.DefaultAmountCents
+		_c.mutation.SetAmountCents(v)
+	}
+}
+
 // check runs all checks and user-defined validators on the builder.
 func (_c *InvoiceLineCreate) check() error {
 	if _, ok := _c.mutation.InvoiceID(); !ok {
@@ -113,11 +178,17 @@ func (_c *InvoiceLineCreate) check() error {
 	if _, ok := _c.mutation.Qty(); !ok {
 		return &ValidationError{Name: "qty", err: errors.New(`ent: missing required field "InvoiceLine.qty"`)}
 	}
-	if _, ok := _c.mutation.UnitPrice(); !ok {
-		return &ValidationError{Name: "unit_price", err: errors.New(`ent: missing required field "InvoiceLine.unit_price"`)}
+	if _, ok := _c.mutation.LegacyUnitPrice(); !ok {
+		return &ValidationError{Name: "legacy_unit_price", err: errors.New(`ent: missing required field "InvoiceLine.legacy_unit_price"`)}
 	}
-	if _, ok := _c.mutation.Amount(); !ok {
-		return &ValidationError{Name: "amount", err: errors.New(`ent: missing required field "InvoiceLine.amount"`)}
+	if _, ok := _c.mutation.LegacyAmount(); !ok {
+		return &ValidationError{Name: "legacy_amount", err: errors.New(`ent: missing required field "InvoiceLine.legacy_amount"`)}
+	}
+	if _, ok := _c.mutation.UnitPriceCents(); !ok {
+		return &ValidationError{Name: "unit_price_cents", err: errors.New(`ent: missing required field "InvoiceLine.unit_price_cents"`)}
+	}
+	if _, ok := _c.mutation.AmountCents(); !ok {
+		return &ValidationError{Name: "amount_cents", err: errors.New(`ent: missing required field "InvoiceLine.amount_cents"`)}
 	}
 	if len(_c.mutation.InvoiceIDs()) == 0 {
 		return &ValidationError{Name: "invoice", err: errors.New(`ent: missing required edge "InvoiceLine.invoice"`)}
@@ -159,13 +230,21 @@ func (_c *InvoiceLineCreate) createSpec() (*InvoiceLine, *sqlgraph.CreateSpec) {
 		_spec.SetField(invoiceline.FieldQty, field.TypeFloat64, value)
 		_node.Qty = value
 	}
-	if value, ok := _c.mutation.UnitPrice(); ok {
-		_spec.SetField(invoiceline.FieldUnitPrice, field.TypeFloat64, value)
-		_node.UnitPrice = value
+	if value, ok := _c.mutation.LegacyUnitPrice(); ok {
+		_spec.SetField(invoiceline.FieldLegacyUnitPrice, field.TypeFloat64, value)
+		_node.LegacyUnitPrice = value
 	}
-	if value, ok := _c.mutation.Amount(); ok {
-		_spec.SetField(invoiceline.FieldAmount, field.TypeFloat64, value)
-		_node.Amount = value
+	if value, ok := _c.mutation.LegacyAmount(); ok {
+		_spec.SetField(invoiceline.FieldLegacyAmount, field.TypeFloat64, value)
+		_node.LegacyAmount = value
+	}
+	if value, ok := _c.mutation.UnitPriceCents(); ok {
+		_spec.SetField(invoiceline.FieldUnitPriceCents, field.TypeInt64, value)
+		_node.UnitPriceCents = value
+	}
+	if value, ok := _c.mutation.AmountCents(); ok {
+		_spec.SetField(invoiceline.FieldAmountCents, field.TypeInt64, value)
+		_node.AmountCents = value
 	}
 	if nodes := _c.mutation.InvoiceIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -222,6 +301,7 @@ func (_c *InvoiceLineCreateBulk) Save(ctx context.Context) ([]*InvoiceLine, erro
 	for i := range _c.builders {
 		func(i int, root context.Context) {
 			builder := _c.builders[i]
+			builder.defaults()
 			var mut Mutator = MutateFunc(func(ctx context.Context, m Mutation) (Value, error) {
 				mutation, ok := m.(*InvoiceLineMutation)
 				if !ok {

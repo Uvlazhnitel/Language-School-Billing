@@ -20,6 +20,7 @@ import (
 	"langschool/ent/settings"
 	"langschool/internal/app"
 	"langschool/internal/app/recipient"
+	"langschool/internal/money"
 )
 
 type artlabProvider struct {
@@ -157,7 +158,7 @@ func GenerateInvoicePDFProfessional(ctx context.Context, db *ent.Client, invoice
 	drawProviderBlock(p, provider)
 	drawRecipientBlock(p, recipientInfo)
 	drawServiceTable(p, provider.Currency, lines, periodStart, periodEnd)
-	drawTotalAndPayment(p, provider, iv.TotalAmount, dueDate, *iv.Number)
+	drawTotalAndPayment(p, provider, money.CentsToEuros(iv.TotalAmountCents), dueDate, *iv.Number)
 
 	if err := p.OutputFileAndClose(outPath); err != nil {
 		return "", fmt.Errorf("write pdf %s: %w", outPath, err)
@@ -349,7 +350,7 @@ func drawServiceTable(p *fpdf.Fpdf, currency string, lines []*ent.InvoiceLine, p
 		}
 
 		description := normalizeInvoiceDescription(line.Description, periodStart)
-		drawServiceRow(p, i+1, description, period, unit, line.Qty, line.UnitPrice, line.Amount, currency)
+		drawServiceRow(p, i+1, description, period, unit, line.Qty, money.CentsToEuros(line.UnitPriceCents), money.CentsToEuros(line.AmountCents), currency)
 	}
 }
 

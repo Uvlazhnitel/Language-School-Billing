@@ -16,6 +16,7 @@ import (
 	"langschool/ent/invoiceline"
 	"langschool/internal/app"
 	invsvc "langschool/internal/app/invoice"
+	"langschool/internal/money"
 )
 
 func TestListPerLessonIncludesSubscriptionRows(t *testing.T) {
@@ -596,8 +597,8 @@ func TestDeleteEnrollmentRebuildsRemainingDraftInvoice(t *testing.T) {
 	if iv.Status != app.InvoiceStatusDraft {
 		t.Fatalf("invoice status = %q, want draft", iv.Status)
 	}
-	if iv.TotalAmount != 20 {
-		t.Fatalf("invoice total = %v, want 20", iv.TotalAmount)
+	if iv.TotalAmountCents != money.EurosToCents(20) {
+		t.Fatalf("invoice total = %v, want 20", money.CentsToEuros(iv.TotalAmountCents))
 	}
 
 	lines, err := client.InvoiceLine.Query().
