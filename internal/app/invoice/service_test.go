@@ -20,6 +20,7 @@ import (
 	"langschool/ent/invoiceline"
 	"langschool/ent/settings"
 	"langschool/internal/app"
+	"langschool/internal/money"
 )
 
 func TestGenerateDraftsSubscriptionWithoutLessonsDoesNotAddMaterials(t *testing.T) {
@@ -80,8 +81,8 @@ func TestGenerateDraftsSubscriptionWithoutLessonsDoesNotAddMaterials(t *testing.
 		if string(iv.Status) != expectedStatus {
 			t.Fatalf("invoice status = %q, want %q", iv.Status, expectedStatus)
 		}
-		if iv.TotalAmount != expectedTotal {
-			t.Fatalf("invoice total = %v, want %v", iv.TotalAmount, expectedTotal)
+		if money.CentsToEuros(iv.TotalAmountCents) != expectedTotal {
+			t.Fatalf("invoice total = %v, want %v", money.CentsToEuros(iv.TotalAmountCents), expectedTotal)
 		}
 
 		lines, err := client.InvoiceLine.Query().
@@ -182,8 +183,8 @@ func TestGenerateDraftsPerLessonDescriptionIsLatvian(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Invoice.Query: %v", err)
 	}
-	if iv.TotalAmount != 105 {
-		t.Fatalf("invoice total = %v, want 105", iv.TotalAmount)
+	if iv.TotalAmountCents != money.EurosToCents(105) {
+		t.Fatalf("invoice total = %v, want 105", money.CentsToEuros(iv.TotalAmountCents))
 	}
 
 	lines, err := client.InvoiceLine.Query().
@@ -271,8 +272,8 @@ func TestGenerateDraftsPerLessonSupportsFractionalHours(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Invoice.Query: %v", err)
 	}
-	if iv.TotalAmount != 35 {
-		t.Fatalf("invoice total = %v, want 35", iv.TotalAmount)
+	if iv.TotalAmountCents != money.EurosToCents(35) {
+		t.Fatalf("invoice total = %v, want 35", money.CentsToEuros(iv.TotalAmountCents))
 	}
 
 	lines, err := client.InvoiceLine.Query().
@@ -291,8 +292,8 @@ func TestGenerateDraftsPerLessonSupportsFractionalHours(t *testing.T) {
 	if lines[0].Qty != 1.5 {
 		t.Fatalf("service qty = %v, want 1.5", lines[0].Qty)
 	}
-	if lines[0].Amount != 30 {
-		t.Fatalf("service amount = %v, want 30", lines[0].Amount)
+	if lines[0].AmountCents != money.EurosToCents(30) {
+		t.Fatalf("service amount = %v, want 30", money.CentsToEuros(lines[0].AmountCents))
 	}
 	if lines[1].Description != materialsLineDescription {
 		t.Fatalf("materials description = %q, want %q", lines[1].Description, materialsLineDescription)
@@ -520,8 +521,8 @@ func TestRebuildStudentDraft(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Invoice.Query: %v", err)
 	}
-	if iv.TotalAmount != 55 {
-		t.Fatalf("invoice total = %v, want 55", iv.TotalAmount)
+	if iv.TotalAmountCents != money.EurosToCents(55) {
+		t.Fatalf("invoice total = %v, want 55", money.CentsToEuros(iv.TotalAmountCents))
 	}
 
 	otherCount, err := client.Invoice.Query().
@@ -558,8 +559,8 @@ func TestRebuildStudentDraft(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Invoice.Get: %v", err)
 	}
-	if iv.TotalAmount != 80 {
-		t.Fatalf("updated invoice total = %v, want 80", iv.TotalAmount)
+	if iv.TotalAmountCents != money.EurosToCents(80) {
+		t.Fatalf("updated invoice total = %v, want 80", money.CentsToEuros(iv.TotalAmountCents))
 	}
 
 	lines, err := client.InvoiceLine.Query().
@@ -755,8 +756,8 @@ func TestRebuildStudentDraftUpdateRollsBackOnInvoiceLineError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Invoice.Query: %v", err)
 	}
-	if iv.TotalAmount != 45 {
-		t.Fatalf("initial invoice total = %v, want 45", iv.TotalAmount)
+	if iv.TotalAmountCents != money.EurosToCents(45) {
+		t.Fatalf("initial invoice total = %v, want 45", money.CentsToEuros(iv.TotalAmountCents))
 	}
 
 	beforeLines, err := client.InvoiceLine.Query().
@@ -808,8 +809,8 @@ func TestRebuildStudentDraftUpdateRollsBackOnInvoiceLineError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Invoice.Get after rollback: %v", err)
 	}
-	if afterInvoice.TotalAmount != 45 {
-		t.Fatalf("invoice total after rollback = %v, want 45", afterInvoice.TotalAmount)
+	if afterInvoice.TotalAmountCents != money.EurosToCents(45) {
+		t.Fatalf("invoice total after rollback = %v, want 45", money.CentsToEuros(afterInvoice.TotalAmountCents))
 	}
 
 	afterLines, err := client.InvoiceLine.Query().
@@ -823,7 +824,7 @@ func TestRebuildStudentDraftUpdateRollsBackOnInvoiceLineError(t *testing.T) {
 		t.Fatalf("invoice line count after rollback = %d, want %d", len(afterLines), len(beforeLines))
 	}
 	for i := range beforeLines {
-		if afterLines[i].Description != beforeLines[i].Description || afterLines[i].Amount != beforeLines[i].Amount || afterLines[i].Qty != beforeLines[i].Qty || afterLines[i].EnrollmentID != enr.ID {
+		if afterLines[i].Description != beforeLines[i].Description || afterLines[i].AmountCents != beforeLines[i].AmountCents || afterLines[i].Qty != beforeLines[i].Qty || afterLines[i].EnrollmentID != enr.ID {
 			t.Fatalf("invoice line %d changed after rollback: got %+v want %+v", i, afterLines[i], beforeLines[i])
 		}
 	}
@@ -911,8 +912,8 @@ func TestRebuildStudentDraftSkipsIssuedInvoice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Invoice.Get: %v", err)
 	}
-	if got.TotalAmount != 30 || got.Status != StatusIssued {
-		t.Fatalf("issued invoice changed unexpectedly: total=%v status=%q", got.TotalAmount, got.Status)
+	if got.TotalAmountCents != money.EurosToCents(30) || got.Status != StatusIssued {
+		t.Fatalf("issued invoice changed unexpectedly: total=%v status=%q", money.CentsToEuros(got.TotalAmountCents), got.Status)
 	}
 }
 
@@ -998,8 +999,8 @@ func TestReopenDraft(t *testing.T) {
 		if got.Number != nil {
 			t.Fatalf("Number = %v, want nil", got.Number)
 		}
-		if got.TotalAmount != 70 {
-			t.Fatalf("TotalAmount = %v, want 70", got.TotalAmount)
+		if got.TotalAmountCents != money.EurosToCents(70) {
+			t.Fatalf("TotalAmount = %v, want 70", money.CentsToEuros(got.TotalAmountCents))
 		}
 		count, err := client.InvoiceLine.Query().Count(ctx)
 		if err != nil {

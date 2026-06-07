@@ -21,8 +21,10 @@ const (
 	FieldInvoiceID = "invoice_id"
 	// FieldPaidAt holds the string denoting the paid_at field in the database.
 	FieldPaidAt = "paid_at"
-	// FieldAmount holds the string denoting the amount field in the database.
-	FieldAmount = "amount"
+	// FieldLegacyAmount holds the string denoting the legacy_amount field in the database.
+	FieldLegacyAmount = "amount"
+	// FieldAmountCents holds the string denoting the amount_cents field in the database.
+	FieldAmountCents = "amount_cents"
 	// FieldMethod holds the string denoting the method field in the database.
 	FieldMethod = "method"
 	// FieldNote holds the string denoting the note field in the database.
@@ -57,7 +59,8 @@ var Columns = []string{
 	FieldStudentID,
 	FieldInvoiceID,
 	FieldPaidAt,
-	FieldAmount,
+	FieldLegacyAmount,
+	FieldAmountCents,
 	FieldMethod,
 	FieldNote,
 	FieldCreatedAt,
@@ -76,6 +79,10 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultPaidAt holds the default value on creation for the "paid_at" field.
 	DefaultPaidAt func() time.Time
+	// DefaultLegacyAmount holds the default value on creation for the "legacy_amount" field.
+	DefaultLegacyAmount float64
+	// DefaultAmountCents holds the default value on creation for the "amount_cents" field.
+	DefaultAmountCents int64
 	// DefaultNote holds the default value on creation for the "note" field.
 	DefaultNote string
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
@@ -128,9 +135,14 @@ func ByPaidAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPaidAt, opts...).ToFunc()
 }
 
-// ByAmount orders the results by the amount field.
-func ByAmount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAmount, opts...).ToFunc()
+// ByLegacyAmount orders the results by the legacy_amount field.
+func ByLegacyAmount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLegacyAmount, opts...).ToFunc()
+}
+
+// ByAmountCents orders the results by the amount_cents field.
+func ByAmountCents(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAmountCents, opts...).ToFunc()
 }
 
 // ByMethod orders the results by the method field.

@@ -24,6 +24,7 @@ import (
 	"langschool/ent/teacher"
 	"langschool/internal/app"
 	"langschool/internal/app/utils"
+	"langschool/internal/money"
 )
 
 // -------------------- Constants (imported from internal/app) --------------------
@@ -214,8 +215,8 @@ func toCourseDTO(c *ent.Course) CourseDTO {
 		Name:              c.Name,
 		TeacherName:       c.TeacherName,
 		Type:              string(c.Type),
-		LessonPrice:       utils.Round2(c.LessonPrice),
-		SubscriptionPrice: utils.Round2(c.SubscriptionPrice),
+		LessonPrice:       money.CentsToEuros(c.LessonPriceCents),
+		SubscriptionPrice: money.CentsToEuros(c.SubscriptionPriceCents),
 	}
 	if c.TeacherID != nil {
 		id := *c.TeacherID

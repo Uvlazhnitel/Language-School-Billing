@@ -11,6 +11,7 @@ import (
 	"langschool/ent/invoice"
 	auditsvc "langschool/internal/app/audit"
 	"langschool/internal/auth"
+	"langschool/internal/money"
 )
 
 type AuditLogListItem = auditsvc.ListItem
@@ -134,7 +135,7 @@ func (s *Service) auditStudentFinanceSnapshot(ctx context.Context, studentID int
 			"month":   item.PeriodMonth,
 			"number":  number,
 			"status":  string(item.Status),
-			"total":   item.TotalAmount,
+			"total":   money.CentsToEuros(item.TotalAmountCents),
 			"summary": summary,
 		})
 	}
@@ -167,7 +168,7 @@ func (s *Service) auditPaymentDeleteSnapshot(ctx context.Context, paymentID int)
 	return before, auditPaymentMeta{
 		StudentID:   paymentItem.StudentID,
 		StudentName: studentMeta.StudentName,
-		Amount:      paymentItem.Amount,
+		Amount:      money.CentsToEuros(paymentItem.AmountCents),
 		InvoiceID:   paymentInvoiceID,
 	}, nil
 }
@@ -212,7 +213,7 @@ func toAuditPaymentDTO(item *ent.Payment) map[string]any {
 		"id":        item.ID,
 		"studentId": item.StudentID,
 		"invoiceId": invoiceID,
-		"amount":    item.Amount,
+		"amount":    money.CentsToEuros(item.AmountCents),
 		"method":    string(item.Method),
 		"note":      item.Note,
 		"paidAt":    item.PaidAt.Format(time.RFC3339),

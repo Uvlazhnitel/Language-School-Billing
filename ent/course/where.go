@@ -69,14 +69,24 @@ func TeacherID(v int) predicate.Course {
 	return predicate.Course(sql.FieldEQ(FieldTeacherID, v))
 }
 
-// LessonPrice applies equality check predicate on the "lesson_price" field. It's identical to LessonPriceEQ.
-func LessonPrice(v float64) predicate.Course {
-	return predicate.Course(sql.FieldEQ(FieldLessonPrice, v))
+// LegacyLessonPrice applies equality check predicate on the "legacy_lesson_price" field. It's identical to LegacyLessonPriceEQ.
+func LegacyLessonPrice(v float64) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldLegacyLessonPrice, v))
 }
 
-// SubscriptionPrice applies equality check predicate on the "subscription_price" field. It's identical to SubscriptionPriceEQ.
-func SubscriptionPrice(v float64) predicate.Course {
-	return predicate.Course(sql.FieldEQ(FieldSubscriptionPrice, v))
+// LegacySubscriptionPrice applies equality check predicate on the "legacy_subscription_price" field. It's identical to LegacySubscriptionPriceEQ.
+func LegacySubscriptionPrice(v float64) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldLegacySubscriptionPrice, v))
+}
+
+// LessonPriceCents applies equality check predicate on the "lesson_price_cents" field. It's identical to LessonPriceCentsEQ.
+func LessonPriceCents(v int64) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldLessonPriceCents, v))
+}
+
+// SubscriptionPriceCents applies equality check predicate on the "subscription_price_cents" field. It's identical to SubscriptionPriceCentsEQ.
+func SubscriptionPriceCents(v int64) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldSubscriptionPriceCents, v))
 }
 
 // IsActive applies equality check predicate on the "is_active" field. It's identical to IsActiveEQ.
@@ -264,84 +274,164 @@ func TypeNotIn(vs ...Type) predicate.Course {
 	return predicate.Course(sql.FieldNotIn(FieldType, vs...))
 }
 
-// LessonPriceEQ applies the EQ predicate on the "lesson_price" field.
-func LessonPriceEQ(v float64) predicate.Course {
-	return predicate.Course(sql.FieldEQ(FieldLessonPrice, v))
+// LegacyLessonPriceEQ applies the EQ predicate on the "legacy_lesson_price" field.
+func LegacyLessonPriceEQ(v float64) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldLegacyLessonPrice, v))
 }
 
-// LessonPriceNEQ applies the NEQ predicate on the "lesson_price" field.
-func LessonPriceNEQ(v float64) predicate.Course {
-	return predicate.Course(sql.FieldNEQ(FieldLessonPrice, v))
+// LegacyLessonPriceNEQ applies the NEQ predicate on the "legacy_lesson_price" field.
+func LegacyLessonPriceNEQ(v float64) predicate.Course {
+	return predicate.Course(sql.FieldNEQ(FieldLegacyLessonPrice, v))
 }
 
-// LessonPriceIn applies the In predicate on the "lesson_price" field.
-func LessonPriceIn(vs ...float64) predicate.Course {
-	return predicate.Course(sql.FieldIn(FieldLessonPrice, vs...))
+// LegacyLessonPriceIn applies the In predicate on the "legacy_lesson_price" field.
+func LegacyLessonPriceIn(vs ...float64) predicate.Course {
+	return predicate.Course(sql.FieldIn(FieldLegacyLessonPrice, vs...))
 }
 
-// LessonPriceNotIn applies the NotIn predicate on the "lesson_price" field.
-func LessonPriceNotIn(vs ...float64) predicate.Course {
-	return predicate.Course(sql.FieldNotIn(FieldLessonPrice, vs...))
+// LegacyLessonPriceNotIn applies the NotIn predicate on the "legacy_lesson_price" field.
+func LegacyLessonPriceNotIn(vs ...float64) predicate.Course {
+	return predicate.Course(sql.FieldNotIn(FieldLegacyLessonPrice, vs...))
 }
 
-// LessonPriceGT applies the GT predicate on the "lesson_price" field.
-func LessonPriceGT(v float64) predicate.Course {
-	return predicate.Course(sql.FieldGT(FieldLessonPrice, v))
+// LegacyLessonPriceGT applies the GT predicate on the "legacy_lesson_price" field.
+func LegacyLessonPriceGT(v float64) predicate.Course {
+	return predicate.Course(sql.FieldGT(FieldLegacyLessonPrice, v))
 }
 
-// LessonPriceGTE applies the GTE predicate on the "lesson_price" field.
-func LessonPriceGTE(v float64) predicate.Course {
-	return predicate.Course(sql.FieldGTE(FieldLessonPrice, v))
+// LegacyLessonPriceGTE applies the GTE predicate on the "legacy_lesson_price" field.
+func LegacyLessonPriceGTE(v float64) predicate.Course {
+	return predicate.Course(sql.FieldGTE(FieldLegacyLessonPrice, v))
 }
 
-// LessonPriceLT applies the LT predicate on the "lesson_price" field.
-func LessonPriceLT(v float64) predicate.Course {
-	return predicate.Course(sql.FieldLT(FieldLessonPrice, v))
+// LegacyLessonPriceLT applies the LT predicate on the "legacy_lesson_price" field.
+func LegacyLessonPriceLT(v float64) predicate.Course {
+	return predicate.Course(sql.FieldLT(FieldLegacyLessonPrice, v))
 }
 
-// LessonPriceLTE applies the LTE predicate on the "lesson_price" field.
-func LessonPriceLTE(v float64) predicate.Course {
-	return predicate.Course(sql.FieldLTE(FieldLessonPrice, v))
+// LegacyLessonPriceLTE applies the LTE predicate on the "legacy_lesson_price" field.
+func LegacyLessonPriceLTE(v float64) predicate.Course {
+	return predicate.Course(sql.FieldLTE(FieldLegacyLessonPrice, v))
 }
 
-// SubscriptionPriceEQ applies the EQ predicate on the "subscription_price" field.
-func SubscriptionPriceEQ(v float64) predicate.Course {
-	return predicate.Course(sql.FieldEQ(FieldSubscriptionPrice, v))
+// LegacySubscriptionPriceEQ applies the EQ predicate on the "legacy_subscription_price" field.
+func LegacySubscriptionPriceEQ(v float64) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldLegacySubscriptionPrice, v))
 }
 
-// SubscriptionPriceNEQ applies the NEQ predicate on the "subscription_price" field.
-func SubscriptionPriceNEQ(v float64) predicate.Course {
-	return predicate.Course(sql.FieldNEQ(FieldSubscriptionPrice, v))
+// LegacySubscriptionPriceNEQ applies the NEQ predicate on the "legacy_subscription_price" field.
+func LegacySubscriptionPriceNEQ(v float64) predicate.Course {
+	return predicate.Course(sql.FieldNEQ(FieldLegacySubscriptionPrice, v))
 }
 
-// SubscriptionPriceIn applies the In predicate on the "subscription_price" field.
-func SubscriptionPriceIn(vs ...float64) predicate.Course {
-	return predicate.Course(sql.FieldIn(FieldSubscriptionPrice, vs...))
+// LegacySubscriptionPriceIn applies the In predicate on the "legacy_subscription_price" field.
+func LegacySubscriptionPriceIn(vs ...float64) predicate.Course {
+	return predicate.Course(sql.FieldIn(FieldLegacySubscriptionPrice, vs...))
 }
 
-// SubscriptionPriceNotIn applies the NotIn predicate on the "subscription_price" field.
-func SubscriptionPriceNotIn(vs ...float64) predicate.Course {
-	return predicate.Course(sql.FieldNotIn(FieldSubscriptionPrice, vs...))
+// LegacySubscriptionPriceNotIn applies the NotIn predicate on the "legacy_subscription_price" field.
+func LegacySubscriptionPriceNotIn(vs ...float64) predicate.Course {
+	return predicate.Course(sql.FieldNotIn(FieldLegacySubscriptionPrice, vs...))
 }
 
-// SubscriptionPriceGT applies the GT predicate on the "subscription_price" field.
-func SubscriptionPriceGT(v float64) predicate.Course {
-	return predicate.Course(sql.FieldGT(FieldSubscriptionPrice, v))
+// LegacySubscriptionPriceGT applies the GT predicate on the "legacy_subscription_price" field.
+func LegacySubscriptionPriceGT(v float64) predicate.Course {
+	return predicate.Course(sql.FieldGT(FieldLegacySubscriptionPrice, v))
 }
 
-// SubscriptionPriceGTE applies the GTE predicate on the "subscription_price" field.
-func SubscriptionPriceGTE(v float64) predicate.Course {
-	return predicate.Course(sql.FieldGTE(FieldSubscriptionPrice, v))
+// LegacySubscriptionPriceGTE applies the GTE predicate on the "legacy_subscription_price" field.
+func LegacySubscriptionPriceGTE(v float64) predicate.Course {
+	return predicate.Course(sql.FieldGTE(FieldLegacySubscriptionPrice, v))
 }
 
-// SubscriptionPriceLT applies the LT predicate on the "subscription_price" field.
-func SubscriptionPriceLT(v float64) predicate.Course {
-	return predicate.Course(sql.FieldLT(FieldSubscriptionPrice, v))
+// LegacySubscriptionPriceLT applies the LT predicate on the "legacy_subscription_price" field.
+func LegacySubscriptionPriceLT(v float64) predicate.Course {
+	return predicate.Course(sql.FieldLT(FieldLegacySubscriptionPrice, v))
 }
 
-// SubscriptionPriceLTE applies the LTE predicate on the "subscription_price" field.
-func SubscriptionPriceLTE(v float64) predicate.Course {
-	return predicate.Course(sql.FieldLTE(FieldSubscriptionPrice, v))
+// LegacySubscriptionPriceLTE applies the LTE predicate on the "legacy_subscription_price" field.
+func LegacySubscriptionPriceLTE(v float64) predicate.Course {
+	return predicate.Course(sql.FieldLTE(FieldLegacySubscriptionPrice, v))
+}
+
+// LessonPriceCentsEQ applies the EQ predicate on the "lesson_price_cents" field.
+func LessonPriceCentsEQ(v int64) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldLessonPriceCents, v))
+}
+
+// LessonPriceCentsNEQ applies the NEQ predicate on the "lesson_price_cents" field.
+func LessonPriceCentsNEQ(v int64) predicate.Course {
+	return predicate.Course(sql.FieldNEQ(FieldLessonPriceCents, v))
+}
+
+// LessonPriceCentsIn applies the In predicate on the "lesson_price_cents" field.
+func LessonPriceCentsIn(vs ...int64) predicate.Course {
+	return predicate.Course(sql.FieldIn(FieldLessonPriceCents, vs...))
+}
+
+// LessonPriceCentsNotIn applies the NotIn predicate on the "lesson_price_cents" field.
+func LessonPriceCentsNotIn(vs ...int64) predicate.Course {
+	return predicate.Course(sql.FieldNotIn(FieldLessonPriceCents, vs...))
+}
+
+// LessonPriceCentsGT applies the GT predicate on the "lesson_price_cents" field.
+func LessonPriceCentsGT(v int64) predicate.Course {
+	return predicate.Course(sql.FieldGT(FieldLessonPriceCents, v))
+}
+
+// LessonPriceCentsGTE applies the GTE predicate on the "lesson_price_cents" field.
+func LessonPriceCentsGTE(v int64) predicate.Course {
+	return predicate.Course(sql.FieldGTE(FieldLessonPriceCents, v))
+}
+
+// LessonPriceCentsLT applies the LT predicate on the "lesson_price_cents" field.
+func LessonPriceCentsLT(v int64) predicate.Course {
+	return predicate.Course(sql.FieldLT(FieldLessonPriceCents, v))
+}
+
+// LessonPriceCentsLTE applies the LTE predicate on the "lesson_price_cents" field.
+func LessonPriceCentsLTE(v int64) predicate.Course {
+	return predicate.Course(sql.FieldLTE(FieldLessonPriceCents, v))
+}
+
+// SubscriptionPriceCentsEQ applies the EQ predicate on the "subscription_price_cents" field.
+func SubscriptionPriceCentsEQ(v int64) predicate.Course {
+	return predicate.Course(sql.FieldEQ(FieldSubscriptionPriceCents, v))
+}
+
+// SubscriptionPriceCentsNEQ applies the NEQ predicate on the "subscription_price_cents" field.
+func SubscriptionPriceCentsNEQ(v int64) predicate.Course {
+	return predicate.Course(sql.FieldNEQ(FieldSubscriptionPriceCents, v))
+}
+
+// SubscriptionPriceCentsIn applies the In predicate on the "subscription_price_cents" field.
+func SubscriptionPriceCentsIn(vs ...int64) predicate.Course {
+	return predicate.Course(sql.FieldIn(FieldSubscriptionPriceCents, vs...))
+}
+
+// SubscriptionPriceCentsNotIn applies the NotIn predicate on the "subscription_price_cents" field.
+func SubscriptionPriceCentsNotIn(vs ...int64) predicate.Course {
+	return predicate.Course(sql.FieldNotIn(FieldSubscriptionPriceCents, vs...))
+}
+
+// SubscriptionPriceCentsGT applies the GT predicate on the "subscription_price_cents" field.
+func SubscriptionPriceCentsGT(v int64) predicate.Course {
+	return predicate.Course(sql.FieldGT(FieldSubscriptionPriceCents, v))
+}
+
+// SubscriptionPriceCentsGTE applies the GTE predicate on the "subscription_price_cents" field.
+func SubscriptionPriceCentsGTE(v int64) predicate.Course {
+	return predicate.Course(sql.FieldGTE(FieldSubscriptionPriceCents, v))
+}
+
+// SubscriptionPriceCentsLT applies the LT predicate on the "subscription_price_cents" field.
+func SubscriptionPriceCentsLT(v int64) predicate.Course {
+	return predicate.Course(sql.FieldLT(FieldSubscriptionPriceCents, v))
+}
+
+// SubscriptionPriceCentsLTE applies the LTE predicate on the "subscription_price_cents" field.
+func SubscriptionPriceCentsLTE(v int64) predicate.Course {
+	return predicate.Course(sql.FieldLTE(FieldSubscriptionPriceCents, v))
 }
 
 // IsActiveEQ applies the EQ predicate on the "is_active" field.

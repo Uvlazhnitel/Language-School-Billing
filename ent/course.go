@@ -25,10 +25,14 @@ type Course struct {
 	TeacherID *int `json:"teacher_id,omitempty"`
 	// Type holds the value of the "type" field.
 	Type course.Type `json:"type,omitempty"`
-	// LessonPrice holds the value of the "lesson_price" field.
-	LessonPrice float64 `json:"lesson_price,omitempty"`
-	// SubscriptionPrice holds the value of the "subscription_price" field.
-	SubscriptionPrice float64 `json:"subscription_price,omitempty"`
+	// LegacyLessonPrice holds the value of the "legacy_lesson_price" field.
+	LegacyLessonPrice float64 `json:"legacy_lesson_price,omitempty"`
+	// LegacySubscriptionPrice holds the value of the "legacy_subscription_price" field.
+	LegacySubscriptionPrice float64 `json:"legacy_subscription_price,omitempty"`
+	// LessonPriceCents holds the value of the "lesson_price_cents" field.
+	LessonPriceCents int64 `json:"lesson_price_cents,omitempty"`
+	// SubscriptionPriceCents holds the value of the "subscription_price_cents" field.
+	SubscriptionPriceCents int64 `json:"subscription_price_cents,omitempty"`
 	// IsActive holds the value of the "is_active" field.
 	IsActive bool `json:"is_active,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -86,9 +90,9 @@ func (*Course) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case course.FieldIsActive:
 			values[i] = new(sql.NullBool)
-		case course.FieldLessonPrice, course.FieldSubscriptionPrice:
+		case course.FieldLegacyLessonPrice, course.FieldLegacySubscriptionPrice:
 			values[i] = new(sql.NullFloat64)
-		case course.FieldID, course.FieldTeacherID:
+		case course.FieldID, course.FieldTeacherID, course.FieldLessonPriceCents, course.FieldSubscriptionPriceCents:
 			values[i] = new(sql.NullInt64)
 		case course.FieldName, course.FieldTeacherName, course.FieldType:
 			values[i] = new(sql.NullString)
@@ -138,17 +142,29 @@ func (_m *Course) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Type = course.Type(value.String)
 			}
-		case course.FieldLessonPrice:
+		case course.FieldLegacyLessonPrice:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field lesson_price", values[i])
+				return fmt.Errorf("unexpected type %T for field legacy_lesson_price", values[i])
 			} else if value.Valid {
-				_m.LessonPrice = value.Float64
+				_m.LegacyLessonPrice = value.Float64
 			}
-		case course.FieldSubscriptionPrice:
+		case course.FieldLegacySubscriptionPrice:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field subscription_price", values[i])
+				return fmt.Errorf("unexpected type %T for field legacy_subscription_price", values[i])
 			} else if value.Valid {
-				_m.SubscriptionPrice = value.Float64
+				_m.LegacySubscriptionPrice = value.Float64
+			}
+		case course.FieldLessonPriceCents:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field lesson_price_cents", values[i])
+			} else if value.Valid {
+				_m.LessonPriceCents = value.Int64
+			}
+		case course.FieldSubscriptionPriceCents:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field subscription_price_cents", values[i])
+			} else if value.Valid {
+				_m.SubscriptionPriceCents = value.Int64
 			}
 		case course.FieldIsActive:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -221,11 +237,17 @@ func (_m *Course) String() string {
 	builder.WriteString("type=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Type))
 	builder.WriteString(", ")
-	builder.WriteString("lesson_price=")
-	builder.WriteString(fmt.Sprintf("%v", _m.LessonPrice))
+	builder.WriteString("legacy_lesson_price=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LegacyLessonPrice))
 	builder.WriteString(", ")
-	builder.WriteString("subscription_price=")
-	builder.WriteString(fmt.Sprintf("%v", _m.SubscriptionPrice))
+	builder.WriteString("legacy_subscription_price=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LegacySubscriptionPrice))
+	builder.WriteString(", ")
+	builder.WriteString("lesson_price_cents=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LessonPriceCents))
+	builder.WriteString(", ")
+	builder.WriteString("subscription_price_cents=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SubscriptionPriceCents))
 	builder.WriteString(", ")
 	builder.WriteString("is_active=")
 	builder.WriteString(fmt.Sprintf("%v", _m.IsActive))

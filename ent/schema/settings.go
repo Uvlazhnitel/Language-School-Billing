@@ -18,5 +18,6 @@ func (Settings) Fields() []ent.Field {
 		field.Int("invoice_day_of_month").Default(1),
 		field.String("currency").Default("EUR"),
 		field.String("locale").Default("en-US"),
+		field.Bool("money_cents_migrated").Default(false),
 	}
 }

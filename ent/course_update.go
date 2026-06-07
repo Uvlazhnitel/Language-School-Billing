@@ -92,45 +92,87 @@ func (_u *CourseUpdate) SetNillableType(v *course.Type) *CourseUpdate {
 	return _u
 }
 
-// SetLessonPrice sets the "lesson_price" field.
-func (_u *CourseUpdate) SetLessonPrice(v float64) *CourseUpdate {
-	_u.mutation.ResetLessonPrice()
-	_u.mutation.SetLessonPrice(v)
+// SetLegacyLessonPrice sets the "legacy_lesson_price" field.
+func (_u *CourseUpdate) SetLegacyLessonPrice(v float64) *CourseUpdate {
+	_u.mutation.ResetLegacyLessonPrice()
+	_u.mutation.SetLegacyLessonPrice(v)
 	return _u
 }
 
-// SetNillableLessonPrice sets the "lesson_price" field if the given value is not nil.
-func (_u *CourseUpdate) SetNillableLessonPrice(v *float64) *CourseUpdate {
+// SetNillableLegacyLessonPrice sets the "legacy_lesson_price" field if the given value is not nil.
+func (_u *CourseUpdate) SetNillableLegacyLessonPrice(v *float64) *CourseUpdate {
 	if v != nil {
-		_u.SetLessonPrice(*v)
+		_u.SetLegacyLessonPrice(*v)
 	}
 	return _u
 }
 
-// AddLessonPrice adds value to the "lesson_price" field.
-func (_u *CourseUpdate) AddLessonPrice(v float64) *CourseUpdate {
-	_u.mutation.AddLessonPrice(v)
+// AddLegacyLessonPrice adds value to the "legacy_lesson_price" field.
+func (_u *CourseUpdate) AddLegacyLessonPrice(v float64) *CourseUpdate {
+	_u.mutation.AddLegacyLessonPrice(v)
 	return _u
 }
 
-// SetSubscriptionPrice sets the "subscription_price" field.
-func (_u *CourseUpdate) SetSubscriptionPrice(v float64) *CourseUpdate {
-	_u.mutation.ResetSubscriptionPrice()
-	_u.mutation.SetSubscriptionPrice(v)
+// SetLegacySubscriptionPrice sets the "legacy_subscription_price" field.
+func (_u *CourseUpdate) SetLegacySubscriptionPrice(v float64) *CourseUpdate {
+	_u.mutation.ResetLegacySubscriptionPrice()
+	_u.mutation.SetLegacySubscriptionPrice(v)
 	return _u
 }
 
-// SetNillableSubscriptionPrice sets the "subscription_price" field if the given value is not nil.
-func (_u *CourseUpdate) SetNillableSubscriptionPrice(v *float64) *CourseUpdate {
+// SetNillableLegacySubscriptionPrice sets the "legacy_subscription_price" field if the given value is not nil.
+func (_u *CourseUpdate) SetNillableLegacySubscriptionPrice(v *float64) *CourseUpdate {
 	if v != nil {
-		_u.SetSubscriptionPrice(*v)
+		_u.SetLegacySubscriptionPrice(*v)
 	}
 	return _u
 }
 
-// AddSubscriptionPrice adds value to the "subscription_price" field.
-func (_u *CourseUpdate) AddSubscriptionPrice(v float64) *CourseUpdate {
-	_u.mutation.AddSubscriptionPrice(v)
+// AddLegacySubscriptionPrice adds value to the "legacy_subscription_price" field.
+func (_u *CourseUpdate) AddLegacySubscriptionPrice(v float64) *CourseUpdate {
+	_u.mutation.AddLegacySubscriptionPrice(v)
+	return _u
+}
+
+// SetLessonPriceCents sets the "lesson_price_cents" field.
+func (_u *CourseUpdate) SetLessonPriceCents(v int64) *CourseUpdate {
+	_u.mutation.ResetLessonPriceCents()
+	_u.mutation.SetLessonPriceCents(v)
+	return _u
+}
+
+// SetNillableLessonPriceCents sets the "lesson_price_cents" field if the given value is not nil.
+func (_u *CourseUpdate) SetNillableLessonPriceCents(v *int64) *CourseUpdate {
+	if v != nil {
+		_u.SetLessonPriceCents(*v)
+	}
+	return _u
+}
+
+// AddLessonPriceCents adds value to the "lesson_price_cents" field.
+func (_u *CourseUpdate) AddLessonPriceCents(v int64) *CourseUpdate {
+	_u.mutation.AddLessonPriceCents(v)
+	return _u
+}
+
+// SetSubscriptionPriceCents sets the "subscription_price_cents" field.
+func (_u *CourseUpdate) SetSubscriptionPriceCents(v int64) *CourseUpdate {
+	_u.mutation.ResetSubscriptionPriceCents()
+	_u.mutation.SetSubscriptionPriceCents(v)
+	return _u
+}
+
+// SetNillableSubscriptionPriceCents sets the "subscription_price_cents" field if the given value is not nil.
+func (_u *CourseUpdate) SetNillableSubscriptionPriceCents(v *int64) *CourseUpdate {
+	if v != nil {
+		_u.SetSubscriptionPriceCents(*v)
+	}
+	return _u
+}
+
+// AddSubscriptionPriceCents adds value to the "subscription_price_cents" field.
+func (_u *CourseUpdate) AddSubscriptionPriceCents(v int64) *CourseUpdate {
+	_u.mutation.AddSubscriptionPriceCents(v)
 	return _u
 }
 
@@ -294,17 +336,29 @@ func (_u *CourseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(course.FieldType, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.LessonPrice(); ok {
-		_spec.SetField(course.FieldLessonPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacyLessonPrice(); ok {
+		_spec.SetField(course.FieldLegacyLessonPrice, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedLessonPrice(); ok {
-		_spec.AddField(course.FieldLessonPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacyLessonPrice(); ok {
+		_spec.AddField(course.FieldLegacyLessonPrice, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.SubscriptionPrice(); ok {
-		_spec.SetField(course.FieldSubscriptionPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacySubscriptionPrice(); ok {
+		_spec.SetField(course.FieldLegacySubscriptionPrice, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedSubscriptionPrice(); ok {
-		_spec.AddField(course.FieldSubscriptionPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacySubscriptionPrice(); ok {
+		_spec.AddField(course.FieldLegacySubscriptionPrice, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.LessonPriceCents(); ok {
+		_spec.SetField(course.FieldLessonPriceCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedLessonPriceCents(); ok {
+		_spec.AddField(course.FieldLessonPriceCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.SubscriptionPriceCents(); ok {
+		_spec.SetField(course.FieldSubscriptionPriceCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedSubscriptionPriceCents(); ok {
+		_spec.AddField(course.FieldSubscriptionPriceCents, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.IsActive(); ok {
 		_spec.SetField(course.FieldIsActive, field.TypeBool, value)
@@ -510,45 +564,87 @@ func (_u *CourseUpdateOne) SetNillableType(v *course.Type) *CourseUpdateOne {
 	return _u
 }
 
-// SetLessonPrice sets the "lesson_price" field.
-func (_u *CourseUpdateOne) SetLessonPrice(v float64) *CourseUpdateOne {
-	_u.mutation.ResetLessonPrice()
-	_u.mutation.SetLessonPrice(v)
+// SetLegacyLessonPrice sets the "legacy_lesson_price" field.
+func (_u *CourseUpdateOne) SetLegacyLessonPrice(v float64) *CourseUpdateOne {
+	_u.mutation.ResetLegacyLessonPrice()
+	_u.mutation.SetLegacyLessonPrice(v)
 	return _u
 }
 
-// SetNillableLessonPrice sets the "lesson_price" field if the given value is not nil.
-func (_u *CourseUpdateOne) SetNillableLessonPrice(v *float64) *CourseUpdateOne {
+// SetNillableLegacyLessonPrice sets the "legacy_lesson_price" field if the given value is not nil.
+func (_u *CourseUpdateOne) SetNillableLegacyLessonPrice(v *float64) *CourseUpdateOne {
 	if v != nil {
-		_u.SetLessonPrice(*v)
+		_u.SetLegacyLessonPrice(*v)
 	}
 	return _u
 }
 
-// AddLessonPrice adds value to the "lesson_price" field.
-func (_u *CourseUpdateOne) AddLessonPrice(v float64) *CourseUpdateOne {
-	_u.mutation.AddLessonPrice(v)
+// AddLegacyLessonPrice adds value to the "legacy_lesson_price" field.
+func (_u *CourseUpdateOne) AddLegacyLessonPrice(v float64) *CourseUpdateOne {
+	_u.mutation.AddLegacyLessonPrice(v)
 	return _u
 }
 
-// SetSubscriptionPrice sets the "subscription_price" field.
-func (_u *CourseUpdateOne) SetSubscriptionPrice(v float64) *CourseUpdateOne {
-	_u.mutation.ResetSubscriptionPrice()
-	_u.mutation.SetSubscriptionPrice(v)
+// SetLegacySubscriptionPrice sets the "legacy_subscription_price" field.
+func (_u *CourseUpdateOne) SetLegacySubscriptionPrice(v float64) *CourseUpdateOne {
+	_u.mutation.ResetLegacySubscriptionPrice()
+	_u.mutation.SetLegacySubscriptionPrice(v)
 	return _u
 }
 
-// SetNillableSubscriptionPrice sets the "subscription_price" field if the given value is not nil.
-func (_u *CourseUpdateOne) SetNillableSubscriptionPrice(v *float64) *CourseUpdateOne {
+// SetNillableLegacySubscriptionPrice sets the "legacy_subscription_price" field if the given value is not nil.
+func (_u *CourseUpdateOne) SetNillableLegacySubscriptionPrice(v *float64) *CourseUpdateOne {
 	if v != nil {
-		_u.SetSubscriptionPrice(*v)
+		_u.SetLegacySubscriptionPrice(*v)
 	}
 	return _u
 }
 
-// AddSubscriptionPrice adds value to the "subscription_price" field.
-func (_u *CourseUpdateOne) AddSubscriptionPrice(v float64) *CourseUpdateOne {
-	_u.mutation.AddSubscriptionPrice(v)
+// AddLegacySubscriptionPrice adds value to the "legacy_subscription_price" field.
+func (_u *CourseUpdateOne) AddLegacySubscriptionPrice(v float64) *CourseUpdateOne {
+	_u.mutation.AddLegacySubscriptionPrice(v)
+	return _u
+}
+
+// SetLessonPriceCents sets the "lesson_price_cents" field.
+func (_u *CourseUpdateOne) SetLessonPriceCents(v int64) *CourseUpdateOne {
+	_u.mutation.ResetLessonPriceCents()
+	_u.mutation.SetLessonPriceCents(v)
+	return _u
+}
+
+// SetNillableLessonPriceCents sets the "lesson_price_cents" field if the given value is not nil.
+func (_u *CourseUpdateOne) SetNillableLessonPriceCents(v *int64) *CourseUpdateOne {
+	if v != nil {
+		_u.SetLessonPriceCents(*v)
+	}
+	return _u
+}
+
+// AddLessonPriceCents adds value to the "lesson_price_cents" field.
+func (_u *CourseUpdateOne) AddLessonPriceCents(v int64) *CourseUpdateOne {
+	_u.mutation.AddLessonPriceCents(v)
+	return _u
+}
+
+// SetSubscriptionPriceCents sets the "subscription_price_cents" field.
+func (_u *CourseUpdateOne) SetSubscriptionPriceCents(v int64) *CourseUpdateOne {
+	_u.mutation.ResetSubscriptionPriceCents()
+	_u.mutation.SetSubscriptionPriceCents(v)
+	return _u
+}
+
+// SetNillableSubscriptionPriceCents sets the "subscription_price_cents" field if the given value is not nil.
+func (_u *CourseUpdateOne) SetNillableSubscriptionPriceCents(v *int64) *CourseUpdateOne {
+	if v != nil {
+		_u.SetSubscriptionPriceCents(*v)
+	}
+	return _u
+}
+
+// AddSubscriptionPriceCents adds value to the "subscription_price_cents" field.
+func (_u *CourseUpdateOne) AddSubscriptionPriceCents(v int64) *CourseUpdateOne {
+	_u.mutation.AddSubscriptionPriceCents(v)
 	return _u
 }
 
@@ -742,17 +838,29 @@ func (_u *CourseUpdateOne) sqlSave(ctx context.Context) (_node *Course, err erro
 	if value, ok := _u.mutation.GetType(); ok {
 		_spec.SetField(course.FieldType, field.TypeEnum, value)
 	}
-	if value, ok := _u.mutation.LessonPrice(); ok {
-		_spec.SetField(course.FieldLessonPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacyLessonPrice(); ok {
+		_spec.SetField(course.FieldLegacyLessonPrice, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedLessonPrice(); ok {
-		_spec.AddField(course.FieldLessonPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacyLessonPrice(); ok {
+		_spec.AddField(course.FieldLegacyLessonPrice, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.SubscriptionPrice(); ok {
-		_spec.SetField(course.FieldSubscriptionPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacySubscriptionPrice(); ok {
+		_spec.SetField(course.FieldLegacySubscriptionPrice, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedSubscriptionPrice(); ok {
-		_spec.AddField(course.FieldSubscriptionPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacySubscriptionPrice(); ok {
+		_spec.AddField(course.FieldLegacySubscriptionPrice, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.LessonPriceCents(); ok {
+		_spec.SetField(course.FieldLessonPriceCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedLessonPriceCents(); ok {
+		_spec.AddField(course.FieldLessonPriceCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.SubscriptionPriceCents(); ok {
+		_spec.SetField(course.FieldSubscriptionPriceCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedSubscriptionPriceCents(); ok {
+		_spec.AddField(course.FieldSubscriptionPriceCents, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.IsActive(); ok {
 		_spec.SetField(course.FieldIsActive, field.TypeBool, value)

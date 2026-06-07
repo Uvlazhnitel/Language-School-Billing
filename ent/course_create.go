@@ -62,30 +62,58 @@ func (_c *CourseCreate) SetType(v course.Type) *CourseCreate {
 	return _c
 }
 
-// SetLessonPrice sets the "lesson_price" field.
-func (_c *CourseCreate) SetLessonPrice(v float64) *CourseCreate {
-	_c.mutation.SetLessonPrice(v)
+// SetLegacyLessonPrice sets the "legacy_lesson_price" field.
+func (_c *CourseCreate) SetLegacyLessonPrice(v float64) *CourseCreate {
+	_c.mutation.SetLegacyLessonPrice(v)
 	return _c
 }
 
-// SetNillableLessonPrice sets the "lesson_price" field if the given value is not nil.
-func (_c *CourseCreate) SetNillableLessonPrice(v *float64) *CourseCreate {
+// SetNillableLegacyLessonPrice sets the "legacy_lesson_price" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableLegacyLessonPrice(v *float64) *CourseCreate {
 	if v != nil {
-		_c.SetLessonPrice(*v)
+		_c.SetLegacyLessonPrice(*v)
 	}
 	return _c
 }
 
-// SetSubscriptionPrice sets the "subscription_price" field.
-func (_c *CourseCreate) SetSubscriptionPrice(v float64) *CourseCreate {
-	_c.mutation.SetSubscriptionPrice(v)
+// SetLegacySubscriptionPrice sets the "legacy_subscription_price" field.
+func (_c *CourseCreate) SetLegacySubscriptionPrice(v float64) *CourseCreate {
+	_c.mutation.SetLegacySubscriptionPrice(v)
 	return _c
 }
 
-// SetNillableSubscriptionPrice sets the "subscription_price" field if the given value is not nil.
-func (_c *CourseCreate) SetNillableSubscriptionPrice(v *float64) *CourseCreate {
+// SetNillableLegacySubscriptionPrice sets the "legacy_subscription_price" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableLegacySubscriptionPrice(v *float64) *CourseCreate {
 	if v != nil {
-		_c.SetSubscriptionPrice(*v)
+		_c.SetLegacySubscriptionPrice(*v)
+	}
+	return _c
+}
+
+// SetLessonPriceCents sets the "lesson_price_cents" field.
+func (_c *CourseCreate) SetLessonPriceCents(v int64) *CourseCreate {
+	_c.mutation.SetLessonPriceCents(v)
+	return _c
+}
+
+// SetNillableLessonPriceCents sets the "lesson_price_cents" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableLessonPriceCents(v *int64) *CourseCreate {
+	if v != nil {
+		_c.SetLessonPriceCents(*v)
+	}
+	return _c
+}
+
+// SetSubscriptionPriceCents sets the "subscription_price_cents" field.
+func (_c *CourseCreate) SetSubscriptionPriceCents(v int64) *CourseCreate {
+	_c.mutation.SetSubscriptionPriceCents(v)
+	return _c
+}
+
+// SetNillableSubscriptionPriceCents sets the "subscription_price_cents" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableSubscriptionPriceCents(v *int64) *CourseCreate {
+	if v != nil {
+		_c.SetSubscriptionPriceCents(*v)
 	}
 	return _c
 }
@@ -178,13 +206,21 @@ func (_c *CourseCreate) defaults() {
 		v := course.DefaultTeacherName
 		_c.mutation.SetTeacherName(v)
 	}
-	if _, ok := _c.mutation.LessonPrice(); !ok {
-		v := course.DefaultLessonPrice
-		_c.mutation.SetLessonPrice(v)
+	if _, ok := _c.mutation.LegacyLessonPrice(); !ok {
+		v := course.DefaultLegacyLessonPrice
+		_c.mutation.SetLegacyLessonPrice(v)
 	}
-	if _, ok := _c.mutation.SubscriptionPrice(); !ok {
-		v := course.DefaultSubscriptionPrice
-		_c.mutation.SetSubscriptionPrice(v)
+	if _, ok := _c.mutation.LegacySubscriptionPrice(); !ok {
+		v := course.DefaultLegacySubscriptionPrice
+		_c.mutation.SetLegacySubscriptionPrice(v)
+	}
+	if _, ok := _c.mutation.LessonPriceCents(); !ok {
+		v := course.DefaultLessonPriceCents
+		_c.mutation.SetLessonPriceCents(v)
+	}
+	if _, ok := _c.mutation.SubscriptionPriceCents(); !ok {
+		v := course.DefaultSubscriptionPriceCents
+		_c.mutation.SetSubscriptionPriceCents(v)
 	}
 	if _, ok := _c.mutation.IsActive(); !ok {
 		v := course.DefaultIsActive
@@ -208,11 +244,17 @@ func (_c *CourseCreate) check() error {
 			return &ValidationError{Name: "type", err: fmt.Errorf(`ent: validator failed for field "Course.type": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.LessonPrice(); !ok {
-		return &ValidationError{Name: "lesson_price", err: errors.New(`ent: missing required field "Course.lesson_price"`)}
+	if _, ok := _c.mutation.LegacyLessonPrice(); !ok {
+		return &ValidationError{Name: "legacy_lesson_price", err: errors.New(`ent: missing required field "Course.legacy_lesson_price"`)}
 	}
-	if _, ok := _c.mutation.SubscriptionPrice(); !ok {
-		return &ValidationError{Name: "subscription_price", err: errors.New(`ent: missing required field "Course.subscription_price"`)}
+	if _, ok := _c.mutation.LegacySubscriptionPrice(); !ok {
+		return &ValidationError{Name: "legacy_subscription_price", err: errors.New(`ent: missing required field "Course.legacy_subscription_price"`)}
+	}
+	if _, ok := _c.mutation.LessonPriceCents(); !ok {
+		return &ValidationError{Name: "lesson_price_cents", err: errors.New(`ent: missing required field "Course.lesson_price_cents"`)}
+	}
+	if _, ok := _c.mutation.SubscriptionPriceCents(); !ok {
+		return &ValidationError{Name: "subscription_price_cents", err: errors.New(`ent: missing required field "Course.subscription_price_cents"`)}
 	}
 	if _, ok := _c.mutation.IsActive(); !ok {
 		return &ValidationError{Name: "is_active", err: errors.New(`ent: missing required field "Course.is_active"`)}
@@ -255,13 +297,21 @@ func (_c *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 		_spec.SetField(course.FieldType, field.TypeEnum, value)
 		_node.Type = value
 	}
-	if value, ok := _c.mutation.LessonPrice(); ok {
-		_spec.SetField(course.FieldLessonPrice, field.TypeFloat64, value)
-		_node.LessonPrice = value
+	if value, ok := _c.mutation.LegacyLessonPrice(); ok {
+		_spec.SetField(course.FieldLegacyLessonPrice, field.TypeFloat64, value)
+		_node.LegacyLessonPrice = value
 	}
-	if value, ok := _c.mutation.SubscriptionPrice(); ok {
-		_spec.SetField(course.FieldSubscriptionPrice, field.TypeFloat64, value)
-		_node.SubscriptionPrice = value
+	if value, ok := _c.mutation.LegacySubscriptionPrice(); ok {
+		_spec.SetField(course.FieldLegacySubscriptionPrice, field.TypeFloat64, value)
+		_node.LegacySubscriptionPrice = value
+	}
+	if value, ok := _c.mutation.LessonPriceCents(); ok {
+		_spec.SetField(course.FieldLessonPriceCents, field.TypeInt64, value)
+		_node.LessonPriceCents = value
+	}
+	if value, ok := _c.mutation.SubscriptionPriceCents(); ok {
+		_spec.SetField(course.FieldSubscriptionPriceCents, field.TypeInt64, value)
+		_node.SubscriptionPriceCents = value
 	}
 	if value, ok := _c.mutation.IsActive(); ok {
 		_spec.SetField(course.FieldIsActive, field.TypeBool, value)

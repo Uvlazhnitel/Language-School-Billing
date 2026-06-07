@@ -78,24 +78,45 @@ func (_u *PaymentUpdate) SetNillablePaidAt(v *time.Time) *PaymentUpdate {
 	return _u
 }
 
-// SetAmount sets the "amount" field.
-func (_u *PaymentUpdate) SetAmount(v float64) *PaymentUpdate {
-	_u.mutation.ResetAmount()
-	_u.mutation.SetAmount(v)
+// SetLegacyAmount sets the "legacy_amount" field.
+func (_u *PaymentUpdate) SetLegacyAmount(v float64) *PaymentUpdate {
+	_u.mutation.ResetLegacyAmount()
+	_u.mutation.SetLegacyAmount(v)
 	return _u
 }
 
-// SetNillableAmount sets the "amount" field if the given value is not nil.
-func (_u *PaymentUpdate) SetNillableAmount(v *float64) *PaymentUpdate {
+// SetNillableLegacyAmount sets the "legacy_amount" field if the given value is not nil.
+func (_u *PaymentUpdate) SetNillableLegacyAmount(v *float64) *PaymentUpdate {
 	if v != nil {
-		_u.SetAmount(*v)
+		_u.SetLegacyAmount(*v)
 	}
 	return _u
 }
 
-// AddAmount adds value to the "amount" field.
-func (_u *PaymentUpdate) AddAmount(v float64) *PaymentUpdate {
-	_u.mutation.AddAmount(v)
+// AddLegacyAmount adds value to the "legacy_amount" field.
+func (_u *PaymentUpdate) AddLegacyAmount(v float64) *PaymentUpdate {
+	_u.mutation.AddLegacyAmount(v)
+	return _u
+}
+
+// SetAmountCents sets the "amount_cents" field.
+func (_u *PaymentUpdate) SetAmountCents(v int64) *PaymentUpdate {
+	_u.mutation.ResetAmountCents()
+	_u.mutation.SetAmountCents(v)
+	return _u
+}
+
+// SetNillableAmountCents sets the "amount_cents" field if the given value is not nil.
+func (_u *PaymentUpdate) SetNillableAmountCents(v *int64) *PaymentUpdate {
+	if v != nil {
+		_u.SetAmountCents(*v)
+	}
+	return _u
+}
+
+// AddAmountCents adds value to the "amount_cents" field.
+func (_u *PaymentUpdate) AddAmountCents(v int64) *PaymentUpdate {
+	_u.mutation.AddAmountCents(v)
 	return _u
 }
 
@@ -223,11 +244,17 @@ func (_u *PaymentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.PaidAt(); ok {
 		_spec.SetField(payment.FieldPaidAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.Amount(); ok {
-		_spec.SetField(payment.FieldAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacyAmount(); ok {
+		_spec.SetField(payment.FieldLegacyAmount, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedAmount(); ok {
-		_spec.AddField(payment.FieldAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacyAmount(); ok {
+		_spec.AddField(payment.FieldLegacyAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AmountCents(); ok {
+		_spec.SetField(payment.FieldAmountCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedAmountCents(); ok {
+		_spec.AddField(payment.FieldAmountCents, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Method(); ok {
 		_spec.SetField(payment.FieldMethod, field.TypeEnum, value)
@@ -364,24 +391,45 @@ func (_u *PaymentUpdateOne) SetNillablePaidAt(v *time.Time) *PaymentUpdateOne {
 	return _u
 }
 
-// SetAmount sets the "amount" field.
-func (_u *PaymentUpdateOne) SetAmount(v float64) *PaymentUpdateOne {
-	_u.mutation.ResetAmount()
-	_u.mutation.SetAmount(v)
+// SetLegacyAmount sets the "legacy_amount" field.
+func (_u *PaymentUpdateOne) SetLegacyAmount(v float64) *PaymentUpdateOne {
+	_u.mutation.ResetLegacyAmount()
+	_u.mutation.SetLegacyAmount(v)
 	return _u
 }
 
-// SetNillableAmount sets the "amount" field if the given value is not nil.
-func (_u *PaymentUpdateOne) SetNillableAmount(v *float64) *PaymentUpdateOne {
+// SetNillableLegacyAmount sets the "legacy_amount" field if the given value is not nil.
+func (_u *PaymentUpdateOne) SetNillableLegacyAmount(v *float64) *PaymentUpdateOne {
 	if v != nil {
-		_u.SetAmount(*v)
+		_u.SetLegacyAmount(*v)
 	}
 	return _u
 }
 
-// AddAmount adds value to the "amount" field.
-func (_u *PaymentUpdateOne) AddAmount(v float64) *PaymentUpdateOne {
-	_u.mutation.AddAmount(v)
+// AddLegacyAmount adds value to the "legacy_amount" field.
+func (_u *PaymentUpdateOne) AddLegacyAmount(v float64) *PaymentUpdateOne {
+	_u.mutation.AddLegacyAmount(v)
+	return _u
+}
+
+// SetAmountCents sets the "amount_cents" field.
+func (_u *PaymentUpdateOne) SetAmountCents(v int64) *PaymentUpdateOne {
+	_u.mutation.ResetAmountCents()
+	_u.mutation.SetAmountCents(v)
+	return _u
+}
+
+// SetNillableAmountCents sets the "amount_cents" field if the given value is not nil.
+func (_u *PaymentUpdateOne) SetNillableAmountCents(v *int64) *PaymentUpdateOne {
+	if v != nil {
+		_u.SetAmountCents(*v)
+	}
+	return _u
+}
+
+// AddAmountCents adds value to the "amount_cents" field.
+func (_u *PaymentUpdateOne) AddAmountCents(v int64) *PaymentUpdateOne {
+	_u.mutation.AddAmountCents(v)
 	return _u
 }
 
@@ -539,11 +587,17 @@ func (_u *PaymentUpdateOne) sqlSave(ctx context.Context) (_node *Payment, err er
 	if value, ok := _u.mutation.PaidAt(); ok {
 		_spec.SetField(payment.FieldPaidAt, field.TypeTime, value)
 	}
-	if value, ok := _u.mutation.Amount(); ok {
-		_spec.SetField(payment.FieldAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacyAmount(); ok {
+		_spec.SetField(payment.FieldLegacyAmount, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedAmount(); ok {
-		_spec.AddField(payment.FieldAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacyAmount(); ok {
+		_spec.AddField(payment.FieldLegacyAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.AmountCents(); ok {
+		_spec.SetField(payment.FieldAmountCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedAmountCents(); ok {
+		_spec.AddField(payment.FieldAmountCents, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Method(); ok {
 		_spec.SetField(payment.FieldMethod, field.TypeEnum, value)

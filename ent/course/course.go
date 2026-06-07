@@ -22,10 +22,14 @@ const (
 	FieldTeacherID = "teacher_id"
 	// FieldType holds the string denoting the type field in the database.
 	FieldType = "type"
-	// FieldLessonPrice holds the string denoting the lesson_price field in the database.
-	FieldLessonPrice = "lesson_price"
-	// FieldSubscriptionPrice holds the string denoting the subscription_price field in the database.
-	FieldSubscriptionPrice = "subscription_price"
+	// FieldLegacyLessonPrice holds the string denoting the legacy_lesson_price field in the database.
+	FieldLegacyLessonPrice = "lesson_price"
+	// FieldLegacySubscriptionPrice holds the string denoting the legacy_subscription_price field in the database.
+	FieldLegacySubscriptionPrice = "subscription_price"
+	// FieldLessonPriceCents holds the string denoting the lesson_price_cents field in the database.
+	FieldLessonPriceCents = "lesson_price_cents"
+	// FieldSubscriptionPriceCents holds the string denoting the subscription_price_cents field in the database.
+	FieldSubscriptionPriceCents = "subscription_price_cents"
 	// FieldIsActive holds the string denoting the is_active field in the database.
 	FieldIsActive = "is_active"
 	// EdgeTeacher holds the string denoting the teacher edge name in mutations.
@@ -66,8 +70,10 @@ var Columns = []string{
 	FieldTeacherName,
 	FieldTeacherID,
 	FieldType,
-	FieldLessonPrice,
-	FieldSubscriptionPrice,
+	FieldLegacyLessonPrice,
+	FieldLegacySubscriptionPrice,
+	FieldLessonPriceCents,
+	FieldSubscriptionPriceCents,
 	FieldIsActive,
 }
 
@@ -84,10 +90,14 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultTeacherName holds the default value on creation for the "teacher_name" field.
 	DefaultTeacherName string
-	// DefaultLessonPrice holds the default value on creation for the "lesson_price" field.
-	DefaultLessonPrice float64
-	// DefaultSubscriptionPrice holds the default value on creation for the "subscription_price" field.
-	DefaultSubscriptionPrice float64
+	// DefaultLegacyLessonPrice holds the default value on creation for the "legacy_lesson_price" field.
+	DefaultLegacyLessonPrice float64
+	// DefaultLegacySubscriptionPrice holds the default value on creation for the "legacy_subscription_price" field.
+	DefaultLegacySubscriptionPrice float64
+	// DefaultLessonPriceCents holds the default value on creation for the "lesson_price_cents" field.
+	DefaultLessonPriceCents int64
+	// DefaultSubscriptionPriceCents holds the default value on creation for the "subscription_price_cents" field.
+	DefaultSubscriptionPriceCents int64
 	// DefaultIsActive holds the default value on creation for the "is_active" field.
 	DefaultIsActive bool
 )
@@ -143,14 +153,24 @@ func ByType(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldType, opts...).ToFunc()
 }
 
-// ByLessonPrice orders the results by the lesson_price field.
-func ByLessonPrice(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLessonPrice, opts...).ToFunc()
+// ByLegacyLessonPrice orders the results by the legacy_lesson_price field.
+func ByLegacyLessonPrice(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLegacyLessonPrice, opts...).ToFunc()
 }
 
-// BySubscriptionPrice orders the results by the subscription_price field.
-func BySubscriptionPrice(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSubscriptionPrice, opts...).ToFunc()
+// ByLegacySubscriptionPrice orders the results by the legacy_subscription_price field.
+func ByLegacySubscriptionPrice(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLegacySubscriptionPrice, opts...).ToFunc()
+}
+
+// ByLessonPriceCents orders the results by the lesson_price_cents field.
+func ByLessonPriceCents(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLessonPriceCents, opts...).ToFunc()
+}
+
+// BySubscriptionPriceCents orders the results by the subscription_price_cents field.
+func BySubscriptionPriceCents(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSubscriptionPriceCents, opts...).ToFunc()
 }
 
 // ByIsActive orders the results by the is_active field.

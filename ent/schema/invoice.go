@@ -14,7 +14,8 @@ func (Invoice) Fields() []ent.Field {
 		field.Int("student_id"),
 		field.Int("period_year"),
 		field.Int("period_month"),
-		field.Float("total_amount").Default(0),
+		field.Float("legacy_total_amount").StorageKey("total_amount").Default(0),
+		field.Int64("total_amount_cents").Default(0),
 		field.Enum("status").Values("draft", "issued", "paid", "canceled").Default("draft"),
 		field.String("number").Nillable().Optional(),
 	}

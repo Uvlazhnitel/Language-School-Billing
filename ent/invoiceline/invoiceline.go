@@ -20,10 +20,14 @@ const (
 	FieldDescription = "description"
 	// FieldQty holds the string denoting the qty field in the database.
 	FieldQty = "qty"
-	// FieldUnitPrice holds the string denoting the unit_price field in the database.
-	FieldUnitPrice = "unit_price"
-	// FieldAmount holds the string denoting the amount field in the database.
-	FieldAmount = "amount"
+	// FieldLegacyUnitPrice holds the string denoting the legacy_unit_price field in the database.
+	FieldLegacyUnitPrice = "unit_price"
+	// FieldLegacyAmount holds the string denoting the legacy_amount field in the database.
+	FieldLegacyAmount = "amount"
+	// FieldUnitPriceCents holds the string denoting the unit_price_cents field in the database.
+	FieldUnitPriceCents = "unit_price_cents"
+	// FieldAmountCents holds the string denoting the amount_cents field in the database.
+	FieldAmountCents = "amount_cents"
 	// EdgeInvoice holds the string denoting the invoice edge name in mutations.
 	EdgeInvoice = "invoice"
 	// EdgeEnrollment holds the string denoting the enrollment edge name in mutations.
@@ -53,8 +57,10 @@ var Columns = []string{
 	FieldEnrollmentID,
 	FieldDescription,
 	FieldQty,
-	FieldUnitPrice,
-	FieldAmount,
+	FieldLegacyUnitPrice,
+	FieldLegacyAmount,
+	FieldUnitPriceCents,
+	FieldAmountCents,
 }
 
 // ValidColumn reports if the column name is valid (part of the table columns).
@@ -66,6 +72,17 @@ func ValidColumn(column string) bool {
 	}
 	return false
 }
+
+var (
+	// DefaultLegacyUnitPrice holds the default value on creation for the "legacy_unit_price" field.
+	DefaultLegacyUnitPrice float64
+	// DefaultLegacyAmount holds the default value on creation for the "legacy_amount" field.
+	DefaultLegacyAmount float64
+	// DefaultUnitPriceCents holds the default value on creation for the "unit_price_cents" field.
+	DefaultUnitPriceCents int64
+	// DefaultAmountCents holds the default value on creation for the "amount_cents" field.
+	DefaultAmountCents int64
+)
 
 // OrderOption defines the ordering options for the InvoiceLine queries.
 type OrderOption func(*sql.Selector)
@@ -95,14 +112,24 @@ func ByQty(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldQty, opts...).ToFunc()
 }
 
-// ByUnitPrice orders the results by the unit_price field.
-func ByUnitPrice(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldUnitPrice, opts...).ToFunc()
+// ByLegacyUnitPrice orders the results by the legacy_unit_price field.
+func ByLegacyUnitPrice(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLegacyUnitPrice, opts...).ToFunc()
 }
 
-// ByAmount orders the results by the amount field.
-func ByAmount(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldAmount, opts...).ToFunc()
+// ByLegacyAmount orders the results by the legacy_amount field.
+func ByLegacyAmount(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLegacyAmount, opts...).ToFunc()
+}
+
+// ByUnitPriceCents orders the results by the unit_price_cents field.
+func ByUnitPriceCents(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUnitPriceCents, opts...).ToFunc()
+}
+
+// ByAmountCents orders the results by the amount_cents field.
+func ByAmountCents(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAmountCents, opts...).ToFunc()
 }
 
 // ByInvoiceField orders the results by invoice field.
