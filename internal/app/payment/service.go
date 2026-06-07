@@ -132,6 +132,33 @@ func parseDate(s string) (time.Time, error) {
 // the invoice belongs to the student (if provided), and the invoice is not in
 // draft or canceled status.
 func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		if err == ent.ErrTxStarted {
+			return s.createInStore(ctx, studentID, invoiceID, amount, method, paidAt, note)
+		}
+		return nil, err
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	dto, err := (&Service{db: tx.Client()}).createInStore(ctx, studentID, invoiceID, amount, method, paidAt, note)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	committed = true
+	return dto, nil
+}
+
+func (s *Service) createInStore(ctx context.Context, studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
 	amountCents := money.EurosToCents(amount)
 	if studentID <= 0 {
 		return nil, errors.New("studentID должен быть больше 0")
@@ -288,6 +315,32 @@ func (s *Service) allocateToOldestInvoices(ctx context.Context, studentID int, a
 // If credit fully covers an invoice, the invoice becomes "paid".
 // Remaining credit after all invoices are covered stays as unlinked payments.
 func (s *Service) ApplyCreditToOldestInvoices(ctx context.Context, studentID int) error {
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		if err == ent.ErrTxStarted {
+			return s.applyCreditToOldestInvoicesInStore(ctx, studentID)
+		}
+		return err
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if err := (&Service{db: tx.Client()}).applyCreditToOldestInvoicesInStore(ctx, studentID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+	return nil
+}
+
+func (s *Service) applyCreditToOldestInvoicesInStore(ctx context.Context, studentID int) error {
 	// Find all unlinked credit payments for this student, ordered oldest first.
 	credits, err := s.db.Payment.Query().
 		Where(
@@ -393,6 +446,32 @@ func (s *Service) ApplyCreditToOldestInvoices(ctx context.Context, studentID int
 // the invoice status will be recomputed (e.g., from "paid" back to "issued"
 // if the invoice is no longer fully paid).
 func (s *Service) Delete(ctx context.Context, paymentID int) error {
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		if err == ent.ErrTxStarted {
+			return s.deleteInStore(ctx, paymentID)
+		}
+		return err
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if err := (&Service{db: tx.Client()}).deleteInStore(ctx, paymentID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+	return nil
+}
+
+func (s *Service) deleteInStore(ctx context.Context, paymentID int) error {
 	p, err := s.db.Payment.Get(ctx, paymentID)
 	if err != nil {
 		return err
