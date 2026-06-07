@@ -166,6 +166,31 @@ func (a *App) attachRuntime(runtimeInstance *appruntime.Runtime) {
 	a.pay = runtimeInstance.Payment
 }
 
+func (a *App) appContext() context.Context {
+	if a.ctx != nil {
+		return a.ctx
+	}
+	return context.Background()
+}
+
+func (a *App) ensureBackendService() *backend.Service {
+	if a.svc != nil {
+		return a.svc
+	}
+	if a.db == nil || a.db.Ent == nil {
+		return nil
+	}
+	if a.att == nil {
+		a.att = attendance.New(a.db.Ent)
+	}
+	runtimeInstance := &appruntime.Runtime{
+		DB:         a.db,
+		Attendance: a.att,
+	}
+	a.svc = backend.New(runtimeInstance)
+	return a.svc
+}
+
 // ---------- Attendance bindings ----------
 
 // AttendanceListPerLesson retrieves attendance records for per-lesson billing
