@@ -228,8 +228,16 @@ export type MonthOverviewDTO = {
   draftInvoices: number;
   issuedInvoices: number;
   paidInvoices: number;
+  overdueInvoicesCount: number;
   totalIssued: number;
   totalPaid: number;
+  paymentsMonthTotal: number;
+  paymentsMonthCashTotal: number;
+  paymentsMonthBankTotal: number;
+  unlinkedCreditTotal: number;
+  monthDebtTotal: number;
+  historicalDebtTotal: number;
+  actionQueueCount: number;
   debtorsCount: number;
   totalDebt: number;
 };

@@ -454,6 +454,10 @@ a {
   gap: 12px;
 }
 
+.dashboardHeroStats--monthly {
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+}
+
 .dashboardHeroStat,
 .summaryMetricCard {
   min-width: 120px;
@@ -515,6 +519,11 @@ a {
   align-self: start;
 }
 
+.dashboardCard--priority,
+.dashboardCard--money {
+  grid-column: span 12;
+}
+
 .dashboardCard--activity {
   margin-top: -4px;
 }
@@ -547,11 +556,25 @@ a {
   font-weight: 700;
 }
 
+.dashboardCardCaption {
+  margin: -6px 0 14px;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .dashboardMetrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 16px;
+}
+
+.dashboardMetrics--expanded {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dashboardMetrics--snapshot {
+  margin-bottom: 0;
 }
 
 .dashboardCard--compact .dashboardMetrics {
@@ -580,6 +603,10 @@ a {
 .activityFeed {
   display: grid;
   gap: 10px;
+}
+
+.activityFeed--compact .activityFeedItem {
+  align-items: flex-start;
 }
 
 .activityFeedItem,
@@ -814,9 +841,26 @@ a {
   border: 1px solid rgba(133, 102, 69, 0.1);
 }
 
+.actionQueueItem--warning {
+  border-color: rgba(212, 109, 53, 0.22);
+}
+
+.actionQueueItem--danger {
+  border-color: rgba(203, 77, 62, 0.18);
+  background: rgba(255, 244, 242, 0.92);
+}
+
 .actionQueueContent {
   min-width: 0;
   flex: 1 1 auto;
+}
+
+.actionQueueReasonTags,
+.dashboardPaymentTagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .actionQueueItem span,
@@ -847,6 +891,10 @@ a {
   display: inline-flex;
   gap: 6px;
   align-items: center;
+}
+
+.actionQueueList--dashboard {
+  margin-top: 4px;
 }
 
 .statusPill {
@@ -926,6 +974,11 @@ a {
     flex-direction: column;
   }
 
+  .dashboardHeroStats--monthly,
+  .dashboardMetrics--expanded {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .crmTimelineItem,
   .actionQueueItem {
     grid-template-columns: 1fr;
@@ -949,8 +1002,11 @@ a {
   }
 
   .dashboardHeroStats,
+  .dashboardHeroStats--monthly,
   .studentSummaryGrid,
-  .dashboardMetrics {
+  .dashboardMetrics,
+  .dashboardMetrics--expanded,
+  .dashboardMetrics--snapshot {
     grid-template-columns: 1fr;
   }
 }

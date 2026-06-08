@@ -66,7 +66,7 @@ export function DebtorsScreen({
                 </div>
                 <div className="actionQueueMeta">
                   <strong>{formatEUR(item.debt)}</strong>
-                  <div className="inlineActions">
+                  <div className="actionQueueActions">
                     <button
                       className="workspaceActionButton workspaceActionButtonPrimary"
                       onClick={() => onOpenPaymentForStudent(item.studentId)}
@@ -79,12 +79,20 @@ export function DebtorsScreen({
                     >
                       {t("button.card")}
                     </button>
-                    <button className="secondaryActionButton" onClick={() => void onCopyDebtForStudentRu(item.studentId)}>
-                      RU
-                    </button>
-                    <button className="secondaryActionButton" onClick={() => void onCopyDebtForStudentLv(item.studentId)}>
-                      LV
-                    </button>
+                    <div className="actionQueueSecondaryGroup">
+                      <button
+                        className="secondaryActionButton secondaryActionButton--mini"
+                        onClick={() => void onCopyDebtForStudentRu(item.studentId)}
+                      >
+                        RU
+                      </button>
+                      <button
+                        className="secondaryActionButton secondaryActionButton--mini"
+                        onClick={() => void onCopyDebtForStudentLv(item.studentId)}
+                      >
+                        LV
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -122,15 +130,32 @@ export function DebtorsScreen({
                 <td style={{ textAlign: "right" }}>{formatEUR(debtor.totalInvoiced)}</td>
                 <td style={{ textAlign: "right" }}>{formatEUR(debtor.totalPaid)}</td>
                 <td>
-                  <button
-                    className="workspaceActionButton workspaceActionButtonPrimary"
-                    onClick={() => onOpenPaymentForDebtor(debtor)}
-                  >
-                    {t("button.takePayment")}
-                  </button>
-                  <button onClick={() => onOpenDebtDetails(debtor)}>{t("modal.debtBreakdown")}</button>
-                  <button onClick={() => void onCopyDebtForDebtorRu(debtor)}>{t("button.copyRu")}</button>
-                  <button onClick={() => void onCopyDebtForDebtorLv(debtor)}>{t("button.copyLv")}</button>
+                  <div className="invoiceRowActions">
+                    <button
+                      className="workspaceActionButton workspaceActionButtonPrimary invoicePrimaryAction"
+                      onClick={() => onOpenPaymentForDebtor(debtor)}
+                    >
+                      {t("button.takePayment")}
+                    </button>
+                    <button
+                      className="workspaceActionButton"
+                      onClick={() => onOpenDebtDetails(debtor)}
+                    >
+                      {t("modal.debtBreakdown")}
+                    </button>
+                    <button
+                      className="secondaryActionButton"
+                      onClick={() => void onCopyDebtForDebtorRu(debtor)}
+                    >
+                      {t("button.copyRu")}
+                    </button>
+                    <button
+                      className="secondaryActionButton"
+                      onClick={() => void onCopyDebtForDebtorLv(debtor)}
+                    >
+                      {t("button.copyLv")}
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}

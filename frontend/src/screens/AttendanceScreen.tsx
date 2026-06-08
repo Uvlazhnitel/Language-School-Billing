@@ -145,8 +145,6 @@ export function AttendanceScreen({
           <option value="filled">{t("status.onlyFilled")}</option>
           <option value="zero">{t("status.zeroLessons")}</option>
         </select>
-
-        <button onClick={onRefresh}>{t("button.refresh")}</button>
       </div>
 
       {rows.length > 0 && (
