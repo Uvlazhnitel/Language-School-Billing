@@ -3,6 +3,7 @@ import type { CourseDTO } from "../lib/courses";
 import type { TeacherDTO } from "../lib/teachers";
 import type { TranslateFn } from "../lib/i18n";
 import type { Ref, RefObject } from "react";
+import { EmptyState } from "../components/EmptyState";
 
 type CoursesScreenProps = {
   loading: boolean;
@@ -12,7 +13,6 @@ type CoursesScreenProps = {
   courseTypeLabel: (type: string) => string;
   formatEUR: (value: number) => string;
   onQueryChange: (value: string) => void;
-  onRefresh: () => void;
   onAddCourse: () => void;
   onEditCourse: (course: CourseDTO) => void;
   onDeleteCourse: (courseId: number) => void | Promise<void>;
@@ -51,7 +51,6 @@ export function CoursesScreen({
   courseTypeLabel,
   formatEUR,
   onQueryChange,
-  onRefresh,
   onAddCourse,
   onEditCourse,
   onDeleteCourse,
@@ -91,13 +90,26 @@ export function CoursesScreen({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
         />
-        <button onClick={onRefresh}>{t("button.refresh")}</button>
       </div>
 
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : courses.length === 0 ? (
-        <div className="empty">{t("msg.noCoursesYet")}</div>
+        query.trim() ? (
+          <EmptyState
+            title={t("msg.noCoursesSearchTitle")}
+            description={t("msg.noCoursesSearchDescription")}
+            actionLabel={t("button.clearSearch")}
+            onAction={() => onQueryChange("")}
+          />
+        ) : (
+          <EmptyState
+            title={t("msg.noCoursesTitle")}
+            description={t("msg.noCoursesDescription")}
+            actionLabel={t("button.addCourse")}
+            onAction={onAddCourse}
+          />
+        )
       ) : (
         <table>
           <thead>

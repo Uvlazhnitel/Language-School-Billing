@@ -69,6 +69,11 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "button.hide": "Hide",
     "button.prev": "Prev",
     "button.next": "Next",
+    "button.clearSearch": "Clear search",
+    "button.clearFilters": "Clear filters",
+    "button.openStudents": "Open students",
+    "button.openCourses": "Open courses",
+    "button.openEnrollments": "Open enrollments",
     "auth.eyebrow": "Secure access",
     "auth.title": "Sign in to StudentDesk",
     "auth.subtitle": "Use your username and password to open students, invoices and payments in the browser.",
@@ -133,6 +138,12 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noOpenDebts": "Everything is paid, there are no open debts.",
     "msg.noPayments": "No payments yet.",
     "msg.noStudents": "No students yet.",
+    "msg.noStudentsTitle": "No students yet",
+    "msg.noStudentsDescription":
+      "Add the first student to start enrollments, attendance, invoices, and payments.",
+    "msg.noStudentsSearchTitle": "No students match this search",
+    "msg.noStudentsSearchDescription":
+      "Try a different name, phone, or email, or clear the search to see the full list.",
     "msg.searchPlaceholderStudent": "Search by name / phone / email...",
     "msg.searchPlaceholderCourse": "Search by course or teacher...",
     "msg.searchPlaceholderInvoice": "Search by student / phone / email / invoice number",
@@ -307,10 +318,40 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noTeachers": "No teachers yet.",
     "msg.noStudentsFound": "No students found.",
     "msg.noCoursesYet": "No courses yet.",
+    "msg.noCoursesTitle": "No courses yet",
+    "msg.noCoursesDescription":
+      "Create the first course and pricing rules so students can be enrolled into a real billing flow.",
+    "msg.noCoursesSearchTitle": "No courses match this search",
+    "msg.noCoursesSearchDescription":
+      "Try another course or teacher name, or clear the search to see all courses.",
     "msg.noEnrollmentsYet": "No enrollments yet.",
+    "msg.noEnrollmentsTitle": "No enrollments yet",
+    "msg.noEnrollmentsDescription":
+      "Create the first enrollment to connect a student with a course and unlock attendance and invoices.",
+    "msg.noEnrollmentsNeedStudentsTitle": "Add students before enrollments",
+    "msg.noEnrollmentsNeedStudentsDescription":
+      "Create at least one student first, then come back to connect them to a course.",
+    "msg.noEnrollmentsNeedCoursesTitle": "Add courses before enrollments",
+    "msg.noEnrollmentsNeedCoursesDescription":
+      "Create at least one course first, then you can assign students to it here.",
+    "msg.noEnrollmentsSearchTitle": "No enrollments match these filters",
+    "msg.noEnrollmentsSearchDescription":
+      "Clear the student or course filter to return to the full enrollment list.",
     "msg.noDebtors": "No debtors found. All students paid on time.",
     "msg.noInvoiceResults": "No invoices found for the selected period, status, or search.",
+    "msg.noInvoicesTitle": "No invoices for this month yet",
+    "msg.noInvoicesDescription":
+      "Sync draft invoices when attendance is ready, or review attendance first if the month is still incomplete.",
+    "msg.noInvoiceSearchTitle": "No invoices match these filters",
+    "msg.noInvoiceSearchDescription":
+      "Clear the status or search filter to return to the broader invoice list for this month.",
     "msg.noAttendanceRows": "There are no hourly billing rows yet. Create enrollments first.",
+    "msg.noAttendanceTitle": "No attendance rows yet",
+    "msg.noAttendanceDescription":
+      "Hourly attendance appears after active enrollments are created for students and courses.",
+    "msg.noAttendanceSearchTitle": "No attendance rows match these filters",
+    "msg.noAttendanceSearchDescription":
+      "Clear the course, search, or status filter to get back to the main attendance sheet.",
     "msg.noSearchResults": "Nothing matched your search.",
     "msg.monthStatus": "Month status",
     "msg.monthStatusMissing": "Incomplete rows: {count}",
@@ -462,6 +503,11 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "button.hide": "Скрыть",
     "button.prev": "Назад",
     "button.next": "Вперёд",
+    "button.clearSearch": "Очистить поиск",
+    "button.clearFilters": "Сбросить фильтры",
+    "button.openStudents": "Открыть учеников",
+    "button.openCourses": "Открыть курсы",
+    "button.openEnrollments": "Открыть зачисления",
     "auth.eyebrow": "Защищённый доступ",
     "auth.title": "Вход в StudentDesk",
     "auth.subtitle": "Войдите по username и паролю, чтобы работать со счетами, учениками и оплатами в браузере.",
@@ -528,6 +574,12 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noOpenDebts": "Всё оплачено, открытых долгов нет.",
     "msg.noPayments": "Оплат пока нет.",
     "msg.noStudents": "Учеников пока нет.",
+    "msg.noStudentsTitle": "Пока нет учеников",
+    "msg.noStudentsDescription":
+      "Добавьте первого ученика, чтобы начать работу с зачислениями, посещаемостью, счетами и оплатами.",
+    "msg.noStudentsSearchTitle": "По этому поиску ученики не найдены",
+    "msg.noStudentsSearchDescription":
+      "Попробуйте другое имя, телефон или email, либо очистите поиск и вернитесь к полному списку.",
     "msg.searchPlaceholderStudent": "Поиск по имени / телефону / эл. почте…",
     "msg.searchPlaceholderCourse": "Поиск по курсу или учителю…",
     "msg.searchPlaceholderInvoice": "Поиск по ученику / телефону / эл. почте / номеру счёта",
@@ -713,10 +765,40 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noTeachers": "Учителей пока нет.",
     "msg.noStudentsFound": "Ученики не найдены.",
     "msg.noCoursesYet": "Курсов пока нет.",
+    "msg.noCoursesTitle": "Пока нет курсов",
+    "msg.noCoursesDescription":
+      "Создайте первый курс и настройте цены, чтобы дальше можно было оформлять зачисления и выставлять счета.",
+    "msg.noCoursesSearchTitle": "По этому поиску курсы не найдены",
+    "msg.noCoursesSearchDescription":
+      "Попробуйте другое название курса или преподавателя, либо очистите поиск и вернитесь к полному списку.",
     "msg.noEnrollmentsYet": "Зачислений пока нет.",
+    "msg.noEnrollmentsTitle": "Пока нет зачислений",
+    "msg.noEnrollmentsDescription":
+      "Добавьте первое зачисление, чтобы связать ученика с курсом и открыть посещаемость и счета.",
+    "msg.noEnrollmentsNeedStudentsTitle": "Сначала добавьте учеников",
+    "msg.noEnrollmentsNeedStudentsDescription":
+      "Сначала нужен хотя бы один ученик, а потом сюда можно вернуться и связать его с курсом.",
+    "msg.noEnrollmentsNeedCoursesTitle": "Сначала добавьте курсы",
+    "msg.noEnrollmentsNeedCoursesDescription":
+      "Сначала нужен хотя бы один курс, а потом здесь можно назначать на него учеников.",
+    "msg.noEnrollmentsSearchTitle": "По этим фильтрам зачислений нет",
+    "msg.noEnrollmentsSearchDescription":
+      "Сбросьте фильтр по ученику или курсу, чтобы снова увидеть общий список зачислений.",
     "msg.noDebtors": "Должников не найдено. Все ученики оплатили вовремя.",
     "msg.noInvoiceResults": "Счета за выбранный период, статус или поиск не найдены.",
+    "msg.noInvoicesTitle": "Счетов за этот месяц пока нет",
+    "msg.noInvoicesDescription":
+      "Синхронизируйте черновики, когда посещаемость готова, или сначала проверьте посещаемость, если месяц ещё не закрыт.",
+    "msg.noInvoiceSearchTitle": "По этим фильтрам счета не найдены",
+    "msg.noInvoiceSearchDescription":
+      "Сбросьте статус или строку поиска, чтобы вернуться к более широкому списку счетов за месяц.",
     "msg.noAttendanceRows": "Нет строк с почасовой оплатой. Сначала создайте зачисления.",
+    "msg.noAttendanceTitle": "Пока нет строк посещаемости",
+    "msg.noAttendanceDescription":
+      "Почасовая посещаемость появляется после активных зачислений учеников на курсы.",
+    "msg.noAttendanceSearchTitle": "По этим фильтрам строк посещаемости нет",
+    "msg.noAttendanceSearchDescription":
+      "Сбросьте курс, поиск или статус, чтобы вернуться к основной ведомости посещаемости.",
     "msg.noSearchResults": "По вашему запросу ничего не найдено.",
     "msg.monthStatus": "Статус месяца",
     "msg.monthStatusMissing": "Есть незаполненные строки: {count}",

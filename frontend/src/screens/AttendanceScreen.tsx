@@ -8,6 +8,7 @@ import {
 } from "../lib/constants";
 import type { Row } from "../lib/attendance";
 import type { TranslateFn } from "../lib/i18n";
+import { EmptyState } from "../components/EmptyState";
 
 type AttendanceFilter = "all" | "missing" | "filled" | "zero";
 
@@ -44,6 +45,7 @@ type AttendanceScreenProps = {
   onAdjustSubscriptionLessons: (courseId: number, nextValue: number) => void | Promise<void>;
   onRefresh: () => void;
   onOpenInvoices: () => void;
+  onOpenEnrollments: () => void;
   onCourseFilterChange: (value: number | undefined) => void;
   onQueryChange: (value: string) => void;
   onFilterChange: (value: AttendanceFilter) => void;
@@ -85,6 +87,7 @@ export function AttendanceScreen({
   onAdjustSubscriptionLessons,
   onRefresh,
   onOpenInvoices,
+  onOpenEnrollments,
   onCourseFilterChange,
   onQueryChange,
   onFilterChange,
@@ -158,9 +161,25 @@ export function AttendanceScreen({
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : filteredRows.length === 0 ? (
-        <div className="empty">
-          {query.trim() || filter !== "all" ? t("msg.noSearchResults") : t("msg.noAttendanceRows")}
-        </div>
+        query.trim() || filter !== "all" || courseFilter ? (
+          <EmptyState
+            title={t("msg.noAttendanceSearchTitle")}
+            description={t("msg.noAttendanceSearchDescription")}
+            actionLabel={t("button.clearFilters")}
+            onAction={() => {
+              onCourseFilterChange(undefined);
+              onQueryChange("");
+              onFilterChange("all");
+            }}
+          />
+        ) : (
+          <EmptyState
+            title={t("msg.noAttendanceTitle")}
+            description={t("msg.noAttendanceDescription")}
+            actionLabel={t("button.openEnrollments")}
+            onAction={onOpenEnrollments}
+          />
+        )
       ) : (
         <table>
           <thead>

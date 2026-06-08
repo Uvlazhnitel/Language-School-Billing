@@ -2321,7 +2321,6 @@ export default function App() {
                 t={t}
                 onQueryChange={setStudentQ}
                 onIncludeInactiveChange={setIncludeInactive}
-                onRefresh={() => void loadStudents()}
                 onAddStudent={openAddStudent}
                 onSelectStudent={(student) => void openStudentCard(student, { inline: true })}
                 onEditStudent={openEditStudent}
@@ -2374,7 +2373,6 @@ export default function App() {
                 courseTypeLabel={localizedCourseTypeLabel}
                 formatEUR={formatEUR}
                 onQueryChange={setCourseQ}
-                onRefresh={() => void loadCourses()}
                 onAddCourse={openAddCourse}
                 onEditCourse={openEditCourse}
                 onDeleteCourse={(courseId) => void removeCourse(courseId)}
@@ -2419,8 +2417,9 @@ export default function App() {
                 billingModeLabel={localizedBillingModeLabel}
                 onStudentFilterChange={setEnrStudentFilter}
                 onCourseFilterChange={setEnrCourseFilter}
-                onRefresh={() => void loadEnrollments()}
                 onAddEnrollment={openAddEnrollment}
+                onOpenStudents={() => setTab("students")}
+                onOpenCourses={() => setTab("courses")}
                 onOpenStudent={(studentId) => void openStudentCardById(studentId)}
                 onEditEnrollment={openEditEnrollment}
                 enrollmentModalOpen={enrModalOpen}
@@ -2484,6 +2483,7 @@ export default function App() {
                 onAdjustSubscriptionLessons={adjustSubscriptionLessons}
                 onRefresh={() => void loadAttendance()}
                 onOpenInvoices={() => setTab("invoice")}
+                onOpenEnrollments={() => setTab("enrollments")}
                 onCourseFilterChange={setCourseFilter}
                 onQueryChange={setAttQ}
                 onFilterChange={setAttFilter}
@@ -2507,6 +2507,11 @@ export default function App() {
                 onStatusChange={setInvStatus}
                 onQueryChange={setInvQ}
                 onRefresh={() => void loadInvoices()}
+                onResetFilters={() => {
+                  setInvStatus("all");
+                  setInvQ("");
+                }}
+                onOpenAttendance={() => setTab("attendance")}
                 onOpenStudent={(studentId) => void openStudentCardById(studentId)}
                 onOpenInvoice={(invoiceId) => void onOpenInvoice(invoiceId)}
                 onIssueOne={(invoiceId) => void onIssueOne(invoiceId)}

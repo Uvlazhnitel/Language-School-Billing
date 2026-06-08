@@ -1,5 +1,6 @@
 import type { Ref, RefObject } from "react";
 import { EnrollmentFormModal } from "../components/modals/EnrollmentFormModal";
+import { EmptyState } from "../components/EmptyState";
 import type { CourseDTO } from "../lib/courses";
 import type { EnrollmentDTO } from "../lib/enrollments";
 import type { StudentDTO } from "../lib/students";
@@ -15,8 +16,9 @@ type EnrollmentsScreenProps = {
   billingModeLabel: (mode: string) => string;
   onStudentFilterChange: (value: number | undefined) => void;
   onCourseFilterChange: (value: number | undefined) => void;
-  onRefresh: () => void;
   onAddEnrollment: () => void;
+  onOpenStudents: () => void;
+  onOpenCourses: () => void;
   onOpenStudent: (studentId: number) => void | Promise<void>;
   onEditEnrollment: (enrollment: EnrollmentDTO) => void;
   enrollmentModalOpen: boolean;
@@ -55,8 +57,9 @@ export function EnrollmentsScreen({
   billingModeLabel,
   onStudentFilterChange,
   onCourseFilterChange,
-  onRefresh,
   onAddEnrollment,
+  onOpenStudents,
+  onOpenCourses,
   onOpenStudent,
   onEditEnrollment,
   enrollmentModalOpen,
@@ -110,13 +113,43 @@ export function EnrollmentsScreen({
             </option>
           ))}
         </select>
-        <button onClick={onRefresh}>{t("button.refresh")}</button>
       </div>
 
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : enrollments.length === 0 ? (
-        <div className="empty">{t("msg.noEnrollmentsYet")}</div>
+        studentFilter || courseFilter ? (
+          <EmptyState
+            title={t("msg.noEnrollmentsSearchTitle")}
+            description={t("msg.noEnrollmentsSearchDescription")}
+            actionLabel={t("button.clearFilters")}
+            onAction={() => {
+              onStudentFilterChange(undefined);
+              onCourseFilterChange(undefined);
+            }}
+          />
+        ) : allStudents.length === 0 ? (
+          <EmptyState
+            title={t("msg.noEnrollmentsNeedStudentsTitle")}
+            description={t("msg.noEnrollmentsNeedStudentsDescription")}
+            actionLabel={t("button.openStudents")}
+            onAction={onOpenStudents}
+          />
+        ) : allCourses.length === 0 ? (
+          <EmptyState
+            title={t("msg.noEnrollmentsNeedCoursesTitle")}
+            description={t("msg.noEnrollmentsNeedCoursesDescription")}
+            actionLabel={t("button.openCourses")}
+            onAction={onOpenCourses}
+          />
+        ) : (
+          <EmptyState
+            title={t("msg.noEnrollmentsTitle")}
+            description={t("msg.noEnrollmentsDescription")}
+            actionLabel={t("button.addEnrollment")}
+            onAction={onAddEnrollment}
+          />
+        )
       ) : (
         <table>
           <thead>

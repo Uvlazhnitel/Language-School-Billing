@@ -47,22 +47,36 @@ export function AppShell({
             {currentMeta.subtitle && <p className="workspaceSubtitle">{currentMeta.subtitle}</p>}
           </div>
 
-          {showMonthPicker && (
-            <div className="monthpickers monthpickersTopbar">
-              <select value={month} onChange={(e) => onMonthChange(parseInt(e.target.value, 10))}>
-                {monthLabels.map((label, index) => (
-                  <option key={label} value={index + 1}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              <select value={year} onChange={(e) => onYearChange(parseInt(e.target.value, 10))}>
-                {[year - 1, year, year + 1].map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
+          {(showMonthPicker || secondaryActions.length > 0) && (
+            <div className="workspaceTopbarAside">
+              {showMonthPicker && (
+                <div className="monthpickers monthpickersTopbar">
+                  <select value={month} onChange={(e) => onMonthChange(parseInt(e.target.value, 10))}>
+                    {monthLabels.map((label, index) => (
+                      <option key={label} value={index + 1}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <select value={year} onChange={(e) => onYearChange(parseInt(e.target.value, 10))}>
+                    {[year - 1, year, year + 1].map((value) => (
+                      <option key={value} value={value}>
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {secondaryActions.length > 0 && (
+                <div className="secondaryActions secondaryActions--topbar">
+                  {secondaryActions.map((action) => (
+                    <button key={action.id} className="secondaryActionButton" onClick={action.onClick}>
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -79,16 +93,6 @@ export function AppShell({
               </button>
             ))}
           </nav>
-
-          {secondaryActions.length > 0 && (
-            <div className="secondaryActions">
-              {secondaryActions.map((action) => (
-                <button key={action.id} className="secondaryActionButton" onClick={action.onClick}>
-                  {action.label}
-                </button>
-              ))}
-            </div>
-          )}
         </div>
 
         <div className="workspaceContent">{children}</div>

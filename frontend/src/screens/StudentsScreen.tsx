@@ -32,7 +32,6 @@ type StudentsScreenProps = {
   months: string[];
   onQueryChange: (value: string) => void;
   onIncludeInactiveChange: (value: boolean) => void;
-  onRefresh: () => void;
   onAddStudent: () => void;
   onSelectStudent: (student: StudentDTO) => void | Promise<void>;
   onEditStudent: (student: StudentDTO) => void;

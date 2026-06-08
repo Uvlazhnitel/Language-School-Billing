@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { EmptyState } from "../components/EmptyState";
 import type { InvoiceListItemView } from "../lib/invoices";
 import type { TranslateFn } from "../lib/i18n";
 
@@ -15,6 +16,8 @@ type InvoicesScreenProps = {
   onStatusChange: (value: string) => void;
   onQueryChange: (value: string) => void;
   onRefresh: () => void;
+  onResetFilters: () => void;
+  onOpenAttendance: () => void;
   onOpenStudent: (studentId: number) => void | Promise<void>;
   onOpenInvoice: (invoiceId: number) => void | Promise<void>;
   onIssueOne: (invoiceId: number) => void | Promise<void>;
@@ -36,6 +39,8 @@ export function InvoicesScreen({
   onStatusChange,
   onQueryChange,
   onRefresh,
+  onResetFilters,
+  onOpenAttendance,
   onOpenStudent,
   onOpenInvoice,
   onIssueOne,
@@ -77,7 +82,23 @@ export function InvoicesScreen({
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : items.length === 0 ? (
-        <div className="empty">{t("msg.noInvoiceResults")}</div>
+        query.trim() || status !== "all" ? (
+          <EmptyState
+            title={t("msg.noInvoiceSearchTitle")}
+            description={t("msg.noInvoiceSearchDescription")}
+            actionLabel={t("button.clearFilters")}
+            onAction={onResetFilters}
+          />
+        ) : (
+          <EmptyState
+            title={t("msg.noInvoicesTitle")}
+            description={t("msg.noInvoicesDescription")}
+            actionLabel={t("button.sync")}
+            onAction={onRefresh}
+            secondaryActionLabel={t("button.openAttendance")}
+            onSecondaryAction={onOpenAttendance}
+          />
+        )
       ) : (
         <table>
           <thead>

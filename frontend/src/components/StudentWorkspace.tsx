@@ -5,6 +5,7 @@ import { StudentDTO } from "../lib/students";
 import { InvoiceListItemView } from "../lib/invoices";
 import { StudentActivityItem, StudentNextAction } from "../lib/studentActivity";
 import { StudentDetailPanel } from "./StudentDetailPanel";
+import { EmptyState } from "./EmptyState";
 
 type StudentWorkspaceProps = {
   students: StudentDTO[];
@@ -24,7 +25,6 @@ type StudentWorkspaceProps = {
   deletingPaymentId: number | null;
   onQueryChange: (value: string) => void;
   onIncludeInactiveChange: (value: boolean) => void;
-  onRefresh: () => void;
   onAddStudent: () => void;
   onSelectStudent: (student: StudentDTO) => void;
   onEditStudent: (student: StudentDTO) => void;
@@ -64,7 +64,6 @@ export function StudentWorkspace({
   deletingPaymentId,
   onQueryChange,
   onIncludeInactiveChange,
-  onRefresh,
   onAddStudent,
   onSelectStudent,
   onEditStudent,
@@ -104,13 +103,28 @@ export function StudentWorkspace({
             />
             {t("label.showInactive")}
           </label>
-          <button onClick={onRefresh}>{t("button.refresh")}</button>
         </div>
 
         {loading ? (
           <div className="empty">{t("label.loading")}</div>
         ) : students.length === 0 ? (
-          <div className="empty">{t("msg.noStudents")}</div>
+          query.trim() ? (
+            <EmptyState
+              compact
+              title={t("msg.noStudentsSearchTitle")}
+              description={t("msg.noStudentsSearchDescription")}
+              actionLabel={t("button.clearSearch")}
+              onAction={() => onQueryChange("")}
+            />
+          ) : (
+            <EmptyState
+              compact
+              title={t("msg.noStudentsTitle")}
+              description={t("msg.noStudentsDescription")}
+              actionLabel={t("button.addStudent")}
+              onAction={onAddStudent}
+            />
+          )
         ) : (
           <div className="studentListPane">
             {students.map((student) => {
