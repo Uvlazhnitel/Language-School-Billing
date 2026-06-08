@@ -675,8 +675,7 @@ a {
 }
 
 .studentListItemTop,
-.studentListItemMeta,
-.studentMainToolbar {
+.studentListItemMeta {
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -702,12 +701,6 @@ a {
 .statusDot.inactive,
 .metricDanger {
   color: var(--bad);
-}
-
-.studentMainToolbar {
-  margin-bottom: 12px;
-  justify-content: flex-end;
-  flex-wrap: wrap;
 }
 
 .studentDetailPanel {
