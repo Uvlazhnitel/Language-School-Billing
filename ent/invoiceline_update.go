@@ -92,45 +92,87 @@ func (_u *InvoiceLineUpdate) AddQty(v float64) *InvoiceLineUpdate {
 	return _u
 }
 
-// SetUnitPrice sets the "unit_price" field.
-func (_u *InvoiceLineUpdate) SetUnitPrice(v float64) *InvoiceLineUpdate {
-	_u.mutation.ResetUnitPrice()
-	_u.mutation.SetUnitPrice(v)
+// SetLegacyUnitPrice sets the "legacy_unit_price" field.
+func (_u *InvoiceLineUpdate) SetLegacyUnitPrice(v float64) *InvoiceLineUpdate {
+	_u.mutation.ResetLegacyUnitPrice()
+	_u.mutation.SetLegacyUnitPrice(v)
 	return _u
 }
 
-// SetNillableUnitPrice sets the "unit_price" field if the given value is not nil.
-func (_u *InvoiceLineUpdate) SetNillableUnitPrice(v *float64) *InvoiceLineUpdate {
+// SetNillableLegacyUnitPrice sets the "legacy_unit_price" field if the given value is not nil.
+func (_u *InvoiceLineUpdate) SetNillableLegacyUnitPrice(v *float64) *InvoiceLineUpdate {
 	if v != nil {
-		_u.SetUnitPrice(*v)
+		_u.SetLegacyUnitPrice(*v)
 	}
 	return _u
 }
 
-// AddUnitPrice adds value to the "unit_price" field.
-func (_u *InvoiceLineUpdate) AddUnitPrice(v float64) *InvoiceLineUpdate {
-	_u.mutation.AddUnitPrice(v)
+// AddLegacyUnitPrice adds value to the "legacy_unit_price" field.
+func (_u *InvoiceLineUpdate) AddLegacyUnitPrice(v float64) *InvoiceLineUpdate {
+	_u.mutation.AddLegacyUnitPrice(v)
 	return _u
 }
 
-// SetAmount sets the "amount" field.
-func (_u *InvoiceLineUpdate) SetAmount(v float64) *InvoiceLineUpdate {
-	_u.mutation.ResetAmount()
-	_u.mutation.SetAmount(v)
+// SetLegacyAmount sets the "legacy_amount" field.
+func (_u *InvoiceLineUpdate) SetLegacyAmount(v float64) *InvoiceLineUpdate {
+	_u.mutation.ResetLegacyAmount()
+	_u.mutation.SetLegacyAmount(v)
 	return _u
 }
 
-// SetNillableAmount sets the "amount" field if the given value is not nil.
-func (_u *InvoiceLineUpdate) SetNillableAmount(v *float64) *InvoiceLineUpdate {
+// SetNillableLegacyAmount sets the "legacy_amount" field if the given value is not nil.
+func (_u *InvoiceLineUpdate) SetNillableLegacyAmount(v *float64) *InvoiceLineUpdate {
 	if v != nil {
-		_u.SetAmount(*v)
+		_u.SetLegacyAmount(*v)
 	}
 	return _u
 }
 
-// AddAmount adds value to the "amount" field.
-func (_u *InvoiceLineUpdate) AddAmount(v float64) *InvoiceLineUpdate {
-	_u.mutation.AddAmount(v)
+// AddLegacyAmount adds value to the "legacy_amount" field.
+func (_u *InvoiceLineUpdate) AddLegacyAmount(v float64) *InvoiceLineUpdate {
+	_u.mutation.AddLegacyAmount(v)
+	return _u
+}
+
+// SetUnitPriceCents sets the "unit_price_cents" field.
+func (_u *InvoiceLineUpdate) SetUnitPriceCents(v int64) *InvoiceLineUpdate {
+	_u.mutation.ResetUnitPriceCents()
+	_u.mutation.SetUnitPriceCents(v)
+	return _u
+}
+
+// SetNillableUnitPriceCents sets the "unit_price_cents" field if the given value is not nil.
+func (_u *InvoiceLineUpdate) SetNillableUnitPriceCents(v *int64) *InvoiceLineUpdate {
+	if v != nil {
+		_u.SetUnitPriceCents(*v)
+	}
+	return _u
+}
+
+// AddUnitPriceCents adds value to the "unit_price_cents" field.
+func (_u *InvoiceLineUpdate) AddUnitPriceCents(v int64) *InvoiceLineUpdate {
+	_u.mutation.AddUnitPriceCents(v)
+	return _u
+}
+
+// SetAmountCents sets the "amount_cents" field.
+func (_u *InvoiceLineUpdate) SetAmountCents(v int64) *InvoiceLineUpdate {
+	_u.mutation.ResetAmountCents()
+	_u.mutation.SetAmountCents(v)
+	return _u
+}
+
+// SetNillableAmountCents sets the "amount_cents" field if the given value is not nil.
+func (_u *InvoiceLineUpdate) SetNillableAmountCents(v *int64) *InvoiceLineUpdate {
+	if v != nil {
+		_u.SetAmountCents(*v)
+	}
+	return _u
+}
+
+// AddAmountCents adds value to the "amount_cents" field.
+func (_u *InvoiceLineUpdate) AddAmountCents(v int64) *InvoiceLineUpdate {
+	_u.mutation.AddAmountCents(v)
 	return _u
 }
 
@@ -220,17 +262,29 @@ func (_u *InvoiceLineUpdate) sqlSave(ctx context.Context) (_node int, err error)
 	if value, ok := _u.mutation.AddedQty(); ok {
 		_spec.AddField(invoiceline.FieldQty, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.UnitPrice(); ok {
-		_spec.SetField(invoiceline.FieldUnitPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacyUnitPrice(); ok {
+		_spec.SetField(invoiceline.FieldLegacyUnitPrice, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedUnitPrice(); ok {
-		_spec.AddField(invoiceline.FieldUnitPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacyUnitPrice(); ok {
+		_spec.AddField(invoiceline.FieldLegacyUnitPrice, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.Amount(); ok {
-		_spec.SetField(invoiceline.FieldAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacyAmount(); ok {
+		_spec.SetField(invoiceline.FieldLegacyAmount, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedAmount(); ok {
-		_spec.AddField(invoiceline.FieldAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacyAmount(); ok {
+		_spec.AddField(invoiceline.FieldLegacyAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.UnitPriceCents(); ok {
+		_spec.SetField(invoiceline.FieldUnitPriceCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedUnitPriceCents(); ok {
+		_spec.AddField(invoiceline.FieldUnitPriceCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AmountCents(); ok {
+		_spec.SetField(invoiceline.FieldAmountCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedAmountCents(); ok {
+		_spec.AddField(invoiceline.FieldAmountCents, field.TypeInt64, value)
 	}
 	if _u.mutation.InvoiceCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -373,45 +427,87 @@ func (_u *InvoiceLineUpdateOne) AddQty(v float64) *InvoiceLineUpdateOne {
 	return _u
 }
 
-// SetUnitPrice sets the "unit_price" field.
-func (_u *InvoiceLineUpdateOne) SetUnitPrice(v float64) *InvoiceLineUpdateOne {
-	_u.mutation.ResetUnitPrice()
-	_u.mutation.SetUnitPrice(v)
+// SetLegacyUnitPrice sets the "legacy_unit_price" field.
+func (_u *InvoiceLineUpdateOne) SetLegacyUnitPrice(v float64) *InvoiceLineUpdateOne {
+	_u.mutation.ResetLegacyUnitPrice()
+	_u.mutation.SetLegacyUnitPrice(v)
 	return _u
 }
 
-// SetNillableUnitPrice sets the "unit_price" field if the given value is not nil.
-func (_u *InvoiceLineUpdateOne) SetNillableUnitPrice(v *float64) *InvoiceLineUpdateOne {
+// SetNillableLegacyUnitPrice sets the "legacy_unit_price" field if the given value is not nil.
+func (_u *InvoiceLineUpdateOne) SetNillableLegacyUnitPrice(v *float64) *InvoiceLineUpdateOne {
 	if v != nil {
-		_u.SetUnitPrice(*v)
+		_u.SetLegacyUnitPrice(*v)
 	}
 	return _u
 }
 
-// AddUnitPrice adds value to the "unit_price" field.
-func (_u *InvoiceLineUpdateOne) AddUnitPrice(v float64) *InvoiceLineUpdateOne {
-	_u.mutation.AddUnitPrice(v)
+// AddLegacyUnitPrice adds value to the "legacy_unit_price" field.
+func (_u *InvoiceLineUpdateOne) AddLegacyUnitPrice(v float64) *InvoiceLineUpdateOne {
+	_u.mutation.AddLegacyUnitPrice(v)
 	return _u
 }
 
-// SetAmount sets the "amount" field.
-func (_u *InvoiceLineUpdateOne) SetAmount(v float64) *InvoiceLineUpdateOne {
-	_u.mutation.ResetAmount()
-	_u.mutation.SetAmount(v)
+// SetLegacyAmount sets the "legacy_amount" field.
+func (_u *InvoiceLineUpdateOne) SetLegacyAmount(v float64) *InvoiceLineUpdateOne {
+	_u.mutation.ResetLegacyAmount()
+	_u.mutation.SetLegacyAmount(v)
 	return _u
 }
 
-// SetNillableAmount sets the "amount" field if the given value is not nil.
-func (_u *InvoiceLineUpdateOne) SetNillableAmount(v *float64) *InvoiceLineUpdateOne {
+// SetNillableLegacyAmount sets the "legacy_amount" field if the given value is not nil.
+func (_u *InvoiceLineUpdateOne) SetNillableLegacyAmount(v *float64) *InvoiceLineUpdateOne {
 	if v != nil {
-		_u.SetAmount(*v)
+		_u.SetLegacyAmount(*v)
 	}
 	return _u
 }
 
-// AddAmount adds value to the "amount" field.
-func (_u *InvoiceLineUpdateOne) AddAmount(v float64) *InvoiceLineUpdateOne {
-	_u.mutation.AddAmount(v)
+// AddLegacyAmount adds value to the "legacy_amount" field.
+func (_u *InvoiceLineUpdateOne) AddLegacyAmount(v float64) *InvoiceLineUpdateOne {
+	_u.mutation.AddLegacyAmount(v)
+	return _u
+}
+
+// SetUnitPriceCents sets the "unit_price_cents" field.
+func (_u *InvoiceLineUpdateOne) SetUnitPriceCents(v int64) *InvoiceLineUpdateOne {
+	_u.mutation.ResetUnitPriceCents()
+	_u.mutation.SetUnitPriceCents(v)
+	return _u
+}
+
+// SetNillableUnitPriceCents sets the "unit_price_cents" field if the given value is not nil.
+func (_u *InvoiceLineUpdateOne) SetNillableUnitPriceCents(v *int64) *InvoiceLineUpdateOne {
+	if v != nil {
+		_u.SetUnitPriceCents(*v)
+	}
+	return _u
+}
+
+// AddUnitPriceCents adds value to the "unit_price_cents" field.
+func (_u *InvoiceLineUpdateOne) AddUnitPriceCents(v int64) *InvoiceLineUpdateOne {
+	_u.mutation.AddUnitPriceCents(v)
+	return _u
+}
+
+// SetAmountCents sets the "amount_cents" field.
+func (_u *InvoiceLineUpdateOne) SetAmountCents(v int64) *InvoiceLineUpdateOne {
+	_u.mutation.ResetAmountCents()
+	_u.mutation.SetAmountCents(v)
+	return _u
+}
+
+// SetNillableAmountCents sets the "amount_cents" field if the given value is not nil.
+func (_u *InvoiceLineUpdateOne) SetNillableAmountCents(v *int64) *InvoiceLineUpdateOne {
+	if v != nil {
+		_u.SetAmountCents(*v)
+	}
+	return _u
+}
+
+// AddAmountCents adds value to the "amount_cents" field.
+func (_u *InvoiceLineUpdateOne) AddAmountCents(v int64) *InvoiceLineUpdateOne {
+	_u.mutation.AddAmountCents(v)
 	return _u
 }
 
@@ -531,17 +627,29 @@ func (_u *InvoiceLineUpdateOne) sqlSave(ctx context.Context) (_node *InvoiceLine
 	if value, ok := _u.mutation.AddedQty(); ok {
 		_spec.AddField(invoiceline.FieldQty, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.UnitPrice(); ok {
-		_spec.SetField(invoiceline.FieldUnitPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacyUnitPrice(); ok {
+		_spec.SetField(invoiceline.FieldLegacyUnitPrice, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedUnitPrice(); ok {
-		_spec.AddField(invoiceline.FieldUnitPrice, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacyUnitPrice(); ok {
+		_spec.AddField(invoiceline.FieldLegacyUnitPrice, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.Amount(); ok {
-		_spec.SetField(invoiceline.FieldAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacyAmount(); ok {
+		_spec.SetField(invoiceline.FieldLegacyAmount, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedAmount(); ok {
-		_spec.AddField(invoiceline.FieldAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacyAmount(); ok {
+		_spec.AddField(invoiceline.FieldLegacyAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.UnitPriceCents(); ok {
+		_spec.SetField(invoiceline.FieldUnitPriceCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedUnitPriceCents(); ok {
+		_spec.AddField(invoiceline.FieldUnitPriceCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AmountCents(); ok {
+		_spec.SetField(invoiceline.FieldAmountCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedAmountCents(); ok {
+		_spec.AddField(invoiceline.FieldAmountCents, field.TypeInt64, value)
 	}
 	if _u.mutation.InvoiceCleared() {
 		edge := &sqlgraph.EdgeSpec{

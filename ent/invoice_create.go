@@ -40,16 +40,30 @@ func (_c *InvoiceCreate) SetPeriodMonth(v int) *InvoiceCreate {
 	return _c
 }
 
-// SetTotalAmount sets the "total_amount" field.
-func (_c *InvoiceCreate) SetTotalAmount(v float64) *InvoiceCreate {
-	_c.mutation.SetTotalAmount(v)
+// SetLegacyTotalAmount sets the "legacy_total_amount" field.
+func (_c *InvoiceCreate) SetLegacyTotalAmount(v float64) *InvoiceCreate {
+	_c.mutation.SetLegacyTotalAmount(v)
 	return _c
 }
 
-// SetNillableTotalAmount sets the "total_amount" field if the given value is not nil.
-func (_c *InvoiceCreate) SetNillableTotalAmount(v *float64) *InvoiceCreate {
+// SetNillableLegacyTotalAmount sets the "legacy_total_amount" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillableLegacyTotalAmount(v *float64) *InvoiceCreate {
 	if v != nil {
-		_c.SetTotalAmount(*v)
+		_c.SetLegacyTotalAmount(*v)
+	}
+	return _c
+}
+
+// SetTotalAmountCents sets the "total_amount_cents" field.
+func (_c *InvoiceCreate) SetTotalAmountCents(v int64) *InvoiceCreate {
+	_c.mutation.SetTotalAmountCents(v)
+	return _c
+}
+
+// SetNillableTotalAmountCents sets the "total_amount_cents" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillableTotalAmountCents(v *int64) *InvoiceCreate {
+	if v != nil {
+		_c.SetTotalAmountCents(*v)
 	}
 	return _c
 }
@@ -152,9 +166,13 @@ func (_c *InvoiceCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *InvoiceCreate) defaults() {
-	if _, ok := _c.mutation.TotalAmount(); !ok {
-		v := invoice.DefaultTotalAmount
-		_c.mutation.SetTotalAmount(v)
+	if _, ok := _c.mutation.LegacyTotalAmount(); !ok {
+		v := invoice.DefaultLegacyTotalAmount
+		_c.mutation.SetLegacyTotalAmount(v)
+	}
+	if _, ok := _c.mutation.TotalAmountCents(); !ok {
+		v := invoice.DefaultTotalAmountCents
+		_c.mutation.SetTotalAmountCents(v)
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		v := invoice.DefaultStatus
@@ -173,8 +191,11 @@ func (_c *InvoiceCreate) check() error {
 	if _, ok := _c.mutation.PeriodMonth(); !ok {
 		return &ValidationError{Name: "period_month", err: errors.New(`ent: missing required field "Invoice.period_month"`)}
 	}
-	if _, ok := _c.mutation.TotalAmount(); !ok {
-		return &ValidationError{Name: "total_amount", err: errors.New(`ent: missing required field "Invoice.total_amount"`)}
+	if _, ok := _c.mutation.LegacyTotalAmount(); !ok {
+		return &ValidationError{Name: "legacy_total_amount", err: errors.New(`ent: missing required field "Invoice.legacy_total_amount"`)}
+	}
+	if _, ok := _c.mutation.TotalAmountCents(); !ok {
+		return &ValidationError{Name: "total_amount_cents", err: errors.New(`ent: missing required field "Invoice.total_amount_cents"`)}
 	}
 	if _, ok := _c.mutation.Status(); !ok {
 		return &ValidationError{Name: "status", err: errors.New(`ent: missing required field "Invoice.status"`)}
@@ -221,9 +242,13 @@ func (_c *InvoiceCreate) createSpec() (*Invoice, *sqlgraph.CreateSpec) {
 		_spec.SetField(invoice.FieldPeriodMonth, field.TypeInt, value)
 		_node.PeriodMonth = value
 	}
-	if value, ok := _c.mutation.TotalAmount(); ok {
-		_spec.SetField(invoice.FieldTotalAmount, field.TypeFloat64, value)
-		_node.TotalAmount = value
+	if value, ok := _c.mutation.LegacyTotalAmount(); ok {
+		_spec.SetField(invoice.FieldLegacyTotalAmount, field.TypeFloat64, value)
+		_node.LegacyTotalAmount = value
+	}
+	if value, ok := _c.mutation.TotalAmountCents(); ok {
+		_spec.SetField(invoice.FieldTotalAmountCents, field.TypeInt64, value)
+		_node.TotalAmountCents = value
 	}
 	if value, ok := _c.mutation.Status(); ok {
 		_spec.SetField(invoice.FieldStatus, field.TypeEnum, value)

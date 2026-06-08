@@ -16,6 +16,7 @@ import (
 	invsvc "langschool/internal/app/invoice"
 	paysvc "langschool/internal/app/payment"
 	"langschool/internal/infra"
+	"langschool/internal/money"
 	"langschool/internal/paths"
 )
 
@@ -114,8 +115,8 @@ func TestInvoiceIssueDoesNotGeneratePDFUntilRequested(t *testing.T) {
 	crs, err := db.Ent.Course.Create().
 		SetName("Drawing").
 		SetType(course.TypeGroup).
-		SetLessonPrice(25).
-		SetSubscriptionPrice(80).
+		SetLessonPriceCents(money.EurosToCents(25)).
+		SetSubscriptionPriceCents(money.EurosToCents(80)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -137,7 +138,7 @@ func TestInvoiceIssueDoesNotGeneratePDFUntilRequested(t *testing.T) {
 		SetStudentID(st.ID).
 		SetPeriodYear(2026).
 		SetPeriodMonth(5).
-		SetTotalAmount(25).
+		SetTotalAmountCents(money.EurosToCents(25)).
 		SetStatus(sharedapp.InvoiceStatusDraft).
 		Save(ctx)
 	if err != nil {
@@ -149,8 +150,8 @@ func TestInvoiceIssueDoesNotGeneratePDFUntilRequested(t *testing.T) {
 		SetEnrollmentID(enr.ID).
 		SetDescription("One lesson").
 		SetQty(1).
-		SetUnitPrice(25).
-		SetAmount(25).
+		SetUnitPriceCents(money.EurosToCents(25)).
+		SetAmountCents(money.EurosToCents(25)).
 		Save(ctx); err != nil {
 		t.Fatalf("InvoiceLine.Create: %v", err)
 	}
@@ -256,7 +257,7 @@ func TestInvoiceHasPDFRecognizesLegacyPath(t *testing.T) {
 		SetStudentID(st.ID).
 		SetPeriodYear(2026).
 		SetPeriodMonth(6).
-		SetTotalAmount(10).
+		SetTotalAmountCents(money.EurosToCents(10)).
 		SetStatus(sharedapp.InvoiceStatusIssued).
 		SetNumber("AL-202606-001").
 		Save(ctx)

@@ -27,8 +27,8 @@ import (
 	auditsvc "langschool/internal/app/audit"
 	invsvc "langschool/internal/app/invoice"
 	paysvc "langschool/internal/app/payment"
-	"langschool/internal/app/utils"
 	"langschool/internal/auth"
+	"langschool/internal/money"
 	appruntime "langschool/internal/runtime"
 )
 
@@ -828,8 +828,6 @@ func (s *Service) CourseGet(ctx context.Context, id int) (*CourseDTO, error) {
 func (s *Service) CourseCreate(ctx context.Context, name string, teacherID *int, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = sanitizeInput(name)
 	courseType = strings.TrimSpace(courseType)
-	lessonPrice = utils.Round2(lessonPrice)
-	subscriptionPrice = utils.Round2(subscriptionPrice)
 	if err := validateNonEmpty(name, "name"); err != nil {
 		return nil, err
 	}
@@ -846,8 +844,8 @@ func (s *Service) CourseCreate(ctx context.Context, name string, teacherID *int,
 	create := s.rt.DB.Ent.Course.Create().
 		SetName(name).
 		SetType(course.Type(courseType)).
-		SetLessonPrice(lessonPrice).
-		SetSubscriptionPrice(subscriptionPrice)
+		SetLessonPriceCents(money.EurosToCents(lessonPrice)).
+		SetSubscriptionPriceCents(money.EurosToCents(subscriptionPrice))
 	if selectedTeacher != nil {
 		create = create.SetTeacherID(selectedTeacher.ID).SetTeacherName(selectedTeacher.FullName)
 	} else {
@@ -868,8 +866,6 @@ func (s *Service) CourseCreate(ctx context.Context, name string, teacherID *int,
 func (s *Service) CourseUpdate(ctx context.Context, id int, name string, teacherID *int, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
 	name = sanitizeInput(name)
 	courseType = strings.TrimSpace(courseType)
-	lessonPrice = utils.Round2(lessonPrice)
-	subscriptionPrice = utils.Round2(subscriptionPrice)
 	if err := validateNonEmpty(name, "name"); err != nil {
 		return nil, err
 	}
@@ -886,8 +882,8 @@ func (s *Service) CourseUpdate(ctx context.Context, id int, name string, teacher
 	update := s.rt.DB.Ent.Course.UpdateOneID(id).
 		SetName(name).
 		SetType(course.Type(courseType)).
-		SetLessonPrice(lessonPrice).
-		SetSubscriptionPrice(subscriptionPrice)
+		SetLessonPriceCents(money.EurosToCents(lessonPrice)).
+		SetSubscriptionPriceCents(money.EurosToCents(subscriptionPrice))
 	if selectedTeacher != nil {
 		update = update.SetTeacherID(selectedTeacher.ID).SetTeacherName(selectedTeacher.FullName)
 	} else {
@@ -1075,8 +1071,8 @@ func toCourseDTO(c *ent.Course) CourseDTO {
 		Name:              c.Name,
 		TeacherName:       c.TeacherName,
 		Type:              string(c.Type),
-		LessonPrice:       utils.Round2(c.LessonPrice),
-		SubscriptionPrice: utils.Round2(c.SubscriptionPrice),
+		LessonPrice:       money.CentsToEuros(c.LessonPriceCents),
+		SubscriptionPrice: money.CentsToEuros(c.SubscriptionPriceCents),
 	}
 	if c.TeacherID != nil {
 		id := *c.TeacherID

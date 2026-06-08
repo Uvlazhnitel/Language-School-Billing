@@ -93,6 +93,11 @@ func Locale(v string) predicate.Settings {
 	return predicate.Settings(sql.FieldEQ(FieldLocale, v))
 }
 
+// MoneyCentsMigrated applies equality check predicate on the "money_cents_migrated" field. It's identical to MoneyCentsMigratedEQ.
+func MoneyCentsMigrated(v bool) predicate.Settings {
+	return predicate.Settings(sql.FieldEQ(FieldMoneyCentsMigrated, v))
+}
+
 // SingletonIDEQ applies the EQ predicate on the "singleton_id" field.
 func SingletonIDEQ(v int) predicate.Settings {
 	return predicate.Settings(sql.FieldEQ(FieldSingletonID, v))
@@ -536,6 +541,16 @@ func LocaleEqualFold(v string) predicate.Settings {
 // LocaleContainsFold applies the ContainsFold predicate on the "locale" field.
 func LocaleContainsFold(v string) predicate.Settings {
 	return predicate.Settings(sql.FieldContainsFold(FieldLocale, v))
+}
+
+// MoneyCentsMigratedEQ applies the EQ predicate on the "money_cents_migrated" field.
+func MoneyCentsMigratedEQ(v bool) predicate.Settings {
+	return predicate.Settings(sql.FieldEQ(FieldMoneyCentsMigrated, v))
+}
+
+// MoneyCentsMigratedNEQ applies the NEQ predicate on the "money_cents_migrated" field.
+func MoneyCentsMigratedNEQ(v bool) predicate.Settings {
+	return predicate.Settings(sql.FieldNEQ(FieldMoneyCentsMigrated, v))
 }
 
 // And groups predicates with the AND operator between them.

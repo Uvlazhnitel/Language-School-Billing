@@ -31,8 +31,10 @@ type Settings struct {
 	// Currency holds the value of the "currency" field.
 	Currency string `json:"currency,omitempty"`
 	// Locale holds the value of the "locale" field.
-	Locale       string `json:"locale,omitempty"`
-	selectValues sql.SelectValues
+	Locale string `json:"locale,omitempty"`
+	// MoneyCentsMigrated holds the value of the "money_cents_migrated" field.
+	MoneyCentsMigrated bool `json:"money_cents_migrated,omitempty"`
+	selectValues       sql.SelectValues
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -40,6 +42,8 @@ func (*Settings) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case settings.FieldMoneyCentsMigrated:
+			values[i] = new(sql.NullBool)
 		case settings.FieldID, settings.FieldSingletonID, settings.FieldNextSeq, settings.FieldInvoiceDayOfMonth:
 			values[i] = new(sql.NullInt64)
 		case settings.FieldOrgName, settings.FieldAddress, settings.FieldInvoicePrefix, settings.FieldCurrency, settings.FieldLocale:
@@ -113,6 +117,12 @@ func (_m *Settings) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Locale = value.String
 			}
+		case settings.FieldMoneyCentsMigrated:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field money_cents_migrated", values[i])
+			} else if value.Valid {
+				_m.MoneyCentsMigrated = value.Bool
+			}
 		default:
 			_m.selectValues.Set(columns[i], values[i])
 		}
@@ -172,6 +182,9 @@ func (_m *Settings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("locale=")
 	builder.WriteString(_m.Locale)
+	builder.WriteString(", ")
+	builder.WriteString("money_cents_migrated=")
+	builder.WriteString(fmt.Sprintf("%v", _m.MoneyCentsMigrated))
 	builder.WriteByte(')')
 	return builder.String()
 }

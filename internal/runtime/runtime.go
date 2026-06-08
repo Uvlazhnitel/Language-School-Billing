@@ -15,6 +15,7 @@ import (
 	paysvc "langschool/internal/app/payment"
 	"langschool/internal/auth"
 	"langschool/internal/infra"
+	"langschool/internal/money"
 	"langschool/internal/paths"
 )
 
@@ -66,6 +67,10 @@ func Start(ctx context.Context, cfg Config) (*Runtime, error) {
 	}
 
 	if err := ensureSettings(ctx, db.Ent); err != nil {
+		_ = db.Ent.Close()
+		return nil, err
+	}
+	if err := migrateMoneyToCents(ctx, db.Ent); err != nil {
 		_ = db.Ent.Close()
 		return nil, err
 	}
@@ -143,5 +148,71 @@ func ensureSettings(ctx context.Context, client *ent.Client) error {
 	}
 
 	_, err = upd.Save(ctx)
+	return err
+}
+
+func migrateMoneyToCents(ctx context.Context, client *ent.Client) error {
+	st, err := client.Settings.
+		Query().
+		Where(settings.SingletonIDEQ(sharedapp.SettingsSingletonID)).
+		Only(ctx)
+	if err != nil {
+		return err
+	}
+	if st.MoneyCentsMigrated {
+		return nil
+	}
+
+	courses, err := client.Course.Query().All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, item := range courses {
+		if _, err := item.Update().
+			SetLessonPriceCents(money.EurosToCents(item.LegacyLessonPrice)).
+			SetSubscriptionPriceCents(money.EurosToCents(item.LegacySubscriptionPrice)).
+			Save(ctx); err != nil {
+			return err
+		}
+	}
+
+	invoices, err := client.Invoice.Query().All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, item := range invoices {
+		if _, err := item.Update().
+			SetTotalAmountCents(money.EurosToCents(item.LegacyTotalAmount)).
+			Save(ctx); err != nil {
+			return err
+		}
+	}
+
+	lines, err := client.InvoiceLine.Query().All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, item := range lines {
+		if _, err := item.Update().
+			SetUnitPriceCents(money.EurosToCents(item.LegacyUnitPrice)).
+			SetAmountCents(money.EurosToCents(item.LegacyAmount)).
+			Save(ctx); err != nil {
+			return err
+		}
+	}
+
+	payments, err := client.Payment.Query().All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, item := range payments {
+		if _, err := item.Update().
+			SetAmountCents(money.EurosToCents(item.LegacyAmount)).
+			Save(ctx); err != nil {
+			return err
+		}
+	}
+
+	_, err = client.Settings.UpdateOneID(st.ID).SetMoneyCentsMigrated(true).Save(ctx)
 	return err
 }

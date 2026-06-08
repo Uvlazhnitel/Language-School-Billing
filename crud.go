@@ -1,952 +1,173 @@
-// crud.go
-// Package main contains CRUD (Create, Read, Update, Delete) operations
-// for the core entities: Students, Courses, and Enrollments.
-// All operations include input validation and sanitization to prevent
-// security issues like XSS attacks and data corruption.
 package main
 
 import (
-	"context"
 	"errors"
-	"fmt"
-	"html"
-	"strings"
 
-	"langschool/ent"
-	"langschool/ent/attendancemonth"
-	"langschool/ent/course"
-	"langschool/ent/coursemonthstat"
-	"langschool/ent/enrollment"
-	"langschool/ent/invoice"
-	"langschool/ent/invoiceline"
-	"langschool/ent/payment"
-	"langschool/ent/student"
-	"langschool/ent/teacher"
-	"langschool/internal/app"
-	"langschool/internal/app/utils"
+	sharedapp "langschool/internal/app"
+	"langschool/internal/backend"
 )
 
-// -------------------- Constants (imported from internal/app) --------------------
-
-// Constants for course types and billing modes, re-exported from the app package
-// for use in Wails bindings.
 const (
-	// Course types
-	CourseTypeGroup      = app.CourseTypeGroup      // Group course type
-	CourseTypeIndividual = app.CourseTypeIndividual // Individual course type
-
-	// Billing modes
-	BillingModeSubscription = app.BillingModeSubscription // Subscription-based billing
-	BillingModePerLesson    = app.BillingModePerLesson    // Per-lesson billing
+	CourseTypeGroup         = sharedapp.CourseTypeGroup
+	CourseTypeIndividual    = sharedapp.CourseTypeIndividual
+	BillingModeSubscription = sharedapp.BillingModeSubscription
+	BillingModePerLesson    = sharedapp.BillingModePerLesson
 )
 
-// -------------------- DTOs for Wails --------------------
+type StudentDTO = backend.StudentDTO
+type CourseDTO = backend.CourseDTO
+type EnrollmentDTO = backend.EnrollmentDTO
+type CourseMonthSubscriptionDTO = backend.CourseMonthSubscriptionDTO
+type TeacherDTO = backend.TeacherDTO
 
-// StudentDTO represents a student in the frontend.
-// DTOs are used to transfer data between the Go backend and TypeScript frontend.
-type StudentDTO struct {
-	ID           int    `json:"id"`           // Unique student identifier
-	FullName     string `json:"fullName"`     // Student's full name
-	PersonalCode string `json:"personalCode"` // Student's own personal code
-	Phone        string `json:"phone"`        // Student or payer phone number
-	Email        string `json:"email"`        // Student or payer email address
-	Note         string `json:"note"`         // Optional notes about the student
-	IsMinor      bool   `json:"isMinor"`      // Whether the student is a child/minor
-	PayerName    string `json:"payerName"`    // Name of the adult who pays for a minor student
-	PayerRole    string `json:"payerRole"`    // Role of the payer for a minor student
-	IsActive     bool   `json:"isActive"`     // Whether the student is currently active
+func (a *App) crudService() (*backend.Service, error) {
+	svc := a.ensureBackendService()
+	if svc == nil {
+		return nil, errors.New("backend service is not initialized")
+	}
+	return svc, nil
 }
 
-// CourseDTO represents a course in the frontend.
-type CourseDTO struct {
-	ID                int     `json:"id"`   // Unique course identifier
-	Name              string  `json:"name"` // Course name
-	TeacherID         *int    `json:"teacherId,omitempty"`
-	TeacherName       string  `json:"teacherName"`       // Main teacher name
-	Type              string  `json:"type"`              // Course type: "group" or "individual"
-	LessonPrice       float64 `json:"lessonPrice"`       // Price per lesson
-	SubscriptionPrice float64 `json:"subscriptionPrice"` // Monthly subscription price
-}
-
-// EnrollmentDTO represents a student's enrollment in a course.
-type EnrollmentDTO struct {
-	ID          int     `json:"id"`          // Unique enrollment identifier
-	StudentID   int     `json:"studentId"`   // ID of the enrolled student
-	StudentName string  `json:"studentName"` // Student's full name (for display)
-	CourseID    int     `json:"courseId"`    // ID of the course
-	CourseName  string  `json:"courseName"`  // Course name (for display)
-	TeacherID   *int    `json:"teacherId,omitempty"`
-	TeacherName string  `json:"teacherName"` // Teacher name from the linked course
-	BillingMode string  `json:"billingMode"` // Billing mode: "subscription" or "per_lesson"
-	DiscountPct float64 `json:"discountPct"` // Discount percentage (0-100)
-	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"` // Base subscription discount percentage (0-100)
-	Note        string  `json:"note"`        // Optional notes about the enrollment
-}
-
-type CourseMonthSubscriptionDTO struct {
-	CourseID    int     `json:"courseId"`
-	Year        int     `json:"year"`
-	Month       int     `json:"month"`
-	LessonsHeld float64 `json:"lessonsHeld"`
-}
-
-// TeacherDTO represents a teacher in the frontend.
-type TeacherDTO struct {
-	ID       int    `json:"id"`
-	FullName string `json:"fullName"`
-	IsActive bool   `json:"isActive"`
-}
-
-// -------------------- Validation helpers --------------------
-
-// validateNonEmpty checks if a string is non-empty after trimming.
-func validateNonEmpty(value, fieldName string) error {
-	if strings.TrimSpace(value) == "" {
-		return fmt.Errorf("%s is required", fieldName)
-	}
-	return nil
-}
-
-// validatePrices checks if prices are non-negative.
-func validatePrices(lessonPrice, subscriptionPrice float64) error {
-	if lessonPrice < 0 || subscriptionPrice < 0 {
-		return errors.New("prices must be >= 0")
-	}
-	return nil
-}
-
-// validateCourseType checks if the course type is valid.
-func validateCourseType(courseType string) error {
-	if courseType != CourseTypeGroup && courseType != CourseTypeIndividual {
-		return fmt.Errorf("courseType must be '%s' or '%s'", CourseTypeGroup, CourseTypeIndividual)
-	}
-	return nil
-}
-
-// validateBillingMode checks if the billing mode is valid.
-func validateBillingMode(billingMode string) error {
-	if billingMode != BillingModeSubscription && billingMode != BillingModePerLesson {
-		return fmt.Errorf("billingMode must be '%s' or '%s'", BillingModeSubscription, BillingModePerLesson)
-	}
-	return nil
-}
-
-// validateDiscountPct checks if the discount percentage is within valid range.
-func validateDiscountPct(discountPct float64) error {
-	if discountPct < 0 || discountPct > 100 {
-		return errors.New("discountPct must be between 0 and 100")
-	}
-	return nil
-}
-
-func validatePayerRole(role string) error {
-	role = strings.TrimSpace(role)
-	if role == "" {
-		return nil
-	}
-	switch role {
-	case "mother", "father", "grandmother", "grandfather", "guardian", "other":
-		return nil
-	default:
-		return errors.New("payerRole must be one of: mother, father, grandmother, grandfather, guardian, other")
-	}
-}
-
-func validateMinorPayer(isMinor bool, payerName, payerRole string) error {
-	if err := validatePayerRole(payerRole); err != nil {
-		return err
-	}
-	if !isMinor {
-		return nil
-	}
-	if strings.TrimSpace(payerName) == "" {
-		return errors.New("payerName is required when isMinor is true")
-	}
-	if strings.TrimSpace(payerRole) == "" {
-		return errors.New("payerRole is required when isMinor is true")
-	}
-	return nil
-}
-
-func normalizePayerRole(role string) string {
-	return strings.ToLower(strings.TrimSpace(role))
-}
-
-// sanitizeInput trims and HTML-escapes user input to prevent XSS attacks.
-// This is particularly important for fields that end up in PDFs or other outputs.
-func sanitizeInput(input string) string {
-	trimmed := strings.TrimSpace(input)
-	return html.EscapeString(trimmed)
-}
-
-func (a *App) resolveTeacher(ctx context.Context, teacherID *int) (*ent.Teacher, error) {
-	if teacherID == nil {
-		return nil, nil
-	}
-	if *teacherID <= 0 {
-		return nil, errors.New("teacherID must be > 0 when provided")
-	}
-	return a.db.Ent.Teacher.Get(ctx, *teacherID)
-}
-
-// -------------------- DTO conversion helpers --------------------
-
-// toStudentDTO converts an ent.Student to StudentDTO.
-func toStudentDTO(s *ent.Student) StudentDTO {
-	return StudentDTO{
-		ID:           s.ID,
-		FullName:     s.FullName,
-		PersonalCode: s.PersonalCode,
-		Phone:        s.Phone,
-		Email:        s.Email,
-		Note:         s.Note,
-		IsMinor:      s.IsMinor,
-		PayerName:    s.PayerName,
-		PayerRole:    s.PayerRole,
-		IsActive:     s.IsActive,
-	}
-}
-
-// toCourseDTO converts an ent.Course to CourseDTO.
-func toCourseDTO(c *ent.Course) CourseDTO {
-	dto := CourseDTO{
-		ID:                c.ID,
-		Name:              c.Name,
-		TeacherName:       c.TeacherName,
-		Type:              string(c.Type),
-		LessonPrice:       utils.Round2(c.LessonPrice),
-		SubscriptionPrice: utils.Round2(c.SubscriptionPrice),
-	}
-	if c.TeacherID != nil {
-		id := *c.TeacherID
-		dto.TeacherID = &id
-	}
-	if c.Edges.Teacher != nil {
-		dto.TeacherName = c.Edges.Teacher.FullName
-		id := c.Edges.Teacher.ID
-		dto.TeacherID = &id
-	}
-	return dto
-}
-
-// toEnrollmentDTO converts an ent.Enrollment to EnrollmentDTO.
-// It extracts student and course names from edges if available.
-func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
-	dto := EnrollmentDTO{
-		ID:          e.ID,
-		StudentID:   e.StudentID,
-		CourseID:    e.CourseID,
-		BillingMode: string(e.BillingMode),
-		DiscountPct: e.DiscountPct,
-		SubscriptionDiscountPct: e.SubscriptionDiscountPct,
-		Note:        e.Note,
-	}
-	if e.Edges.Student != nil {
-		dto.StudentName = e.Edges.Student.FullName
-	}
-	if e.Edges.Course != nil {
-		dto.CourseName = e.Edges.Course.Name
-		dto.TeacherName = e.Edges.Course.TeacherName
-		if e.Edges.Course.TeacherID != nil {
-			id := *e.Edges.Course.TeacherID
-			dto.TeacherID = &id
-		}
-		if e.Edges.Course.Edges.Teacher != nil {
-			dto.TeacherName = e.Edges.Course.Edges.Teacher.FullName
-			id := e.Edges.Course.Edges.Teacher.ID
-			dto.TeacherID = &id
-		}
-	}
-	return dto
-}
-
-func toTeacherDTO(t *ent.Teacher) TeacherDTO {
-	return TeacherDTO{
-		ID:       t.ID,
-		FullName: t.FullName,
-		IsActive: t.IsActive,
-	}
-}
-
-// -------------------- Students CRUD --------------------
-
-// StudentList returns active students by default. If includeInactive=true, returns all.
-// If q is not empty, filters by name/phone/email (case-insensitive where supported).
-// StudentList retrieves a list of students, optionally filtered by search query.
-// The query parameter 'q' searches in student names.
-// Set includeInactive to true to include deactivated students in the results.
 func (a *App) StudentList(q string, includeInactive bool) ([]StudentDTO, error) {
-	ctx := a.ctx
-	q = strings.TrimSpace(q)
-
-	query := a.db.Ent.Student.Query()
-
-	if !includeInactive {
-		query = query.Where(student.IsActiveEQ(true))
-	}
-
-	if q != "" {
-		// ContainsFold is supported for SQLite in ent.
-		// We apply OR across a few fields.
-		query = query.Where(
-			student.Or(
-				student.FullNameContainsFold(q),
-				student.PhoneContainsFold(q),
-				student.EmailContainsFold(q),
-			),
-		)
-	}
-
-	studs, err := query.Order(ent.Asc(student.FieldFullName)).All(ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-
-	out := make([]StudentDTO, 0, len(studs))
-	for _, s := range studs {
-		out = append(out, toStudentDTO(s))
-	}
-	return out, nil
+	return svc.StudentList(a.appContext(), q, includeInactive)
 }
 
-// StudentGet retrieves a single student by ID.
-// Returns an error if the student is not found.
 func (a *App) StudentGet(id int) (*StudentDTO, error) {
-	s, err := a.db.Ent.Student.Get(a.ctx, id)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-	dto := toStudentDTO(s)
-	return &dto, nil
+	return svc.StudentGet(a.appContext(), id)
 }
 
-// StudentCreate creates a new student with the provided details.
-// All user inputs are sanitized to prevent XSS attacks.
-// The fullName parameter is required (validated to be non-empty).
-// The student is created as active by default.
 func (a *App) StudentCreate(fullName, personalCode, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
-	fullName = sanitizeInput(fullName)
-	if err := validateNonEmpty(fullName, "fullName"); err != nil {
-		return nil, err
-	}
-	personalCode = sanitizeInput(personalCode)
-	payerName = sanitizeInput(payerName)
-	payerRole = normalizePayerRole(payerRole)
-	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
-		return nil, err
-	}
-
-	s, err := a.db.Ent.Student.Create().
-		SetFullName(fullName).
-		SetPersonalCode(personalCode).
-		SetPhone(sanitizeInput(phone)).
-		SetEmail(sanitizeInput(email)).
-		SetNote(sanitizeInput(note)).
-		SetIsMinor(isMinor).
-		SetPayerName(payerName).
-		SetPayerRole(payerRole).
-		SetIsActive(true).
-		Save(a.ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-
-	dto := toStudentDTO(s)
-	return &dto, nil
+	return svc.StudentCreate(a.appContext(), fullName, personalCode, phone, email, note, isMinor, payerName, payerRole)
 }
 
-// StudentUpdate updates an existing student's information.
-// All user inputs are sanitized to prevent XSS attacks.
-// The fullName parameter is required (validated to be non-empty).
 func (a *App) StudentUpdate(id int, fullName, personalCode, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
-	fullName = sanitizeInput(fullName)
-	if err := validateNonEmpty(fullName, "fullName"); err != nil {
-		return nil, err
-	}
-	personalCode = sanitizeInput(personalCode)
-	payerName = sanitizeInput(payerName)
-	payerRole = normalizePayerRole(payerRole)
-	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
-		return nil, err
-	}
-
-	s, err := a.db.Ent.Student.UpdateOneID(id).
-		SetFullName(fullName).
-		SetPersonalCode(personalCode).
-		SetPhone(sanitizeInput(phone)).
-		SetEmail(sanitizeInput(email)).
-		SetNote(sanitizeInput(note)).
-		SetIsMinor(isMinor).
-		SetPayerName(payerName).
-		SetPayerRole(payerRole).
-		Save(a.ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-
-	dto := toStudentDTO(s)
-	return &dto, nil
+	return svc.StudentUpdate(a.appContext(), id, fullName, personalCode, phone, email, note, isMinor, payerName, payerRole)
 }
 
-// StudentSetActive deactivates (or activates) a student without deleting history.
-// StudentSetActive activates or deactivates a student.
-// Deactivated students are hidden from most lists and cannot be enrolled in new courses.
 func (a *App) StudentSetActive(id int, active bool) error {
-	_, err := a.db.Ent.Student.UpdateOneID(id).
-		SetIsActive(active).
-		Save(a.ctx)
-	return err
+	svc, err := a.crudService()
+	if err != nil {
+		return err
+	}
+	return svc.StudentSetActive(a.appContext(), id, active)
 }
 
-// StudentDelete deletes a student. If inactive, automatically removes enrollments,
-// attendance, and draft-only invoice history.
-// Prevents deletion if the student has protected financial records.
-// StudentDelete permanently removes a student and associated data.
-// The student must be deactivated (isActive=false) before deletion.
-// The student must not have issued/paid/canceled invoices or any payments
-// (to preserve financial records).
-// This operation also deletes all enrollments and attendance records for the student.
 func (a *App) StudentDelete(id int) error {
-	ctx := a.ctx
-
-	// Check if student is active
-	st, err := a.db.Ent.Student.Get(ctx, id)
+	svc, err := a.crudService()
 	if err != nil {
 		return err
 	}
-	if st.IsActive {
-		return errors.New("cannot delete active student; deactivate first")
-	}
-
-	// Check for payments - these are financial records and should not be auto-deleted
-	hasPayments, err := a.db.Ent.Payment.Query().
-		Where(payment.StudentIDEQ(id)).
-		Exist(ctx)
-	if err != nil {
-		return err
-	}
-	if hasPayments {
-		return errors.New("cannot delete student: has payments (financial records)")
-	}
-
-	// Draft invoices can be discarded together with the student, but non-draft
-	// invoices must be preserved as part of financial history.
-	hasProtectedInvoices, err := a.db.Ent.Invoice.Query().
-		Where(
-			invoice.StudentIDEQ(id),
-			invoice.StatusNEQ(app.InvoiceStatusDraft),
-		).
-		Exist(ctx)
-	if err != nil {
-		return err
-	}
-	if hasProtectedInvoices {
-		return errors.New("cannot delete student: has issued, paid, or canceled invoices")
-	}
-
-	// Use a transaction to ensure all deletions succeed or fail together
-	tx, err := a.db.Ent.Tx(ctx)
-	if err != nil {
-		return err
-	}
-	// Defer rollback - will be a no-op if commit succeeds
-	defer tx.Rollback()
-
-	draftInvoiceIDs, err := tx.Invoice.Query().
-		Where(
-			invoice.StudentIDEQ(id),
-			invoice.StatusEQ(app.InvoiceStatusDraft),
-		).
-		IDs(ctx)
-	if err != nil {
-		return err
-	}
-	if len(draftInvoiceIDs) > 0 {
-		_, err = tx.InvoiceLine.Delete().
-			Where(invoiceline.InvoiceIDIn(draftInvoiceIDs...)).
-			Exec(ctx)
-		if err != nil {
-			return err
-		}
-
-		_, err = tx.Invoice.Delete().
-			Where(invoice.IDIn(draftInvoiceIDs...)).
-			Exec(ctx)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Auto-delete attendance records (these are draft data that can be safely removed)
-	_, err = tx.AttendanceMonth.Delete().
-		Where(attendancemonth.StudentIDEQ(id)).
-		Exec(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Auto-delete enrollments (these are relationships that can be safely removed)
-	_, err = tx.Enrollment.Delete().
-		Where(enrollment.StudentIDEQ(id)).
-		Exec(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Finally, delete the student
-	err = tx.Student.DeleteOneID(id).Exec(ctx)
-	if err != nil {
-		return err
-	}
-
-	// Commit the transaction
-	return tx.Commit()
+	return svc.StudentDelete(a.appContext(), id)
 }
 
-// -------------------- Courses CRUD --------------------
-
-// TeacherList returns active teachers, optionally filtered by name.
 func (a *App) TeacherList(q string) ([]TeacherDTO, error) {
-	ctx := a.ctx
-	q = strings.TrimSpace(q)
-
-	query := a.db.Ent.Teacher.Query().Where(teacher.IsActiveEQ(true))
-	if q != "" {
-		query = query.Where(teacher.FullNameContainsFold(q))
-	}
-
-	teachers, err := query.Order(ent.Asc(teacher.FieldFullName)).All(ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-
-	out := make([]TeacherDTO, 0, len(teachers))
-	for _, t := range teachers {
-		out = append(out, toTeacherDTO(t))
-	}
-	return out, nil
+	return svc.TeacherList(a.appContext(), q)
 }
 
-// TeacherCreate creates a new teacher or returns an existing teacher with the same name.
 func (a *App) TeacherCreate(fullName string) (*TeacherDTO, error) {
-	ctx := a.ctx
-	fullName = sanitizeInput(fullName)
-	if err := validateNonEmpty(fullName, "fullName"); err != nil {
-		return nil, err
-	}
-
-	existing, err := a.db.Ent.Teacher.Query().
-		Where(teacher.FullNameEqualFold(fullName)).
-		Only(ctx)
-	if err == nil {
-		dto := toTeacherDTO(existing)
-		return &dto, nil
-	}
-	if err != nil && !ent.IsNotFound(err) {
-		return nil, err
-	}
-
-	tch, err := a.db.Ent.Teacher.Create().
-		SetFullName(fullName).
-		SetIsActive(true).
-		Save(ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-
-	dto := toTeacherDTO(tch)
-	return &dto, nil
+	return svc.TeacherCreate(a.appContext(), fullName)
 }
 
-// CourseList lists courses. Optional search by name or teacher.
 func (a *App) CourseList(q string) ([]CourseDTO, error) {
-	ctx := a.ctx
-	q = strings.TrimSpace(q)
-
-	query := a.db.Ent.Course.Query().WithTeacher()
-	if q != "" {
-		query = query.Where(course.Or(
-			course.NameContainsFold(q),
-			course.TeacherNameContainsFold(q),
-			course.HasTeacherWith(teacher.FullNameContainsFold(q)),
-		))
-	}
-
-	cs, err := query.Order(ent.Asc(course.FieldName)).All(ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-
-	out := make([]CourseDTO, 0, len(cs))
-	for _, c := range cs {
-		out = append(out, toCourseDTO(c))
-	}
-	return out, nil
+	return svc.CourseList(a.appContext(), q)
 }
 
-// CourseGet retrieves a single course by ID.
-// Returns an error if the course is not found.
 func (a *App) CourseGet(id int) (*CourseDTO, error) {
-	c, err := a.db.Ent.Course.Query().
-		Where(course.IDEQ(id)).
-		WithTeacher().
-		Only(a.ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-	dto := toCourseDTO(c)
-	return &dto, nil
+	return svc.CourseGet(a.appContext(), id)
 }
 
-// CourseCreate creates a new course with the specified details.
-// The course name is sanitized to prevent XSS attacks.
-// Prices must be non-negative. Course type must be either "group" or "individual".
 func (a *App) CourseCreate(name string, teacherID *int, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
-	name = sanitizeInput(name)
-	courseType = strings.TrimSpace(courseType)
-	lessonPrice = utils.Round2(lessonPrice)
-	subscriptionPrice = utils.Round2(subscriptionPrice)
-
-	if err := validateNonEmpty(name, "name"); err != nil {
-		return nil, err
-	}
-	if err := validateCourseType(courseType); err != nil {
-		return nil, err
-	}
-	if err := validatePrices(lessonPrice, subscriptionPrice); err != nil {
-		return nil, err
-	}
-	selectedTeacher, err := a.resolveTeacher(a.ctx, teacherID)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-
-	create := a.db.Ent.Course.Create().
-		SetName(name).
-		SetType(course.Type(courseType)).
-		SetLessonPrice(lessonPrice).
-		SetSubscriptionPrice(subscriptionPrice)
-	if selectedTeacher != nil {
-		create = create.SetTeacherID(selectedTeacher.ID).SetTeacherName(selectedTeacher.FullName)
-	} else {
-		create = create.SetTeacherName("")
-	}
-	c, err := create.Save(a.ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	c, err = a.db.Ent.Course.Query().
-		Where(course.IDEQ(c.ID)).
-		WithTeacher().
-		Only(a.ctx)
-	if err != nil {
-		return nil, err
-	}
-	dto := toCourseDTO(c)
-	return &dto, nil
+	return svc.CourseCreate(a.appContext(), name, teacherID, courseType, lessonPrice, subscriptionPrice)
 }
 
-// CourseUpdate updates an existing course's information.
-// The course name is sanitized to prevent XSS attacks.
-// Prices must be non-negative. Course type must be either "group" or "individual".
 func (a *App) CourseUpdate(id int, name string, teacherID *int, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
-	name = sanitizeInput(name)
-	courseType = strings.TrimSpace(courseType)
-	lessonPrice = utils.Round2(lessonPrice)
-	subscriptionPrice = utils.Round2(subscriptionPrice)
-
-	if err := validateNonEmpty(name, "name"); err != nil {
-		return nil, err
-	}
-	if err := validateCourseType(courseType); err != nil {
-		return nil, err
-	}
-	if err := validatePrices(lessonPrice, subscriptionPrice); err != nil {
-		return nil, err
-	}
-	selectedTeacher, err := a.resolveTeacher(a.ctx, teacherID)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-
-	update := a.db.Ent.Course.UpdateOneID(id).
-		SetName(name).
-		SetType(course.Type(courseType)).
-		SetLessonPrice(lessonPrice).
-		SetSubscriptionPrice(subscriptionPrice)
-	if selectedTeacher != nil {
-		update = update.SetTeacherID(selectedTeacher.ID).SetTeacherName(selectedTeacher.FullName)
-	} else {
-		update = update.ClearTeacher().SetTeacherName("")
-	}
-	c, err := update.Save(a.ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	c, err = a.db.Ent.Course.Query().
-		Where(course.IDEQ(c.ID)).
-		WithTeacher().
-		Only(a.ctx)
-	if err != nil {
-		return nil, err
-	}
-	dto := toCourseDTO(c)
-	return &dto, nil
+	return svc.CourseUpdate(a.appContext(), id, name, teacherID, courseType, lessonPrice, subscriptionPrice)
 }
 
-// CourseDelete deletes a course only if no enrollments reference it.
-// This keeps history safe without adding is_active field right now.
 func (a *App) CourseDelete(id int) error {
-	ctx := a.ctx
-
-	enrollmentCount, err := a.db.Ent.Enrollment.Query().
-		Where(enrollment.CourseIDEQ(id)).
-		Count(ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return err
 	}
-	if enrollmentCount > 0 {
-		return errors.New("cannot delete course: it has enrollments; remove enrollments first or keep course")
-	}
-
-	err = a.db.Ent.Course.DeleteOneID(id).Exec(ctx)
-	if err != nil {
-		if ent.IsConstraintError(err) {
-			return errors.New("cannot delete course: it is still referenced by existing records")
-		}
-		return err
-	}
-	return nil
+	return svc.CourseDelete(a.appContext(), id)
 }
 
-// -------------------- Enrollments CRUD --------------------
-
-// EnrollmentList lists enrollments, optionally filtered by studentID or courseID.
-// NOTE: activeOnly/date filters were removed; API now uses only (studentID, courseID).
 func (a *App) EnrollmentList(studentID *int, courseID *int) ([]EnrollmentDTO, error) {
-	ctx := a.ctx
-
-	q := a.db.Ent.Enrollment.Query().
-		WithStudent().
-		WithCourse(func(cq *ent.CourseQuery) {
-			cq.WithTeacher()
-		})
-
-	if studentID != nil {
-		q = q.Where(enrollment.StudentIDEQ(*studentID))
-	}
-	if courseID != nil {
-		q = q.Where(enrollment.CourseIDEQ(*courseID))
-	}
-
-	ens, err := q.Order(ent.Asc(enrollment.FieldID)).All(ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-
-	out := make([]EnrollmentDTO, 0, len(ens))
-	for _, e := range ens {
-		out = append(out, toEnrollmentDTO(e))
-	}
-	return out, nil
+	return svc.EnrollmentList(a.appContext(), studentID, courseID)
 }
 
-// EnrollmentCreate creates a new enrollment linking a student to a course.
-// The billingMode determines how the student is billed: "subscription" or "per_lesson".
-// The discountPct applies a percentage discount to the course prices (0-100).
-// To prevent duplicates, this method rejects enrollments if the same student-course pair already exists.
 func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, discountPct, subscriptionDiscountPct float64, note string) (*EnrollmentDTO, error) {
-	ctx := a.ctx
-
-	if studentID <= 0 || courseID <= 0 {
-		return nil, errors.New("studentID and courseID must be > 0")
-	}
-	billingMode = strings.TrimSpace(billingMode)
-	if err := validateBillingMode(billingMode); err != nil {
-		return nil, err
-	}
-	if err := validateDiscountPct(discountPct); err != nil {
-		return nil, err
-	}
-	if err := validateDiscountPct(subscriptionDiscountPct); err != nil {
-		return nil, err
-	}
-
-	// Ensure referenced entities exist and student is active.
-	st, err := a.db.Ent.Student.Get(ctx, studentID)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-	if !st.IsActive {
-		return nil, errors.New("cannot enroll a deactivated student")
-	}
-	if _, err := a.db.Ent.Course.Get(ctx, courseID); err != nil {
-		return nil, err
-	}
-
-	// Prevent duplicate enrollment for the same student-course pair.
-	exists, err := a.db.Ent.Enrollment.Query().
-		Where(
-			enrollment.StudentIDEQ(studentID),
-			enrollment.CourseIDEQ(courseID),
-		).
-		Exist(ctx)
-	if err != nil {
-		return nil, err
-	}
-	if exists {
-		return nil, errors.New("an enrollment for this student and course already exists")
-	}
-
-	e, err := a.db.Ent.Enrollment.Create().
-		SetStudentID(studentID).
-		SetCourseID(courseID).
-		SetBillingMode(enrollment.BillingMode(billingMode)).
-		SetDiscountPct(discountPct).
-		SetSubscriptionDiscountPct(subscriptionDiscountPct).
-		SetNote(sanitizeInput(note)).
-		Save(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	// Return full DTO with names.
-	e2, err := a.db.Ent.Enrollment.Query().
-		Where(enrollment.IDEQ(e.ID)).
-		WithStudent().
-		WithCourse(func(cq *ent.CourseQuery) {
-			cq.WithTeacher()
-		}).
-		Only(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	dto := toEnrollmentDTO(e2)
-	return &dto, nil
+	return svc.EnrollmentCreate(a.appContext(), studentID, courseID, billingMode, discountPct, subscriptionDiscountPct, note)
 }
 
-// EnrollmentUpdate updates an existing enrollment's billing mode, discount, and notes.
-// The billingMode must be "subscription" or "per_lesson".
-// The discountPct must be between 0 and 100.
-// All user inputs are sanitized to prevent XSS attacks.
 func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, discountPct, subscriptionDiscountPct float64, note string) (*EnrollmentDTO, error) {
-	ctx := a.ctx
-
-	billingMode = strings.TrimSpace(billingMode)
-	if err := validateBillingMode(billingMode); err != nil {
-		return nil, err
-	}
-	if err := validateDiscountPct(discountPct); err != nil {
-		return nil, err
-	}
-	if err := validateDiscountPct(subscriptionDiscountPct); err != nil {
-		return nil, err
-	}
-
-	_, err := a.db.Ent.Enrollment.UpdateOneID(enrollmentID).
-		SetBillingMode(enrollment.BillingMode(billingMode)).
-		SetDiscountPct(discountPct).
-		SetSubscriptionDiscountPct(subscriptionDiscountPct).
-		SetNote(sanitizeInput(note)).
-		Save(ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-
-	// Return full DTO with names.
-	e2, err := a.db.Ent.Enrollment.Query().
-		Where(enrollment.IDEQ(enrollmentID)).
-		WithStudent().
-		WithCourse(func(cq *ent.CourseQuery) {
-			cq.WithTeacher()
-		}).
-		Only(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	dto := toEnrollmentDTO(e2)
-	return &dto, nil
+	return svc.EnrollmentUpdate(a.appContext(), enrollmentID, billingMode, discountPct, subscriptionDiscountPct, note)
 }
 
 func (a *App) CourseMonthSubscriptionList(year, month int, courseID *int) ([]CourseMonthSubscriptionDTO, error) {
-	ctx := a.ctx
-	q := a.db.Ent.CourseMonthStat.Query().
-		Where(coursemonthstat.YearEQ(year), coursemonthstat.MonthEQ(month))
-	if courseID != nil && *courseID > 0 {
-		q = q.Where(coursemonthstat.CourseIDEQ(*courseID))
-	}
-	items, err := q.Order(ent.Asc(coursemonthstat.FieldCourseID)).All(ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-	out := make([]CourseMonthSubscriptionDTO, 0, len(items))
-	for _, item := range items {
-		out = append(out, CourseMonthSubscriptionDTO{
-			CourseID:    item.CourseID,
-			Year:        item.Year,
-			Month:       item.Month,
-			LessonsHeld: utils.Round2(item.SubscriptionLessonsHeld),
-		})
-	}
-	return out, nil
+	return svc.CourseMonthSubscriptionList(a.appContext(), year, month, courseID)
 }
 
 func (a *App) CourseMonthSubscriptionUpsert(courseID, year, month int, lessonsHeld float64) (*CourseMonthSubscriptionDTO, error) {
-	ctx := a.ctx
-	if courseID <= 0 {
-		return nil, errors.New("courseID must be > 0")
-	}
-	if year <= 0 {
-		return nil, errors.New("year must be > 0")
-	}
-	if month < 1 || month > 12 {
-		return nil, errors.New("month must be between 1 and 12")
-	}
-	if lessonsHeld < 0 {
-		return nil, errors.New("lessonsHeld must be >= 0")
-	}
-	lessonsHeld = utils.Round2(lessonsHeld)
-	if _, err := a.db.Ent.Course.Get(ctx, courseID); err != nil {
-		return nil, err
-	}
-	item, err := a.db.Ent.CourseMonthStat.Query().
-		Where(
-			coursemonthstat.CourseIDEQ(courseID),
-			coursemonthstat.YearEQ(year),
-			coursemonthstat.MonthEQ(month),
-		).Only(ctx)
-	if err == nil {
-		item, err = item.Update().SetSubscriptionLessonsHeld(lessonsHeld).Save(ctx)
-		if err != nil {
-			return nil, err
-		}
-		return &CourseMonthSubscriptionDTO{
-			CourseID:    item.CourseID,
-			Year:        item.Year,
-			Month:       item.Month,
-			LessonsHeld: utils.Round2(item.SubscriptionLessonsHeld),
-		}, nil
-	}
-	if !ent.IsNotFound(err) {
-		return nil, err
-	}
-	item, err = a.db.Ent.CourseMonthStat.Create().
-		SetCourseID(courseID).
-		SetYear(year).
-		SetMonth(month).
-		SetSubscriptionLessonsHeld(lessonsHeld).
-		Save(ctx)
+	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-	return &CourseMonthSubscriptionDTO{
-		CourseID:    item.CourseID,
-		Year:        item.Year,
-		Month:       item.Month,
-		LessonsHeld: utils.Round2(item.SubscriptionLessonsHeld),
-	}, nil
+	return svc.CourseMonthSubscriptionUpsert(a.appContext(), courseID, year, month, lessonsHeld)
 }

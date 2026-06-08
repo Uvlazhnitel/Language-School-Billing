@@ -99,6 +99,8 @@ var (
 		{Name: "type", Type: field.TypeEnum, Enums: []string{"group", "individual"}},
 		{Name: "lesson_price", Type: field.TypeFloat64, Default: 0},
 		{Name: "subscription_price", Type: field.TypeFloat64, Default: 0},
+		{Name: "lesson_price_cents", Type: field.TypeInt64, Default: 0},
+		{Name: "subscription_price_cents", Type: field.TypeInt64, Default: 0},
 		{Name: "is_active", Type: field.TypeBool, Default: true},
 		{Name: "teacher_id", Type: field.TypeInt, Nullable: true},
 	}
@@ -110,7 +112,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "courses_teachers_courses",
-				Columns:    []*schema.Column{CoursesColumns[7]},
+				Columns:    []*schema.Column{CoursesColumns[9]},
 				RefColumns: []*schema.Column{TeachersColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
@@ -188,6 +190,7 @@ var (
 		{Name: "period_year", Type: field.TypeInt},
 		{Name: "period_month", Type: field.TypeInt},
 		{Name: "total_amount", Type: field.TypeFloat64, Default: 0},
+		{Name: "total_amount_cents", Type: field.TypeInt64, Default: 0},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "issued", "paid", "canceled"}, Default: "draft"},
 		{Name: "number", Type: field.TypeString, Nullable: true},
 		{Name: "student_id", Type: field.TypeInt},
@@ -200,7 +203,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "invoices_students_invoices",
-				Columns:    []*schema.Column{InvoicesColumns[6]},
+				Columns:    []*schema.Column{InvoicesColumns[7]},
 				RefColumns: []*schema.Column{StudentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -209,7 +212,7 @@ var (
 			{
 				Name:    "invoice_student_id_period_year_period_month",
 				Unique:  true,
-				Columns: []*schema.Column{InvoicesColumns[6], InvoicesColumns[1], InvoicesColumns[2]},
+				Columns: []*schema.Column{InvoicesColumns[7], InvoicesColumns[1], InvoicesColumns[2]},
 			},
 		},
 	}
@@ -218,8 +221,10 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "description", Type: field.TypeString},
 		{Name: "qty", Type: field.TypeFloat64},
-		{Name: "unit_price", Type: field.TypeFloat64},
-		{Name: "amount", Type: field.TypeFloat64},
+		{Name: "unit_price", Type: field.TypeFloat64, Default: 0},
+		{Name: "amount", Type: field.TypeFloat64, Default: 0},
+		{Name: "unit_price_cents", Type: field.TypeInt64, Default: 0},
+		{Name: "amount_cents", Type: field.TypeInt64, Default: 0},
 		{Name: "enrollment_id", Type: field.TypeInt},
 		{Name: "invoice_id", Type: field.TypeInt},
 	}
@@ -231,13 +236,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "invoice_lines_enrollments_invoice_lines",
-				Columns:    []*schema.Column{InvoiceLinesColumns[5]},
+				Columns:    []*schema.Column{InvoiceLinesColumns[7]},
 				RefColumns: []*schema.Column{EnrollmentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "invoice_lines_invoices_lines",
-				Columns:    []*schema.Column{InvoiceLinesColumns[6]},
+				Columns:    []*schema.Column{InvoiceLinesColumns[8]},
 				RefColumns: []*schema.Column{InvoicesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -246,12 +251,12 @@ var (
 			{
 				Name:    "invoiceline_invoice_id",
 				Unique:  false,
-				Columns: []*schema.Column{InvoiceLinesColumns[6]},
+				Columns: []*schema.Column{InvoiceLinesColumns[8]},
 			},
 			{
 				Name:    "invoiceline_enrollment_id",
 				Unique:  false,
-				Columns: []*schema.Column{InvoiceLinesColumns[5]},
+				Columns: []*schema.Column{InvoiceLinesColumns[7]},
 			},
 		},
 	}
@@ -259,7 +264,8 @@ var (
 	PaymentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "paid_at", Type: field.TypeTime},
-		{Name: "amount", Type: field.TypeFloat64},
+		{Name: "amount", Type: field.TypeFloat64, Default: 0},
+		{Name: "amount_cents", Type: field.TypeInt64, Default: 0},
 		{Name: "method", Type: field.TypeEnum, Enums: []string{"cash", "bank"}},
 		{Name: "note", Type: field.TypeString, Default: ""},
 		{Name: "created_at", Type: field.TypeTime},
@@ -274,13 +280,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "payments_invoices_payments",
-				Columns:    []*schema.Column{PaymentsColumns[6]},
+				Columns:    []*schema.Column{PaymentsColumns[7]},
 				RefColumns: []*schema.Column{InvoicesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "payments_students_payments",
-				Columns:    []*schema.Column{PaymentsColumns[7]},
+				Columns:    []*schema.Column{PaymentsColumns[8]},
 				RefColumns: []*schema.Column{StudentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -289,12 +295,12 @@ var (
 			{
 				Name:    "payment_student_id_paid_at",
 				Unique:  false,
-				Columns: []*schema.Column{PaymentsColumns[7], PaymentsColumns[1]},
+				Columns: []*schema.Column{PaymentsColumns[8], PaymentsColumns[1]},
 			},
 			{
 				Name:    "payment_invoice_id",
 				Unique:  false,
-				Columns: []*schema.Column{PaymentsColumns[6]},
+				Columns: []*schema.Column{PaymentsColumns[7]},
 			},
 		},
 	}
@@ -309,6 +315,7 @@ var (
 		{Name: "invoice_day_of_month", Type: field.TypeInt, Default: 1},
 		{Name: "currency", Type: field.TypeString, Default: "EUR"},
 		{Name: "locale", Type: field.TypeString, Default: "en-US"},
+		{Name: "money_cents_migrated", Type: field.TypeBool, Default: false},
 	}
 	// SettingsTable holds the schema information for the "settings" table.
 	SettingsTable = &schema.Table{

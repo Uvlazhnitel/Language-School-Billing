@@ -19,6 +19,7 @@ import (
 	"langschool/ent/teacher"
 	appconst "langschool/internal/app"
 	"langschool/internal/infra"
+	"langschool/internal/money"
 )
 
 func newCRUDTestApp(t *testing.T, name string) (*App, *ent.Client) {
@@ -171,8 +172,8 @@ func TestMigrateLegacyCourseTeachers(t *testing.T) {
 		SetName("Legacy Course").
 		SetTeacherName("Ieva Liepa").
 		SetType(course.TypeGroup).
-		SetLessonPrice(15).
-		SetSubscriptionPrice(60).
+		SetLessonPriceCents(money.EurosToCents(15)).
+		SetSubscriptionPriceCents(money.EurosToCents(60)).
 		Save(ctx); err != nil {
 		t.Fatalf("create legacy course: %v", err)
 	}
@@ -314,8 +315,8 @@ func TestStudentDeleteAllowsDraftInvoices(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Draft Course").
 		SetType(course.TypeGroup).
-		SetLessonPrice(20).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -348,7 +349,7 @@ func TestStudentDeleteAllowsDraftInvoices(t *testing.T) {
 		SetPeriodYear(2026).
 		SetPeriodMonth(5).
 		SetStatus(appconst.InvoiceStatusDraft).
-		SetTotalAmount(40).
+		SetTotalAmountCents(money.EurosToCents(40)).
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("Invoice.Create: %v", err)
@@ -359,8 +360,8 @@ func TestStudentDeleteAllowsDraftInvoices(t *testing.T) {
 		SetEnrollmentID(enr.ID).
 		SetDescription("Draft invoice line").
 		SetQty(2).
-		SetUnitPrice(20).
-		SetAmount(40).
+		SetUnitPriceCents(money.EurosToCents(20)).
+		SetAmountCents(money.EurosToCents(40)).
 		Save(ctx); err != nil {
 		t.Fatalf("InvoiceLine.Create: %v", err)
 	}
@@ -420,7 +421,7 @@ func TestStudentDeleteRejectsIssuedInvoices(t *testing.T) {
 		SetPeriodMonth(6).
 		SetStatus(appconst.InvoiceStatusIssued).
 		SetNumber("LS-202606-001").
-		SetTotalAmount(10).
+		SetTotalAmountCents(money.EurosToCents(10)).
 		Save(ctx); err != nil {
 		t.Fatalf("Invoice.Create: %v", err)
 	}
@@ -450,7 +451,7 @@ func TestStudentDeleteRejectsPayments(t *testing.T) {
 
 	if _, err := client.Payment.Create().
 		SetStudentID(st.ID).
-		SetAmount(15).
+		SetAmountCents(money.EurosToCents(15)).
 		SetMethod(payment.MethodCash).
 		SetPaidAt(time.Date(2026, 6, 1, 0, 0, 0, 0, time.UTC)).
 		SetNote("").

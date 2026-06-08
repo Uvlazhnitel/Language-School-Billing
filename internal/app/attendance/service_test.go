@@ -16,6 +16,7 @@ import (
 	"langschool/ent/invoiceline"
 	"langschool/internal/app"
 	invsvc "langschool/internal/app/invoice"
+	"langschool/internal/money"
 )
 
 func TestListPerLessonIncludesSubscriptionRows(t *testing.T) {
@@ -37,8 +38,8 @@ func TestListPerLessonIncludesSubscriptionRows(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Group A").
 		SetType(course.TypeGroup).
-		SetLessonPrice(25).
-		SetSubscriptionPrice(80).
+		SetLessonPriceCents(money.EurosToCents(25)).
+		SetSubscriptionPriceCents(money.EurosToCents(80)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -121,8 +122,8 @@ func TestListPerLessonLocksNonDraftInvoiceMonths(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Group B").
 		SetType(course.TypeGroup).
-		SetLessonPrice(20).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -155,7 +156,7 @@ func TestListPerLessonLocksNonDraftInvoiceMonths(t *testing.T) {
 		SetPeriodYear(2026).
 		SetPeriodMonth(5).
 		SetStatus(app.InvoiceStatusIssued).
-		SetTotalAmount(40).
+		SetTotalAmountCents(money.EurosToCents(40)).
 		Save(ctx); err != nil {
 		t.Fatalf("Invoice.Create: %v", err)
 	}
@@ -190,8 +191,8 @@ func TestUpsertRejectsNonDraftInvoiceMonths(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Group C").
 		SetType(course.TypeGroup).
-		SetLessonPrice(15).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(15)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -223,7 +224,7 @@ func TestUpsertRejectsNonDraftInvoiceMonths(t *testing.T) {
 		SetPeriodYear(2026).
 		SetPeriodMonth(6).
 		SetStatus(app.InvoiceStatusPaid).
-		SetTotalAmount(15).
+		SetTotalAmountCents(money.EurosToCents(15)).
 		Save(ctx); err != nil {
 		t.Fatalf("Invoice.Create: %v", err)
 	}
@@ -267,8 +268,8 @@ func TestUpsertAllowsDraftOrMissingInvoice(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Group D").
 		SetType(course.TypeGroup).
-		SetLessonPrice(15).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(15)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -294,7 +295,7 @@ func TestUpsertAllowsDraftOrMissingInvoice(t *testing.T) {
 		SetPeriodYear(2026).
 		SetPeriodMonth(7).
 		SetStatus(app.InvoiceStatusDraft).
-		SetTotalAmount(30).
+		SetTotalAmountCents(money.EurosToCents(30)).
 		Save(ctx); err != nil {
 		t.Fatalf("Invoice.Create: %v", err)
 	}
@@ -335,8 +336,8 @@ func TestListPerLessonAllowsDeleteAfterReopenToDraft(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Group E").
 		SetType(course.TypeGroup).
-		SetLessonPrice(30).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(30)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -370,7 +371,7 @@ func TestListPerLessonAllowsDeleteAfterReopenToDraft(t *testing.T) {
 		SetPeriodMonth(8).
 		SetStatus(app.InvoiceStatusIssued).
 		SetNumber("LS-202608-001").
-		SetTotalAmount(60).
+		SetTotalAmountCents(money.EurosToCents(60)).
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("Invoice.Create: %v", err)
@@ -381,8 +382,8 @@ func TestListPerLessonAllowsDeleteAfterReopenToDraft(t *testing.T) {
 		SetEnrollmentID(enr.ID).
 		SetDescription("Dalības maksa par Group E").
 		SetQty(2).
-		SetUnitPrice(30).
-		SetAmount(60).
+		SetUnitPriceCents(money.EurosToCents(30)).
+		SetAmountCents(money.EurosToCents(60)).
 		Save(ctx); err != nil {
 		t.Fatalf("InvoiceLine.Create: %v", err)
 	}
@@ -432,8 +433,8 @@ func TestDeleteEnrollmentRejectsNonDraftInvoiceUsage(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Group F").
 		SetType(course.TypeGroup).
-		SetLessonPrice(18).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(18)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -457,7 +458,7 @@ func TestDeleteEnrollmentRejectsNonDraftInvoiceUsage(t *testing.T) {
 		SetPeriodMonth(9).
 		SetStatus(app.InvoiceStatusIssued).
 		SetNumber("LS-202609-001").
-		SetTotalAmount(18).
+		SetTotalAmountCents(money.EurosToCents(18)).
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("Invoice.Create: %v", err)
@@ -468,8 +469,8 @@ func TestDeleteEnrollmentRejectsNonDraftInvoiceUsage(t *testing.T) {
 		SetEnrollmentID(enr.ID).
 		SetDescription("Dalības maksa par Group F").
 		SetQty(1).
-		SetUnitPrice(18).
-		SetAmount(18).
+		SetUnitPriceCents(money.EurosToCents(18)).
+		SetAmountCents(money.EurosToCents(18)).
 		Save(ctx); err != nil {
 		t.Fatalf("InvoiceLine.Create: %v", err)
 	}
@@ -507,8 +508,8 @@ func TestDeleteEnrollmentRebuildsRemainingDraftInvoice(t *testing.T) {
 	courseA, err := client.Course.Create().
 		SetName("Group G1").
 		SetType(course.TypeGroup).
-		SetLessonPrice(20).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -517,8 +518,8 @@ func TestDeleteEnrollmentRebuildsRemainingDraftInvoice(t *testing.T) {
 	courseB, err := client.Course.Create().
 		SetName("Group G2").
 		SetType(course.TypeGroup).
-		SetLessonPrice(15).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(15)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -596,8 +597,8 @@ func TestDeleteEnrollmentRebuildsRemainingDraftInvoice(t *testing.T) {
 	if iv.Status != app.InvoiceStatusDraft {
 		t.Fatalf("invoice status = %q, want draft", iv.Status)
 	}
-	if iv.TotalAmount != 20 {
-		t.Fatalf("invoice total = %v, want 20", iv.TotalAmount)
+	if iv.TotalAmountCents != money.EurosToCents(20) {
+		t.Fatalf("invoice total = %v, want 20", money.CentsToEuros(iv.TotalAmountCents))
 	}
 
 	lines, err := client.InvoiceLine.Query().
@@ -631,8 +632,8 @@ func TestUpsertAcceptsQuarterHours(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Quarter Group").
 		SetType(course.TypeGroup).
-		SetLessonPrice(24).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(24)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
@@ -684,8 +685,8 @@ func TestUpsertRejectsNonQuarterHours(t *testing.T) {
 	crs, err := client.Course.Create().
 		SetName("Invalid Quarter Group").
 		SetType(course.TypeGroup).
-		SetLessonPrice(24).
-		SetSubscriptionPrice(0).
+		SetLessonPriceCents(money.EurosToCents(24)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {

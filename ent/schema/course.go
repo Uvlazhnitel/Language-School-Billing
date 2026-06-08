@@ -14,8 +14,10 @@ func (Course) Fields() []ent.Field {
 		field.String("teacher_name").Default(""),
 		field.Int("teacher_id").Optional().Nillable(),
 		field.Enum("type").Values("group", "individual"),
-		field.Float("lesson_price").Default(0),
-		field.Float("subscription_price").Default(0),
+		field.Float("legacy_lesson_price").StorageKey("lesson_price").Default(0),
+		field.Float("legacy_subscription_price").StorageKey("subscription_price").Default(0),
+		field.Int64("lesson_price_cents").Default(0),
+		field.Int64("subscription_price_cents").Default(0),
 		field.Bool("is_active").Default(true),
 	}
 }

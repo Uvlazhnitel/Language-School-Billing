@@ -86,24 +86,45 @@ func (_u *InvoiceUpdate) AddPeriodMonth(v int) *InvoiceUpdate {
 	return _u
 }
 
-// SetTotalAmount sets the "total_amount" field.
-func (_u *InvoiceUpdate) SetTotalAmount(v float64) *InvoiceUpdate {
-	_u.mutation.ResetTotalAmount()
-	_u.mutation.SetTotalAmount(v)
+// SetLegacyTotalAmount sets the "legacy_total_amount" field.
+func (_u *InvoiceUpdate) SetLegacyTotalAmount(v float64) *InvoiceUpdate {
+	_u.mutation.ResetLegacyTotalAmount()
+	_u.mutation.SetLegacyTotalAmount(v)
 	return _u
 }
 
-// SetNillableTotalAmount sets the "total_amount" field if the given value is not nil.
-func (_u *InvoiceUpdate) SetNillableTotalAmount(v *float64) *InvoiceUpdate {
+// SetNillableLegacyTotalAmount sets the "legacy_total_amount" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillableLegacyTotalAmount(v *float64) *InvoiceUpdate {
 	if v != nil {
-		_u.SetTotalAmount(*v)
+		_u.SetLegacyTotalAmount(*v)
 	}
 	return _u
 }
 
-// AddTotalAmount adds value to the "total_amount" field.
-func (_u *InvoiceUpdate) AddTotalAmount(v float64) *InvoiceUpdate {
-	_u.mutation.AddTotalAmount(v)
+// AddLegacyTotalAmount adds value to the "legacy_total_amount" field.
+func (_u *InvoiceUpdate) AddLegacyTotalAmount(v float64) *InvoiceUpdate {
+	_u.mutation.AddLegacyTotalAmount(v)
+	return _u
+}
+
+// SetTotalAmountCents sets the "total_amount_cents" field.
+func (_u *InvoiceUpdate) SetTotalAmountCents(v int64) *InvoiceUpdate {
+	_u.mutation.ResetTotalAmountCents()
+	_u.mutation.SetTotalAmountCents(v)
+	return _u
+}
+
+// SetNillableTotalAmountCents sets the "total_amount_cents" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillableTotalAmountCents(v *int64) *InvoiceUpdate {
+	if v != nil {
+		_u.SetTotalAmountCents(*v)
+	}
+	return _u
+}
+
+// AddTotalAmountCents adds value to the "total_amount_cents" field.
+func (_u *InvoiceUpdate) AddTotalAmountCents(v int64) *InvoiceUpdate {
+	_u.mutation.AddTotalAmountCents(v)
 	return _u
 }
 
@@ -293,11 +314,17 @@ func (_u *InvoiceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.AddedPeriodMonth(); ok {
 		_spec.AddField(invoice.FieldPeriodMonth, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.TotalAmount(); ok {
-		_spec.SetField(invoice.FieldTotalAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacyTotalAmount(); ok {
+		_spec.SetField(invoice.FieldLegacyTotalAmount, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedTotalAmount(); ok {
-		_spec.AddField(invoice.FieldTotalAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacyTotalAmount(); ok {
+		_spec.AddField(invoice.FieldLegacyTotalAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.TotalAmountCents(); ok {
+		_spec.SetField(invoice.FieldTotalAmountCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTotalAmountCents(); ok {
+		_spec.AddField(invoice.FieldTotalAmountCents, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(invoice.FieldStatus, field.TypeEnum, value)
@@ -503,24 +530,45 @@ func (_u *InvoiceUpdateOne) AddPeriodMonth(v int) *InvoiceUpdateOne {
 	return _u
 }
 
-// SetTotalAmount sets the "total_amount" field.
-func (_u *InvoiceUpdateOne) SetTotalAmount(v float64) *InvoiceUpdateOne {
-	_u.mutation.ResetTotalAmount()
-	_u.mutation.SetTotalAmount(v)
+// SetLegacyTotalAmount sets the "legacy_total_amount" field.
+func (_u *InvoiceUpdateOne) SetLegacyTotalAmount(v float64) *InvoiceUpdateOne {
+	_u.mutation.ResetLegacyTotalAmount()
+	_u.mutation.SetLegacyTotalAmount(v)
 	return _u
 }
 
-// SetNillableTotalAmount sets the "total_amount" field if the given value is not nil.
-func (_u *InvoiceUpdateOne) SetNillableTotalAmount(v *float64) *InvoiceUpdateOne {
+// SetNillableLegacyTotalAmount sets the "legacy_total_amount" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillableLegacyTotalAmount(v *float64) *InvoiceUpdateOne {
 	if v != nil {
-		_u.SetTotalAmount(*v)
+		_u.SetLegacyTotalAmount(*v)
 	}
 	return _u
 }
 
-// AddTotalAmount adds value to the "total_amount" field.
-func (_u *InvoiceUpdateOne) AddTotalAmount(v float64) *InvoiceUpdateOne {
-	_u.mutation.AddTotalAmount(v)
+// AddLegacyTotalAmount adds value to the "legacy_total_amount" field.
+func (_u *InvoiceUpdateOne) AddLegacyTotalAmount(v float64) *InvoiceUpdateOne {
+	_u.mutation.AddLegacyTotalAmount(v)
+	return _u
+}
+
+// SetTotalAmountCents sets the "total_amount_cents" field.
+func (_u *InvoiceUpdateOne) SetTotalAmountCents(v int64) *InvoiceUpdateOne {
+	_u.mutation.ResetTotalAmountCents()
+	_u.mutation.SetTotalAmountCents(v)
+	return _u
+}
+
+// SetNillableTotalAmountCents sets the "total_amount_cents" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillableTotalAmountCents(v *int64) *InvoiceUpdateOne {
+	if v != nil {
+		_u.SetTotalAmountCents(*v)
+	}
+	return _u
+}
+
+// AddTotalAmountCents adds value to the "total_amount_cents" field.
+func (_u *InvoiceUpdateOne) AddTotalAmountCents(v int64) *InvoiceUpdateOne {
+	_u.mutation.AddTotalAmountCents(v)
 	return _u
 }
 
@@ -740,11 +788,17 @@ func (_u *InvoiceUpdateOne) sqlSave(ctx context.Context) (_node *Invoice, err er
 	if value, ok := _u.mutation.AddedPeriodMonth(); ok {
 		_spec.AddField(invoice.FieldPeriodMonth, field.TypeInt, value)
 	}
-	if value, ok := _u.mutation.TotalAmount(); ok {
-		_spec.SetField(invoice.FieldTotalAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.LegacyTotalAmount(); ok {
+		_spec.SetField(invoice.FieldLegacyTotalAmount, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.AddedTotalAmount(); ok {
-		_spec.AddField(invoice.FieldTotalAmount, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedLegacyTotalAmount(); ok {
+		_spec.AddField(invoice.FieldLegacyTotalAmount, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.TotalAmountCents(); ok {
+		_spec.SetField(invoice.FieldTotalAmountCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedTotalAmountCents(); ok {
+		_spec.AddField(invoice.FieldTotalAmountCents, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Status(); ok {
 		_spec.SetField(invoice.FieldStatus, field.TypeEnum, value)

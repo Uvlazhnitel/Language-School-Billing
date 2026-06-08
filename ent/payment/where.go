@@ -70,9 +70,14 @@ func PaidAt(v time.Time) predicate.Payment {
 	return predicate.Payment(sql.FieldEQ(FieldPaidAt, v))
 }
 
-// Amount applies equality check predicate on the "amount" field. It's identical to AmountEQ.
-func Amount(v float64) predicate.Payment {
-	return predicate.Payment(sql.FieldEQ(FieldAmount, v))
+// LegacyAmount applies equality check predicate on the "legacy_amount" field. It's identical to LegacyAmountEQ.
+func LegacyAmount(v float64) predicate.Payment {
+	return predicate.Payment(sql.FieldEQ(FieldLegacyAmount, v))
+}
+
+// AmountCents applies equality check predicate on the "amount_cents" field. It's identical to AmountCentsEQ.
+func AmountCents(v int64) predicate.Payment {
+	return predicate.Payment(sql.FieldEQ(FieldAmountCents, v))
 }
 
 // Note applies equality check predicate on the "note" field. It's identical to NoteEQ.
@@ -175,44 +180,84 @@ func PaidAtLTE(v time.Time) predicate.Payment {
 	return predicate.Payment(sql.FieldLTE(FieldPaidAt, v))
 }
 
-// AmountEQ applies the EQ predicate on the "amount" field.
-func AmountEQ(v float64) predicate.Payment {
-	return predicate.Payment(sql.FieldEQ(FieldAmount, v))
+// LegacyAmountEQ applies the EQ predicate on the "legacy_amount" field.
+func LegacyAmountEQ(v float64) predicate.Payment {
+	return predicate.Payment(sql.FieldEQ(FieldLegacyAmount, v))
 }
 
-// AmountNEQ applies the NEQ predicate on the "amount" field.
-func AmountNEQ(v float64) predicate.Payment {
-	return predicate.Payment(sql.FieldNEQ(FieldAmount, v))
+// LegacyAmountNEQ applies the NEQ predicate on the "legacy_amount" field.
+func LegacyAmountNEQ(v float64) predicate.Payment {
+	return predicate.Payment(sql.FieldNEQ(FieldLegacyAmount, v))
 }
 
-// AmountIn applies the In predicate on the "amount" field.
-func AmountIn(vs ...float64) predicate.Payment {
-	return predicate.Payment(sql.FieldIn(FieldAmount, vs...))
+// LegacyAmountIn applies the In predicate on the "legacy_amount" field.
+func LegacyAmountIn(vs ...float64) predicate.Payment {
+	return predicate.Payment(sql.FieldIn(FieldLegacyAmount, vs...))
 }
 
-// AmountNotIn applies the NotIn predicate on the "amount" field.
-func AmountNotIn(vs ...float64) predicate.Payment {
-	return predicate.Payment(sql.FieldNotIn(FieldAmount, vs...))
+// LegacyAmountNotIn applies the NotIn predicate on the "legacy_amount" field.
+func LegacyAmountNotIn(vs ...float64) predicate.Payment {
+	return predicate.Payment(sql.FieldNotIn(FieldLegacyAmount, vs...))
 }
 
-// AmountGT applies the GT predicate on the "amount" field.
-func AmountGT(v float64) predicate.Payment {
-	return predicate.Payment(sql.FieldGT(FieldAmount, v))
+// LegacyAmountGT applies the GT predicate on the "legacy_amount" field.
+func LegacyAmountGT(v float64) predicate.Payment {
+	return predicate.Payment(sql.FieldGT(FieldLegacyAmount, v))
 }
 
-// AmountGTE applies the GTE predicate on the "amount" field.
-func AmountGTE(v float64) predicate.Payment {
-	return predicate.Payment(sql.FieldGTE(FieldAmount, v))
+// LegacyAmountGTE applies the GTE predicate on the "legacy_amount" field.
+func LegacyAmountGTE(v float64) predicate.Payment {
+	return predicate.Payment(sql.FieldGTE(FieldLegacyAmount, v))
 }
 
-// AmountLT applies the LT predicate on the "amount" field.
-func AmountLT(v float64) predicate.Payment {
-	return predicate.Payment(sql.FieldLT(FieldAmount, v))
+// LegacyAmountLT applies the LT predicate on the "legacy_amount" field.
+func LegacyAmountLT(v float64) predicate.Payment {
+	return predicate.Payment(sql.FieldLT(FieldLegacyAmount, v))
 }
 
-// AmountLTE applies the LTE predicate on the "amount" field.
-func AmountLTE(v float64) predicate.Payment {
-	return predicate.Payment(sql.FieldLTE(FieldAmount, v))
+// LegacyAmountLTE applies the LTE predicate on the "legacy_amount" field.
+func LegacyAmountLTE(v float64) predicate.Payment {
+	return predicate.Payment(sql.FieldLTE(FieldLegacyAmount, v))
+}
+
+// AmountCentsEQ applies the EQ predicate on the "amount_cents" field.
+func AmountCentsEQ(v int64) predicate.Payment {
+	return predicate.Payment(sql.FieldEQ(FieldAmountCents, v))
+}
+
+// AmountCentsNEQ applies the NEQ predicate on the "amount_cents" field.
+func AmountCentsNEQ(v int64) predicate.Payment {
+	return predicate.Payment(sql.FieldNEQ(FieldAmountCents, v))
+}
+
+// AmountCentsIn applies the In predicate on the "amount_cents" field.
+func AmountCentsIn(vs ...int64) predicate.Payment {
+	return predicate.Payment(sql.FieldIn(FieldAmountCents, vs...))
+}
+
+// AmountCentsNotIn applies the NotIn predicate on the "amount_cents" field.
+func AmountCentsNotIn(vs ...int64) predicate.Payment {
+	return predicate.Payment(sql.FieldNotIn(FieldAmountCents, vs...))
+}
+
+// AmountCentsGT applies the GT predicate on the "amount_cents" field.
+func AmountCentsGT(v int64) predicate.Payment {
+	return predicate.Payment(sql.FieldGT(FieldAmountCents, v))
+}
+
+// AmountCentsGTE applies the GTE predicate on the "amount_cents" field.
+func AmountCentsGTE(v int64) predicate.Payment {
+	return predicate.Payment(sql.FieldGTE(FieldAmountCents, v))
+}
+
+// AmountCentsLT applies the LT predicate on the "amount_cents" field.
+func AmountCentsLT(v int64) predicate.Payment {
+	return predicate.Payment(sql.FieldLT(FieldAmountCents, v))
+}
+
+// AmountCentsLTE applies the LTE predicate on the "amount_cents" field.
+func AmountCentsLTE(v int64) predicate.Payment {
+	return predicate.Payment(sql.FieldLTE(FieldAmountCents, v))
 }
 
 // MethodEQ applies the EQ predicate on the "method" field.

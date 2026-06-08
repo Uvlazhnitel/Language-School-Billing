@@ -18,7 +18,7 @@ import (
 	"langschool/ent/payment"
 	"langschool/ent/student"
 	"langschool/internal/app"
-	"langschool/internal/app/utils"
+	"langschool/internal/money"
 )
 
 // Service provides payment processing and financial tracking functionality.
@@ -116,13 +116,6 @@ type RecentPaymentDTO struct {
 	Note        string  `json:"note"`
 }
 
-// eps returns the epsilon value used for floating-point comparisons.
-// The value 0.009 is chosen to account for rounding errors in currency calculations
-// where amounts are rounded to 2 decimal places (0.01). This epsilon is slightly
-// smaller than 0.01 to allow for safe boundary checks without false positives,
-// while being large enough to handle typical floating-point precision issues.
-func eps() float64 { return 0.009 }
-
 // parseDate parses a date string in either "YYYY-MM-DD" or RFC3339 format.
 // This flexible parsing allows the frontend to send dates in either format.
 func parseDate(s string) (time.Time, error) {
@@ -139,11 +132,38 @@ func parseDate(s string) (time.Time, error) {
 // the invoice belongs to the student (if provided), and the invoice is not in
 // draft or canceled status.
 func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
-	amount = utils.Round2(amount)
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		if err == ent.ErrTxStarted {
+			return s.createInStore(ctx, studentID, invoiceID, amount, method, paidAt, note)
+		}
+		return nil, err
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	dto, err := (&Service{db: tx.Client()}).createInStore(ctx, studentID, invoiceID, amount, method, paidAt, note)
+	if err != nil {
+		return nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, err
+	}
+	committed = true
+	return dto, nil
+}
+
+func (s *Service) createInStore(ctx context.Context, studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
+	amountCents := money.EurosToCents(amount)
 	if studentID <= 0 {
 		return nil, errors.New("studentID должен быть больше 0")
 	}
-	if amount <= 0 {
+	if amountCents <= 0 {
 		return nil, errors.New("сумма должна быть больше 0")
 	}
 	if method != app.PaymentMethodCash && method != app.PaymentMethodBank {
@@ -179,12 +199,12 @@ func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amo
 	// Global debtor payments should reduce the oldest open invoices first so
 	// invoice-level "Paid" values and statuses stay in sync with the debt view.
 	if invoiceID == nil {
-		return s.allocateToOldestInvoices(ctx, studentID, amount, method, t, note)
+		return s.allocateToOldestInvoices(ctx, studentID, amountCents, method, t, note)
 	}
 
 	p, err := s.db.Payment.Create().
 		SetStudentID(studentID).
-		SetAmount(utils.Round2(amount)).
+		SetAmountCents(amountCents).
 		SetMethod(payment.Method(method)).
 		SetPaidAt(t).
 		SetNote(note).
@@ -204,8 +224,8 @@ func (s *Service) Create(ctx context.Context, studentID int, invoiceID *int, amo
 	return toDTO(p), nil
 }
 
-func (s *Service) allocateToOldestInvoices(ctx context.Context, studentID int, amount float64, method string, paidAt time.Time, note string) (*PaymentDTO, error) {
-	remaining := utils.Round2(amount)
+func (s *Service) allocateToOldestInvoices(ctx context.Context, studentID int, amountCents int64, method string, paidAt time.Time, note string) (*PaymentDTO, error) {
+	remaining := amountCents
 
 	invoices, err := s.db.Invoice.Query().
 		Where(
@@ -225,15 +245,15 @@ func (s *Service) allocateToOldestInvoices(ctx context.Context, studentID int, a
 	var firstCreated *ent.Payment
 
 	for _, iv := range invoices {
-		if remaining <= eps() {
+		if remaining <= 0 {
 			break
 		}
 
-		_, _, invoiceRemaining, err := s.invoiceBalance(ctx, iv)
+		_, _, invoiceRemaining, err := s.invoiceBalanceCents(ctx, iv)
 		if err != nil {
 			return nil, err
 		}
-		if invoiceRemaining <= eps() {
+		if invoiceRemaining <= 0 {
 			continue
 		}
 
@@ -241,12 +261,11 @@ func (s *Service) allocateToOldestInvoices(ctx context.Context, studentID int, a
 		if remaining < applied {
 			applied = remaining
 		}
-		applied = utils.Round2(applied)
 
 		invoiceID := iv.ID
 		p, err := s.db.Payment.Create().
 			SetStudentID(studentID).
-			SetAmount(applied).
+			SetAmountCents(applied).
 			SetMethod(payment.Method(method)).
 			SetPaidAt(paidAt).
 			SetNote(note).
@@ -263,18 +282,18 @@ func (s *Service) allocateToOldestInvoices(ctx context.Context, studentID int, a
 			return nil, err
 		}
 
-		remaining = utils.Round2(remaining - applied)
+		remaining -= applied
 	}
 
 	// If payment is larger than the current debt, keep the extra part as student credit.
-	if remaining > eps() || firstCreated == nil {
+	if remaining > 0 || firstCreated == nil {
 		creditAmount := remaining
-		if creditAmount <= eps() {
-			creditAmount = amount
+		if creditAmount <= 0 {
+			creditAmount = amountCents
 		}
 		p, err := s.db.Payment.Create().
 			SetStudentID(studentID).
-			SetAmount(utils.Round2(creditAmount)).
+			SetAmountCents(creditAmount).
 			SetMethod(payment.Method(method)).
 			SetPaidAt(paidAt).
 			SetNote(note).
@@ -296,6 +315,32 @@ func (s *Service) allocateToOldestInvoices(ctx context.Context, studentID int, a
 // If credit fully covers an invoice, the invoice becomes "paid".
 // Remaining credit after all invoices are covered stays as unlinked payments.
 func (s *Service) ApplyCreditToOldestInvoices(ctx context.Context, studentID int) error {
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		if err == ent.ErrTxStarted {
+			return s.applyCreditToOldestInvoicesInStore(ctx, studentID)
+		}
+		return err
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if err := (&Service{db: tx.Client()}).applyCreditToOldestInvoicesInStore(ctx, studentID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+	return nil
+}
+
+func (s *Service) applyCreditToOldestInvoicesInStore(ctx context.Context, studentID int) error {
 	// Find all unlinked credit payments for this student, ordered oldest first.
 	credits, err := s.db.Payment.Query().
 		Where(
@@ -332,25 +377,24 @@ func (s *Service) ApplyCreditToOldestInvoices(ctx context.Context, studentID int
 			break
 		}
 
-		_, _, invoiceRemaining, err := s.invoiceBalance(ctx, iv)
+		_, _, invoiceRemaining, err := s.invoiceBalanceCents(ctx, iv)
 		if err != nil {
 			return err
 		}
-		if invoiceRemaining <= eps() {
+		if invoiceRemaining <= 0 {
 			continue
 		}
 
 		toApply := invoiceRemaining
 
-		for len(credits) > 0 && toApply > eps() {
+		for len(credits) > 0 && toApply > 0 {
 			cr := credits[0]
-			creditRemaining := utils.Round2(cr.Amount)
+			creditRemaining := cr.AmountCents
 
 			applied := creditRemaining
 			if toApply < applied {
 				applied = toApply
 			}
-			applied = utils.Round2(applied)
 
 			invoiceID := iv.ID
 			note := cr.Note
@@ -363,7 +407,7 @@ func (s *Service) ApplyCreditToOldestInvoices(ctx context.Context, studentID int
 			// Create new linked payment for the applied amount.
 			if _, err := s.db.Payment.Create().
 				SetStudentID(studentID).
-				SetAmount(applied).
+				SetAmountCents(applied).
 				SetMethod(cr.Method).
 				SetPaidAt(cr.PaidAt).
 				SetNote(note).
@@ -373,21 +417,21 @@ func (s *Service) ApplyCreditToOldestInvoices(ctx context.Context, studentID int
 			}
 
 			// Reduce or delete original credit payment.
-			newCreditAmount := utils.Round2(creditRemaining - applied)
-			if newCreditAmount <= eps() {
+			newCreditAmount := creditRemaining - applied
+			if newCreditAmount <= 0 {
 				if err := s.db.Payment.DeleteOneID(cr.ID).Exec(ctx); err != nil {
 					return err
 				}
 				credits = credits[1:]
 			} else {
-				updated, err := cr.Update().SetAmount(newCreditAmount).Save(ctx)
+				updated, err := cr.Update().SetAmountCents(newCreditAmount).Save(ctx)
 				if err != nil {
 					return err
 				}
 				credits[0] = updated
 			}
 
-			toApply = utils.Round2(toApply - applied)
+			toApply -= applied
 		}
 
 		if err := s.recomputeInvoiceStatus(ctx, iv.ID); err != nil {
@@ -402,6 +446,32 @@ func (s *Service) ApplyCreditToOldestInvoices(ctx context.Context, studentID int
 // the invoice status will be recomputed (e.g., from "paid" back to "issued"
 // if the invoice is no longer fully paid).
 func (s *Service) Delete(ctx context.Context, paymentID int) error {
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		if err == ent.ErrTxStarted {
+			return s.deleteInStore(ctx, paymentID)
+		}
+		return err
+	}
+
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	if err := (&Service{db: tx.Client()}).deleteInStore(ctx, paymentID); err != nil {
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+	return nil
+}
+
+func (s *Service) deleteInStore(ctx context.Context, paymentID int) error {
 	p, err := s.db.Payment.Get(ctx, paymentID)
 	if err != nil {
 		return err
@@ -468,7 +538,7 @@ func (s *Service) ListRecent(ctx context.Context, limit int) ([]RecentPaymentDTO
 			StudentID:   p.StudentID,
 			StudentName: studentName,
 			InvoiceID:   invoiceID,
-			Amount:      utils.Round2(p.Amount),
+			Amount:      money.CentsToEuros(p.AmountCents),
 			Method:      string(p.Method),
 			PaidAt:      p.PaidAt.Format(time.RFC3339),
 			Note:        p.Note,
@@ -485,15 +555,15 @@ func (s *Service) InvoiceSummary(ctx context.Context, invoiceID int) (*InvoiceSu
 	if err != nil {
 		return nil, err
 	}
-	total, paid, remaining, err := s.invoiceBalance(ctx, iv)
+	total, paid, remaining, err := s.invoiceBalanceCents(ctx, iv)
 	if err != nil {
 		return nil, err
 	}
 	return &InvoiceSummaryDTO{
 		InvoiceID: invoiceID,
-		Total:     total,
-		Paid:      paid,
-		Remaining: remaining,
+		Total:     money.CentsToEuros(total),
+		Paid:      money.CentsToEuros(paid),
+		Remaining: money.CentsToEuros(remaining),
 		Status:    string(iv.Status),
 		Number:    iv.Number,
 	}, nil
@@ -519,11 +589,11 @@ func (s *Service) StudentDebtDetails(ctx context.Context, studentID int) ([]Debt
 
 	out := make([]DebtInvoiceDTO, 0, len(invs))
 	for _, iv := range invs {
-		total, paid, remaining, err := s.invoiceBalance(ctx, iv)
+		total, paid, remaining, err := s.invoiceBalanceCents(ctx, iv)
 		if err != nil {
 			return nil, err
 		}
-		if remaining <= eps() {
+		if remaining <= 0 {
 			continue
 		}
 
@@ -532,9 +602,9 @@ func (s *Service) StudentDebtDetails(ctx context.Context, studentID int) ([]Debt
 			Year:      iv.PeriodYear,
 			Month:     iv.PeriodMonth,
 			Number:    iv.Number,
-			Total:     total,
-			Paid:      paid,
-			Remaining: remaining,
+			Total:     money.CentsToEuros(total),
+			Paid:      money.CentsToEuros(paid),
+			Remaining: money.CentsToEuros(remaining),
 			Status:    string(iv.Status),
 		})
 	}
@@ -619,7 +689,7 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 	draftInvoices := 0
 	issuedInvoices := 0
 	paidInvoices := 0
-	totalIssued := 0.0
+	var totalIssuedCents int64
 
 	for _, iv := range monthInvoices {
 		monthInvoiceIDs = append(monthInvoiceIDs, iv.ID)
@@ -628,14 +698,14 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 			draftInvoices++
 		case app.InvoiceStatusIssued:
 			issuedInvoices++
-			totalIssued += iv.TotalAmount
+			totalIssuedCents += iv.TotalAmountCents
 		case app.InvoiceStatusPaid:
 			paidInvoices++
-			totalIssued += iv.TotalAmount
+			totalIssuedCents += iv.TotalAmountCents
 		}
 	}
 
-	totalPaid := 0.0
+	var totalPaidCents int64
 	if len(monthInvoiceIDs) > 0 {
 		linkedPayments, err := s.db.Payment.Query().
 			Where(payment.InvoiceIDIn(monthInvoiceIDs...)).
@@ -644,7 +714,7 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 			return nil, err
 		}
 		for _, p := range linkedPayments {
-			totalPaid += p.Amount
+			totalPaidCents += p.AmountCents
 		}
 	}
 
@@ -674,11 +744,11 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		IssuedInvoices: issuedInvoices,
 		PaidInvoices:   paidInvoices,
 
-		TotalIssued: utils.Round2(totalIssued),
-		TotalPaid:   utils.Round2(totalPaid),
+		TotalIssued: money.CentsToEuros(totalIssuedCents),
+		TotalPaid:   money.CentsToEuros(totalPaidCents),
 
 		DebtorsCount: len(debtors),
-		TotalDebt:    utils.Round2(totalDebt),
+		TotalDebt:    totalDebt,
 	}, nil
 }
 
@@ -692,21 +762,22 @@ func (s *Service) StudentBalance(ctx context.Context, studentID int) (*BalanceDT
 		return nil, err
 	}
 
-	invoiced, err := s.sumInvoicesForStudent(ctx, studentID)
+	invoicedCents, err := s.sumInvoicesForStudentCents(ctx, studentID)
 	if err != nil {
 		return nil, err
 	}
-	paid, err := s.sumPaymentsForStudent(ctx, studentID)
+	paidCents, err := s.sumPaymentsForStudentCents(ctx, studentID)
 	if err != nil {
 		return nil, err
 	}
 
-	invoiced = utils.Round2(invoiced)
-	paid = utils.Round2(paid)
-	bal := utils.Round2(paid - invoiced)
+	invoiced := money.CentsToEuros(invoicedCents)
+	paid := money.CentsToEuros(paidCents)
+	balanceCents := paidCents - invoicedCents
+	bal := money.CentsToEuros(balanceCents)
 	debt := 0.0
-	if bal < 0 {
-		debt = utils.Round2(-bal)
+	if balanceCents < 0 {
+		debt = money.CentsToEuros(-balanceCents)
 	}
 
 	return &BalanceDTO{
@@ -737,7 +808,7 @@ func (s *Service) ListDebtors(ctx context.Context) ([]DebtorDTO, error) {
 			log.Printf("failed to calculate balance for student %d (%s): %v", st.ID, st.FullName, err)
 			continue
 		}
-		if b.Debt > eps() {
+		if b.Debt > 0 {
 			out = append(out, DebtorDTO{
 				StudentID: st.ID, StudentName: st.FullName,
 				Debt: b.Debt, TotalInvoiced: b.TotalInvoiced, TotalPaid: b.TotalPaid,
@@ -762,7 +833,7 @@ func (s *Service) QuickCash(ctx context.Context, studentID int, amount float64, 
 
 	p, err := s.db.Payment.Create().
 		SetStudentID(studentID).
-		SetAmount(utils.Round2(amount)).
+		SetAmountCents(money.EurosToCents(amount)).
 		SetMethod(payment.Method(app.PaymentMethodCash)).
 		SetPaidAt(t).
 		SetNote(note).
@@ -789,12 +860,12 @@ func (s *Service) recomputeInvoiceStatus(ctx context.Context, invoiceID int) err
 		return nil
 	}
 
-	total, paid, remaining, err := s.invoiceBalance(ctx, iv)
+	total, paid, remaining, err := s.invoiceBalanceCents(ctx, iv)
 	if err != nil {
 		return err
 	}
 
-	if paid+eps() >= total || remaining <= eps() {
+	if paid >= total || remaining <= 0 {
 		if iv.Status != app.InvoiceStatusPaid {
 			_, err := iv.Update().SetStatus(app.InvoiceStatusPaid).Save(ctx)
 			return err
@@ -810,15 +881,14 @@ func (s *Service) recomputeInvoiceStatus(ctx context.Context, invoiceID int) err
 	return nil
 }
 
-func (s *Service) invoiceBalance(ctx context.Context, iv *ent.Invoice) (total, paid, remaining float64, err error) {
-	paid, err = s.sumPaymentsForInvoice(ctx, iv.ID)
+func (s *Service) invoiceBalanceCents(ctx context.Context, iv *ent.Invoice) (total, paid, remaining int64, err error) {
+	paid, err = s.sumPaymentsForInvoiceCents(ctx, iv.ID)
 	if err != nil {
 		return 0, 0, 0, err
 	}
 
-	total = utils.Round2(iv.TotalAmount)
-	paid = utils.Round2(paid)
-	remaining = utils.Round2(total - paid)
+	total = iv.TotalAmountCents
+	remaining = total - paid
 	if remaining < 0 {
 		remaining = 0
 	}
@@ -826,34 +896,42 @@ func (s *Service) invoiceBalance(ctx context.Context, iv *ent.Invoice) (total, p
 	return total, paid, remaining, nil
 }
 
+func (s *Service) invoiceBalance(ctx context.Context, iv *ent.Invoice) (total, paid, remaining float64, err error) {
+	totalCents, paidCents, remainingCents, err := s.invoiceBalanceCents(ctx, iv)
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	return money.CentsToEuros(totalCents), money.CentsToEuros(paidCents), money.CentsToEuros(remainingCents), nil
+}
+
 // sumPaymentsForInvoice calculates the total amount of all payments
 // linked to a specific invoice.
-func (s *Service) sumPaymentsForInvoice(ctx context.Context, invoiceID int) (float64, error) {
+func (s *Service) sumPaymentsForInvoiceCents(ctx context.Context, invoiceID int) (int64, error) {
 	ps, err := s.db.Payment.Query().
 		Where(payment.InvoiceIDEQ(invoiceID)).
 		All(ctx)
 	if err != nil {
 		return 0, err
 	}
-	sum := 0.0
+	var sum int64
 	for _, p := range ps {
-		sum += p.Amount
+		sum += p.AmountCents
 	}
 	return sum, nil
 }
 
 // sumPaymentsForStudent calculates the total amount of all payments
 // made by a specific student (both linked and unlinked to invoices).
-func (s *Service) sumPaymentsForStudent(ctx context.Context, studentID int) (float64, error) {
+func (s *Service) sumPaymentsForStudentCents(ctx context.Context, studentID int) (int64, error) {
 	ps, err := s.db.Payment.Query().
 		Where(payment.StudentIDEQ(studentID)).
 		All(ctx)
 	if err != nil {
 		return 0, err
 	}
-	sum := 0.0
+	var sum int64
 	for _, p := range ps {
-		sum += p.Amount
+		sum += p.AmountCents
 	}
 	return sum, nil
 }
@@ -861,7 +939,7 @@ func (s *Service) sumPaymentsForStudent(ctx context.Context, studentID int) (flo
 // sumInvoicesForStudent calculates the total amount of all invoices
 // for a student that are in "issued" or "paid" status. Draft and canceled
 // invoices are not included in the calculation.
-func (s *Service) sumInvoicesForStudent(ctx context.Context, studentID int) (float64, error) {
+func (s *Service) sumInvoicesForStudentCents(ctx context.Context, studentID int) (int64, error) {
 	invs, err := s.db.Invoice.Query().
 		Where(
 			invoice.StudentIDEQ(studentID),
@@ -871,9 +949,9 @@ func (s *Service) sumInvoicesForStudent(ctx context.Context, studentID int) (flo
 	if err != nil {
 		return 0, err
 	}
-	sum := 0.0
+	var sum int64
 	for _, iv := range invs {
-		sum += iv.TotalAmount
+		sum += iv.TotalAmountCents
 	}
 	return sum, nil
 }
@@ -890,7 +968,7 @@ func toDTO(p *ent.Payment) *PaymentDTO {
 		StudentID: p.StudentID,
 		InvoiceID: invID,
 		PaidAt:    p.PaidAt.Format(time.RFC3339),
-		Amount:    utils.Round2(p.Amount),
+		Amount:    money.CentsToEuros(p.AmountCents),
 		Method:    string(p.Method),
 		Note:      p.Note,
 		CreatedAt: p.CreatedAt.Format(time.RFC3339),
