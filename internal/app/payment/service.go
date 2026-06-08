@@ -93,12 +93,20 @@ type MonthOverviewDTO struct {
 	AttendanceFilled     int `json:"attendanceFilled"`
 	AttendanceMissing    int `json:"attendanceMissing"`
 
-	DraftInvoices  int `json:"draftInvoices"`
-	IssuedInvoices int `json:"issuedInvoices"`
-	PaidInvoices   int `json:"paidInvoices"`
+	DraftInvoices   int `json:"draftInvoices"`
+	IssuedInvoices  int `json:"issuedInvoices"`
+	PaidInvoices    int `json:"paidInvoices"`
+	OverdueInvoices int `json:"overdueInvoicesCount"`
 
-	TotalIssued float64 `json:"totalIssued"`
-	TotalPaid   float64 `json:"totalPaid"`
+	TotalIssued            float64 `json:"totalIssued"`
+	TotalPaid              float64 `json:"totalPaid"`
+	PaymentsMonthTotal     float64 `json:"paymentsMonthTotal"`
+	PaymentsMonthCashTotal float64 `json:"paymentsMonthCashTotal"`
+	PaymentsMonthBankTotal float64 `json:"paymentsMonthBankTotal"`
+	UnlinkedCreditTotal    float64 `json:"unlinkedCreditTotal"`
+	MonthDebtTotal         float64 `json:"monthDebtTotal"`
+	HistoricalDebtTotal    float64 `json:"historicalDebtTotal"`
+	ActionQueueCount       int     `json:"actionQueueCount"`
 
 	DebtorsCount int     `json:"debtorsCount"`
 	TotalDebt    float64 `json:"totalDebt"`
@@ -628,13 +636,22 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		return nil, err
 	}
 
-	totalEnrollments, err := s.db.Enrollment.Query().Count(ctx)
+	totalEnrollments, err := s.db.Enrollment.Query().
+		Where(
+			enrollment.HasStudentWith(student.IsActiveEQ(true)),
+			enrollment.HasCourseWith(course.IsActiveEQ(true)),
+		).
+		Count(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	perLessonEnrollments, err := s.db.Enrollment.Query().
-		Where(enrollment.BillingModeEQ(enrollment.BillingModePerLesson)).
+		Where(
+			enrollment.BillingModeEQ(enrollment.BillingModePerLesson),
+			enrollment.HasStudentWith(student.IsActiveEQ(true)),
+			enrollment.HasCourseWith(course.IsActiveEQ(true)),
+		).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -679,6 +696,7 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		Where(
 			invoice.PeriodYearEQ(year),
 			invoice.PeriodMonthEQ(month),
+			invoice.HasStudentWith(student.IsActiveEQ(true)),
 		).
 		All(ctx)
 	if err != nil {
@@ -690,6 +708,8 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 	issuedInvoices := 0
 	paidInvoices := 0
 	var totalIssuedCents int64
+	var monthDebtCents int64
+	debtStudentIDs := make(map[int]struct{})
 
 	for _, iv := range monthInvoices {
 		monthInvoiceIDs = append(monthInvoiceIDs, iv.ID)
@@ -699,9 +719,25 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		case app.InvoiceStatusIssued:
 			issuedInvoices++
 			totalIssuedCents += iv.TotalAmountCents
+			_, _, remaining, err := s.invoiceBalanceCents(ctx, iv)
+			if err != nil {
+				return nil, err
+			}
+			if remaining > 0 {
+				monthDebtCents += remaining
+				debtStudentIDs[iv.StudentID] = struct{}{}
+			}
 		case app.InvoiceStatusPaid:
 			paidInvoices++
 			totalIssuedCents += iv.TotalAmountCents
+			_, _, remaining, err := s.invoiceBalanceCents(ctx, iv)
+			if err != nil {
+				return nil, err
+			}
+			if remaining > 0 {
+				monthDebtCents += remaining
+				debtStudentIDs[iv.StudentID] = struct{}{}
+			}
 		}
 	}
 
@@ -718,15 +754,77 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		}
 	}
 
-	debtors, err := s.ListDebtors(ctx)
+	historicalInvoices, err := s.db.Invoice.Query().
+		Where(
+			invoice.HasStudentWith(student.IsActiveEQ(true)),
+			invoice.StatusIn(app.InvoiceStatusIssued, app.InvoiceStatusPaid),
+		).
+		All(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	totalDebt := 0.0
-	for _, debtor := range debtors {
-		totalDebt += debtor.Debt
+	var historicalDebtCents int64
+	overdueInvoices := 0
+	for _, iv := range historicalInvoices {
+		if !isBeforePeriod(iv.PeriodYear, iv.PeriodMonth, year, month) {
+			continue
+		}
+		_, _, remaining, err := s.invoiceBalanceCents(ctx, iv)
+		if err != nil {
+			return nil, err
+		}
+		if remaining <= 0 {
+			continue
+		}
+		historicalDebtCents += remaining
+		overdueInvoices++
+		debtStudentIDs[iv.StudentID] = struct{}{}
 	}
+
+	rangeStart, rangeEnd := monthBounds(year, month)
+	monthPayments, err := s.db.Payment.Query().
+		Where(
+			payment.HasStudentWith(student.IsActiveEQ(true)),
+			payment.PaidAtGTE(rangeStart),
+			payment.PaidAtLT(rangeEnd),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var paymentsMonthCents int64
+	var paymentsMonthCashCents int64
+	var paymentsMonthBankCents int64
+	for _, p := range monthPayments {
+		paymentsMonthCents += p.AmountCents
+		switch p.Method {
+		case payment.MethodCash:
+			paymentsMonthCashCents += p.AmountCents
+		case payment.MethodBank:
+			paymentsMonthBankCents += p.AmountCents
+		}
+	}
+
+	credits, err := s.db.Payment.Query().
+		Where(
+			payment.InvoiceIDIsNil(),
+			payment.HasStudentWith(student.IsActiveEQ(true)),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var unlinkedCreditCents int64
+	for _, credit := range credits {
+		unlinkedCreditCents += credit.AmountCents
+	}
+
+	debtorsCount := len(debtStudentIDs)
+	totalDebtCents := monthDebtCents + historicalDebtCents
+	actionQueueCount := debtorsCount + draftInvoices + attendanceMissing
 
 	return &MonthOverviewDTO{
 		Year:  year,
@@ -740,15 +838,23 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		AttendanceFilled:     attendanceFilled,
 		AttendanceMissing:    attendanceMissing,
 
-		DraftInvoices:  draftInvoices,
-		IssuedInvoices: issuedInvoices,
-		PaidInvoices:   paidInvoices,
+		DraftInvoices:   draftInvoices,
+		IssuedInvoices:  issuedInvoices,
+		PaidInvoices:    paidInvoices,
+		OverdueInvoices: overdueInvoices,
 
-		TotalIssued: money.CentsToEuros(totalIssuedCents),
-		TotalPaid:   money.CentsToEuros(totalPaidCents),
+		TotalIssued:            money.CentsToEuros(totalIssuedCents),
+		TotalPaid:              money.CentsToEuros(totalPaidCents),
+		PaymentsMonthTotal:     money.CentsToEuros(paymentsMonthCents),
+		PaymentsMonthCashTotal: money.CentsToEuros(paymentsMonthCashCents),
+		PaymentsMonthBankTotal: money.CentsToEuros(paymentsMonthBankCents),
+		UnlinkedCreditTotal:    money.CentsToEuros(unlinkedCreditCents),
+		MonthDebtTotal:         money.CentsToEuros(monthDebtCents),
+		HistoricalDebtTotal:    money.CentsToEuros(historicalDebtCents),
+		ActionQueueCount:       actionQueueCount,
 
-		DebtorsCount: len(debtors),
-		TotalDebt:    totalDebt,
+		DebtorsCount: debtorsCount,
+		TotalDebt:    money.CentsToEuros(totalDebtCents),
 	}, nil
 }
 
@@ -977,4 +1083,16 @@ func toDTO(p *ent.Payment) *PaymentDTO {
 
 func overviewEnrollmentKey(studentID, courseID int) string {
 	return fmt.Sprintf("%d:%d", studentID, courseID)
+}
+
+func isBeforePeriod(year, month, targetYear, targetMonth int) bool {
+	if year != targetYear {
+		return year < targetYear
+	}
+	return month < targetMonth
+}
+
+func monthBounds(year, month int) (time.Time, time.Time) {
+	start := time.Date(year, time.Month(month), 1, 0, 0, 0, 0, time.UTC)
+	return start, start.AddDate(0, 1, 0)
 }

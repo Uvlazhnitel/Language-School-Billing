@@ -720,15 +720,18 @@ func TestMonthOverview(t *testing.T) {
 
 	c1 := createTestCourse(t, ctx, client, "Group A", "group", true)
 	c2 := createTestCourse(t, ctx, client, "Individual B", "individual", true)
-	createTestCourse(t, ctx, client, "Inactive Course", "group", false)
+	inactiveCourse := createTestCourse(t, ctx, client, "Inactive Course", "group", false)
 
 	createTestEnrollment(t, ctx, client, st1.ID, c1.ID, "per_lesson")
 	createTestEnrollment(t, ctx, client, st2.ID, c1.ID, "per_lesson")
 	createTestEnrollment(t, ctx, client, st3.ID, c2.ID, "subscription")
+	createTestEnrollment(t, ctx, client, inactiveStudent.ID, c1.ID, "per_lesson")
+	createTestEnrollment(t, ctx, client, st1.ID, inactiveCourse.ID, "per_lesson")
 
 	createTestAttendanceMonth(t, ctx, client, st1.ID, c1.ID, 2026, 4, 3)
 	createTestAttendanceMonth(t, ctx, client, st2.ID, c1.ID, 2026, 4, 0)
 	createTestAttendanceMonth(t, ctx, client, st3.ID, c2.ID, 2026, 4, 5)
+	createTestAttendanceMonth(t, ctx, client, inactiveStudent.ID, c1.ID, 2026, 4, 4)
 
 	draftInvoice := createTestInvoice(t, ctx, client, st3.ID, 2026, 4, 10, app.InvoiceStatusDraft)
 	issuedInvoice := createTestInvoice(t, ctx, client, st1.ID, 2026, 4, 70, app.InvoiceStatusIssued)
@@ -736,10 +739,11 @@ func TestMonthOverview(t *testing.T) {
 	createTestInvoice(t, ctx, client, inactiveStudent.ID, 2026, 4, 25, app.InvoiceStatusCanceled)
 	olderIssuedInvoice := createTestInvoice(t, ctx, client, st2.ID, 2026, 3, 40, app.InvoiceStatusIssued)
 
-	createLinkedPayment(t, ctx, client, st1.ID, issuedInvoice.ID, 20, time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC))
-	createLinkedPayment(t, ctx, client, st2.ID, paidInvoice.ID, 30, time.Date(2026, 4, 11, 0, 0, 0, 0, time.UTC))
-	createLinkedPayment(t, ctx, client, st2.ID, olderIssuedInvoice.ID, 5, time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC))
-	createUnlinkedPayment(t, ctx, client, st3.ID, 10, time.Date(2026, 4, 15, 0, 0, 0, 0, time.UTC))
+	createLinkedPaymentWithMethod(t, ctx, client, st1.ID, issuedInvoice.ID, 20, app.PaymentMethodCash, time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC))
+	createLinkedPaymentWithMethod(t, ctx, client, st2.ID, paidInvoice.ID, 30, app.PaymentMethodBank, time.Date(2026, 4, 11, 0, 0, 0, 0, time.UTC))
+	createLinkedPaymentWithMethod(t, ctx, client, st2.ID, olderIssuedInvoice.ID, 5, app.PaymentMethodBank, time.Date(2026, 3, 20, 0, 0, 0, 0, time.UTC))
+	createUnlinkedPaymentWithMethod(t, ctx, client, st3.ID, 10, app.PaymentMethodCash, time.Date(2026, 4, 15, 0, 0, 0, 0, time.UTC))
+	createUnlinkedPaymentWithMethod(t, ctx, client, inactiveStudent.ID, 15, app.PaymentMethodCash, time.Date(2026, 4, 18, 0, 0, 0, 0, time.UTC))
 
 	got, err := svc.MonthOverview(ctx, 2026, 4)
 	if err != nil {
@@ -757,8 +761,16 @@ func TestMonthOverview(t *testing.T) {
 	assertEqual(t, got.DraftInvoices, 1)
 	assertEqual(t, got.IssuedInvoices, 1)
 	assertEqual(t, got.PaidInvoices, 1)
+	assertEqual(t, got.OverdueInvoices, 1)
 	assertFloatEqual(t, got.TotalIssued, 100)
 	assertFloatEqual(t, got.TotalPaid, 50)
+	assertFloatEqual(t, got.PaymentsMonthTotal, 60)
+	assertFloatEqual(t, got.PaymentsMonthCashTotal, 30)
+	assertFloatEqual(t, got.PaymentsMonthBankTotal, 30)
+	assertFloatEqual(t, got.UnlinkedCreditTotal, 10)
+	assertFloatEqual(t, got.MonthDebtTotal, 50)
+	assertFloatEqual(t, got.HistoricalDebtTotal, 35)
+	assertEqual(t, got.ActionQueueCount, 4)
 	assertEqual(t, got.DebtorsCount, 2)
 	assertFloatEqual(t, got.TotalDebt, 85)
 
@@ -863,12 +875,17 @@ func createTestInvoiceWithNumber(t *testing.T, ctx context.Context, client *ent.
 
 func createLinkedPayment(t *testing.T, ctx context.Context, client *ent.Client, studentID, invoiceID int, amount float64, paidAt time.Time) *ent.Payment {
 	t.Helper()
+	return createLinkedPaymentWithMethod(t, ctx, client, studentID, invoiceID, amount, app.PaymentMethodCash, paidAt)
+}
+
+func createLinkedPaymentWithMethod(t *testing.T, ctx context.Context, client *ent.Client, studentID, invoiceID int, amount float64, method string, paidAt time.Time) *ent.Payment {
+	t.Helper()
 	p, err := client.Payment.Create().
 		SetStudentID(studentID).
 		SetInvoiceID(invoiceID).
 		SetPaidAt(paidAt).
 		SetAmountCents(money.EurosToCents(amount)).
-		SetMethod(entpayment.Method(app.PaymentMethodCash)).
+		SetMethod(entpayment.Method(method)).
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("create linked payment: %v", err)
@@ -878,11 +895,16 @@ func createLinkedPayment(t *testing.T, ctx context.Context, client *ent.Client, 
 
 func createUnlinkedPayment(t *testing.T, ctx context.Context, client *ent.Client, studentID int, amount float64, paidAt time.Time) *ent.Payment {
 	t.Helper()
+	return createUnlinkedPaymentWithMethod(t, ctx, client, studentID, amount, app.PaymentMethodCash, paidAt)
+}
+
+func createUnlinkedPaymentWithMethod(t *testing.T, ctx context.Context, client *ent.Client, studentID int, amount float64, method string, paidAt time.Time) *ent.Payment {
+	t.Helper()
 	p, err := client.Payment.Create().
 		SetStudentID(studentID).
 		SetPaidAt(paidAt).
 		SetAmountCents(money.EurosToCents(amount)).
-		SetMethod(entpayment.Method(app.PaymentMethodCash)).
+		SetMethod(entpayment.Method(method)).
 		Save(ctx)
 	if err != nil {
 		t.Fatalf("create unlinked payment: %v", err)
