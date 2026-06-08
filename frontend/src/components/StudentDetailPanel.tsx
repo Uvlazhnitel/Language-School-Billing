@@ -25,6 +25,9 @@ type StudentDetailPanelProps = {
   deletingPaymentId: number | null;
   canDeletePayment: boolean;
   onEditStudent: () => void;
+  onToggleActive?: () => void;
+  onDeleteStudent?: () => void;
+  canDeleteStudent?: boolean;
   onAddPayment: () => void;
   onCopyDebtRu: () => void;
   onCopyDebtLv: () => void;
@@ -54,6 +57,9 @@ export function StudentDetailPanel({
   deletingPaymentId,
   canDeletePayment,
   onEditStudent,
+  onToggleActive,
+  onDeleteStudent,
+  canDeleteStudent = false,
   onAddPayment,
   onCopyDebtRu,
   onCopyDebtLv,
@@ -72,6 +78,8 @@ export function StudentDetailPanel({
 
   const latestPayment = payments[0]?.paidAt?.slice(0, 10) ?? t("msg.noPayments");
   const activeEnrollmentsCount = enrollments.length;
+  const hasBusinessAction = Boolean(nextAction);
+  const showRecordPaymentAsPrimary = !hasBusinessAction;
 
   const handlePrimaryAction = () => {
     switch (nextAction?.action) {
@@ -113,12 +121,12 @@ export function StudentDetailPanel({
                   {nextAction.label}
                 </button>
                 {nextAction.secondaryLabel === t("action.debtReminder") && debts.length > 0 && (
-                  <button className="workspaceActionButton" onClick={onCopyDebtRu}>
+                  <button className="secondaryActionButton" onClick={onCopyDebtRu}>
                     {nextAction.secondaryLabel}
                   </button>
                 )}
                 {nextAction.secondaryLabel === t("action.checkDraft") && (
-                  <button className="workspaceActionButton" onClick={onOpenInvoices}>
+                  <button className="secondaryActionButton" onClick={onOpenInvoices}>
                     {nextAction.secondaryLabel}
                   </button>
                 )}
@@ -128,7 +136,11 @@ export function StudentDetailPanel({
         </div>
         <div className="studentDetailActions">
           <button
-            className="workspaceActionButton workspaceActionButtonPrimary"
+            className={
+              showRecordPaymentAsPrimary
+                ? "workspaceActionButton workspaceActionButtonPrimary"
+                : "workspaceActionButton"
+            }
             onClick={onAddPayment}
           >
             {t("button.recordPayment")}
@@ -139,6 +151,16 @@ export function StudentDetailPanel({
           <button className="workspaceActionButton" onClick={onManageEnrollments}>
             {t("button.manageEnrollments")}
           </button>
+          {onToggleActive && (
+            <button className="secondaryActionButton" onClick={onToggleActive}>
+              {student.isActive ? t("button.deactivate") : t("button.activate")}
+            </button>
+          )}
+          {!student.isActive && canDeleteStudent && onDeleteStudent && (
+            <button className="secondaryActionButton" onClick={onDeleteStudent}>
+              {t("button.delete")}
+            </button>
+          )}
         </div>
       </div>
 

@@ -72,8 +72,6 @@ export function InvoicesScreen({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
         />
-
-        <button onClick={onRefresh}>{t("button.refresh")}</button>
       </div>
 
       {loading ? (
@@ -119,7 +117,9 @@ export function InvoicesScreen({
                 </td>
                 <td>
                   <div className="invoiceRowActions">
-                    <button onClick={() => void onOpenInvoice(item.id)}>{t("button.open")}</button>
+                    <button className="workspaceActionButton" onClick={() => void onOpenInvoice(item.id)}>
+                      {t("button.open")}
+                    </button>
                     {item.status === "draft" && (
                       <button
                         className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
@@ -128,11 +128,35 @@ export function InvoicesScreen({
                         {t("button.issue")}
                       </button>
                     )}
-                    {item.status !== "draft" && (
-                      <button onClick={() => void onDownloadPdf(item.id)}>{t("button.downloadPdf")}</button>
+                    {item.status === "issued" && (
+                      <button
+                        className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
+                        onClick={() => void onOpenPaymentModal(item.id)}
+                      >
+                        {t("button.recordPayment")}
+                      </button>
                     )}
-                    {item.status !== "draft" && (
-                      <button onClick={() => void onOpenPaymentModal(item.id)}>
+                    {item.status === "paid" && (
+                      <button
+                        className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
+                        onClick={() => void onDownloadPdf(item.id)}
+                      >
+                        {t("button.downloadPdf")}
+                      </button>
+                    )}
+                    {item.status === "issued" && (
+                      <button
+                        className="secondaryActionButton"
+                        onClick={() => void onDownloadPdf(item.id)}
+                      >
+                        {t("button.downloadPdf")}
+                      </button>
+                    )}
+                    {item.status === "paid" && (
+                      <button
+                        className="secondaryActionButton"
+                        onClick={() => void onOpenPaymentModal(item.id)}
+                      >
                         {t("button.recordPayment")}
                       </button>
                     )}

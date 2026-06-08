@@ -160,6 +160,11 @@ export function StudentWorkspace({
           deletingPaymentId={deletingPaymentId}
           canDeletePayment={canDeletePayment}
           onEditStudent={() => selectedStudent && onEditStudent(selectedStudent)}
+          onToggleActive={selectedStudent ? () => onToggleActive(selectedStudent) : undefined}
+          onDeleteStudent={
+            selectedStudent ? () => onDeleteStudent(selectedStudent.id) : undefined
+          }
+          canDeleteStudent={canDeleteStudent}
           onAddPayment={onAddPayment}
           onCopyDebtRu={onCopyDebtRu}
           onCopyDebtLv={onCopyDebtLv}
