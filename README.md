@@ -230,6 +230,13 @@ to:
 
 If needed, create `frontend/.env.local` and override the dev target there.
 
+For local-only development, the backend can stay on `127.0.0.1`.
+For access from other devices, bind the backend to `0.0.0.0` explicitly:
+
+```bash
+HOST=0.0.0.0 PORT=8080 go run ./cmd/web
+```
+
 ## Run the web app in production-style mode
 
 Build the frontend:
@@ -357,18 +364,51 @@ Basic flow:
 
 1. Copy the repo to the server.
 2. Create `.env` from `.env.example`.
-3. Make sure the host storage directories exist.
-4. Start the app:
+3. Set `APP_BASE_URL` to the real public address of the server, for example:
+
+```bash
+APP_BASE_URL=http://203.0.113.10:8082
+```
+
+Do not leave it on `127.0.0.1` for a public deployment.
+4. Make sure the host storage directories exist.
+5. Start the app:
 
 ```bash
 docker compose up -d --build
 ```
+
+The included [compose.yaml](/Users/uvlazhnitel/Documents/coding/langschool/langschool/compose.yaml) already:
+
+- publishes host port `8082` to container port `8080`
+- sets `HOST=0.0.0.0`
+- sets `PORT=8080`
+
+This means the container is ready for external traffic once the host network is configured correctly.
 
 Health check:
 
 ```bash
 curl http://127.0.0.1:8082/healthz
 ```
+
+Public access check from another device:
+
+```bash
+curl http://YOUR_SERVER_PUBLIC_IP:8082/healthz
+```
+
+If the local health check works but the public one does not, the problem is outside the app.
+Check these in order:
+
+1. The server firewall allows inbound TCP `8082`.
+2. The router forwards public TCP `8082` to the server if the machine is behind home NAT.
+3. The ISP is not placing the connection behind CG-NAT.
+
+CG-NAT note:
+
+- if you do not have a public IPv4 address, port forwarding will not be enough
+- in that case use a public IP from the ISP, a tunnel, or a VPN such as Tailscale
 
 ## Backup scripts
 
