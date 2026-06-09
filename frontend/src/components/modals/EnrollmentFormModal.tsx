@@ -3,6 +3,7 @@ import type { CourseDTO } from "../../lib/courses";
 import type { EnrollmentDTO } from "../../lib/enrollments";
 import type { StudentDTO } from "../../lib/students";
 import type { TranslateFn } from "../../lib/i18n";
+import { courseTypeLabel } from "../../lib/appUi";
 
 type EnrollmentFormModalProps = {
   editing: EnrollmentDTO | null;
@@ -57,6 +58,13 @@ export function EnrollmentFormModal({
   onCancel,
   t,
 }: EnrollmentFormModalProps) {
+  function courseOptionLabel(course: CourseDTO): string {
+    const typeLabel = courseTypeLabel(course.type, t);
+    return course.teacherName
+      ? `${course.name} — ${typeLabel} — ${course.teacherName}`
+      : `${course.name} — ${typeLabel}`;
+  }
+
   return (
     <div className="modal">
       <div className="modalBody">
@@ -120,7 +128,7 @@ export function EnrollmentFormModal({
           >
             {allCourses.map((course) => (
               <option key={course.id} value={course.id}>
-                {course.teacherName ? `${course.name} — ${course.teacherName}` : course.name}
+                {courseOptionLabel(course)}
               </option>
             ))}
           </select>
