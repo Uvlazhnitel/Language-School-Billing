@@ -1871,6 +1871,8 @@ type CourseMutation struct {
 	op                           Op
 	typ                          string
 	id                           *int
+	version                      *int
+	addversion                   *int
 	name                         *string
 	teacher_name                 *string
 	_type                        *course.Type
@@ -1993,6 +1995,62 @@ func (m *CourseMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetVersion sets the "version" field.
+func (m *CourseMutation) SetVersion(i int) {
+	m.version = &i
+	m.addversion = nil
+}
+
+// Version returns the value of the "version" field in the mutation.
+func (m *CourseMutation) Version() (r int, exists bool) {
+	v := m.version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVersion returns the old "version" field's value of the Course entity.
+// If the Course object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *CourseMutation) OldVersion(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVersion: %w", err)
+	}
+	return oldValue.Version, nil
+}
+
+// AddVersion adds i to the "version" field.
+func (m *CourseMutation) AddVersion(i int) {
+	if m.addversion != nil {
+		*m.addversion += i
+	} else {
+		m.addversion = &i
+	}
+}
+
+// AddedVersion returns the value that was added to the "version" field in this mutation.
+func (m *CourseMutation) AddedVersion() (r int, exists bool) {
+	v := m.addversion
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetVersion resets all changes to the "version" field.
+func (m *CourseMutation) ResetVersion() {
+	m.version = nil
+	m.addversion = nil
 }
 
 // SetName sets the "name" field.
@@ -2581,7 +2639,10 @@ func (m *CourseMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *CourseMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
+	if m.version != nil {
+		fields = append(fields, course.FieldVersion)
+	}
 	if m.name != nil {
 		fields = append(fields, course.FieldName)
 	}
@@ -2617,6 +2678,8 @@ func (m *CourseMutation) Fields() []string {
 // schema.
 func (m *CourseMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case course.FieldVersion:
+		return m.Version()
 	case course.FieldName:
 		return m.Name()
 	case course.FieldTeacherName:
@@ -2644,6 +2707,8 @@ func (m *CourseMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *CourseMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case course.FieldVersion:
+		return m.OldVersion(ctx)
 	case course.FieldName:
 		return m.OldName(ctx)
 	case course.FieldTeacherName:
@@ -2671,6 +2736,13 @@ func (m *CourseMutation) OldField(ctx context.Context, name string) (ent.Value, 
 // type.
 func (m *CourseMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case course.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVersion(v)
+		return nil
 	case course.FieldName:
 		v, ok := value.(string)
 		if !ok {
@@ -2742,6 +2814,9 @@ func (m *CourseMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *CourseMutation) AddedFields() []string {
 	var fields []string
+	if m.addversion != nil {
+		fields = append(fields, course.FieldVersion)
+	}
 	if m.addlegacy_lesson_price != nil {
 		fields = append(fields, course.FieldLegacyLessonPrice)
 	}
@@ -2762,6 +2837,8 @@ func (m *CourseMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *CourseMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case course.FieldVersion:
+		return m.AddedVersion()
 	case course.FieldLegacyLessonPrice:
 		return m.AddedLegacyLessonPrice()
 	case course.FieldLegacySubscriptionPrice:
@@ -2779,6 +2856,13 @@ func (m *CourseMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *CourseMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case course.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddVersion(v)
+		return nil
 	case course.FieldLegacyLessonPrice:
 		v, ok := value.(float64)
 		if !ok {
@@ -2843,6 +2927,9 @@ func (m *CourseMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *CourseMutation) ResetField(name string) error {
 	switch name {
+	case course.FieldVersion:
+		m.ResetVersion()
+		return nil
 	case course.FieldName:
 		m.ResetName()
 		return nil
@@ -3652,6 +3739,8 @@ type EnrollmentMutation struct {
 	op                           Op
 	typ                          string
 	id                           *int
+	version                      *int
+	addversion                   *int
 	billing_mode                 *enrollment.BillingMode
 	discount_pct                 *float64
 	adddiscount_pct              *float64
@@ -3767,6 +3856,62 @@ func (m *EnrollmentMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetVersion sets the "version" field.
+func (m *EnrollmentMutation) SetVersion(i int) {
+	m.version = &i
+	m.addversion = nil
+}
+
+// Version returns the value of the "version" field in the mutation.
+func (m *EnrollmentMutation) Version() (r int, exists bool) {
+	v := m.version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVersion returns the old "version" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldVersion(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVersion: %w", err)
+	}
+	return oldValue.Version, nil
+}
+
+// AddVersion adds i to the "version" field.
+func (m *EnrollmentMutation) AddVersion(i int) {
+	if m.addversion != nil {
+		*m.addversion += i
+	} else {
+		m.addversion = &i
+	}
+}
+
+// AddedVersion returns the value that was added to the "version" field in this mutation.
+func (m *EnrollmentMutation) AddedVersion() (r int, exists bool) {
+	v := m.addversion
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetVersion resets all changes to the "version" field.
+func (m *EnrollmentMutation) ResetVersion() {
+	m.version = nil
+	m.addversion = nil
 }
 
 // SetStudentID sets the "student_id" field.
@@ -4167,7 +4312,10 @@ func (m *EnrollmentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *EnrollmentMutation) Fields() []string {
-	fields := make([]string, 0, 6)
+	fields := make([]string, 0, 7)
+	if m.version != nil {
+		fields = append(fields, enrollment.FieldVersion)
+	}
 	if m.student != nil {
 		fields = append(fields, enrollment.FieldStudentID)
 	}
@@ -4194,6 +4342,8 @@ func (m *EnrollmentMutation) Fields() []string {
 // schema.
 func (m *EnrollmentMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case enrollment.FieldVersion:
+		return m.Version()
 	case enrollment.FieldStudentID:
 		return m.StudentID()
 	case enrollment.FieldCourseID:
@@ -4215,6 +4365,8 @@ func (m *EnrollmentMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *EnrollmentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case enrollment.FieldVersion:
+		return m.OldVersion(ctx)
 	case enrollment.FieldStudentID:
 		return m.OldStudentID(ctx)
 	case enrollment.FieldCourseID:
@@ -4236,6 +4388,13 @@ func (m *EnrollmentMutation) OldField(ctx context.Context, name string) (ent.Val
 // type.
 func (m *EnrollmentMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case enrollment.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVersion(v)
+		return nil
 	case enrollment.FieldStudentID:
 		v, ok := value.(int)
 		if !ok {
@@ -4286,6 +4445,9 @@ func (m *EnrollmentMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *EnrollmentMutation) AddedFields() []string {
 	var fields []string
+	if m.addversion != nil {
+		fields = append(fields, enrollment.FieldVersion)
+	}
 	if m.adddiscount_pct != nil {
 		fields = append(fields, enrollment.FieldDiscountPct)
 	}
@@ -4300,6 +4462,8 @@ func (m *EnrollmentMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *EnrollmentMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case enrollment.FieldVersion:
+		return m.AddedVersion()
 	case enrollment.FieldDiscountPct:
 		return m.AddedDiscountPct()
 	case enrollment.FieldSubscriptionDiscountPct:
@@ -4313,6 +4477,13 @@ func (m *EnrollmentMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *EnrollmentMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case enrollment.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddVersion(v)
+		return nil
 	case enrollment.FieldDiscountPct:
 		v, ok := value.(float64)
 		if !ok {
@@ -4354,6 +4525,9 @@ func (m *EnrollmentMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *EnrollmentMutation) ResetField(name string) error {
 	switch name {
+	case enrollment.FieldVersion:
+		m.ResetVersion()
+		return nil
 	case enrollment.FieldStudentID:
 		m.ResetStudentID()
 		return nil
@@ -4502,6 +4676,8 @@ type InvoiceMutation struct {
 	op                     Op
 	typ                    string
 	id                     *int
+	version                *int
+	addversion             *int
 	period_year            *int
 	addperiod_year         *int
 	period_month           *int
@@ -4622,6 +4798,62 @@ func (m *InvoiceMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetVersion sets the "version" field.
+func (m *InvoiceMutation) SetVersion(i int) {
+	m.version = &i
+	m.addversion = nil
+}
+
+// Version returns the value of the "version" field in the mutation.
+func (m *InvoiceMutation) Version() (r int, exists bool) {
+	v := m.version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVersion returns the old "version" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldVersion(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVersion: %w", err)
+	}
+	return oldValue.Version, nil
+}
+
+// AddVersion adds i to the "version" field.
+func (m *InvoiceMutation) AddVersion(i int) {
+	if m.addversion != nil {
+		*m.addversion += i
+	} else {
+		m.addversion = &i
+	}
+}
+
+// AddedVersion returns the value that was added to the "version" field in this mutation.
+func (m *InvoiceMutation) AddedVersion() (r int, exists bool) {
+	v := m.addversion
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetVersion resets all changes to the "version" field.
+func (m *InvoiceMutation) ResetVersion() {
+	m.version = nil
+	m.addversion = nil
 }
 
 // SetStudentID sets the "student_id" field.
@@ -5138,7 +5370,10 @@ func (m *InvoiceMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InvoiceMutation) Fields() []string {
-	fields := make([]string, 0, 7)
+	fields := make([]string, 0, 8)
+	if m.version != nil {
+		fields = append(fields, invoice.FieldVersion)
+	}
 	if m.student != nil {
 		fields = append(fields, invoice.FieldStudentID)
 	}
@@ -5168,6 +5403,8 @@ func (m *InvoiceMutation) Fields() []string {
 // schema.
 func (m *InvoiceMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case invoice.FieldVersion:
+		return m.Version()
 	case invoice.FieldStudentID:
 		return m.StudentID()
 	case invoice.FieldPeriodYear:
@@ -5191,6 +5428,8 @@ func (m *InvoiceMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *InvoiceMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case invoice.FieldVersion:
+		return m.OldVersion(ctx)
 	case invoice.FieldStudentID:
 		return m.OldStudentID(ctx)
 	case invoice.FieldPeriodYear:
@@ -5214,6 +5453,13 @@ func (m *InvoiceMutation) OldField(ctx context.Context, name string) (ent.Value,
 // type.
 func (m *InvoiceMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case invoice.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVersion(v)
+		return nil
 	case invoice.FieldStudentID:
 		v, ok := value.(int)
 		if !ok {
@@ -5271,6 +5517,9 @@ func (m *InvoiceMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *InvoiceMutation) AddedFields() []string {
 	var fields []string
+	if m.addversion != nil {
+		fields = append(fields, invoice.FieldVersion)
+	}
 	if m.addperiod_year != nil {
 		fields = append(fields, invoice.FieldPeriodYear)
 	}
@@ -5291,6 +5540,8 @@ func (m *InvoiceMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *InvoiceMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
+	case invoice.FieldVersion:
+		return m.AddedVersion()
 	case invoice.FieldPeriodYear:
 		return m.AddedPeriodYear()
 	case invoice.FieldPeriodMonth:
@@ -5308,6 +5559,13 @@ func (m *InvoiceMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *InvoiceMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case invoice.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddVersion(v)
+		return nil
 	case invoice.FieldPeriodYear:
 		v, ok := value.(int)
 		if !ok {
@@ -5372,6 +5630,9 @@ func (m *InvoiceMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *InvoiceMutation) ResetField(name string) error {
 	switch name {
+	case invoice.FieldVersion:
+		m.ResetVersion()
+		return nil
 	case invoice.FieldStudentID:
 		m.ResetStudentID()
 		return nil
@@ -8258,6 +8519,8 @@ type StudentMutation struct {
 	op                 Op
 	typ                string
 	id                 *int
+	version            *int
+	addversion         *int
 	full_name          *string
 	personal_code      *string
 	phone              *string
@@ -8378,6 +8641,62 @@ func (m *StudentMutation) IDs(ctx context.Context) ([]int, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
+}
+
+// SetVersion sets the "version" field.
+func (m *StudentMutation) SetVersion(i int) {
+	m.version = &i
+	m.addversion = nil
+}
+
+// Version returns the value of the "version" field in the mutation.
+func (m *StudentMutation) Version() (r int, exists bool) {
+	v := m.version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldVersion returns the old "version" field's value of the Student entity.
+// If the Student object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StudentMutation) OldVersion(ctx context.Context) (v int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldVersion: %w", err)
+	}
+	return oldValue.Version, nil
+}
+
+// AddVersion adds i to the "version" field.
+func (m *StudentMutation) AddVersion(i int) {
+	if m.addversion != nil {
+		*m.addversion += i
+	} else {
+		m.addversion = &i
+	}
+}
+
+// AddedVersion returns the value that was added to the "version" field in this mutation.
+func (m *StudentMutation) AddedVersion() (r int, exists bool) {
+	v := m.addversion
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetVersion resets all changes to the "version" field.
+func (m *StudentMutation) ResetVersion() {
+	m.version = nil
+	m.addversion = nil
 }
 
 // SetFullName sets the "full_name" field.
@@ -8900,7 +9219,10 @@ func (m *StudentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *StudentMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
+	if m.version != nil {
+		fields = append(fields, student.FieldVersion)
+	}
 	if m.full_name != nil {
 		fields = append(fields, student.FieldFullName)
 	}
@@ -8936,6 +9258,8 @@ func (m *StudentMutation) Fields() []string {
 // schema.
 func (m *StudentMutation) Field(name string) (ent.Value, bool) {
 	switch name {
+	case student.FieldVersion:
+		return m.Version()
 	case student.FieldFullName:
 		return m.FullName()
 	case student.FieldPersonalCode:
@@ -8963,6 +9287,8 @@ func (m *StudentMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *StudentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
+	case student.FieldVersion:
+		return m.OldVersion(ctx)
 	case student.FieldFullName:
 		return m.OldFullName(ctx)
 	case student.FieldPersonalCode:
@@ -8990,6 +9316,13 @@ func (m *StudentMutation) OldField(ctx context.Context, name string) (ent.Value,
 // type.
 func (m *StudentMutation) SetField(name string, value ent.Value) error {
 	switch name {
+	case student.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetVersion(v)
+		return nil
 	case student.FieldFullName:
 		v, ok := value.(string)
 		if !ok {
@@ -9060,13 +9393,21 @@ func (m *StudentMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *StudentMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addversion != nil {
+		fields = append(fields, student.FieldVersion)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *StudentMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case student.FieldVersion:
+		return m.AddedVersion()
+	}
 	return nil, false
 }
 
@@ -9075,6 +9416,13 @@ func (m *StudentMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *StudentMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case student.FieldVersion:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddVersion(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Student numeric field %s", name)
 }
@@ -9102,6 +9450,9 @@ func (m *StudentMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *StudentMutation) ResetField(name string) error {
 	switch name {
+	case student.FieldVersion:
+		m.ResetVersion()
+		return nil
 	case student.FieldFullName:
 		m.ResetFullName()
 		return nil

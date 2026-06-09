@@ -69,7 +69,7 @@ import {
 } from "./lib/dashboard";
 import { AuditLogItem, listAuditLogs } from "./lib/audit";
 import { getTransport, type TransportCapabilities, type UserDTO } from "./lib/api";
-import { AUTH_REQUIRED_EVENT } from "./lib/api/shared";
+import { AUTH_REQUIRED_EVENT, isConflictError } from "./lib/api/shared";
 import { AppShell, type AppTab } from "./components/AppShell";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { LoginScreen } from "./components/LoginScreen";
@@ -108,6 +108,13 @@ import {
   payerRoleOptions,
   paymentMethodLabel,
 } from "./lib/appUi";
+
+const staleRevisionMessage = "record was changed or deleted by another user";
+
+function isStaleRevisionError(error: unknown): boolean {
+  const message = String((error as { message?: string } | undefined)?.message ?? error ?? "").toLowerCase();
+  return (isConflictError(error) || message.includes("conflict")) && message.includes(staleRevisionMessage);
+}
 import { AttendanceScreen } from "./screens/AttendanceScreen";
 import { AuditScreen } from "./screens/AuditScreen";
 import { CoursesScreen } from "./screens/CoursesScreen";
@@ -433,10 +440,11 @@ export default function App() {
       return;
     }
     try {
+      let savedStudent: StudentDTO;
       if (editingStudent) {
-        // Update existing student
-        await updateStudent(
+        savedStudent = await updateStudent(
           editingStudent.id,
+          editingStudent.version,
           sfName,
           sfPersonalCode,
           sfPhone,
@@ -447,8 +455,7 @@ export default function App() {
           sfPayerRole
         );
       } else {
-        // Create new student
-        await createStudent(
+        savedStudent = await createStudent(
           sfName,
           sfPersonalCode,
           sfPhone,
@@ -461,18 +468,35 @@ export default function App() {
       }
       setStudentModalOpen(false);
       await Promise.all([loadStudents(), loadAllStudents()]);
+      if (selectedStudentCard?.id === savedStudent.id) {
+        setSelectedStudentCard(savedStudent);
+        void refreshStudentCardData(savedStudent.id);
+      }
       showMessage(editingStudent ? t("msg.studentUpdated") : t("msg.studentCreated"));
     } catch (e: any) {
+      if (isStaleRevisionError(e)) {
+        showMessage(t("msg.recordConflict"), "error");
+        return;
+      }
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   }
 
   async function toggleStudentActive(s: StudentDTO) {
     try {
-      await setStudentActive(s.id, !s.isActive);
+      await setStudentActive(s.id, s.version, !s.isActive);
       await Promise.all([loadStudents(), loadAllStudents()]);
+      if (selectedStudentCard?.id === s.id) {
+        const freshStudent = await getStudent(s.id);
+        setSelectedStudentCard(freshStudent);
+        void refreshStudentCardData(s.id);
+      }
       showMessage(s.isActive ? t("msg.studentDeactivated") : t("msg.studentActivated"));
     } catch (e: any) {
+      if (isStaleRevisionError(e)) {
+        showMessage(t("msg.recordConflict"), "error");
+        return;
+      }
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   }
@@ -482,10 +506,18 @@ export default function App() {
       t("msg.studentDeleteConfirm"),
       async () => {
         try {
-          await deleteStudent(id);
+          const currentStudent = studentList.find((item) => item.id === id) ?? allStudents.find((item) => item.id === id);
+          if (!currentStudent) {
+            throw new Error("Student not found");
+          }
+          await deleteStudent(id, currentStudent.version);
           await Promise.all([loadStudents(), loadAllStudents()]);
           showMessage(t("msg.studentDeleted"));
         } catch (e: any) {
+          if (isStaleRevisionError(e)) {
+            showMessage(t("msg.recordConflict"), "error");
+            return;
+          }
           showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
         }
       }
@@ -820,6 +852,7 @@ export default function App() {
       if (editingCourse) {
         await updateCourse(
           editingCourse.id,
+          editingCourse.version,
           cfName,
           teacherId,
           cfType,
@@ -834,6 +867,10 @@ export default function App() {
       await Promise.all([loadCourses(), loadAllCourses()]);
       showMessage(editingCourse ? t("msg.courseUpdated") : t("msg.courseCreated"));
     } catch (e: any) {
+      if (isStaleRevisionError(e)) {
+        showMessage(t("msg.recordConflict"), "error");
+        return;
+      }
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   }
@@ -843,10 +880,18 @@ export default function App() {
       t("msg.courseDeleteConfirm"),
       async () => {
         try {
-          await deleteCourse(id);
+          const currentCourse = courseList.find((item) => item.id === id) ?? allCourses.find((item) => item.id === id);
+          if (!currentCourse) {
+            throw new Error("Course not found");
+          }
+          await deleteCourse(id, currentCourse.version);
           await Promise.all([loadCourses(), loadAllCourses()]);
           showMessage(t("msg.courseDeleted"));
         } catch (e: any) {
+          if (isStaleRevisionError(e)) {
+            showMessage(t("msg.recordConflict"), "error");
+            return;
+          }
           showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
         }
       }
@@ -983,6 +1028,7 @@ export default function App() {
       if (editingEnr) {
         result = await updateEnrollment(
           editingEnr.id,
+          editingEnr.version,
           efMode,
           efDiscount,
           efMode === "subscription" ? efSubscriptionDiscount : 0,
@@ -1023,6 +1069,10 @@ export default function App() {
       setEnrModalOpen(false);
       await loadEnrollments();
     } catch (e: any) {
+      if (isStaleRevisionError(e)) {
+        showMessage(t("msg.recordConflict"), "error");
+        return;
+      }
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   }
@@ -1331,15 +1381,19 @@ export default function App() {
     ]
   );
 
-  const onDeleteEnrollmentFromSheet = async (id: number) => {
+  const onDeleteEnrollmentFromSheet = async (id: number, version: number) => {
     showConfirm(
       t("msg.enrollmentDeleteConfirm"),
       async () => {
         try {
-          await deleteEnrollment(id);
+          await deleteEnrollment(id, version);
           await loadAttendance();
           showMessage(t("msg.enrollmentDeleted"));
         } catch (e: any) {
+          if (isStaleRevisionError(e)) {
+            showMessage(t("msg.recordConflict"), "error");
+            return;
+          }
           showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
         }
       }
@@ -1707,7 +1761,11 @@ export default function App() {
     try {
       closeInvoiceMenu();
       const scrollY = window.scrollY;
-      const res = await issueOne(id);
+      const currentInvoice = invItems.find((item) => item.id === id) ?? (selectedInv?.id === id ? selectedInv : undefined);
+      if (!currentInvoice) {
+        throw new Error("Invoice not found");
+      }
+      const res = await issueOne(id, currentInvoice.version);
       pendingInvoiceScrollRestoreRef.current = scrollY;
       await loadInvoices({ syncDrafts: false });
       if (invoiceDetailsOpen && selectedInv?.id === id) {
@@ -1715,6 +1773,10 @@ export default function App() {
       }
       showMessage(t("msg.invoiceIssued", { number: res.number }));
     } catch (e: any) {
+      if (isStaleRevisionError(e)) {
+        showMessage(t("msg.recordConflict"), "error");
+        return;
+      }
       showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
     }
   };
@@ -1725,13 +1787,21 @@ export default function App() {
       t("msg.invoiceReopenConfirm"),
       async () => {
         try {
-          await reopenToDraft(id);
+          const currentInvoice = invItems.find((item) => item.id === id) ?? (selectedInv?.id === id ? selectedInv : undefined);
+          if (!currentInvoice) {
+            throw new Error("Invoice not found");
+          }
+          await reopenToDraft(id, currentInvoice.version);
           await loadInvoices({ syncDrafts: false });
           if (invoiceDetailsOpen && selectedInv?.id === id) {
             await loadInvoiceDetails(id);
           }
           showMessage(t("msg.invoiceReopened"));
         } catch (e: any) {
+          if (isStaleRevisionError(e)) {
+            showMessage(t("msg.recordConflict"), "error");
+            return;
+          }
           showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
         }
       },
@@ -2488,7 +2558,9 @@ export default function App() {
                 onQueryChange={setAttQ}
                 onFilterChange={setAttFilter}
                 onOpenStudent={(studentId) => void openStudentCardById(studentId)}
-                onDeleteEnrollmentFromSheet={(enrollmentId) => void onDeleteEnrollmentFromSheet(enrollmentId)}
+                onDeleteEnrollmentFromSheet={(enrollmentId, enrollmentVersion) =>
+                  void onDeleteEnrollmentFromSheet(enrollmentId, enrollmentVersion)
+                }
                 t={t}
               />
             )}

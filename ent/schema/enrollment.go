@@ -9,6 +9,12 @@ import (
 
 type Enrollment struct{ ent.Schema }
 
+func (Enrollment) Mixin() []ent.Mixin {
+	return []ent.Mixin{
+		VersionMixin{},
+	}
+}
+
 func (Enrollment) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("student_id"),

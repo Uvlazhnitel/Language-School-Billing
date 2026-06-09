@@ -30,6 +30,27 @@ func (_u *InvoiceUpdate) Where(ps ...predicate.Invoice) *InvoiceUpdate {
 	return _u
 }
 
+// SetVersion sets the "version" field.
+func (_u *InvoiceUpdate) SetVersion(v int) *InvoiceUpdate {
+	_u.mutation.ResetVersion()
+	_u.mutation.SetVersion(v)
+	return _u
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillableVersion(v *int) *InvoiceUpdate {
+	if v != nil {
+		_u.SetVersion(*v)
+	}
+	return _u
+}
+
+// AddVersion adds value to the "version" field.
+func (_u *InvoiceUpdate) AddVersion(v int) *InvoiceUpdate {
+	_u.mutation.AddVersion(v)
+	return _u
+}
+
 // SetStudentID sets the "student_id" field.
 func (_u *InvoiceUpdate) SetStudentID(v int) *InvoiceUpdate {
 	_u.mutation.SetStudentID(v)
@@ -302,6 +323,12 @@ func (_u *InvoiceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
+	if value, ok := _u.mutation.Version(); ok {
+		_spec.SetField(invoice.FieldVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedVersion(); ok {
+		_spec.AddField(invoice.FieldVersion, field.TypeInt, value)
+	}
 	if value, ok := _u.mutation.PeriodYear(); ok {
 		_spec.SetField(invoice.FieldPeriodYear, field.TypeInt, value)
 	}
@@ -472,6 +499,27 @@ type InvoiceUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *InvoiceMutation
+}
+
+// SetVersion sets the "version" field.
+func (_u *InvoiceUpdateOne) SetVersion(v int) *InvoiceUpdateOne {
+	_u.mutation.ResetVersion()
+	_u.mutation.SetVersion(v)
+	return _u
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillableVersion(v *int) *InvoiceUpdateOne {
+	if v != nil {
+		_u.SetVersion(*v)
+	}
+	return _u
+}
+
+// AddVersion adds value to the "version" field.
+func (_u *InvoiceUpdateOne) AddVersion(v int) *InvoiceUpdateOne {
+	_u.mutation.AddVersion(v)
+	return _u
 }
 
 // SetStudentID sets the "student_id" field.
@@ -775,6 +823,12 @@ func (_u *InvoiceUpdateOne) sqlSave(ctx context.Context) (_node *Invoice, err er
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.Version(); ok {
+		_spec.SetField(invoice.FieldVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedVersion(); ok {
+		_spec.AddField(invoice.FieldVersion, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.PeriodYear(); ok {
 		_spec.SetField(invoice.FieldPeriodYear, field.TypeInt, value)

@@ -279,7 +279,11 @@ func (a *App) InvoiceDeleteDraft(id int) error {
 	if a.svc != nil {
 		return a.svc.InvoiceDeleteDraft(a.ctx, id)
 	}
-	return a.inv.DeleteDraft(a.ctx, id)
+	dto, err := a.inv.Get(a.ctx, id)
+	if err != nil {
+		return err
+	}
+	return a.inv.DeleteDraftWithVersion(a.ctx, id, dto.Version)
 }
 
 // InvoiceReopenDraft moves an issued invoice with no payments back to draft state.
@@ -288,7 +292,11 @@ func (a *App) InvoiceReopenDraft(id int) error {
 	if a.svc != nil {
 		return a.svc.InvoiceReopenDraft(a.ctx, id)
 	}
-	return a.inv.ReopenDraft(a.ctx, id, a.dirs.Invoices)
+	dto, err := a.inv.Get(a.ctx, id)
+	if err != nil {
+		return err
+	}
+	return a.inv.ReopenDraftWithVersion(a.ctx, id, dto.Version, a.dirs.Invoices)
 }
 
 // IssueResult contains the result of issuing a single invoice.
@@ -315,15 +323,12 @@ func (a *App) InvoiceIssue(id int) (IssueResult, error) {
 	if a.svc != nil {
 		return a.svc.InvoiceIssue(a.ctx, id)
 	}
-	num, err := a.inv.IssueOne(a.ctx, id)
-	if err != nil {
-		return IssueResult{}, err
-	}
 	dto, err := a.inv.Get(a.ctx, id)
 	if err != nil {
 		return IssueResult{}, err
 	}
-	if err := a.pay.ApplyCreditToOldestInvoices(a.ctx, dto.StudentID); err != nil {
+	num, _, err := a.inv.IssueAndApplyCreditWithVersion(a.ctx, id, dto.Version)
+	if err != nil {
 		return IssueResult{}, err
 	}
 	return IssueResult{Number: num}, nil

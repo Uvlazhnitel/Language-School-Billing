@@ -14,6 +14,8 @@ const (
 	Label = "course"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldVersion holds the string denoting the version field in the database.
+	FieldVersion = "version"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldTeacherName holds the string denoting the teacher_name field in the database.
@@ -66,6 +68,7 @@ const (
 // Columns holds all SQL columns for course fields.
 var Columns = []string{
 	FieldID,
+	FieldVersion,
 	FieldName,
 	FieldTeacherName,
 	FieldTeacherID,
@@ -88,6 +91,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultVersion holds the default value on creation for the "version" field.
+	DefaultVersion int
 	// DefaultTeacherName holds the default value on creation for the "teacher_name" field.
 	DefaultTeacherName string
 	// DefaultLegacyLessonPrice holds the default value on creation for the "legacy_lesson_price" field.
@@ -131,6 +136,11 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByVersion orders the results by the version field.
+func ByVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVersion, opts...).ToFunc()
 }
 
 // ByName orders the results by the name field.

@@ -14,6 +14,8 @@ const (
 	Label = "invoice"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldVersion holds the string denoting the version field in the database.
+	FieldVersion = "version"
 	// FieldStudentID holds the string denoting the student_id field in the database.
 	FieldStudentID = "student_id"
 	// FieldPeriodYear holds the string denoting the period_year field in the database.
@@ -62,6 +64,7 @@ const (
 // Columns holds all SQL columns for invoice fields.
 var Columns = []string{
 	FieldID,
+	FieldVersion,
 	FieldStudentID,
 	FieldPeriodYear,
 	FieldPeriodMonth,
@@ -82,6 +85,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultVersion holds the default value on creation for the "version" field.
+	DefaultVersion int
 	// DefaultLegacyTotalAmount holds the default value on creation for the "legacy_total_amount" field.
 	DefaultLegacyTotalAmount float64
 	// DefaultTotalAmountCents holds the default value on creation for the "total_amount_cents" field.
@@ -122,6 +127,11 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByVersion orders the results by the version field.
+func ByVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVersion, opts...).ToFunc()
 }
 
 // ByStudentID orders the results by the student_id field.

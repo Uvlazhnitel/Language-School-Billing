@@ -30,6 +30,27 @@ func (_u *EnrollmentUpdate) Where(ps ...predicate.Enrollment) *EnrollmentUpdate 
 	return _u
 }
 
+// SetVersion sets the "version" field.
+func (_u *EnrollmentUpdate) SetVersion(v int) *EnrollmentUpdate {
+	_u.mutation.ResetVersion()
+	_u.mutation.SetVersion(v)
+	return _u
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_u *EnrollmentUpdate) SetNillableVersion(v *int) *EnrollmentUpdate {
+	if v != nil {
+		_u.SetVersion(*v)
+	}
+	return _u
+}
+
+// AddVersion adds value to the "version" field.
+func (_u *EnrollmentUpdate) AddVersion(v int) *EnrollmentUpdate {
+	_u.mutation.AddVersion(v)
+	return _u
+}
+
 // SetStudentID sets the "student_id" field.
 func (_u *EnrollmentUpdate) SetStudentID(v int) *EnrollmentUpdate {
 	_u.mutation.SetStudentID(v)
@@ -246,6 +267,12 @@ func (_u *EnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 			}
 		}
 	}
+	if value, ok := _u.mutation.Version(); ok {
+		_spec.SetField(enrollment.FieldVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedVersion(); ok {
+		_spec.AddField(enrollment.FieldVersion, field.TypeInt, value)
+	}
 	if value, ok := _u.mutation.BillingMode(); ok {
 		_spec.SetField(enrollment.FieldBillingMode, field.TypeEnum, value)
 	}
@@ -385,6 +412,27 @@ type EnrollmentUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *EnrollmentMutation
+}
+
+// SetVersion sets the "version" field.
+func (_u *EnrollmentUpdateOne) SetVersion(v int) *EnrollmentUpdateOne {
+	_u.mutation.ResetVersion()
+	_u.mutation.SetVersion(v)
+	return _u
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_u *EnrollmentUpdateOne) SetNillableVersion(v *int) *EnrollmentUpdateOne {
+	if v != nil {
+		_u.SetVersion(*v)
+	}
+	return _u
+}
+
+// AddVersion adds value to the "version" field.
+func (_u *EnrollmentUpdateOne) AddVersion(v int) *EnrollmentUpdateOne {
+	_u.mutation.AddVersion(v)
+	return _u
 }
 
 // SetStudentID sets the "student_id" field.
@@ -632,6 +680,12 @@ func (_u *EnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Enrollment, 
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.Version(); ok {
+		_spec.SetField(enrollment.FieldVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedVersion(); ok {
+		_spec.AddField(enrollment.FieldVersion, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.BillingMode(); ok {
 		_spec.SetField(enrollment.FieldBillingMode, field.TypeEnum, value)

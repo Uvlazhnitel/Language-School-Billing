@@ -22,6 +22,20 @@ type CourseCreate struct {
 	hooks    []Hook
 }
 
+// SetVersion sets the "version" field.
+func (_c *CourseCreate) SetVersion(v int) *CourseCreate {
+	_c.mutation.SetVersion(v)
+	return _c
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_c *CourseCreate) SetNillableVersion(v *int) *CourseCreate {
+	if v != nil {
+		_c.SetVersion(*v)
+	}
+	return _c
+}
+
 // SetName sets the "name" field.
 func (_c *CourseCreate) SetName(v string) *CourseCreate {
 	_c.mutation.SetName(v)
@@ -202,6 +216,10 @@ func (_c *CourseCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *CourseCreate) defaults() {
+	if _, ok := _c.mutation.Version(); !ok {
+		v := course.DefaultVersion
+		_c.mutation.SetVersion(v)
+	}
 	if _, ok := _c.mutation.TeacherName(); !ok {
 		v := course.DefaultTeacherName
 		_c.mutation.SetTeacherName(v)
@@ -230,6 +248,9 @@ func (_c *CourseCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *CourseCreate) check() error {
+	if _, ok := _c.mutation.Version(); !ok {
+		return &ValidationError{Name: "version", err: errors.New(`ent: missing required field "Course.version"`)}
+	}
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Course.name"`)}
 	}
@@ -285,6 +306,10 @@ func (_c *CourseCreate) createSpec() (*Course, *sqlgraph.CreateSpec) {
 		_node = &Course{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(course.Table, sqlgraph.NewFieldSpec(course.FieldID, field.TypeInt))
 	)
+	if value, ok := _c.mutation.Version(); ok {
+		_spec.SetField(course.FieldVersion, field.TypeInt, value)
+		_node.Version = value
+	}
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(course.FieldName, field.TypeString, value)
 		_node.Name = value

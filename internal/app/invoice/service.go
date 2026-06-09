@@ -19,7 +19,9 @@ import (
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"langschool/internal/app"
+	paysvc "langschool/internal/app/payment"
 	"langschool/internal/app/recipient"
+	"langschool/internal/apperrors"
 	"langschool/internal/money"
 	pdfgen "langschool/internal/pdf"
 )
@@ -49,6 +51,7 @@ func New(db *ent.Client) *Service { return &Service{db: db} }
 // ListItem represents a summary of an invoice for list views.
 type ListItem struct {
 	ID          int     `json:"id"`               // Invoice ID
+	Version     int     `json:"version"`          // Optimistic-lock revision
 	StudentID   int     `json:"studentId"`        // Student ID
 	StudentName string  `json:"studentName"`      // Student's full name
 	Year        int     `json:"year"`             // Invoice period year
@@ -71,6 +74,7 @@ type LineDTO struct {
 // InvoiceDTO represents a complete invoice with all line items.
 type InvoiceDTO struct {
 	ID                  int       `json:"id"`                  // Invoice ID
+	Version             int       `json:"version"`             // Optimistic-lock revision
 	StudentID           int       `json:"studentId"`           // Student ID
 	StudentName         string    `json:"studentName"`         // Student's full name
 	RecipientName       string    `json:"recipientName"`       // Visible invoice recipient
@@ -510,6 +514,7 @@ func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 	}
 	dto := &InvoiceDTO{
 		ID:                  iv.ID,
+		Version:             iv.Version,
 		StudentID:           iv.StudentID,
 		StudentName:         getStudentName(iv),
 		RecipientName:       recipientInfo.RecipientName,
@@ -543,13 +548,45 @@ func (s *Service) DeleteDraft(ctx context.Context, id int) error {
 	if err != nil {
 		return err
 	}
+	return s.DeleteDraftWithVersion(ctx, id, iv.Version)
+}
+
+func (s *Service) DeleteDraftWithVersion(ctx context.Context, id, version int) error {
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	iv, err := tx.Invoice.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if iv.Version != version {
+		return apperrors.StaleRevision()
+	}
 	if iv.Status != StatusDraft {
 		return fmt.Errorf("можно удалять только счета в статусе черновика")
 	}
-	if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(iv.ID)).Exec(ctx); err != nil {
+	if _, err := tx.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(iv.ID)).Exec(ctx); err != nil {
 		return err
 	}
-	return s.db.Invoice.DeleteOneID(iv.ID).Exec(ctx)
+	if err := tx.Invoice.DeleteOneID(iv.ID).Where(invoice.VersionEQ(version)).Exec(ctx); err != nil {
+		if ent.IsNotFound(err) {
+			return apperrors.StaleRevision()
+		}
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+	return nil
 }
 
 // ReopenDraft moves an issued invoice with no payments back to draft state.
@@ -560,11 +597,33 @@ func (s *Service) ReopenDraft(ctx context.Context, id int, outBaseDir string) er
 	if err != nil {
 		return err
 	}
+	return s.ReopenDraftWithVersion(ctx, id, iv.Version, outBaseDir)
+}
+
+func (s *Service) ReopenDraftWithVersion(ctx context.Context, id, version int, outBaseDir string) error {
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	iv, err := tx.Invoice.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if iv.Version != version {
+		return apperrors.StaleRevision()
+	}
 	if iv.Status != StatusIssued {
 		return fmt.Errorf("вернуть в черновик можно только выставленные счета")
 	}
 
-	paymentCount, err := s.db.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).Count(ctx)
+	paymentCount, err := tx.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).Count(ctx)
 	if err != nil {
 		return err
 	}
@@ -576,17 +635,26 @@ func (s *Service) ReopenDraft(ctx context.Context, id int, outBaseDir string) er
 	if iv.Number != nil {
 		oldNumber = *iv.Number
 	}
-	recipientInfo, err := recipient.ResolveInvoiceRecipient(ctx, s.db, iv.StudentID)
+	recipientInfo, err := recipient.ResolveInvoiceRecipient(ctx, tx.Client(), iv.StudentID)
 	if err != nil {
 		return err
 	}
 
-	if _, err := s.db.Invoice.UpdateOneID(iv.ID).
+	if _, err := tx.Invoice.UpdateOneID(iv.ID).
+		Where(invoice.VersionEQ(version)).
+		SetVersion(version + 1).
 		SetStatus(StatusDraft).
 		ClearNumber().
 		Save(ctx); err != nil {
+		if ent.IsNotFound(err) {
+			return apperrors.StaleRevision()
+		}
 		return err
 	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
 
 	if oldNumber != "" && outBaseDir != "" {
 		paths := []string{
@@ -616,9 +684,21 @@ func FormatNumber(prefix string, y, m, seq int) string {
 // The invoice number is generated using the settings prefix and sequence number,
 // which is then incremented. Returns the assigned invoice number.
 func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
-	tx, err := s.db.Tx(ctx)
+	iv, err := s.db.Invoice.Get(ctx, id)
 	if err != nil {
 		return "", err
+	}
+	number, _, err := s.issueOneWithVersion(ctx, id, iv.Version)
+	return number, err
+}
+
+func (s *Service) issueOneWithVersion(ctx context.Context, id, version int) (string, int, error) {
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		if err == ent.ErrTxStarted {
+			return s.issueOneInStore(ctx, id, version)
+		}
+		return "", 0, err
 	}
 
 	// Proper defer pattern: only rollback if commit hasn't been called
@@ -629,43 +709,61 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 		}
 	}()
 
-	iv, err := tx.Invoice.Get(ctx, id)
+	number, studentID, err := (&Service{db: tx.Client()}).issueOneInStore(ctx, id, version)
 	if err != nil {
-		return "", err
+		return "", 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return "", 0, err
+	}
+	committed = true
+	return number, studentID, nil
+}
+
+func (s *Service) issueOneInStore(ctx context.Context, id, version int) (string, int, error) {
+	iv, err := s.db.Invoice.Get(ctx, id)
+	if err != nil {
+		return "", 0, err
+	}
+	if iv.Version != version {
+		return "", 0, apperrors.StaleRevision()
 	}
 	if iv.Status != StatusDraft {
 		if iv.Number != nil && *iv.Number != "" {
-			return *iv.Number, nil
+			return *iv.Number, iv.StudentID, nil
 		}
-		return "", fmt.Errorf("счёт %d не находится в статусе черновика", id)
+		return "", 0, fmt.Errorf("счёт %d не находится в статусе черновика", id)
+	}
+	if iv.TotalAmountCents <= 0 {
+		return "", 0, fmt.Errorf("нельзя выставить пустой счёт или счёт с нулевой суммой")
 	}
 
-	prefix, seq, hasSettings, err := (&Service{db: tx.Client()}).getSettingsOrDefaults(ctx)
+	prefix, seq, hasSettings, err := s.getSettingsOrDefaults(ctx)
 	if err != nil {
-		return "", err
+		return "", 0, err
 	}
 	number := FormatNumber(prefix, iv.PeriodYear, iv.PeriodMonth, seq)
 
 	// Increment the counter
 	if hasSettings {
-		if err := tx.Settings.Update().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).SetNextSeq(seq + 1).Exec(ctx); err != nil {
-			return "", err
+		if err := s.db.Settings.Update().Where(settings.SingletonIDEQ(app.SettingsSingletonID)).SetNextSeq(seq + 1).Exec(ctx); err != nil {
+			return "", 0, err
 		}
 	}
 
 	// Save the number and status
-	if _, err := tx.Invoice.UpdateOneID(iv.ID).
+	if _, err := s.db.Invoice.UpdateOneID(iv.ID).
+		Where(invoice.VersionEQ(version)).
+		SetVersion(version + 1).
 		SetNumber(number).
 		SetStatus(StatusIssued).
 		Save(ctx); err != nil {
-		return "", err
+		if ent.IsNotFound(err) {
+			return "", 0, apperrors.StaleRevision()
+		}
+		return "", 0, err
 	}
-
-	if err := tx.Commit(); err != nil {
-		return "", err
-	}
-	committed = true
-	return number, nil
+	return number, iv.StudentID, nil
 }
 
 // Issue issues a single draft invoice and generates its PDF.
@@ -673,6 +771,32 @@ func (s *Service) issueOne(ctx context.Context, id int) (string, error) {
 // Returns the invoice number and the path to the generated PDF file.
 func (s *Service) IssueOne(ctx context.Context, id int) (string, error) {
 	return s.issueOne(ctx, id)
+}
+
+func (s *Service) IssueAndApplyCreditWithVersion(ctx context.Context, id, version int) (string, int, error) {
+	tx, err := s.db.Tx(ctx)
+	if err != nil {
+		return "", 0, err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	number, studentID, err := (&Service{db: tx.Client()}).issueOneWithVersion(ctx, id, version)
+	if err != nil {
+		return "", 0, err
+	}
+	if err := paysvc.New(tx.Client()).ApplyCreditToOldestInvoices(ctx, studentID); err != nil {
+		return "", 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return "", 0, err
+	}
+	committed = true
+	return number, studentID, nil
 }
 
 // Issue issues a single invoice and generates its PDF.
@@ -834,6 +958,7 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 		cnt := countMap[iv.ID]
 		out = append(out, ListItem{
 			ID:          iv.ID,
+			Version:     iv.Version,
 			StudentID:   iv.StudentID,
 			StudentName: getStudentName(iv),
 			Year:        iv.PeriodYear,

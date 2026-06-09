@@ -12,6 +12,8 @@ const (
 	Label = "student"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
+	// FieldVersion holds the string denoting the version field in the database.
+	FieldVersion = "version"
 	// FieldFullName holds the string denoting the full_name field in the database.
 	FieldFullName = "full_name"
 	// FieldPersonalCode holds the string denoting the personal_code field in the database.
@@ -64,6 +66,7 @@ const (
 // Columns holds all SQL columns for student fields.
 var Columns = []string{
 	FieldID,
+	FieldVersion,
 	FieldFullName,
 	FieldPersonalCode,
 	FieldPhone,
@@ -86,6 +89,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
+	// DefaultVersion holds the default value on creation for the "version" field.
+	DefaultVersion int
 	// DefaultPersonalCode holds the default value on creation for the "personal_code" field.
 	DefaultPersonalCode string
 	// DefaultPhone holds the default value on creation for the "phone" field.
@@ -110,6 +115,11 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
+}
+
+// ByVersion orders the results by the version field.
+func ByVersion(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldVersion, opts...).ToFunc()
 }
 
 // ByFullName orders the results by the full_name field.

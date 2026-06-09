@@ -22,6 +22,20 @@ type StudentCreate struct {
 	hooks    []Hook
 }
 
+// SetVersion sets the "version" field.
+func (_c *StudentCreate) SetVersion(v int) *StudentCreate {
+	_c.mutation.SetVersion(v)
+	return _c
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_c *StudentCreate) SetNillableVersion(v *int) *StudentCreate {
+	if v != nil {
+		_c.SetVersion(*v)
+	}
+	return _c
+}
+
 // SetFullName sets the "full_name" field.
 func (_c *StudentCreate) SetFullName(v string) *StudentCreate {
 	_c.mutation.SetFullName(v)
@@ -220,6 +234,10 @@ func (_c *StudentCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *StudentCreate) defaults() {
+	if _, ok := _c.mutation.Version(); !ok {
+		v := student.DefaultVersion
+		_c.mutation.SetVersion(v)
+	}
 	if _, ok := _c.mutation.PersonalCode(); !ok {
 		v := student.DefaultPersonalCode
 		_c.mutation.SetPersonalCode(v)
@@ -256,6 +274,9 @@ func (_c *StudentCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *StudentCreate) check() error {
+	if _, ok := _c.mutation.Version(); !ok {
+		return &ValidationError{Name: "version", err: errors.New(`ent: missing required field "Student.version"`)}
+	}
 	if _, ok := _c.mutation.FullName(); !ok {
 		return &ValidationError{Name: "full_name", err: errors.New(`ent: missing required field "Student.full_name"`)}
 	}
@@ -309,6 +330,10 @@ func (_c *StudentCreate) createSpec() (*Student, *sqlgraph.CreateSpec) {
 		_node = &Student{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(student.Table, sqlgraph.NewFieldSpec(student.FieldID, field.TypeInt))
 	)
+	if value, ok := _c.mutation.Version(); ok {
+		_spec.SetField(student.FieldVersion, field.TypeInt, value)
+		_node.Version = value
+	}
 	if value, ok := _c.mutation.FullName(); ok {
 		_spec.SetField(student.FieldFullName, field.TypeString, value)
 		_node.FullName = value

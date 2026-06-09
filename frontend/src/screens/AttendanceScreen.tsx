@@ -50,7 +50,7 @@ type AttendanceScreenProps = {
   onQueryChange: (value: string) => void;
   onFilterChange: (value: AttendanceFilter) => void;
   onOpenStudent: (studentId: number) => void | Promise<void>;
-  onDeleteEnrollmentFromSheet: (enrollmentId: number) => void | Promise<void>;
+  onDeleteEnrollmentFromSheet: (enrollmentId: number, enrollmentVersion: number) => void | Promise<void>;
   t: TranslateFn;
 };
 
@@ -388,7 +388,7 @@ export function AttendanceScreen({
                     </button>
                   )}
                   {row.canDelete ? (
-                    <button onClick={() => void onDeleteEnrollmentFromSheet(row.enrollmentId)}>
+                    <button onClick={() => void onDeleteEnrollmentFromSheet(row.enrollmentId, row.enrollmentVersion)}>
                       {t("msg.deleteEnrollment")}
                     </button>
                   ) : (

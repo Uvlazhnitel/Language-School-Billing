@@ -27,6 +27,7 @@ export async function createStudent(
 
 export async function updateStudent(
   id: number,
+  version: number,
   fullName: string,
   personalCode: string,
   phone: string,
@@ -37,15 +38,26 @@ export async function updateStudent(
   payerRole: string
 ): Promise<StudentDTO> {
   const transport = await getTransport();
-  return transport.updateStudent(id, fullName, personalCode, phone, email, note, isMinor, payerName, payerRole);
+  return transport.updateStudent(
+    id,
+    version,
+    fullName,
+    personalCode,
+    phone,
+    email,
+    note,
+    isMinor,
+    payerName,
+    payerRole
+  );
 }
 
-export async function setStudentActive(id: number, active: boolean): Promise<void> {
+export async function setStudentActive(id: number, version: number, active: boolean): Promise<void> {
   const transport = await getTransport();
-  return transport.setStudentActive(id, active);
+  return transport.setStudentActive(id, version, active);
 }
 
-export async function deleteStudent(id: number): Promise<void> {
+export async function deleteStudent(id: number, version: number): Promise<void> {
   const transport = await getTransport();
-  return transport.deleteStudent(id);
+  return transport.deleteStudent(id, version);
 }

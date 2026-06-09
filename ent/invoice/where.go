@@ -54,6 +54,11 @@ func IDLTE(id int) predicate.Invoice {
 	return predicate.Invoice(sql.FieldLTE(FieldID, id))
 }
 
+// Version applies equality check predicate on the "version" field. It's identical to VersionEQ.
+func Version(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldVersion, v))
+}
+
 // StudentID applies equality check predicate on the "student_id" field. It's identical to StudentIDEQ.
 func StudentID(v int) predicate.Invoice {
 	return predicate.Invoice(sql.FieldEQ(FieldStudentID, v))
@@ -82,6 +87,46 @@ func TotalAmountCents(v int64) predicate.Invoice {
 // Number applies equality check predicate on the "number" field. It's identical to NumberEQ.
 func Number(v string) predicate.Invoice {
 	return predicate.Invoice(sql.FieldEQ(FieldNumber, v))
+}
+
+// VersionEQ applies the EQ predicate on the "version" field.
+func VersionEQ(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldVersion, v))
+}
+
+// VersionNEQ applies the NEQ predicate on the "version" field.
+func VersionNEQ(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNEQ(FieldVersion, v))
+}
+
+// VersionIn applies the In predicate on the "version" field.
+func VersionIn(vs ...int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldIn(FieldVersion, vs...))
+}
+
+// VersionNotIn applies the NotIn predicate on the "version" field.
+func VersionNotIn(vs ...int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotIn(FieldVersion, vs...))
+}
+
+// VersionGT applies the GT predicate on the "version" field.
+func VersionGT(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGT(FieldVersion, v))
+}
+
+// VersionGTE applies the GTE predicate on the "version" field.
+func VersionGTE(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGTE(FieldVersion, v))
+}
+
+// VersionLT applies the LT predicate on the "version" field.
+func VersionLT(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLT(FieldVersion, v))
+}
+
+// VersionLTE applies the LTE predicate on the "version" field.
+func VersionLTE(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLTE(FieldVersion, v))
 }
 
 // StudentIDEQ applies the EQ predicate on the "student_id" field.

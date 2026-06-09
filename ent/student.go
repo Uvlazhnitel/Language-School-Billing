@@ -16,6 +16,8 @@ type Student struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// Version holds the value of the "version" field.
+	Version int `json:"version,omitempty"`
 	// FullName holds the value of the "full_name" field.
 	FullName string `json:"full_name,omitempty"`
 	// PersonalCode holds the value of the "personal_code" field.
@@ -87,7 +89,7 @@ func (*Student) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case student.FieldIsMinor, student.FieldIsActive:
 			values[i] = new(sql.NullBool)
-		case student.FieldID:
+		case student.FieldID, student.FieldVersion:
 			values[i] = new(sql.NullInt64)
 		case student.FieldFullName, student.FieldPersonalCode, student.FieldPhone, student.FieldEmail, student.FieldNote, student.FieldPayerName, student.FieldPayerRole:
 			values[i] = new(sql.NullString)
@@ -112,6 +114,12 @@ func (_m *Student) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int(value.Int64)
+		case student.FieldVersion:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field version", values[i])
+			} else if value.Valid {
+				_m.Version = int(value.Int64)
+			}
 		case student.FieldFullName:
 			if value, ok := values[i].(*sql.NullString); !ok {
 				return fmt.Errorf("unexpected type %T for field full_name", values[i])
@@ -217,6 +225,9 @@ func (_m *Student) String() string {
 	var builder strings.Builder
 	builder.WriteString("Student(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString("version=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Version))
+	builder.WriteString(", ")
 	builder.WriteString("full_name=")
 	builder.WriteString(_m.FullName)
 	builder.WriteString(", ")

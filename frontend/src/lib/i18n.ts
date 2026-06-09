@@ -297,6 +297,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.paymentStudentMissing": "No student selected for payment",
     "msg.paymentAmountInvalid": "Enter a valid payment amount",
     "msg.paymentRecorded": "Payment recorded",
+    "msg.recordConflict": "This record was changed by another user. Refresh the data and try again.",
     "msg.invoiceIssued": "Invoice issued: #{number}",
     "msg.invoiceReopened": "Invoice returned to draft",
     "msg.invoiceReopenConfirm":
@@ -744,6 +745,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.paymentStudentMissing": "Для оплаты не выбран ученик",
     "msg.paymentAmountInvalid": "Введите корректную сумму",
     "msg.paymentRecorded": "Оплата записана",
+    "msg.recordConflict": "Эту запись уже изменил другой сотрудник. Обновите данные и попробуйте ещё раз.",
     "msg.invoiceIssued": "Счёт выставлен: #{number}",
     "msg.invoiceReopened": "Счёт возвращён в черновик",
     "msg.invoiceReopenConfirm":

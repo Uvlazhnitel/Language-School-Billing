@@ -204,7 +204,7 @@ export const wailsTransport: AppTransport = {
       payerRole
     )) as StudentDTO;
   },
-  async updateStudent(id, fullName, personalCode, phone, email, note, isMinor, payerName, payerRole) {
+  async updateStudent(id, _version, fullName, personalCode, phone, email, note, isMinor, payerName, payerRole) {
     return (await StudentUpdate(
       id,
       fullName,
@@ -217,8 +217,12 @@ export const wailsTransport: AppTransport = {
       payerRole
     )) as StudentDTO;
   },
-  setStudentActive: StudentSetActive,
-  deleteStudent: StudentDelete,
+  async setStudentActive(id, _version, active) {
+    return StudentSetActive(id, active);
+  },
+  async deleteStudent(id, _version) {
+    return StudentDelete(id);
+  },
 
   async listTeachers(q) {
     return (await TeacherList(q)) as TeacherDTO[];
@@ -243,7 +247,7 @@ export const wailsTransport: AppTransport = {
       subscriptionPrice
     )) as CourseDTO;
   },
-  async updateCourse(id, name, teacherId, courseType, lessonPrice, subscriptionPrice) {
+  async updateCourse(id, _version, name, teacherId, courseType, lessonPrice, subscriptionPrice) {
     const teacher = typeof teacherId === "number" && teacherId > 0 ? teacherId : undefined;
     return (await CourseUpdate(
       id,
@@ -254,7 +258,9 @@ export const wailsTransport: AppTransport = {
       subscriptionPrice
     )) as CourseDTO;
   },
-  deleteCourse: CourseDelete,
+  async deleteCourse(id, _version) {
+    return CourseDelete(id);
+  },
 
   async listEnrollments(studentId, courseId) {
     const sid = typeof studentId === "number" && studentId > 0 ? studentId : null;
@@ -271,7 +277,7 @@ export const wailsTransport: AppTransport = {
       note
     )) as any;
   },
-  async updateEnrollment(enrollmentId, billingMode, discountPct, subscriptionDiscountPct, note) {
+  async updateEnrollment(enrollmentId, _version, billingMode, discountPct, subscriptionDiscountPct, note) {
     return (await EnrollmentUpdate(
       enrollmentId,
       billingMode,
@@ -280,7 +286,9 @@ export const wailsTransport: AppTransport = {
       note
     )) as any;
   },
-  deleteEnrollment: EnrollmentDelete,
+  async deleteEnrollment(enrollmentId, _version) {
+    return EnrollmentDelete(enrollmentId);
+  },
 
   async fetchAttendanceRows(year, month, courseId) {
     const cid = typeof courseId === "number" && courseId > 0 ? courseId : undefined;
@@ -308,9 +316,13 @@ export const wailsTransport: AppTransport = {
   async generateDrafts(year, month) {
     return (await InvoiceGenerateDrafts(year, month)) as GenerateResult;
   },
-  deleteDraft: InvoiceDeleteDraft,
-  reopenToDraft: InvoiceReopenDraft,
-  async issueInvoice(id) {
+  async deleteDraft(id, _version) {
+    return InvoiceDeleteDraft(id);
+  },
+  async reopenToDraft(id, _version) {
+    return InvoiceReopenDraft(id);
+  },
+  async issueInvoice(id, _version) {
     return (await InvoiceIssue(id)) as IssueResult;
   },
   async rebuildStudentDraft(studentId, year, month) {

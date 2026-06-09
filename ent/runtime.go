@@ -48,8 +48,15 @@ func init() {
 	auditlogDescCreatedAt := auditlogFields[10].Descriptor()
 	// auditlog.DefaultCreatedAt holds the default value on creation for the created_at field.
 	auditlog.DefaultCreatedAt = auditlogDescCreatedAt.Default.(func() time.Time)
+	courseMixin := schema.Course{}.Mixin()
+	courseMixinFields0 := courseMixin[0].Fields()
+	_ = courseMixinFields0
 	courseFields := schema.Course{}.Fields()
 	_ = courseFields
+	// courseDescVersion is the schema descriptor for version field.
+	courseDescVersion := courseMixinFields0[0].Descriptor()
+	// course.DefaultVersion holds the default value on creation for the version field.
+	course.DefaultVersion = courseDescVersion.Default.(int)
 	// courseDescTeacherName is the schema descriptor for teacher_name field.
 	courseDescTeacherName := courseFields[1].Descriptor()
 	// course.DefaultTeacherName holds the default value on creation for the teacher_name field.
@@ -80,8 +87,15 @@ func init() {
 	coursemonthstatDescSubscriptionLessonsHeld := coursemonthstatFields[3].Descriptor()
 	// coursemonthstat.DefaultSubscriptionLessonsHeld holds the default value on creation for the subscription_lessons_held field.
 	coursemonthstat.DefaultSubscriptionLessonsHeld = coursemonthstatDescSubscriptionLessonsHeld.Default.(float64)
+	enrollmentMixin := schema.Enrollment{}.Mixin()
+	enrollmentMixinFields0 := enrollmentMixin[0].Fields()
+	_ = enrollmentMixinFields0
 	enrollmentFields := schema.Enrollment{}.Fields()
 	_ = enrollmentFields
+	// enrollmentDescVersion is the schema descriptor for version field.
+	enrollmentDescVersion := enrollmentMixinFields0[0].Descriptor()
+	// enrollment.DefaultVersion holds the default value on creation for the version field.
+	enrollment.DefaultVersion = enrollmentDescVersion.Default.(int)
 	// enrollmentDescDiscountPct is the schema descriptor for discount_pct field.
 	enrollmentDescDiscountPct := enrollmentFields[3].Descriptor()
 	// enrollment.DefaultDiscountPct holds the default value on creation for the discount_pct field.
@@ -94,8 +108,15 @@ func init() {
 	enrollmentDescNote := enrollmentFields[5].Descriptor()
 	// enrollment.DefaultNote holds the default value on creation for the note field.
 	enrollment.DefaultNote = enrollmentDescNote.Default.(string)
+	invoiceMixin := schema.Invoice{}.Mixin()
+	invoiceMixinFields0 := invoiceMixin[0].Fields()
+	_ = invoiceMixinFields0
 	invoiceFields := schema.Invoice{}.Fields()
 	_ = invoiceFields
+	// invoiceDescVersion is the schema descriptor for version field.
+	invoiceDescVersion := invoiceMixinFields0[0].Descriptor()
+	// invoice.DefaultVersion holds the default value on creation for the version field.
+	invoice.DefaultVersion = invoiceDescVersion.Default.(int)
 	// invoiceDescLegacyTotalAmount is the schema descriptor for legacy_total_amount field.
 	invoiceDescLegacyTotalAmount := invoiceFields[3].Descriptor()
 	// invoice.DefaultLegacyTotalAmount holds the default value on creation for the legacy_total_amount field.
@@ -178,8 +199,15 @@ func init() {
 	settingsDescMoneyCentsMigrated := settingsFields[8].Descriptor()
 	// settings.DefaultMoneyCentsMigrated holds the default value on creation for the money_cents_migrated field.
 	settings.DefaultMoneyCentsMigrated = settingsDescMoneyCentsMigrated.Default.(bool)
+	studentMixin := schema.Student{}.Mixin()
+	studentMixinFields0 := studentMixin[0].Fields()
+	_ = studentMixinFields0
 	studentFields := schema.Student{}.Fields()
 	_ = studentFields
+	// studentDescVersion is the schema descriptor for version field.
+	studentDescVersion := studentMixinFields0[0].Descriptor()
+	// student.DefaultVersion holds the default value on creation for the version field.
+	student.DefaultVersion = studentDescVersion.Default.(int)
 	// studentDescPersonalCode is the schema descriptor for personal_code field.
 	studentDescPersonalCode := studentFields[1].Descriptor()
 	// student.DefaultPersonalCode holds the default value on creation for the personal_code field.

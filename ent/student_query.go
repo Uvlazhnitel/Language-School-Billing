@@ -371,12 +371,12 @@ func (_q *StudentQuery) WithPayments(opts ...func(*PaymentQuery)) *StudentQuery 
 // Example:
 //
 //	var v []struct {
-//		FullName string `json:"full_name,omitempty"`
+//		Version int `json:"version,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Student.Query().
-//		GroupBy(student.FieldFullName).
+//		GroupBy(student.FieldVersion).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *StudentQuery) GroupBy(field string, fields ...string) *StudentGroupBy {
@@ -394,11 +394,11 @@ func (_q *StudentQuery) GroupBy(field string, fields ...string) *StudentGroupBy 
 // Example:
 //
 //	var v []struct {
-//		FullName string `json:"full_name,omitempty"`
+//		Version int `json:"version,omitempty"`
 //	}
 //
 //	client.Student.Query().
-//		Select(student.FieldFullName).
+//		Select(student.FieldVersion).
 //		Scan(ctx, &v)
 func (_q *StudentQuery) Select(fields ...string) *StudentSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

@@ -16,6 +16,20 @@ export class AuthorizationError extends Error {
   }
 }
 
+export class ConflictError extends Error {
+  status: number;
+
+  constructor(message = "Conflict", status = 409) {
+    super(message);
+    this.name = "ConflictError";
+    this.status = status;
+  }
+}
+
+export function isConflictError(error: unknown): error is ConflictError {
+  return error instanceof ConflictError || (error instanceof Error && error.name === "ConflictError");
+}
+
 declare global {
   interface Window {
     go?: {

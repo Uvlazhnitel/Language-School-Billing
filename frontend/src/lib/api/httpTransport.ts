@@ -23,7 +23,7 @@ import type {
   SessionInfo,
   UserDTO,
 } from "./types";
-import { AUTH_REQUIRED_EVENT, AuthRequiredError, AuthorizationError } from "./shared";
+import { AUTH_REQUIRED_EVENT, AuthRequiredError, AuthorizationError, ConflictError } from "./shared";
 
 type RequestOptions = RequestInit & {
   suppressAuthEvent?: boolean;
@@ -88,6 +88,9 @@ async function requestAbsolute<T>(url: string, init?: RequestOptions): Promise<T
       if (body.error) message = body.error;
     } catch (error) {
       void error;
+    }
+    if (response.status === 409) {
+      throw new ConflictError(message, response.status);
     }
     throw new Error(message);
   }
@@ -207,17 +210,17 @@ export const httpTransport: AppTransport = {
       ...body({ fullName, personalCode, phone, email, note, isMinor, payerName, payerRole }),
     });
   },
-  async updateStudent(id, fullName, personalCode, phone, email, note, isMinor, payerName, payerRole) {
+  async updateStudent(id, version, fullName, personalCode, phone, email, note, isMinor, payerName, payerRole) {
     return request<StudentDTO>(`/students/${id}`, {
       method: "PUT",
-      ...body({ fullName, personalCode, phone, email, note, isMinor, payerName, payerRole }),
+      ...body({ version, fullName, personalCode, phone, email, note, isMinor, payerName, payerRole }),
     });
   },
-  async setStudentActive(id, active) {
-    await requestVoid(`/students/${id}/active`, { method: "POST", ...body({ active }) });
+  async setStudentActive(id, version, active) {
+    await requestVoid(`/students/${id}/active`, { method: "POST", ...body({ version, active }) });
   },
-  async deleteStudent(id) {
-    await requestVoid(`/students/${id}`, { method: "DELETE" });
+  async deleteStudent(id, version) {
+    await requestVoid(`/students/${id}?version=${encodeURIComponent(String(version))}`, { method: "DELETE" });
   },
 
   async listTeachers(q) {
@@ -239,14 +242,14 @@ export const httpTransport: AppTransport = {
       ...body({ name, teacherId, type: courseType, lessonPrice, subscriptionPrice }),
     });
   },
-  async updateCourse(id, name, teacherId, courseType, lessonPrice, subscriptionPrice) {
+  async updateCourse(id, version, name, teacherId, courseType, lessonPrice, subscriptionPrice) {
     return request<CourseDTO>(`/courses/${id}`, {
       method: "PUT",
-      ...body({ name, teacherId, type: courseType, lessonPrice, subscriptionPrice }),
+      ...body({ version, name, teacherId, type: courseType, lessonPrice, subscriptionPrice }),
     });
   },
-  async deleteCourse(id) {
-    await requestVoid(`/courses/${id}`, { method: "DELETE" });
+  async deleteCourse(id, version) {
+    await requestVoid(`/courses/${id}?version=${encodeURIComponent(String(version))}`, { method: "DELETE" });
   },
 
   async listEnrollments(studentId, courseId) {
@@ -269,14 +272,14 @@ export const httpTransport: AppTransport = {
       }),
     });
   },
-  async updateEnrollment(enrollmentId, billingMode, discountPct, subscriptionDiscountPct, note) {
+  async updateEnrollment(enrollmentId, version, billingMode, discountPct, subscriptionDiscountPct, note) {
     return request<EnrollmentDTO>(`/enrollments/${enrollmentId}`, {
       method: "PUT",
-      ...body({ billingMode, discountPct, subscriptionDiscountPct, note }),
+      ...body({ version, billingMode, discountPct, subscriptionDiscountPct, note }),
     });
   },
-  async deleteEnrollment(enrollmentId) {
-    await requestVoid(`/enrollments/${enrollmentId}`, { method: "DELETE" });
+  async deleteEnrollment(enrollmentId, version) {
+    await requestVoid(`/enrollments/${enrollmentId}?version=${encodeURIComponent(String(version))}`, { method: "DELETE" });
   },
 
   async fetchAttendanceRows(year, month, courseId) {
@@ -322,14 +325,14 @@ export const httpTransport: AppTransport = {
       ...body({ year, month }),
     });
   },
-  async deleteDraft(id) {
-    await requestVoid(`/invoices/${id}/draft`, { method: "DELETE" });
+  async deleteDraft(id, version) {
+    await requestVoid(`/invoices/${id}/draft?version=${encodeURIComponent(String(version))}`, { method: "DELETE" });
   },
-  async reopenToDraft(id) {
-    await requestVoid(`/invoices/${id}/reopen-draft`, { method: "POST", ...body({}) });
+  async reopenToDraft(id, version) {
+    await requestVoid(`/invoices/${id}/reopen-draft`, { method: "POST", ...body({ version }) });
   },
-  async issueInvoice(id) {
-    return request<IssueResult>(`/invoices/${id}/issue`, { method: "POST", ...body({}) });
+  async issueInvoice(id, version) {
+    return request<IssueResult>(`/invoices/${id}/issue`, { method: "POST", ...body({ version }) });
   },
   async rebuildStudentDraft(studentId, year, month) {
     return request<GenerateResult>("/invoices/rebuild-student-draft", {

@@ -8,6 +8,12 @@ import (
 
 type Student struct{ ent.Schema }
 
+func (Student) Mixin() []ent.Mixin {
+	return []ent.Mixin{
+		VersionMixin{},
+	}
+}
+
 func (Student) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("full_name"),

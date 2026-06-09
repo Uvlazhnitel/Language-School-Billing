@@ -2,6 +2,7 @@ export namespace attendance {
 	
 	export class Row {
 	    enrollmentId: number;
+	    enrollmentVersion: number;
 	    studentId: number;
 	    studentName: string;
 	    courseId: number;
@@ -22,6 +23,7 @@ export namespace attendance {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.enrollmentId = source["enrollmentId"];
+	        this.enrollmentVersion = source["enrollmentVersion"];
 	        this.studentId = source["studentId"];
 	        this.studentName = source["studentName"];
 	        this.courseId = source["courseId"];
@@ -81,6 +83,7 @@ export namespace invoice {
 	}
 	export class InvoiceDTO {
 	    id: number;
+	    version: number;
 	    studentId: number;
 	    studentName: string;
 	    recipientName: string;
@@ -103,6 +106,7 @@ export namespace invoice {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.version = source["version"];
 	        this.studentId = source["studentId"];
 	        this.studentName = source["studentName"];
 	        this.recipientName = source["recipientName"];
@@ -140,6 +144,7 @@ export namespace invoice {
 	
 	export class ListItem {
 	    id: number;
+	    version: number;
 	    studentId: number;
 	    studentName: string;
 	    year: number;
@@ -156,6 +161,7 @@ export namespace invoice {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.version = source["version"];
 	        this.studentId = source["studentId"];
 	        this.studentName = source["studentName"];
 	        this.year = source["year"];
@@ -173,6 +179,7 @@ export namespace main {
 	
 	export class CourseDTO {
 	    id: number;
+	    version: number;
 	    name: string;
 	    teacherId?: number;
 	    teacherName: string;
@@ -187,6 +194,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.version = source["version"];
 	        this.name = source["name"];
 	        this.teacherId = source["teacherId"];
 	        this.teacherName = source["teacherName"];
@@ -197,6 +205,7 @@ export namespace main {
 	}
 	export class EnrollmentDTO {
 	    id: number;
+	    version: number;
 	    studentId: number;
 	    studentName: string;
 	    courseId: number;
@@ -214,6 +223,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.version = source["version"];
 	        this.studentId = source["studentId"];
 	        this.studentName = source["studentName"];
 	        this.courseId = source["courseId"];
@@ -253,6 +263,7 @@ export namespace main {
 	}
 	export class StudentDTO {
 	    id: number;
+	    version: number;
 	    fullName: string;
 	    personalCode: string;
 	    phone: string;
@@ -270,6 +281,7 @@ export namespace main {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.version = source["version"];
 	        this.fullName = source["fullName"];
 	        this.personalCode = source["personalCode"];
 	        this.phone = source["phone"];
@@ -486,4 +498,3 @@ export namespace payment {
 	}
 
 }
-

@@ -34,6 +34,7 @@ export async function createEnrollment(
 
 export async function updateEnrollment(
   enrollmentId: number,
+  version: number,
   billingMode: EnrollmentDTO["billingMode"],
   discountPct: number,
   subscriptionDiscountPct: number,
@@ -42,9 +43,15 @@ export async function updateEnrollment(
   const transport = await getTransport();
   return transport.updateEnrollment(
     enrollmentId,
+    version,
     billingMode,
     discountPct,
     subscriptionDiscountPct,
     note
   );
+}
+
+export async function deleteEnrollment(enrollmentId: number, version: number) {
+  const transport = await getTransport();
+  return transport.deleteEnrollment(enrollmentId, version);
 }

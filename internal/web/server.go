@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"langschool/ent"
+	"langschool/internal/apperrors"
 	"langschool/internal/auth"
 	"langschool/internal/backend"
 )
@@ -306,7 +307,7 @@ func (s *Server) handleStudentsUpdate(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.StudentUpdate(r.Context(), id, req.FullName, req.PersonalCode, req.Phone, req.Email, req.Note, req.IsMinor, req.PayerName, req.PayerRole)
+	item, err := s.svc.StudentUpdateWithVersion(r.Context(), id, req.Version, req.FullName, req.PersonalCode, req.Phone, req.Email, req.Note, req.IsMinor, req.PayerName, req.PayerRole)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -320,12 +321,13 @@ func (s *Server) handleStudentsActive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req struct {
-		Active bool `json:"active"`
+		Active  bool `json:"active"`
+		Version int  `json:"version"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	if err := s.svc.StudentSetActive(r.Context(), id, req.Active); err != nil {
+	if err := s.svc.StudentSetActiveWithVersion(r.Context(), id, req.Version, req.Active); err != nil {
 		writeError(w, err)
 		return
 	}
@@ -337,7 +339,12 @@ func (s *Server) handleStudentsDelete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := s.svc.StudentDelete(r.Context(), id); err != nil {
+	version, err := parseRequiredVersionQuery(r)
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	if err := s.svc.StudentDeleteWithVersion(r.Context(), id, version); err != nil {
 		writeError(w, err)
 		return
 	}
@@ -425,7 +432,7 @@ func (s *Server) handleCoursesUpdate(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.CourseUpdate(r.Context(), id, req.Name, req.TeacherID, req.Type, req.LessonPrice, req.SubscriptionPrice)
+	item, err := s.svc.CourseUpdateWithVersion(r.Context(), id, req.Version, req.Name, req.TeacherID, req.Type, req.LessonPrice, req.SubscriptionPrice)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -438,7 +445,12 @@ func (s *Server) handleCoursesDelete(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if err := s.svc.CourseDelete(r.Context(), id); err != nil {
+	version, err := parseRequiredVersionQuery(r)
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	if err := s.svc.CourseDeleteWithVersion(r.Context(), id, version); err != nil {
 		writeError(w, err)
 		return
 	}
@@ -486,7 +498,7 @@ func (s *Server) handleEnrollmentsUpdate(w http.ResponseWriter, r *http.Request)
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.EnrollmentUpdate(r.Context(), id, req.BillingMode, req.DiscountPct, req.SubscriptionDiscountPct, req.Note)
+	item, err := s.svc.EnrollmentUpdateWithVersion(r.Context(), id, req.Version, req.BillingMode, req.DiscountPct, req.SubscriptionDiscountPct, req.Note)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -499,7 +511,12 @@ func (s *Server) handleEnrollmentsDelete(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	if err := s.svc.EnrollmentDelete(r.Context(), id); err != nil {
+	version, err := parseRequiredVersionQuery(r)
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	if err := s.svc.EnrollmentDeleteWithVersion(r.Context(), id, version); err != nil {
 		writeError(w, err)
 		return
 	}
@@ -675,7 +692,12 @@ func (s *Server) handleInvoicesDeleteDraft(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	if err := s.svc.InvoiceDeleteDraft(r.Context(), id); err != nil {
+	version, err := parseRequiredVersionQuery(r)
+	if err != nil {
+		writeBadRequest(w, err.Error())
+		return
+	}
+	if err := s.svc.InvoiceDeleteDraftWithVersion(r.Context(), id, version); err != nil {
 		writeError(w, err)
 		return
 	}
@@ -687,7 +709,11 @@ func (s *Server) handleInvoicesReopenDraft(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	if err := s.svc.InvoiceReopenDraft(r.Context(), id); err != nil {
+	var req versionRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if err := s.svc.InvoiceReopenDraftWithVersion(r.Context(), id, req.Version); err != nil {
 		writeError(w, err)
 		return
 	}
@@ -699,7 +725,11 @@ func (s *Server) handleInvoicesIssue(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	item, err := s.svc.InvoiceIssue(r.Context(), id)
+	var req versionRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	item, err := s.svc.InvoiceIssueWithVersion(r.Context(), id, req.Version)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -1024,6 +1054,7 @@ func (s *Server) handleInvoicePaymentSummary(w http.ResponseWriter, r *http.Requ
 }
 
 type studentUpsertRequest struct {
+	Version      int    `json:"version"`
 	FullName     string `json:"fullName"`
 	PersonalCode string `json:"personalCode"`
 	Phone        string `json:"phone"`
@@ -1035,6 +1066,7 @@ type studentUpsertRequest struct {
 }
 
 type courseUpsertRequest struct {
+	Version           int     `json:"version"`
 	Name              string  `json:"name"`
 	TeacherID         *int    `json:"teacherId"`
 	Type              string  `json:"type"`
@@ -1052,6 +1084,7 @@ type enrollmentCreateRequest struct {
 }
 
 type enrollmentUpdateRequest struct {
+	Version                 int     `json:"version"`
 	BillingMode             string  `json:"billingMode"`
 	DiscountPct             float64 `json:"discountPct"`
 	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"`
@@ -1061,6 +1094,10 @@ type enrollmentUpdateRequest struct {
 type periodRequest struct {
 	Year  int `json:"year"`
 	Month int `json:"month"`
+}
+
+type versionRequest struct {
+	Version int `json:"version"`
 }
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, dest any) bool {
@@ -1099,6 +1136,8 @@ func writeError(w http.ResponseWriter, err error) {
 		status = http.StatusUnauthorized
 	case errors.Is(err, auth.ErrForbidden):
 		status = http.StatusForbidden
+	case apperrors.IsConflict(err):
+		status = http.StatusConflict
 	case isConflictError(err):
 		status = http.StatusConflict
 	case isBadRequestError(err):
@@ -1144,6 +1183,18 @@ func parseOptionalInt(raw string) (*int, error) {
 		return nil, fmt.Errorf("invalid integer %q", raw)
 	}
 	return &value, nil
+}
+
+func parseRequiredVersionQuery(r *http.Request) (int, error) {
+	raw := strings.TrimSpace(r.URL.Query().Get("version"))
+	if raw == "" {
+		return 0, errors.New("missing version")
+	}
+	version, err := strconv.Atoi(raw)
+	if err != nil || version <= 0 {
+		return 0, errors.New("invalid version")
+	}
+	return version, nil
 }
 
 func parseRequiredQueryInt(r *http.Request, name string) (int, error) {

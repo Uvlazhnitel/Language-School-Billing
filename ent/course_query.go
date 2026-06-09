@@ -371,12 +371,12 @@ func (_q *CourseQuery) WithMonthStats(opts ...func(*CourseMonthStatQuery)) *Cour
 // Example:
 //
 //	var v []struct {
-//		Name string `json:"name,omitempty"`
+//		Version int `json:"version,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Course.Query().
-//		GroupBy(course.FieldName).
+//		GroupBy(course.FieldVersion).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *CourseQuery) GroupBy(field string, fields ...string) *CourseGroupBy {
@@ -394,11 +394,11 @@ func (_q *CourseQuery) GroupBy(field string, fields ...string) *CourseGroupBy {
 // Example:
 //
 //	var v []struct {
-//		Name string `json:"name,omitempty"`
+//		Version int `json:"version,omitempty"`
 //	}
 //
 //	client.Course.Query().
-//		Select(course.FieldName).
+//		Select(course.FieldVersion).
 //		Scan(ctx, &v)
 func (_q *CourseQuery) Select(fields ...string) *CourseSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

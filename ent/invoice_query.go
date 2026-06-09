@@ -371,12 +371,12 @@ func (_q *InvoiceQuery) WithPayments(opts ...func(*PaymentQuery)) *InvoiceQuery 
 // Example:
 //
 //	var v []struct {
-//		StudentID int `json:"student_id,omitempty"`
+//		Version int `json:"version,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Invoice.Query().
-//		GroupBy(invoice.FieldStudentID).
+//		GroupBy(invoice.FieldVersion).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *InvoiceQuery) GroupBy(field string, fields ...string) *InvoiceGroupBy {
@@ -394,11 +394,11 @@ func (_q *InvoiceQuery) GroupBy(field string, fields ...string) *InvoiceGroupBy 
 // Example:
 //
 //	var v []struct {
-//		StudentID int `json:"student_id,omitempty"`
+//		Version int `json:"version,omitempty"`
 //	}
 //
 //	client.Invoice.Query().
-//		Select(invoice.FieldStudentID).
+//		Select(invoice.FieldVersion).
 //		Scan(ctx, &v)
 func (_q *InvoiceQuery) Select(fields ...string) *InvoiceSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

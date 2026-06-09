@@ -22,6 +22,20 @@ type EnrollmentCreate struct {
 	hooks    []Hook
 }
 
+// SetVersion sets the "version" field.
+func (_c *EnrollmentCreate) SetVersion(v int) *EnrollmentCreate {
+	_c.mutation.SetVersion(v)
+	return _c
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_c *EnrollmentCreate) SetNillableVersion(v *int) *EnrollmentCreate {
+	if v != nil {
+		_c.SetVersion(*v)
+	}
+	return _c
+}
+
 // SetStudentID sets the "student_id" field.
 func (_c *EnrollmentCreate) SetStudentID(v int) *EnrollmentCreate {
 	_c.mutation.SetStudentID(v)
@@ -142,6 +156,10 @@ func (_c *EnrollmentCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *EnrollmentCreate) defaults() {
+	if _, ok := _c.mutation.Version(); !ok {
+		v := enrollment.DefaultVersion
+		_c.mutation.SetVersion(v)
+	}
 	if _, ok := _c.mutation.DiscountPct(); !ok {
 		v := enrollment.DefaultDiscountPct
 		_c.mutation.SetDiscountPct(v)
@@ -158,6 +176,9 @@ func (_c *EnrollmentCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *EnrollmentCreate) check() error {
+	if _, ok := _c.mutation.Version(); !ok {
+		return &ValidationError{Name: "version", err: errors.New(`ent: missing required field "Enrollment.version"`)}
+	}
 	if _, ok := _c.mutation.StudentID(); !ok {
 		return &ValidationError{Name: "student_id", err: errors.New(`ent: missing required field "Enrollment.student_id"`)}
 	}
@@ -213,6 +234,10 @@ func (_c *EnrollmentCreate) createSpec() (*Enrollment, *sqlgraph.CreateSpec) {
 		_node = &Enrollment{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(enrollment.Table, sqlgraph.NewFieldSpec(enrollment.FieldID, field.TypeInt))
 	)
+	if value, ok := _c.mutation.Version(); ok {
+		_spec.SetField(enrollment.FieldVersion, field.TypeInt, value)
+		_node.Version = value
+	}
 	if value, ok := _c.mutation.BillingMode(); ok {
 		_spec.SetField(enrollment.FieldBillingMode, field.TypeEnum, value)
 		_node.BillingMode = value

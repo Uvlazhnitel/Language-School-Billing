@@ -42,7 +42,7 @@ export async function saveCourseMonthSubscriptionLessons(
   return transport.saveCourseMonthSubscriptionLessons(courseId, year, month, lessonsHeld);
 }
 
-export async function deleteEnrollment(enrollmentId: number) {
+export async function deleteEnrollment(enrollmentId: number, version: number) {
   const transport = await getTransport();
-  return transport.deleteEnrollment(enrollmentId);
+  return transport.deleteEnrollment(enrollmentId, version);
 }

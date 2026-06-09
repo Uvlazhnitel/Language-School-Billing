@@ -202,6 +202,16 @@ func (s *Service) createInStore(ctx context.Context, studentID int, invoiceID *i
 		if iv.Status == app.InvoiceStatusCanceled {
 			return nil, errors.New("нельзя привязать оплату к отменённому счёту")
 		}
+		_, _, remaining, err := s.invoiceBalanceCents(ctx, iv)
+		if err != nil {
+			return nil, err
+		}
+		if remaining <= 0 {
+			return nil, errors.New("нельзя добавить оплату: счёт уже закрыт")
+		}
+		if amountCents > remaining {
+			return nil, errors.New("сумма оплаты не должна превышать остаток по счёту")
+		}
 	}
 
 	// Global debtor payments should reduce the oldest open invoices first so
@@ -933,6 +943,9 @@ func (s *Service) ListDebtors(ctx context.Context) ([]DebtorDTO, error) {
 // For this session we accept a direct amount from UI, but this helper exists for convenience.
 func (s *Service) QuickCash(ctx context.Context, studentID int, amount float64, note string) (*PaymentDTO, error) {
 	t := time.Now()
+	if amount <= 0 {
+		return nil, errors.New("сумма должна быть больше 0")
+	}
 	if _, err := s.db.Student.Get(ctx, studentID); err != nil {
 		return nil, err
 	}

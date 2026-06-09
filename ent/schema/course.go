@@ -8,6 +8,12 @@ import (
 
 type Course struct{ ent.Schema }
 
+func (Course) Mixin() []ent.Mixin {
+	return []ent.Mixin{
+		VersionMixin{},
+	}
+}
+
 func (Course) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("name"),

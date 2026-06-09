@@ -9,6 +9,12 @@ import (
 
 type Invoice struct{ ent.Schema }
 
+func (Invoice) Mixin() []ent.Mixin {
+	return []ent.Mixin{
+		VersionMixin{},
+	}
+}
+
 func (Invoice) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int("student_id"),

@@ -371,12 +371,12 @@ func (_q *EnrollmentQuery) WithInvoiceLines(opts ...func(*InvoiceLineQuery)) *En
 // Example:
 //
 //	var v []struct {
-//		StudentID int `json:"student_id,omitempty"`
+//		Version int `json:"version,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Enrollment.Query().
-//		GroupBy(enrollment.FieldStudentID).
+//		GroupBy(enrollment.FieldVersion).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *EnrollmentQuery) GroupBy(field string, fields ...string) *EnrollmentGroupBy {
@@ -394,11 +394,11 @@ func (_q *EnrollmentQuery) GroupBy(field string, fields ...string) *EnrollmentGr
 // Example:
 //
 //	var v []struct {
-//		StudentID int `json:"student_id,omitempty"`
+//		Version int `json:"version,omitempty"`
 //	}
 //
 //	client.Enrollment.Query().
-//		Select(enrollment.FieldStudentID).
+//		Select(enrollment.FieldVersion).
 //		Scan(ctx, &v)
 func (_q *EnrollmentQuery) Select(fields ...string) *EnrollmentSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

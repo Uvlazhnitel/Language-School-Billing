@@ -25,6 +25,7 @@ export async function createCourse(
 
 export async function updateCourse(
   id: number,
+  version: number,
   name: string,
   teacherId: number | undefined,
   courseType: CourseType,
@@ -32,10 +33,18 @@ export async function updateCourse(
   subscriptionPrice: number
 ) {
   const transport = await getTransport();
-  return transport.updateCourse(id, name, teacherId, courseType, lessonPrice, subscriptionPrice);
+  return transport.updateCourse(
+    id,
+    version,
+    name,
+    teacherId,
+    courseType,
+    lessonPrice,
+    subscriptionPrice
+  );
 }
 
-export async function deleteCourse(id: number) {
+export async function deleteCourse(id: number, version: number) {
   const transport = await getTransport();
-  return transport.deleteCourse(id);
+  return transport.deleteCourse(id, version);
 }

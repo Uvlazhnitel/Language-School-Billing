@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/cookiejar"
@@ -52,6 +53,7 @@ func TestStudentCourseEnrollmentCRUD(t *testing.T) {
 	}
 
 	st = putJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students/"+strconv.Itoa(st.ID), map[string]any{
+		"version":  st.Version,
 		"fullName": "Alice Updated",
 		"phone":    "555",
 		"email":    "alice@example.com",
@@ -126,7 +128,9 @@ func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 	}
 	invoiceID := invoices[0].ID
 
-	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/issue", map[string]any{})
+	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
 	pdfPath := invsvc.PDFPathByNumberAndName(env.Runtime.Dirs.Invoices, 2026, 6, issue.Number, st.FullName)
 	if err := os.MkdirAll(filepath.Dir(pdfPath), 0o755); err != nil {
 		t.Fatal(err)
@@ -209,7 +213,9 @@ func TestAuditLogCapturesFinanceActions(t *testing.T) {
 	}
 	invoiceID := invoices[0].ID
 
-	postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/issue", map[string]any{})
+	postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
 	payment := postJSON[backend.PaymentDTO](t, env.Client, env.Server.URL, "/api/payments", map[string]any{
 		"studentId": st.ID,
 		"invoiceId": invoiceID,
@@ -296,7 +302,7 @@ func TestLocaleBackupAndErrors(t *testing.T) {
 	}
 
 	activeStudent := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "Still Active"})
-	resp, _ = rawRequest(t, env.Client, http.MethodDelete, env.Server.URL+"/api/students/"+strconv.Itoa(activeStudent.ID), nil)
+	resp, _ = rawRequest(t, env.Client, http.MethodDelete, env.Server.URL+"/api/students/"+strconv.Itoa(activeStudent.ID)+"?version="+strconv.Itoa(activeStudent.Version), nil)
 	if resp.StatusCode != http.StatusConflict {
 		t.Fatalf("delete active student status = %d, want 409", resp.StatusCode)
 	}
@@ -396,7 +402,7 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 		t.Fatalf("staff backups status = %d, want 403", resp.StatusCode)
 	}
 
-	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/students/"+strconv.Itoa(staffStudent.ID), nil)
+	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/students/"+strconv.Itoa(staffStudent.ID)+"?version="+strconv.Itoa(staffStudent.Version), nil)
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("staff delete student status = %d, want 403", resp.StatusCode)
 	}
@@ -471,6 +477,118 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 		t.Fatalf("self delete body = %q", string(body))
 	}
 
+}
+
+func TestStudentUpdateRejectsStaleVersion(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "Concurrent Student",
+	})
+
+	first := putJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students/"+strconv.Itoa(st.ID), map[string]any{
+		"version":  st.Version,
+		"fullName": "Concurrent Student A",
+	})
+	if first.Version <= st.Version {
+		t.Fatalf("updated version = %d, want > %d", first.Version, st.Version)
+	}
+
+	resp, body := rawRequest(
+		t,
+		env.Client,
+		http.MethodPut,
+		env.Server.URL+"/api/students/"+strconv.Itoa(st.ID),
+		bytes.NewReader([]byte(`{"version":1,"fullName":"Concurrent Student B"}`)),
+	)
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("stale update status = %d body=%s, want 409", resp.StatusCode, body)
+	}
+	if !strings.Contains(string(body), "record was changed or deleted by another user") {
+		t.Fatalf("stale update body = %s", body)
+	}
+}
+
+func TestInvoicePaymentDeleteThenReopenWorkflow(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "Workflow Student"})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Workflow Course",
+		"type":              "group",
+		"lessonPrice":       40,
+		"subscriptionPrice": 100,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":   st.ID,
+		"courseId":    course.ID,
+		"billingMode": "per_lesson",
+		"discountPct": 0,
+		"note":        "",
+	})
+
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      2026,
+		"month":     8,
+		"hours":     1.0,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{"year": 2026, "month": 8})
+
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=8&status=all")
+	if len(invoices) != 1 {
+		t.Fatalf("invoice count = %d, want 1", len(invoices))
+	}
+	invoiceItem := invoices[0]
+
+	postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceItem.ID)+"/issue", map[string]any{
+		"version": invoiceItem.Version,
+	})
+
+	payment := postJSON[backend.PaymentDTO](t, env.Client, env.Server.URL, "/api/payments", map[string]any{
+		"studentId": st.ID,
+		"invoiceId": invoiceItem.ID,
+		"amount":    40,
+		"method":    "cash",
+		"paidAt":    "2026-08-05",
+	})
+
+	invoiceDetails := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceItem.ID))
+	resp, _ := rawRequest(
+		t,
+		env.Client,
+		http.MethodPost,
+		env.Server.URL+"/api/invoices/"+strconv.Itoa(invoiceItem.ID)+"/reopen-draft",
+		bytes.NewReader([]byte(fmt.Sprintf(`{"version":%d}`, invoiceDetails.Version))),
+	)
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("reopen with payment status = %d, want 409", resp.StatusCode)
+	}
+
+	resp, _ = rawRequest(t, env.Client, http.MethodDelete, env.Server.URL+"/api/payments/"+strconv.Itoa(payment.ID), nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("delete payment status = %d, want 204", resp.StatusCode)
+	}
+
+	invoiceDetails = getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceItem.ID))
+	resp, body := rawRequest(
+		t,
+		env.Client,
+		http.MethodPost,
+		env.Server.URL+"/api/invoices/"+strconv.Itoa(invoiceItem.ID)+"/reopen-draft",
+		bytes.NewReader([]byte(fmt.Sprintf(`{"version":%d}`, invoiceDetails.Version))),
+	)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("reopen after payment delete status = %d body=%s, want 200", resp.StatusCode, body)
+	}
+
+	reopened := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceItem.ID))
+	if reopened.Status != "draft" {
+		t.Fatalf("invoice status = %q, want draft", reopened.Status)
+	}
 }
 
 func TestStaticServingWithDist(t *testing.T) {

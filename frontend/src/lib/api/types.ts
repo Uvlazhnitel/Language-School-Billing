@@ -50,6 +50,7 @@ export type EnsurePdfResult = {
 
 export type Row = {
   enrollmentId: number;
+  enrollmentVersion: number;
   studentId: number;
   studentName: string;
   courseId: number;
@@ -68,6 +69,7 @@ export type Row = {
 
 export type StudentDTO = {
   id: number;
+  version: number;
   fullName: string;
   personalCode: string;
   phone: string;
@@ -87,6 +89,7 @@ export type TeacherDTO = {
 
 export type CourseDTO = {
   id: number;
+  version: number;
   name: string;
   teacherId?: number;
   teacherName: string;
@@ -97,6 +100,7 @@ export type CourseDTO = {
 
 export type EnrollmentDTO = {
   id: number;
+  version: number;
   studentId: number;
   studentName: string;
   courseId: number;
@@ -118,6 +122,7 @@ export type CourseMonthSubscriptionDTO = {
 
 export type InvoiceListItem = {
   id: number;
+  version: number;
   studentId: number;
   studentName: string;
   year: number;
@@ -142,6 +147,7 @@ export type InvoiceLine = {
 
 export type InvoiceDTO = {
   id: number;
+  version: number;
   studentId: number;
   studentName: string;
   recipientName: string;
@@ -310,6 +316,7 @@ export interface AppTransport {
   ): Promise<StudentDTO>;
   updateStudent(
     id: number,
+    version: number,
     fullName: string,
     personalCode: string,
     phone: string,
@@ -319,8 +326,8 @@ export interface AppTransport {
     payerName: string,
     payerRole: string
   ): Promise<StudentDTO>;
-  setStudentActive(id: number, active: boolean): Promise<void>;
-  deleteStudent(id: number): Promise<void>;
+  setStudentActive(id: number, version: number, active: boolean): Promise<void>;
+  deleteStudent(id: number, version: number): Promise<void>;
 
   listTeachers(q: string): Promise<TeacherDTO[]>;
   createTeacher(fullName: string): Promise<TeacherDTO>;
@@ -336,13 +343,14 @@ export interface AppTransport {
   ): Promise<CourseDTO>;
   updateCourse(
     id: number,
+    version: number,
     name: string,
     teacherId: number | undefined,
     courseType: CourseType,
     lessonPrice: number,
     subscriptionPrice: number
   ): Promise<CourseDTO>;
-  deleteCourse(id: number): Promise<void>;
+  deleteCourse(id: number, version: number): Promise<void>;
 
   listEnrollments(studentId?: number, courseId?: number): Promise<EnrollmentDTO[]>;
   createEnrollment(
@@ -355,12 +363,13 @@ export interface AppTransport {
   ): Promise<EnrollmentDTO>;
   updateEnrollment(
     enrollmentId: number,
+    version: number,
     billingMode: EnrollmentDTO["billingMode"],
     discountPct: number,
     subscriptionDiscountPct: number,
     note: string
   ): Promise<EnrollmentDTO>;
-  deleteEnrollment(enrollmentId: number): Promise<void>;
+  deleteEnrollment(enrollmentId: number, version: number): Promise<void>;
 
   fetchAttendanceRows(year: number, month: number, courseId?: number): Promise<Row[]>;
   listCourseMonthSubscriptions(
@@ -386,9 +395,9 @@ export interface AppTransport {
   listInvoices(year: number, month: number, status: string): Promise<InvoiceListItem[]>;
   getInvoice(id: number): Promise<InvoiceDTO>;
   generateDrafts(year: number, month: number): Promise<GenerateResult>;
-  deleteDraft(id: number): Promise<void>;
-  reopenToDraft(id: number): Promise<void>;
-  issueInvoice(id: number): Promise<IssueResult>;
+  deleteDraft(id: number, version: number): Promise<void>;
+  reopenToDraft(id: number, version: number): Promise<void>;
+  issueInvoice(id: number, version: number): Promise<IssueResult>;
   rebuildStudentDraft(studentId: number, year: number, month: number): Promise<GenerateResult>;
   ensurePdf(invoiceId: number): Promise<EnsurePdfResult>;
   hasPdf(invoiceId: number): Promise<boolean>;

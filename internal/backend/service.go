@@ -27,6 +27,7 @@ import (
 	auditsvc "langschool/internal/app/audit"
 	invsvc "langschool/internal/app/invoice"
 	paysvc "langschool/internal/app/payment"
+	"langschool/internal/apperrors"
 	"langschool/internal/auth"
 	"langschool/internal/money"
 	appruntime "langschool/internal/runtime"
@@ -41,6 +42,7 @@ const (
 
 type StudentDTO struct {
 	ID           int    `json:"id"`
+	Version      int    `json:"version"`
 	FullName     string `json:"fullName"`
 	PersonalCode string `json:"personalCode"`
 	Phone        string `json:"phone"`
@@ -54,6 +56,7 @@ type StudentDTO struct {
 
 type CourseDTO struct {
 	ID                int     `json:"id"`
+	Version           int     `json:"version"`
 	Name              string  `json:"name"`
 	TeacherID         *int    `json:"teacherId,omitempty"`
 	TeacherName       string  `json:"teacherName"`
@@ -64,6 +67,7 @@ type CourseDTO struct {
 
 type EnrollmentDTO struct {
 	ID                      int     `json:"id"`
+	Version                 int     `json:"version"`
 	StudentID               int     `json:"studentId"`
 	StudentName             string  `json:"studentName"`
 	CourseID                int     `json:"courseId"`
@@ -283,6 +287,13 @@ func (s *Service) EnrollmentDelete(ctx context.Context, enrollmentID int) error 
 	return s.rt.Attendance.DeleteEnrollment(ctx, enrollmentID)
 }
 
+func (s *Service) EnrollmentDeleteWithVersion(ctx context.Context, enrollmentID, version int) error {
+	if err := validateVersion(version); err != nil {
+		return err
+	}
+	return s.rt.Attendance.DeleteEnrollmentWithVersion(ctx, enrollmentID, version)
+}
+
 func (s *Service) InvoiceGenerateDrafts(ctx context.Context, year, month int) (invsvc.GenerateResult, error) {
 	before, _ := s.auditSnapshotForPeriod(ctx, year, month)
 	result, err := s.rt.Invoice.GenerateDrafts(ctx, year, month)
@@ -352,12 +363,67 @@ func (s *Service) InvoiceDeleteDraft(ctx context.Context, id int) error {
 	return nil
 }
 
+func (s *Service) InvoiceDeleteDraftWithVersion(ctx context.Context, id, version int) error {
+	if err := validateVersion(version); err != nil {
+		return err
+	}
+	before, meta, err := s.auditInvoiceSnapshot(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := s.rt.Invoice.DeleteDraftWithVersion(ctx, id, version); err != nil {
+		return err
+	}
+	s.recordAudit(ctx, auditsvc.RecordEvent{
+		EntityType: "invoice",
+		EntityID:   intPtr(id),
+		Action:     "invoice.delete_draft",
+		Summary:    fmt.Sprintf("Deleted draft invoice for %s, %04d-%02d", meta.StudentName, meta.Year, meta.Month),
+		Before:     before,
+		After: map[string]any{
+			"deleted":   true,
+			"invoiceId": id,
+		},
+		StudentID: meta.StudentID,
+		InvoiceID: intPtr(id),
+	})
+	return nil
+}
+
 func (s *Service) InvoiceReopenDraft(ctx context.Context, id int) error {
 	before, meta, err := s.auditInvoiceSnapshot(ctx, id)
 	if err != nil {
 		return err
 	}
 	if err := s.rt.Invoice.ReopenDraft(ctx, id, s.rt.Dirs.Invoices); err != nil {
+		return err
+	}
+	after, _, err := s.auditInvoiceSnapshot(ctx, id)
+	if err != nil {
+		return err
+	}
+	s.recordAudit(ctx, auditsvc.RecordEvent{
+		EntityType: "invoice",
+		EntityID:   intPtr(id),
+		Action:     "invoice.reopen_draft",
+		Summary:    fmt.Sprintf("Returned invoice %s to draft", invoiceLabel(meta.Number, id)),
+		Before:     before,
+		After:      after,
+		StudentID:  meta.StudentID,
+		InvoiceID:  intPtr(id),
+	})
+	return nil
+}
+
+func (s *Service) InvoiceReopenDraftWithVersion(ctx context.Context, id, version int) error {
+	if err := validateVersion(version); err != nil {
+		return err
+	}
+	before, meta, err := s.auditInvoiceSnapshot(ctx, id)
+	if err != nil {
+		return err
+	}
+	if err := s.rt.Invoice.ReopenDraftWithVersion(ctx, id, version, s.rt.Dirs.Invoices); err != nil {
 		return err
 	}
 	after, _, err := s.auditInvoiceSnapshot(ctx, id)
@@ -407,6 +473,38 @@ func (s *Service) InvoiceIssue(ctx context.Context, id int) (IssueResult, error)
 			Before:     before,
 			After:      after,
 			StudentID:  intPtr(dto.StudentID),
+			InvoiceID:  intPtr(id),
+		})
+	}
+	return IssueResult{Number: num}, nil
+}
+
+func (s *Service) InvoiceIssueWithVersion(ctx context.Context, id, version int) (IssueResult, error) {
+	if err := validateVersion(version); err != nil {
+		return IssueResult{}, err
+	}
+	before, meta, err := s.auditStudentFinanceSnapshotByInvoice(ctx, id)
+	if err != nil {
+		return IssueResult{}, err
+	}
+	num, studentID, err := s.rt.Invoice.IssueAndApplyCreditWithVersion(ctx, id, version)
+	if err != nil {
+		return IssueResult{}, err
+	}
+	dto, err := s.rt.Invoice.Get(ctx, id)
+	if err != nil {
+		return IssueResult{}, err
+	}
+	after, _, err := s.auditStudentFinanceSnapshot(ctx, studentID)
+	if err == nil {
+		s.recordAudit(ctx, auditsvc.RecordEvent{
+			EntityType: "invoice",
+			EntityID:   intPtr(id),
+			Action:     "invoice.issue",
+			Summary:    fmt.Sprintf("Issued invoice %s for %s, total %.2f", num, meta.StudentName, dto.Total),
+			Before:     before,
+			After:      after,
+			StudentID:  intPtr(studentID),
 			InvoiceID:  intPtr(id),
 		})
 	}
@@ -679,6 +777,7 @@ func (s *Service) StudentUpdate(ctx context.Context, id int, fullName, personalC
 		return nil, err
 	}
 	item, err := s.rt.DB.Ent.Student.UpdateOneID(id).
+		AddVersion(1).
 		SetFullName(fullName).
 		SetPersonalCode(personalCode).
 		SetPhone(sanitizeInput(phone)).
@@ -695,9 +794,54 @@ func (s *Service) StudentUpdate(ctx context.Context, id int, fullName, personalC
 	return &dto, nil
 }
 
+func (s *Service) StudentUpdateWithVersion(ctx context.Context, id, version int, fullName, personalCode, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
+	fullName = sanitizeInput(fullName)
+	if err := validateVersion(version); err != nil {
+		return nil, err
+	}
+	if err := validateNonEmpty(fullName, "fullName"); err != nil {
+		return nil, err
+	}
+	personalCode = sanitizeInput(personalCode)
+	payerName = sanitizeInput(payerName)
+	payerRole = normalizePayerRole(payerRole)
+	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
+		return nil, err
+	}
+	item, err := s.rt.DB.Ent.Student.UpdateOneID(id).
+		Where(student.VersionEQ(version)).
+		SetVersion(version + 1).
+		SetFullName(fullName).
+		SetPersonalCode(personalCode).
+		SetPhone(sanitizeInput(phone)).
+		SetEmail(sanitizeInput(email)).
+		SetNote(sanitizeInput(note)).
+		SetIsMinor(isMinor).
+		SetPayerName(payerName).
+		SetPayerRole(payerRole).
+		Save(ctx)
+	if err != nil {
+		return nil, staleOnNotFound(err)
+	}
+	dto := toStudentDTO(item)
+	return &dto, nil
+}
+
 func (s *Service) StudentSetActive(ctx context.Context, id int, active bool) error {
-	_, err := s.rt.DB.Ent.Student.UpdateOneID(id).SetIsActive(active).Save(ctx)
+	_, err := s.rt.DB.Ent.Student.UpdateOneID(id).AddVersion(1).SetIsActive(active).Save(ctx)
 	return err
+}
+
+func (s *Service) StudentSetActiveWithVersion(ctx context.Context, id, version int, active bool) error {
+	if err := validateVersion(version); err != nil {
+		return err
+	}
+	_, err := s.rt.DB.Ent.Student.UpdateOneID(id).
+		Where(student.VersionEQ(version)).
+		SetVersion(version + 1).
+		SetIsActive(active).
+		Save(ctx)
+	return staleOnNotFound(err)
 }
 
 func (s *Service) StudentDelete(ctx context.Context, id int) error {
@@ -753,6 +897,69 @@ func (s *Service) StudentDelete(ctx context.Context, id int) error {
 	}
 	if err := tx.Student.DeleteOneID(id).Exec(ctx); err != nil {
 		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Service) StudentDeleteWithVersion(ctx context.Context, id, version int) error {
+	if err := validateVersion(version); err != nil {
+		return err
+	}
+	st, err := s.rt.DB.Ent.Student.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if st.Version != version {
+		return apperrors.StaleRevision()
+	}
+	if st.IsActive {
+		return errors.New("cannot delete active student; deactivate first")
+	}
+	hasPayments, err := s.rt.DB.Ent.Payment.Query().Where(payment.StudentIDEQ(id)).Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if hasPayments {
+		return errors.New("cannot delete student: has payments (financial records)")
+	}
+	hasProtectedInvoices, err := s.rt.DB.Ent.Invoice.Query().
+		Where(invoice.StudentIDEQ(id), invoice.StatusNEQ(sharedapp.InvoiceStatusDraft)).
+		Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if hasProtectedInvoices {
+		return errors.New("cannot delete student: has issued, paid, or canceled invoices")
+	}
+
+	tx, err := s.rt.DB.Ent.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	draftInvoiceIDs, err := tx.Invoice.Query().
+		Where(invoice.StudentIDEQ(id), invoice.StatusEQ(sharedapp.InvoiceStatusDraft)).
+		IDs(ctx)
+	if err != nil {
+		return err
+	}
+	if len(draftInvoiceIDs) > 0 {
+		if _, err := tx.InvoiceLine.Delete().Where(invoiceline.InvoiceIDIn(draftInvoiceIDs...)).Exec(ctx); err != nil {
+			return err
+		}
+		if _, err := tx.Invoice.Delete().Where(invoice.IDIn(draftInvoiceIDs...)).Exec(ctx); err != nil {
+			return err
+		}
+	}
+	if _, err := tx.AttendanceMonth.Delete().Where(attendancemonth.StudentIDEQ(id)).Exec(ctx); err != nil {
+		return err
+	}
+	if _, err := tx.Enrollment.Delete().Where(enrollment.StudentIDEQ(id)).Exec(ctx); err != nil {
+		return err
+	}
+	if err := tx.Student.DeleteOneID(id).Where(student.VersionEQ(version)).Exec(ctx); err != nil {
+		return staleOnNotFound(err)
 	}
 	return tx.Commit()
 }
@@ -880,6 +1087,7 @@ func (s *Service) CourseUpdate(ctx context.Context, id int, name string, teacher
 		return nil, err
 	}
 	update := s.rt.DB.Ent.Course.UpdateOneID(id).
+		AddVersion(1).
 		SetName(name).
 		SetType(course.Type(courseType)).
 		SetLessonPriceCents(money.EurosToCents(lessonPrice)).
@@ -892,6 +1100,49 @@ func (s *Service) CourseUpdate(ctx context.Context, id int, name string, teacher
 	item, err := update.Save(ctx)
 	if err != nil {
 		return nil, err
+	}
+	item, err = s.rt.DB.Ent.Course.Query().Where(course.IDEQ(item.ID)).WithTeacher().Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dto := toCourseDTO(item)
+	return &dto, nil
+}
+
+func (s *Service) CourseUpdateWithVersion(ctx context.Context, id, version int, name string, teacherID *int, courseType string, lessonPrice, subscriptionPrice float64) (*CourseDTO, error) {
+	name = sanitizeInput(name)
+	courseType = strings.TrimSpace(courseType)
+	if err := validateVersion(version); err != nil {
+		return nil, err
+	}
+	if err := validateNonEmpty(name, "name"); err != nil {
+		return nil, err
+	}
+	if err := validateCourseType(courseType); err != nil {
+		return nil, err
+	}
+	if err := validatePrices(lessonPrice, subscriptionPrice); err != nil {
+		return nil, err
+	}
+	selectedTeacher, err := s.resolveTeacher(ctx, teacherID)
+	if err != nil {
+		return nil, err
+	}
+	update := s.rt.DB.Ent.Course.UpdateOneID(id).
+		Where(course.VersionEQ(version)).
+		SetVersion(version + 1).
+		SetName(name).
+		SetType(course.Type(courseType)).
+		SetLessonPriceCents(money.EurosToCents(lessonPrice)).
+		SetSubscriptionPriceCents(money.EurosToCents(subscriptionPrice))
+	if selectedTeacher != nil {
+		update = update.SetTeacherID(selectedTeacher.ID).SetTeacherName(selectedTeacher.FullName)
+	} else {
+		update = update.ClearTeacher().SetTeacherName("")
+	}
+	item, err := update.Save(ctx)
+	if err != nil {
+		return nil, staleOnNotFound(err)
 	}
 	item, err = s.rt.DB.Ent.Course.Query().Where(course.IDEQ(item.ID)).WithTeacher().Only(ctx)
 	if err != nil {
@@ -915,6 +1166,27 @@ func (s *Service) CourseDelete(ctx context.Context, id int) error {
 			return errors.New("cannot delete course: it is still referenced by existing records")
 		}
 		return err
+	}
+	return nil
+}
+
+func (s *Service) CourseDeleteWithVersion(ctx context.Context, id, version int) error {
+	if err := validateVersion(version); err != nil {
+		return err
+	}
+	enrollmentCount, err := s.rt.DB.Ent.Enrollment.Query().Where(enrollment.CourseIDEQ(id)).Count(ctx)
+	if err != nil {
+		return err
+	}
+	if enrollmentCount > 0 {
+		return errors.New("cannot delete course: it has enrollments; remove enrollments first or keep course")
+	}
+	err = s.rt.DB.Ent.Course.DeleteOneID(id).Where(course.VersionEQ(version)).Exec(ctx)
+	if err != nil {
+		if ent.IsConstraintError(err) {
+			return errors.New("cannot delete course: it is still referenced by existing records")
+		}
+		return staleOnNotFound(err)
 	}
 	return nil
 }
@@ -1010,12 +1282,49 @@ func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billin
 		return nil, err
 	}
 	if _, err := s.rt.DB.Ent.Enrollment.UpdateOneID(enrollmentID).
+		AddVersion(1).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetDiscountPct(discountPct).
 		SetSubscriptionDiscountPct(subscriptionDiscountPct).
 		SetNote(sanitizeInput(note)).
 		Save(ctx); err != nil {
 		return nil, err
+	}
+	item, err := s.rt.DB.Ent.Enrollment.Query().
+		Where(enrollment.IDEQ(enrollmentID)).
+		WithStudent().
+		WithCourse(func(cq *ent.CourseQuery) { cq.WithTeacher() }).
+		Only(ctx)
+	if err != nil {
+		return nil, err
+	}
+	dto := toEnrollmentDTO(item)
+	return &dto, nil
+}
+
+func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID, version int, billingMode string, discountPct, subscriptionDiscountPct float64, note string) (*EnrollmentDTO, error) {
+	billingMode = strings.TrimSpace(billingMode)
+	if err := validateVersion(version); err != nil {
+		return nil, err
+	}
+	if err := validateBillingMode(billingMode); err != nil {
+		return nil, err
+	}
+	if err := validateDiscountPct(discountPct); err != nil {
+		return nil, err
+	}
+	if err := validateDiscountPct(subscriptionDiscountPct); err != nil {
+		return nil, err
+	}
+	if _, err := s.rt.DB.Ent.Enrollment.UpdateOneID(enrollmentID).
+		Where(enrollment.VersionEQ(version)).
+		SetVersion(version + 1).
+		SetBillingMode(enrollment.BillingMode(billingMode)).
+		SetDiscountPct(discountPct).
+		SetSubscriptionDiscountPct(subscriptionDiscountPct).
+		SetNote(sanitizeInput(note)).
+		Save(ctx); err != nil {
+		return nil, staleOnNotFound(err)
 	}
 	item, err := s.rt.DB.Ent.Enrollment.Query().
 		Where(enrollment.IDEQ(enrollmentID)).
@@ -1053,6 +1362,7 @@ func (s *Service) invoicePDFPaths(dto *invsvc.InvoiceDTO) []string {
 func toStudentDTO(s *ent.Student) StudentDTO {
 	return StudentDTO{
 		ID:           s.ID,
+		Version:      s.Version,
 		FullName:     s.FullName,
 		PersonalCode: s.PersonalCode,
 		Phone:        s.Phone,
@@ -1068,6 +1378,7 @@ func toStudentDTO(s *ent.Student) StudentDTO {
 func toCourseDTO(c *ent.Course) CourseDTO {
 	dto := CourseDTO{
 		ID:                c.ID,
+		Version:           c.Version,
 		Name:              c.Name,
 		TeacherName:       c.TeacherName,
 		Type:              string(c.Type),
@@ -1089,6 +1400,7 @@ func toCourseDTO(c *ent.Course) CourseDTO {
 func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
 	dto := EnrollmentDTO{
 		ID:                      e.ID,
+		Version:                 e.Version,
 		StudentID:               e.StudentID,
 		CourseID:                e.CourseID,
 		BillingMode:             string(e.BillingMode),
@@ -1121,6 +1433,20 @@ func toTeacherDTO(t *ent.Teacher) TeacherDTO {
 		FullName: t.FullName,
 		IsActive: t.IsActive,
 	}
+}
+
+func validateVersion(version int) error {
+	if version <= 0 {
+		return errors.New("version must be > 0")
+	}
+	return nil
+}
+
+func staleOnNotFound(err error) error {
+	if ent.IsNotFound(err) {
+		return apperrors.StaleRevision()
+	}
+	return err
 }
 
 func validateNonEmpty(value, fieldName string) error {

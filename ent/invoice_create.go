@@ -22,6 +22,20 @@ type InvoiceCreate struct {
 	hooks    []Hook
 }
 
+// SetVersion sets the "version" field.
+func (_c *InvoiceCreate) SetVersion(v int) *InvoiceCreate {
+	_c.mutation.SetVersion(v)
+	return _c
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillableVersion(v *int) *InvoiceCreate {
+	if v != nil {
+		_c.SetVersion(*v)
+	}
+	return _c
+}
+
 // SetStudentID sets the "student_id" field.
 func (_c *InvoiceCreate) SetStudentID(v int) *InvoiceCreate {
 	_c.mutation.SetStudentID(v)
@@ -166,6 +180,10 @@ func (_c *InvoiceCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *InvoiceCreate) defaults() {
+	if _, ok := _c.mutation.Version(); !ok {
+		v := invoice.DefaultVersion
+		_c.mutation.SetVersion(v)
+	}
 	if _, ok := _c.mutation.LegacyTotalAmount(); !ok {
 		v := invoice.DefaultLegacyTotalAmount
 		_c.mutation.SetLegacyTotalAmount(v)
@@ -182,6 +200,9 @@ func (_c *InvoiceCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *InvoiceCreate) check() error {
+	if _, ok := _c.mutation.Version(); !ok {
+		return &ValidationError{Name: "version", err: errors.New(`ent: missing required field "Invoice.version"`)}
+	}
 	if _, ok := _c.mutation.StudentID(); !ok {
 		return &ValidationError{Name: "student_id", err: errors.New(`ent: missing required field "Invoice.student_id"`)}
 	}
@@ -234,6 +255,10 @@ func (_c *InvoiceCreate) createSpec() (*Invoice, *sqlgraph.CreateSpec) {
 		_node = &Invoice{config: _c.config}
 		_spec = sqlgraph.NewCreateSpec(invoice.Table, sqlgraph.NewFieldSpec(invoice.FieldID, field.TypeInt))
 	)
+	if value, ok := _c.mutation.Version(); ok {
+		_spec.SetField(invoice.FieldVersion, field.TypeInt, value)
+		_node.Version = value
+	}
 	if value, ok := _c.mutation.PeriodYear(); ok {
 		_spec.SetField(invoice.FieldPeriodYear, field.TypeInt, value)
 		_node.PeriodYear = value

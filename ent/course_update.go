@@ -30,6 +30,27 @@ func (_u *CourseUpdate) Where(ps ...predicate.Course) *CourseUpdate {
 	return _u
 }
 
+// SetVersion sets the "version" field.
+func (_u *CourseUpdate) SetVersion(v int) *CourseUpdate {
+	_u.mutation.ResetVersion()
+	_u.mutation.SetVersion(v)
+	return _u
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_u *CourseUpdate) SetNillableVersion(v *int) *CourseUpdate {
+	if v != nil {
+		_u.SetVersion(*v)
+	}
+	return _u
+}
+
+// AddVersion adds value to the "version" field.
+func (_u *CourseUpdate) AddVersion(v int) *CourseUpdate {
+	_u.mutation.AddVersion(v)
+	return _u
+}
+
 // SetName sets the "name" field.
 func (_u *CourseUpdate) SetName(v string) *CourseUpdate {
 	_u.mutation.SetName(v)
@@ -327,6 +348,12 @@ func (_u *CourseUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
+	if value, ok := _u.mutation.Version(); ok {
+		_spec.SetField(course.FieldVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedVersion(); ok {
+		_spec.AddField(course.FieldVersion, field.TypeInt, value)
+	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(course.FieldName, field.TypeString, value)
 	}
@@ -500,6 +527,27 @@ type CourseUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *CourseMutation
+}
+
+// SetVersion sets the "version" field.
+func (_u *CourseUpdateOne) SetVersion(v int) *CourseUpdateOne {
+	_u.mutation.ResetVersion()
+	_u.mutation.SetVersion(v)
+	return _u
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_u *CourseUpdateOne) SetNillableVersion(v *int) *CourseUpdateOne {
+	if v != nil {
+		_u.SetVersion(*v)
+	}
+	return _u
+}
+
+// AddVersion adds value to the "version" field.
+func (_u *CourseUpdateOne) AddVersion(v int) *CourseUpdateOne {
+	_u.mutation.AddVersion(v)
+	return _u
 }
 
 // SetName sets the "name" field.
@@ -828,6 +876,12 @@ func (_u *CourseUpdateOne) sqlSave(ctx context.Context) (_node *Course, err erro
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.Version(); ok {
+		_spec.SetField(course.FieldVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedVersion(); ok {
+		_spec.AddField(course.FieldVersion, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(course.FieldName, field.TypeString, value)

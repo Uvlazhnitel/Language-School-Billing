@@ -54,6 +54,11 @@ func IDLTE(id int) predicate.Student {
 	return predicate.Student(sql.FieldLTE(FieldID, id))
 }
 
+// Version applies equality check predicate on the "version" field. It's identical to VersionEQ.
+func Version(v int) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldVersion, v))
+}
+
 // FullName applies equality check predicate on the "full_name" field. It's identical to FullNameEQ.
 func FullName(v string) predicate.Student {
 	return predicate.Student(sql.FieldEQ(FieldFullName, v))
@@ -97,6 +102,46 @@ func PayerRole(v string) predicate.Student {
 // IsActive applies equality check predicate on the "is_active" field. It's identical to IsActiveEQ.
 func IsActive(v bool) predicate.Student {
 	return predicate.Student(sql.FieldEQ(FieldIsActive, v))
+}
+
+// VersionEQ applies the EQ predicate on the "version" field.
+func VersionEQ(v int) predicate.Student {
+	return predicate.Student(sql.FieldEQ(FieldVersion, v))
+}
+
+// VersionNEQ applies the NEQ predicate on the "version" field.
+func VersionNEQ(v int) predicate.Student {
+	return predicate.Student(sql.FieldNEQ(FieldVersion, v))
+}
+
+// VersionIn applies the In predicate on the "version" field.
+func VersionIn(vs ...int) predicate.Student {
+	return predicate.Student(sql.FieldIn(FieldVersion, vs...))
+}
+
+// VersionNotIn applies the NotIn predicate on the "version" field.
+func VersionNotIn(vs ...int) predicate.Student {
+	return predicate.Student(sql.FieldNotIn(FieldVersion, vs...))
+}
+
+// VersionGT applies the GT predicate on the "version" field.
+func VersionGT(v int) predicate.Student {
+	return predicate.Student(sql.FieldGT(FieldVersion, v))
+}
+
+// VersionGTE applies the GTE predicate on the "version" field.
+func VersionGTE(v int) predicate.Student {
+	return predicate.Student(sql.FieldGTE(FieldVersion, v))
+}
+
+// VersionLT applies the LT predicate on the "version" field.
+func VersionLT(v int) predicate.Student {
+	return predicate.Student(sql.FieldLT(FieldVersion, v))
+}
+
+// VersionLTE applies the LTE predicate on the "version" field.
+func VersionLTE(v int) predicate.Student {
+	return predicate.Student(sql.FieldLTE(FieldVersion, v))
 }
 
 // FullNameEQ applies the EQ predicate on the "full_name" field.

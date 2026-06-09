@@ -17,6 +17,8 @@ type Invoice struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int `json:"id,omitempty"`
+	// Version holds the value of the "version" field.
+	Version int `json:"version,omitempty"`
 	// StudentID holds the value of the "student_id" field.
 	StudentID int `json:"student_id,omitempty"`
 	// PeriodYear holds the value of the "period_year" field.
@@ -86,7 +88,7 @@ func (*Invoice) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case invoice.FieldLegacyTotalAmount:
 			values[i] = new(sql.NullFloat64)
-		case invoice.FieldID, invoice.FieldStudentID, invoice.FieldPeriodYear, invoice.FieldPeriodMonth, invoice.FieldTotalAmountCents:
+		case invoice.FieldID, invoice.FieldVersion, invoice.FieldStudentID, invoice.FieldPeriodYear, invoice.FieldPeriodMonth, invoice.FieldTotalAmountCents:
 			values[i] = new(sql.NullInt64)
 		case invoice.FieldStatus, invoice.FieldNumber:
 			values[i] = new(sql.NullString)
@@ -111,6 +113,12 @@ func (_m *Invoice) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int(value.Int64)
+		case invoice.FieldVersion:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field version", values[i])
+			} else if value.Valid {
+				_m.Version = int(value.Int64)
+			}
 		case invoice.FieldStudentID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field student_id", values[i])
@@ -205,6 +213,9 @@ func (_m *Invoice) String() string {
 	var builder strings.Builder
 	builder.WriteString("Invoice(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
+	builder.WriteString("version=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Version))
+	builder.WriteString(", ")
 	builder.WriteString("student_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.StudentID))
 	builder.WriteString(", ")

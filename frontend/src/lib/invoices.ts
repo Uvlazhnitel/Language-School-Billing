@@ -24,19 +24,19 @@ export async function getInvoice(id: number) {
   return transport.getInvoice(id);
 }
 
-export async function deleteDraft(id: number) {
+export async function deleteDraft(id: number, version: number) {
   const transport = await getTransport();
-  return transport.deleteDraft(id);
+  return transport.deleteDraft(id, version);
 }
 
-export async function reopenToDraft(id: number) {
+export async function reopenToDraft(id: number, version: number) {
   const transport = await getTransport();
-  return transport.reopenToDraft(id);
+  return transport.reopenToDraft(id, version);
 }
 
-export async function issueOne(id: number) {
+export async function issueOne(id: number, version: number) {
   const transport = await getTransport();
-  return transport.issueInvoice(id);
+  return transport.issueInvoice(id, version);
 }
 
 export async function rebuildStudentDraft(studentId: number, year: number, month: number) {

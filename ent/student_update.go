@@ -30,6 +30,27 @@ func (_u *StudentUpdate) Where(ps ...predicate.Student) *StudentUpdate {
 	return _u
 }
 
+// SetVersion sets the "version" field.
+func (_u *StudentUpdate) SetVersion(v int) *StudentUpdate {
+	_u.mutation.ResetVersion()
+	_u.mutation.SetVersion(v)
+	return _u
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_u *StudentUpdate) SetNillableVersion(v *int) *StudentUpdate {
+	if v != nil {
+		_u.SetVersion(*v)
+	}
+	return _u
+}
+
+// AddVersion adds value to the "version" field.
+func (_u *StudentUpdate) AddVersion(v int) *StudentUpdate {
+	_u.mutation.AddVersion(v)
+	return _u
+}
+
 // SetFullName sets the "full_name" field.
 func (_u *StudentUpdate) SetFullName(v string) *StudentUpdate {
 	_u.mutation.SetFullName(v)
@@ -305,6 +326,12 @@ func (_u *StudentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
+	if value, ok := _u.mutation.Version(); ok {
+		_spec.SetField(student.FieldVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedVersion(); ok {
+		_spec.AddField(student.FieldVersion, field.TypeInt, value)
+	}
 	if value, ok := _u.mutation.FullName(); ok {
 		_spec.SetField(student.FieldFullName, field.TypeString, value)
 	}
@@ -485,6 +512,27 @@ type StudentUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *StudentMutation
+}
+
+// SetVersion sets the "version" field.
+func (_u *StudentUpdateOne) SetVersion(v int) *StudentUpdateOne {
+	_u.mutation.ResetVersion()
+	_u.mutation.SetVersion(v)
+	return _u
+}
+
+// SetNillableVersion sets the "version" field if the given value is not nil.
+func (_u *StudentUpdateOne) SetNillableVersion(v *int) *StudentUpdateOne {
+	if v != nil {
+		_u.SetVersion(*v)
+	}
+	return _u
+}
+
+// AddVersion adds value to the "version" field.
+func (_u *StudentUpdateOne) AddVersion(v int) *StudentUpdateOne {
+	_u.mutation.AddVersion(v)
+	return _u
 }
 
 // SetFullName sets the "full_name" field.
@@ -791,6 +839,12 @@ func (_u *StudentUpdateOne) sqlSave(ctx context.Context) (_node *Student, err er
 				ps[i](selector)
 			}
 		}
+	}
+	if value, ok := _u.mutation.Version(); ok {
+		_spec.SetField(student.FieldVersion, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedVersion(); ok {
+		_spec.AddField(student.FieldVersion, field.TypeInt, value)
 	}
 	if value, ok := _u.mutation.FullName(); ok {
 		_spec.SetField(student.FieldFullName, field.TypeString, value)

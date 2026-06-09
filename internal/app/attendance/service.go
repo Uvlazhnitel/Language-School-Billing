@@ -16,6 +16,7 @@ import (
 	"langschool/internal/app"
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/app/utils"
+	"langschool/internal/apperrors"
 	"langschool/internal/money"
 	"langschool/internal/validation"
 )
@@ -31,21 +32,22 @@ func New(db *ent.Client) *Service { return &Service{db: db} }
 // It combines enrollment, student, and course information with the
 // tracked hours for a specific month.
 type Row struct {
-	EnrollmentID     int     `json:"enrollmentId"`     // ID of the enrollment
-	StudentID        int     `json:"studentId"`        // ID of the student
-	StudentName      string  `json:"studentName"`      // Student's full name
-	CourseID         int     `json:"courseId"`         // ID of the course
-	CourseName       string  `json:"courseName"`       // Course name
-	CourseType       string  `json:"courseType"`       // Course type: "group" or "individual"
-	BillingMode      string  `json:"billingMode"`      // Enrollment billing mode
-	LessonPrice      float64 `json:"lessonPrice"`      // Hourly rate for this enrollment
-	DiscountPct      float64 `json:"discountPct"`      // Personal discount percentage for the enrollment
+	EnrollmentID            int     `json:"enrollmentId"`            // ID of the enrollment
+	EnrollmentVersion       int     `json:"enrollmentVersion"`       // Optimistic-lock revision of the enrollment
+	StudentID               int     `json:"studentId"`               // ID of the student
+	StudentName             string  `json:"studentName"`             // Student's full name
+	CourseID                int     `json:"courseId"`                // ID of the course
+	CourseName              string  `json:"courseName"`              // Course name
+	CourseType              string  `json:"courseType"`              // Course type: "group" or "individual"
+	BillingMode             string  `json:"billingMode"`             // Enrollment billing mode
+	LessonPrice             float64 `json:"lessonPrice"`             // Hourly rate for this enrollment
+	DiscountPct             float64 `json:"discountPct"`             // Personal discount percentage for the enrollment
 	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"` // Base subscription discount percentage
-	Hours            float64 `json:"hours"`            // Hours attended in the month
-	HasRecord        bool    `json:"hasRecord"`        // Whether an AttendanceMonth record exists for this month
-	CanDelete        bool    `json:"canDelete"`        // Whether enrollment can be safely deleted
-	AttendanceLocked bool    `json:"attendanceLocked"` // Whether attendance is locked by a non-draft invoice
-	InvoiceStatus    string  `json:"invoiceStatus"`    // Invoice status for the student/month, if any
+	Hours                   float64 `json:"hours"`                   // Hours attended in the month
+	HasRecord               bool    `json:"hasRecord"`               // Whether an AttendanceMonth record exists for this month
+	CanDelete               bool    `json:"canDelete"`               // Whether enrollment can be safely deleted
+	AttendanceLocked        bool    `json:"attendanceLocked"`        // Whether attendance is locked by a non-draft invoice
+	InvoiceStatus           string  `json:"invoiceStatus"`           // Invoice status for the student/month, if any
 }
 
 type CourseMonthSubscription struct {
@@ -141,21 +143,22 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 		}
 
 		rows = append(rows, Row{
-			EnrollmentID:     e.ID,
-			StudentID:        e.StudentID,
-			StudentName:      sname,
-			CourseID:         e.CourseID,
-			CourseName:       c.Name,
-			CourseType:       string(c.Type),
-			BillingMode:      string(e.BillingMode),
-			LessonPrice:      money.CentsToEuros(c.LessonPriceCents),
-			DiscountPct:      utils.Round2(e.DiscountPct),
+			EnrollmentID:            e.ID,
+			EnrollmentVersion:       e.Version,
+			StudentID:               e.StudentID,
+			StudentName:             sname,
+			CourseID:                e.CourseID,
+			CourseName:              c.Name,
+			CourseType:              string(c.Type),
+			BillingMode:             string(e.BillingMode),
+			LessonPrice:             money.CentsToEuros(c.LessonPriceCents),
+			DiscountPct:             utils.Round2(e.DiscountPct),
 			SubscriptionDiscountPct: utils.Round2(e.SubscriptionDiscountPct),
-			Hours:            hours,
-			HasRecord:        hasRecord,
-			CanDelete:        canDelete,
-			AttendanceLocked: lockReason(invoiceStatus),
-			InvoiceStatus:    invoiceStatus,
+			Hours:                   hours,
+			HasRecord:               hasRecord,
+			CanDelete:               canDelete,
+			AttendanceLocked:        lockReason(invoiceStatus),
+			InvoiceStatus:           invoiceStatus,
 		})
 	}
 	return rows, nil
@@ -312,6 +315,14 @@ func (s *Service) UpsertCourseMonthSubscription(ctx context.Context, courseID, y
 // This ensures that when an enrollment is removed, all attendance history
 // for that student-course pair is also cleaned up.
 func (s *Service) DeleteEnrollment(ctx context.Context, enrollmentID int) error {
+	return s.deleteEnrollment(ctx, enrollmentID, nil)
+}
+
+func (s *Service) DeleteEnrollmentWithVersion(ctx context.Context, enrollmentID, version int) error {
+	return s.deleteEnrollment(ctx, enrollmentID, &version)
+}
+
+func (s *Service) deleteEnrollment(ctx context.Context, enrollmentID int, expectedVersion *int) error {
 	tx, err := s.db.Tx(ctx)
 	if err != nil {
 		return err
@@ -326,6 +337,9 @@ func (s *Service) DeleteEnrollment(ctx context.Context, enrollmentID int) error 
 	en, err := tx.Enrollment.Get(ctx, enrollmentID)
 	if err != nil {
 		return err
+	}
+	if expectedVersion != nil && en.Version != *expectedVersion {
+		return apperrors.StaleRevision()
 	}
 
 	canDelete, err := canDeleteEnrollmentWithInvoiceHistory(ctx, tx.Client(), enrollmentID)
@@ -379,7 +393,14 @@ func (s *Service) DeleteEnrollment(ctx context.Context, enrollmentID int) error 
 		).Exec(ctx); err != nil {
 		return err
 	}
-	if err := tx.Enrollment.DeleteOneID(enrollmentID).Exec(ctx); err != nil {
+	deleteOne := tx.Enrollment.DeleteOneID(enrollmentID)
+	if expectedVersion != nil {
+		deleteOne = deleteOne.Where(enrollment.VersionEQ(*expectedVersion))
+	}
+	if err := deleteOne.Exec(ctx); err != nil {
+		if ent.IsNotFound(err) {
+			return apperrors.StaleRevision()
+		}
 		return err
 	}
 
