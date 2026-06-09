@@ -364,18 +364,12 @@ Basic flow:
 
 1. Copy the repo to the server.
 2. Create `.env` from `.env.example`.
-3. Set `APP_BASE_URL` to the real public address of the server.
+3. Set `APP_BASE_URL` to the canonical public hostname of the server.
 
 Preferred public setup:
 
 ```bash
-APP_BASE_URL=https://homeserver.tailnet.ts.net
-```
-
-Fallback if you intentionally expose the port directly:
-
-```bash
-APP_BASE_URL=http://203.0.113.10:8082
+APP_BASE_URL=https://homeserver.tail25398e.ts.net
 ```
 
 Do not leave it on `127.0.0.1` for a public deployment.
@@ -393,18 +387,12 @@ The included [compose.yaml](/Users/uvlazhnitel/Documents/coding/langschool/langs
 - sets `PORT=8080`
 
 This means the container is ready for local network traffic immediately.
-For internet access, prefer publishing the app through Tailscale Funnel or another HTTPS tunnel.
+For internet access, use the configured Tailscale Funnel hostname as the canonical URL.
 
 Health check:
 
 ```bash
 curl http://127.0.0.1:8082/healthz
-```
-
-Public access check from another device:
-
-```bash
-curl http://YOUR_SERVER_PUBLIC_IP:8082/healthz
 ```
 
 Recommended public access with Tailscale Funnel:
@@ -426,8 +414,14 @@ In that setup:
 - keep Docker published on `8082` locally
 - let Tailscale terminate TLS and proxy to the local app
 
-If the local health check works but the direct public IP check does not, the problem is outside the app.
-Check these only if you want to keep direct `IP:port` access:
+Production/public health check:
+
+```bash
+curl https://homeserver.tail25398e.ts.net/healthz
+```
+
+If the local health check works but the public hostname check does not, the problem is outside the app.
+Check these only if Funnel or hostname-based access stops working:
 
 1. The server firewall allows inbound TCP `8082`.
 2. The router forwards public TCP `8082` to the server if the machine is behind home NAT.
@@ -435,8 +429,8 @@ Check these only if you want to keep direct `IP:port` access:
 
 CG-NAT note:
 
-- if you do not have a public IPv4 address, port forwarding will not be enough
-- in that case use a public IP from the ISP, a tunnel, or a VPN such as Tailscale
+- direct public port exposure may fail behind CG-NAT
+- the preferred production setup here avoids that by using Tailscale Funnel and the hostname above
 
 ## Automated deployment
 
