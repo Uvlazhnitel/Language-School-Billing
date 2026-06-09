@@ -364,7 +364,15 @@ Basic flow:
 
 1. Copy the repo to the server.
 2. Create `.env` from `.env.example`.
-3. Set `APP_BASE_URL` to the real public address of the server, for example:
+3. Set `APP_BASE_URL` to the real public address of the server.
+
+Preferred public setup:
+
+```bash
+APP_BASE_URL=https://homeserver.tailnet.ts.net
+```
+
+Fallback if you intentionally expose the port directly:
 
 ```bash
 APP_BASE_URL=http://203.0.113.10:8082
@@ -384,7 +392,8 @@ The included [compose.yaml](/Users/uvlazhnitel/Documents/coding/langschool/langs
 - sets `HOST=0.0.0.0`
 - sets `PORT=8080`
 
-This means the container is ready for external traffic once the host network is configured correctly.
+This means the container is ready for local network traffic immediately.
+For internet access, prefer publishing the app through Tailscale Funnel or another HTTPS tunnel.
 
 Health check:
 
@@ -398,8 +407,27 @@ Public access check from another device:
 curl http://YOUR_SERVER_PUBLIC_IP:8082/healthz
 ```
 
-If the local health check works but the public one does not, the problem is outside the app.
-Check these in order:
+Recommended public access with Tailscale Funnel:
+
+```bash
+tailscale funnel --bg 8082
+```
+
+After Funnel is enabled for your tailnet, the site becomes available on the node's Tailscale HTTPS hostname,
+for example:
+
+```bash
+https://homeserver.tail25398e.ts.net
+```
+
+In that setup:
+
+- set `APP_BASE_URL` to the HTTPS Tailscale hostname
+- keep Docker published on `8082` locally
+- let Tailscale terminate TLS and proxy to the local app
+
+If the local health check works but the direct public IP check does not, the problem is outside the app.
+Check these only if you want to keep direct `IP:port` access:
 
 1. The server firewall allows inbound TCP `8082`.
 2. The router forwards public TCP `8082` to the server if the machine is behind home NAT.
