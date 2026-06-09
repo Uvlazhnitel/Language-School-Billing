@@ -438,6 +438,53 @@ CG-NAT note:
 - if you do not have a public IPv4 address, port forwarding will not be enough
 - in that case use a public IP from the ISP, a tunnel, or a VPN such as Tailscale
 
+## Automated deployment
+
+Production deploys can run automatically from `main` using GitHub Actions and Tailscale.
+
+Deployment flow:
+
+1. A push lands on `main`.
+2. GitHub Actions joins the tailnet using the Tailscale GitHub Action.
+3. The workflow syncs the repository to `/home/ilya/langschool` over SSH with `rsync`.
+4. The server runs `docker compose up -d --build`.
+5. The workflow waits for `http://127.0.0.1:8082/healthz` and then checks the public Funnel URL.
+
+Required GitHub repository secrets:
+
+- `TAILSCALE_AUTHKEY`
+- `DEPLOY_SSH_PRIVATE_KEY`
+
+Workflow defaults:
+
+- deploy host: `homeserver`
+- deploy user: `ilya`
+- deploy path: `/home/ilya/langschool`
+
+Tailscale notes:
+
+- the auth key should be reusable, ephemeral, and tagged for CI use
+- the GitHub Action connects to the tailnet before any SSH or `rsync` step
+
+Manual fallback:
+
+```bash
+./scripts/deploy-server.sh
+```
+
+Dry-run sync check:
+
+```bash
+./scripts/deploy-server.sh --dry-run
+```
+
+The deploy script uses the same remote flow as the GitHub Action:
+
+- sync files to the server
+- run `docker compose up -d --build`
+- verify `http://127.0.0.1:8082/healthz`
+- print `tailscale funnel status` as a smoke-check
+
 ## Backup scripts
 
 Available helper scripts in [scripts/](/Users/uvlazhnitel/Documents/coding/langschool/langschool/scripts):

@@ -1,0 +1,46 @@
+name: Deploy server
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy to home-java
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DEPLOY_HOST: homeserver
+      DEPLOY_PATH: /home/ilya/langschool
+      DEPLOY_USER: ilya
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+          ping: ${{ env.DEPLOY_HOST }}
+
+      - name: Prepare SSH key
+        env:
+          DEPLOY_SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+      - name: Run deploy
+        run: |
+          chmod +x scripts/deploy-server.sh
+          ./scripts/deploy-server.sh
+
+      - name: Verify public health endpoint
+        run: curl --fail --silent --show-error https://homeserver.tail25398e.ts.net/healthz
