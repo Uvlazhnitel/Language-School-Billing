@@ -5,10 +5,8 @@ type PaymentModalProps = {
   studentName: string;
   invoiceId: number | null;
   amount: string;
-  method: "cash" | "bank";
   note: string;
   onAmountChange: (value: string) => void;
-  onMethodChange: (value: "cash" | "bank") => void;
   onNoteChange: (value: string) => void;
   onCancel: () => void;
   onSubmit: () => void;
@@ -20,10 +18,8 @@ export function PaymentModal({
   studentName,
   invoiceId,
   amount,
-  method,
   note,
   onAmountChange,
-  onMethodChange,
   onNoteChange,
   onCancel,
   onSubmit,
@@ -54,13 +50,6 @@ export function PaymentModal({
             onChange={(e) => onAmountChange(e.target.value)}
             autoFocus
           />
-        </div>
-        <div className="formRow">
-          <label>{t("field.method")}:</label>
-          <select value={method} onChange={(e) => onMethodChange(e.target.value as "cash" | "bank")}>
-            <option value="cash">{t("payment.cash")}</option>
-            <option value="bank">{t("payment.bank")}</option>
-          </select>
         </div>
         <div className="formRow">
           <label>{t("field.note")}:</label>

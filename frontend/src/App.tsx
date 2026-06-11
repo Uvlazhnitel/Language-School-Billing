@@ -1417,6 +1417,7 @@ export default function App() {
   // Payment modal state
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [paymentAmount, setPaymentAmount] = useState("");
+  // Payment method stays fixed for new UI-created payments to keep the flow simple.
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank">("cash");
   const [paymentNote, setPaymentNote] = useState("");
   const [paymentStudentId, setPaymentStudentId] = useState<number>(0);
@@ -2691,10 +2692,8 @@ export default function App() {
               studentName={paymentStudentName}
               invoiceId={paymentInvoiceId ?? null}
               amount={paymentAmount}
-              method={paymentMethod}
               note={paymentNote}
               onAmountChange={setPaymentAmount}
-              onMethodChange={setPaymentMethod}
               onNoteChange={setPaymentNote}
               onCancel={closePaymentModal}
               onSubmit={() => void handleCreatePayment()}
