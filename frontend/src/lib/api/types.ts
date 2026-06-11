@@ -232,6 +232,12 @@ export type MonthOverviewDTO = {
   perLessonEnrollments: number;
   attendanceFilled: number;
   attendanceMissing: number;
+  subscriptionCoursesTracked: number;
+  subscriptionFilled: number;
+  subscriptionMissing: number;
+  monthControlTotal: number;
+  monthControlFilled: number;
+  monthControlMissing: number;
   draftInvoices: number;
   issuedInvoices: number;
   paidInvoices: number;

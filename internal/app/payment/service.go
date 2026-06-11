@@ -13,6 +13,7 @@ import (
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
+	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
@@ -89,9 +90,15 @@ type MonthOverviewDTO struct {
 	ActiveCourses  int `json:"activeCourses"`
 	Enrollments    int `json:"enrollments"`
 
-	PerLessonEnrollments int `json:"perLessonEnrollments"`
-	AttendanceFilled     int `json:"attendanceFilled"`
-	AttendanceMissing    int `json:"attendanceMissing"`
+	PerLessonEnrollments       int `json:"perLessonEnrollments"`
+	AttendanceFilled           int `json:"attendanceFilled"`
+	AttendanceMissing          int `json:"attendanceMissing"`
+	SubscriptionCoursesTracked int `json:"subscriptionCoursesTracked"`
+	SubscriptionFilled         int `json:"subscriptionFilled"`
+	SubscriptionMissing        int `json:"subscriptionMissing"`
+	MonthControlTotal          int `json:"monthControlTotal"`
+	MonthControlFilled         int `json:"monthControlFilled"`
+	MonthControlMissing        int `json:"monthControlMissing"`
 
 	DraftInvoices   int `json:"draftInvoices"`
 	IssuedInvoices  int `json:"issuedInvoices"`
@@ -672,6 +679,22 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		perLessonKeys[overviewEnrollmentKey(enr.StudentID, enr.CourseID)] = struct{}{}
 	}
 
+	subscriptionEnrollments, err := s.db.Enrollment.Query().
+		Where(
+			enrollment.BillingModeEQ(enrollment.BillingModeSubscription),
+			enrollment.HasStudentWith(student.IsActiveEQ(true)),
+			enrollment.HasCourseWith(course.IsActiveEQ(true)),
+		).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	subscriptionCourseIDs := make(map[int]struct{}, len(subscriptionEnrollments))
+	for _, enr := range subscriptionEnrollments {
+		subscriptionCourseIDs[enr.CourseID] = struct{}{}
+	}
+
 	filledRows, err := s.db.AttendanceMonth.Query().
 		Where(
 			attendancemonth.YearEQ(year),
@@ -700,6 +723,51 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 	attendanceMissing := len(perLessonEnrollments) - attendanceFilled
 	if attendanceMissing < 0 {
 		attendanceMissing = 0
+	}
+
+	subscriptionCoursesTracked := len(subscriptionCourseIDs)
+	subscriptionFilled := 0
+	if subscriptionCoursesTracked > 0 {
+		courseIDs := make([]int, 0, subscriptionCoursesTracked)
+		for courseID := range subscriptionCourseIDs {
+			courseIDs = append(courseIDs, courseID)
+		}
+
+		subscriptionStats, err := s.db.CourseMonthStat.Query().
+			Where(
+				coursemonthstat.YearEQ(year),
+				coursemonthstat.MonthEQ(month),
+				coursemonthstat.SubscriptionLessonsHeldGT(0),
+				coursemonthstat.CourseIDIn(courseIDs...),
+			).
+			All(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		seenSubscriptionCourses := make(map[int]struct{}, len(subscriptionStats))
+		for _, item := range subscriptionStats {
+			if _, ok := subscriptionCourseIDs[item.CourseID]; !ok {
+				continue
+			}
+			if _, ok := seenSubscriptionCourses[item.CourseID]; ok {
+				continue
+			}
+			seenSubscriptionCourses[item.CourseID] = struct{}{}
+			subscriptionFilled++
+		}
+	}
+
+	subscriptionMissing := subscriptionCoursesTracked - subscriptionFilled
+	if subscriptionMissing < 0 {
+		subscriptionMissing = 0
+	}
+
+	monthControlTotal := len(perLessonEnrollments) + subscriptionCoursesTracked
+	monthControlFilled := attendanceFilled + subscriptionFilled
+	monthControlMissing := attendanceMissing + subscriptionMissing
+	if monthControlMissing < 0 {
+		monthControlMissing = 0
 	}
 
 	monthInvoices, err := s.db.Invoice.Query().
@@ -834,7 +902,7 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 
 	debtorsCount := len(debtStudentIDs)
 	totalDebtCents := monthDebtCents + historicalDebtCents
-	actionQueueCount := debtorsCount + draftInvoices + attendanceMissing
+	actionQueueCount := debtorsCount + draftInvoices + monthControlMissing
 
 	return &MonthOverviewDTO{
 		Year:  year,
@@ -844,9 +912,15 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		ActiveCourses:  activeCourses,
 		Enrollments:    totalEnrollments,
 
-		PerLessonEnrollments: len(perLessonEnrollments),
-		AttendanceFilled:     attendanceFilled,
-		AttendanceMissing:    attendanceMissing,
+		PerLessonEnrollments:       len(perLessonEnrollments),
+		AttendanceFilled:           attendanceFilled,
+		AttendanceMissing:          attendanceMissing,
+		SubscriptionCoursesTracked: subscriptionCoursesTracked,
+		SubscriptionFilled:         subscriptionFilled,
+		SubscriptionMissing:        subscriptionMissing,
+		MonthControlTotal:          monthControlTotal,
+		MonthControlFilled:         monthControlFilled,
+		MonthControlMissing:        monthControlMissing,
 
 		DraftInvoices:   draftInvoices,
 		IssuedInvoices:  issuedInvoices,

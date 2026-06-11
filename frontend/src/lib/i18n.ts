@@ -78,7 +78,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "button.openEnrollments": "Open enrollments",
     "auth.eyebrow": "Secure access",
     "auth.title": "Sign in to StudentDesk",
-    "auth.subtitle": "Use your username and password to open students, invoices and payments in the browser.",
+    "auth.subtitle":
+      "Use your username and password to open students, invoices and payments in the browser.",
     "auth.username": "Username",
     "auth.password": "Password",
     "auth.rememberMe": "Remember me",
@@ -117,6 +118,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "label.workflowBlockers": "Workflow blocker",
     "label.needIssueInvoices": "Invoices to issue",
     "label.attendanceIncomplete": "Attendance incomplete",
+    "label.monthDataIncomplete": "Month data incomplete",
     "label.monthlyOverview": "Monthly overview",
     "msg.dashboardIntro":
       "See month priorities first, then jump into the right workflow without extra steps.",
@@ -125,9 +127,12 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noRecentPayments": "No payments yet.",
     "msg.noActionQueue": "There are no urgent debt follow-ups right now.",
     "msg.attendanceBlocksIssuing": "{count} attendance rows still block issuing this month.",
+    "msg.monthControlBlocksIssuing": "{count} monthly entries still block issuing this month.",
     "msg.draftInvoicesNeedReview": "{count} draft invoices still need review before issue.",
     "msg.historicalDebtNeedsAttention": "{count} older invoices still have balance.",
     "msg.attendanceScopeHint": "Progress is tracked only for active per-lesson enrollments.",
+    "msg.monthControlScopeHint":
+      "Progress includes active per-lesson enrollments and subscription courses with monthly lessons entered.",
     "msg.largestDebt": "Largest debt",
     "msg.noRecentPaymentLabel": "No recent payment",
     "msg.creditOnAccountTag": "Stored as credit",
@@ -231,6 +236,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "field.issuedInvoices": "Issued",
     "field.paidInvoices": "Paid",
     "field.filledAttendance": "Filled {filled} of {total} hourly rows.",
+    "field.filledMonthControl": "Filled {filled} of {total} monthly entries.",
     "field.openDebtorCases": "Debtor cases",
     "field.files": "Working files",
     "field.backups": "Backups",
@@ -314,14 +320,15 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.paymentStudentMissing": "No student selected for payment",
     "msg.paymentAmountInvalid": "Enter a valid payment amount",
     "msg.paymentRecorded": "Payment recorded",
-    "msg.recordConflict": "This record was changed by another user. Refresh the data and try again.",
+    "msg.recordConflict":
+      "This record was changed by another user. Refresh the data and try again.",
     "msg.invoiceIssued": "Invoice issued: #{number}",
     "msg.invoiceReopened": "Invoice returned to draft",
     "msg.invoiceReopenConfirm":
       "Return this issued invoice to draft? This is allowed only when there are no payments. The old invoice number will be cleared.",
     "msg.pdfReady": "PDF ready: {path}",
-    "msg.folderUnavailable": "Folder \"{label}\" is unavailable",
-    "msg.folderOpenError": "Failed to open folder \"{label}\": {message}",
+    "msg.folderUnavailable": 'Folder "{label}" is unavailable',
+    "msg.folderOpenError": 'Failed to open folder "{label}": {message}',
     "msg.backupCreated": "Backup created: {path}",
     "msg.backupCreateError": "Failed to create backup: {message}",
     "msg.errorGeneric": "Error: {message}",
@@ -405,7 +412,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.userCreated": "User created",
     "msg.userUpdated": "User updated",
     "msg.userDeleted": "User deleted",
-    "msg.userDeleteConfirm": "Delete user \"{username}\"? This cannot be undone.",
+    "msg.userDeleteConfirm": 'Delete user "{username}"? This cannot be undone.',
     "msg.userPasswordRequired": "Password is required",
     "msg.userPasswordReset": "Password reset",
     "msg.userLoadError": "Failed to load users: {message}",
@@ -541,7 +548,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "button.openEnrollments": "Открыть зачисления",
     "auth.eyebrow": "Защищённый доступ",
     "auth.title": "Вход в StudentDesk",
-    "auth.subtitle": "Войдите по username и паролю, чтобы работать со счетами, учениками и оплатами в браузере.",
+    "auth.subtitle":
+      "Войдите по username и паролю, чтобы работать со счетами, учениками и оплатами в браузере.",
     "auth.username": "Username",
     "auth.password": "Пароль",
     "auth.rememberMe": "Запомнить меня",
@@ -582,6 +590,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "label.workflowBlockers": "Блокер workflow",
     "label.needIssueInvoices": "Нужно выставить счета",
     "label.attendanceIncomplete": "Не заполнена посещаемость",
+    "label.monthDataIncomplete": "Не заполнены данные месяца",
     "label.monthlyOverview": "Месячный обзор",
     "msg.dashboardIntro":
       "Сначала видим приоритеты месяца, потом идём в нужный рабочий сценарий без лишних переходов.",
@@ -589,10 +598,16 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.dashboardError": "Не удалось загрузить обзор месяца.",
     "msg.noRecentPayments": "Оплат пока нет.",
     "msg.noActionQueue": "Сейчас нет срочных follow-up задач по долгам.",
-    "msg.attendanceBlocksIssuing": "Ещё {count} строк посещаемости блокируют выставление счетов за месяц.",
+    "msg.attendanceBlocksIssuing":
+      "Ещё {count} строк посещаемости блокируют выставление счетов за месяц.",
+    "msg.monthControlBlocksIssuing":
+      "Ещё {count} элементов контроля месяца блокируют выставление счетов за месяц.",
     "msg.draftInvoicesNeedReview": "Нужно проверить ещё {count} черновиков перед выпуском.",
     "msg.historicalDebtNeedsAttention": "Ещё {count} старых счетов имеют остаток.",
-    "msg.attendanceScopeHint": "Прогресс считается только по активным зачислениям с оплатой за урок.",
+    "msg.attendanceScopeHint":
+      "Прогресс считается только по активным зачислениям с оплатой за урок.",
+    "msg.monthControlScopeHint":
+      "Прогресс включает активные почасовые зачисления и курсы по абонементу, где введено количество уроков за месяц.",
     "msg.largestDebt": "Самый большой долг",
     "msg.noRecentPaymentLabel": "Нет недавней оплаты",
     "msg.creditOnAccountTag": "Оставлено как кредит",
@@ -621,8 +636,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.leftCount": "{count} осталось",
     "msg.studentsCount": "{count} учеников",
     "msg.priorityCount": "{count} в приоритете",
-    "msg.outstandingDebtReason":
-      "Есть открытый долг {amount}.",
+    "msg.outstandingDebtReason": "Есть открытый долг {amount}.",
     "msg.debtBalanceIssue": "Есть долг по балансу",
     "msg.debtInvoicesIssue": "{count} открытых счетов с остатком",
     "msg.noEnrollmentsReason": "У ученика пока нет активных зачислений.",
@@ -695,6 +709,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "field.issuedInvoices": "Выставлены",
     "field.paidInvoices": "Оплачены",
     "field.filledAttendance": "Заполнено {filled} из {total} почасовых строк.",
+    "field.filledMonthControl": "Заполнено {filled} из {total} элементов месяца.",
     "field.openDebtorCases": "Случаев должников",
     "field.files": "Рабочие файлы",
     "field.backups": "Резервные копии",
@@ -790,7 +805,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.paymentStudentMissing": "Для оплаты не выбран ученик",
     "msg.paymentAmountInvalid": "Введите корректную сумму",
     "msg.paymentRecorded": "Оплата записана",
-    "msg.recordConflict": "Эту запись уже изменил другой сотрудник. Обновите данные и попробуйте ещё раз.",
+    "msg.recordConflict":
+      "Эту запись уже изменил другой сотрудник. Обновите данные и попробуйте ещё раз.",
     "msg.invoiceIssued": "Счёт выставлен: #{number}",
     "msg.invoiceReopened": "Счёт возвращён в черновик",
     "msg.invoiceReopenConfirm":
@@ -881,7 +897,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.userCreated": "Пользователь создан",
     "msg.userUpdated": "Пользователь обновлён",
     "msg.userDeleted": "Пользователь удалён",
-    "msg.userDeleteConfirm": "Удалить пользователя \"{username}\"? Это действие нельзя отменить.",
+    "msg.userDeleteConfirm": 'Удалить пользователя "{username}"? Это действие нельзя отменить.',
     "msg.userPasswordRequired": "Пароль обязателен",
     "msg.userPasswordReset": "Пароль сброшен",
     "msg.userLoadError": "Не удалось загрузить пользователей: {message}",
@@ -974,7 +990,8 @@ export function normalizeLocale(locale?: string | null): UiLocale {
 
 export function createTranslator(locale: UiLocale): TranslateFn {
   return (key, params) => {
-    const template = translations[locale][key] ?? translations["lv-LV"][key] ?? translations["en-US"][key] ?? key;
+    const template =
+      translations[locale][key] ?? translations["lv-LV"][key] ?? translations["en-US"][key] ?? key;
     if (!params) return template;
     return Object.entries(params).reduce(
       (result, [name, value]) => result.replaceAll(`{${name}}`, String(value)),

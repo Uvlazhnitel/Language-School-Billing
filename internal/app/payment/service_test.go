@@ -732,6 +732,14 @@ func TestMonthOverview(t *testing.T) {
 	createTestAttendanceMonth(t, ctx, client, st2.ID, c1.ID, 2026, 4, 0)
 	createTestAttendanceMonth(t, ctx, client, st3.ID, c2.ID, 2026, 4, 5)
 	createTestAttendanceMonth(t, ctx, client, inactiveStudent.ID, c1.ID, 2026, 4, 4)
+	if _, err := client.CourseMonthStat.Create().
+		SetCourseID(c2.ID).
+		SetYear(2026).
+		SetMonth(4).
+		SetSubscriptionLessonsHeld(4).
+		Save(ctx); err != nil {
+		t.Fatalf("CourseMonthStat.Create: %v", err)
+	}
 
 	draftInvoice := createTestInvoice(t, ctx, client, st3.ID, 2026, 4, 10, app.InvoiceStatusDraft)
 	issuedInvoice := createTestInvoice(t, ctx, client, st1.ID, 2026, 4, 70, app.InvoiceStatusIssued)
@@ -758,6 +766,12 @@ func TestMonthOverview(t *testing.T) {
 	assertEqual(t, got.PerLessonEnrollments, 2)
 	assertEqual(t, got.AttendanceFilled, 1)
 	assertEqual(t, got.AttendanceMissing, 1)
+	assertEqual(t, got.SubscriptionCoursesTracked, 1)
+	assertEqual(t, got.SubscriptionFilled, 1)
+	assertEqual(t, got.SubscriptionMissing, 0)
+	assertEqual(t, got.MonthControlTotal, 3)
+	assertEqual(t, got.MonthControlFilled, 2)
+	assertEqual(t, got.MonthControlMissing, 1)
 	assertEqual(t, got.DraftInvoices, 1)
 	assertEqual(t, got.IssuedInvoices, 1)
 	assertEqual(t, got.PaidInvoices, 1)
@@ -777,6 +791,37 @@ func TestMonthOverview(t *testing.T) {
 	if draftInvoice.Status != entinvoice.Status(app.InvoiceStatusDraft) {
 		t.Fatalf("draft invoice status unexpectedly changed")
 	}
+}
+
+func TestMonthOverviewCountsSubscriptionCourseOnce(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+
+	st1 := createTestStudent(t, ctx, client, "Subscription One")
+	st2 := createTestStudent(t, ctx, client, "Subscription Two")
+	c1 := createTestCourse(t, ctx, client, "Shared Subscription", "group", true)
+
+	createTestEnrollment(t, ctx, client, st1.ID, c1.ID, "subscription")
+	createTestEnrollment(t, ctx, client, st2.ID, c1.ID, "subscription")
+
+	got, err := svc.MonthOverview(ctx, 2026, 4)
+	if err != nil {
+		t.Fatalf("MonthOverview returned error: %v", err)
+	}
+
+	assertEqual(t, got.PerLessonEnrollments, 0)
+	assertEqual(t, got.AttendanceFilled, 0)
+	assertEqual(t, got.AttendanceMissing, 0)
+	assertEqual(t, got.SubscriptionCoursesTracked, 1)
+	assertEqual(t, got.SubscriptionFilled, 0)
+	assertEqual(t, got.SubscriptionMissing, 1)
+	assertEqual(t, got.MonthControlTotal, 1)
+	assertEqual(t, got.MonthControlFilled, 0)
+	assertEqual(t, got.MonthControlMissing, 1)
+	assertEqual(t, got.ActionQueueCount, 1)
 }
 
 func newTestClient(t *testing.T) *ent.Client {

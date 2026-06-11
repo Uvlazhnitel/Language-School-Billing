@@ -36,11 +36,7 @@ function formatFeedDate(value: string): string {
   return value.slice(0, 10);
 }
 
-function actionReasonLabels(
-  item: DebtorActionQueueItem,
-  index: number,
-  t: TranslateFn
-): string[] {
+function actionReasonLabels(item: DebtorActionQueueItem, index: number, t: TranslateFn): string[] {
   const labels: string[] = [];
   if (index === 0) {
     labels.push(t("msg.largestDebt"));
@@ -80,17 +76,16 @@ export function DashboardOverview({
     return <div className="empty">{t("msg.dashboardError")}</div>;
   }
 
-  const attendanceReady =
-    overview.perLessonEnrollments === 0 || overview.attendanceMissing === 0;
+  const monthControlReady = overview.monthControlTotal === 0 || overview.monthControlMissing === 0;
 
   const blockers: ActionBlocker[] = [];
-  if (overview.attendanceMissing > 0) {
+  if (overview.monthControlMissing > 0) {
     blockers.push({
       id: "attendance",
       eyebrow: t("label.workflowBlockers"),
-      title: t("label.attendanceIncomplete"),
-      subtitle: t("msg.attendanceBlocksIssuing", { count: overview.attendanceMissing }),
-      amount: `${overview.attendanceFilled}/${overview.perLessonEnrollments}`,
+      title: t("label.monthDataIncomplete"),
+      subtitle: t("msg.monthControlBlocksIssuing", { count: overview.monthControlMissing }),
+      amount: `${overview.monthControlFilled}/${overview.monthControlTotal}`,
       emphasis: "warning",
       primaryLabel: t("button.openAttendance"),
       onPrimaryAction: onOpenAttendance,
@@ -133,8 +128,8 @@ export function DashboardOverview({
         </div>
         <div className="dashboardHeroStats dashboardHeroStats--monthly">
           <div className="dashboardHeroStat">
-            <span>{t("label.attendanceIncomplete")}</span>
-            <strong>{overview.attendanceMissing}</strong>
+            <span>{t("label.monthDataIncomplete")}</span>
+            <strong>{overview.monthControlMissing}</strong>
           </div>
           <div className="dashboardHeroStat">
             <span>{t("label.needIssueInvoices")}</span>
@@ -167,7 +162,10 @@ export function DashboardOverview({
 
           <div className="actionQueueList actionQueueList--dashboard">
             {blockers.map((blocker) => (
-              <div key={blocker.id} className={`actionQueueItem actionQueueItem--${blocker.emphasis ?? "warning"}`}>
+              <div
+                key={blocker.id}
+                className={`actionQueueItem actionQueueItem--${blocker.emphasis ?? "warning"}`}
+              >
                 <div className="actionQueueContent">
                   <span className="dashboardCardEyebrow">{blocker.eyebrow}</span>
                   <strong>{blocker.title}</strong>
@@ -244,28 +242,28 @@ export function DashboardOverview({
           <div className="dashboardCardHeader">
             <div>
               <div className="dashboardCardEyebrow">{t("label.monthControl")}</div>
-              <h3>{t("label.attendanceIncomplete")}</h3>
+              <h3>{t("label.monthDataIncomplete")}</h3>
             </div>
-            <span className={`statusPill ${attendanceReady ? "success" : "warning"}`}>
-              {attendanceReady
+            <span className={`statusPill ${monthControlReady ? "success" : "warning"}`}>
+              {monthControlReady
                 ? t("msg.canIssue")
-                : t("msg.leftCount", { count: overview.attendanceMissing })}
+                : t("msg.leftCount", { count: overview.monthControlMissing })}
             </span>
           </div>
           <p className="dashboardCardLead">
-            {t("field.filledAttendance", {
-              filled: overview.attendanceFilled,
-              total: overview.perLessonEnrollments,
+            {t("field.filledMonthControl", {
+              filled: overview.monthControlFilled,
+              total: overview.monthControlTotal,
             })}
           </p>
-          <p className="dashboardCardCaption">{t("msg.attendanceScopeHint")}</p>
+          <p className="dashboardCardCaption">{t("msg.monthControlScopeHint")}</p>
           <div className="dashboardProgress">
             <div
               className="dashboardProgressValue"
               style={{
                 width:
-                  overview.perLessonEnrollments > 0
-                    ? `${(overview.attendanceFilled / overview.perLessonEnrollments) * 100}%`
+                  overview.monthControlTotal > 0
+                    ? `${(overview.monthControlFilled / overview.monthControlTotal) * 100}%`
                     : "0%",
               }}
             />
