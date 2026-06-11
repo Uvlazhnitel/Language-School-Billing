@@ -34,8 +34,8 @@ func TestHealthAndMeta(t *testing.T) {
 	if !meta.Ready {
 		t.Fatalf("meta ready = false, want true")
 	}
-	if meta.Locale == "" {
-		t.Fatal("meta locale is empty")
+	if meta.Locale != "lv-LV" {
+		t.Fatalf("meta locale = %q, want lv-LV", meta.Locale)
 	}
 }
 

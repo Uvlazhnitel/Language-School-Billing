@@ -79,7 +79,7 @@ export const wailsTransport: AppTransport = {
       if (ready) {
         const [appDirs, locale] = await Promise.all([
           AppDirs(),
-          SettingsGetLocale().catch(() => "en-US"),
+          SettingsGetLocale().catch(() => "lv-LV"),
         ]);
         return {
           ready: true,
@@ -117,7 +117,7 @@ export const wailsTransport: AppTransport = {
   },
 
   async getSession(): Promise<SessionInfo> {
-    const locale = await SettingsGetLocale().catch(() => "en-US");
+    const locale = await SettingsGetLocale().catch(() => "lv-LV");
     return {
       authenticated: true,
       user: {
@@ -137,7 +137,7 @@ export const wailsTransport: AppTransport = {
   },
 
   async login(_username, _password, _rememberMe) {
-    const locale = await SettingsGetLocale().catch(() => "en-US");
+    const locale = await SettingsGetLocale().catch(() => "lv-LV");
     return {
       authenticated: true,
       user: {

@@ -72,6 +72,7 @@ type EnrollmentDTO struct {
 	StudentName             string  `json:"studentName"`
 	CourseID                int     `json:"courseId"`
 	CourseName              string  `json:"courseName"`
+	CourseType              string  `json:"courseType"`
 	TeacherID               *int    `json:"teacherId,omitempty"`
 	TeacherName             string  `json:"teacherName"`
 	BillingMode             string  `json:"billingMode"`
@@ -600,7 +601,7 @@ func (s *Service) SettingsSetLocale(ctx context.Context, loc string) error {
 
 func (s *Service) SettingsGetLocale(ctx context.Context) (string, error) {
 	if s.rt == nil || s.rt.DB == nil || s.rt.DB.Ent == nil {
-		return "en-US", nil
+		return "lv-LV", nil
 	}
 	st, err := s.rt.DB.Ent.Settings.
 		Query().
@@ -1413,6 +1414,7 @@ func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
 	}
 	if e.Edges.Course != nil {
 		dto.CourseName = e.Edges.Course.Name
+		dto.CourseType = string(e.Edges.Course.Type)
 		dto.TeacherName = e.Edges.Course.TeacherName
 		if e.Edges.Course.TeacherID != nil {
 			id := *e.Edges.Course.TeacherID

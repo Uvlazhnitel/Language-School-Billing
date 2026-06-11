@@ -155,7 +155,7 @@ export default function App() {
   const [loginPending, setLoginPending] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
-  const [uiLocale, setUiLocale] = useState<UiLocale>("en-US");
+  const [uiLocale, setUiLocale] = useState<UiLocale>("lv-LV");
   const [appDirs, setAppDirs] = useState<Record<string, string> | null>(null);
   const [creatingBackup, setCreatingBackup] = useState(false);
   const [users, setUsers] = useState<UserDTO[]>([]);
@@ -190,7 +190,7 @@ export default function App() {
         if (!cancelled) {
           setAuthLoading(false);
           showMessage(
-            createTranslator("en-US")("msg.loadingFoldersError", {
+            createTranslator("lv-LV")("msg.loadingFoldersError", {
               message: String(e?.message ?? e),
             }),
             "error"
@@ -508,7 +508,7 @@ export default function App() {
         try {
           const currentStudent = studentList.find((item) => item.id === id) ?? allStudents.find((item) => item.id === id);
           if (!currentStudent) {
-            throw new Error("Student not found");
+            throw new Error(t("msg.studentNotFound"));
           }
           await deleteStudent(id, currentStudent.version);
           await Promise.all([loadStudents(), loadAllStudents()]);
@@ -624,7 +624,7 @@ export default function App() {
       setTab("students");
       await openStudentCard(student, { inline: true });
     } catch (e: any) {
-      showMessage(`Ошибка загрузки карточки ученика: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.studentCardLoadError", { message: String(e?.message ?? e) }), "error");
     }
   }
 
@@ -882,7 +882,7 @@ export default function App() {
         try {
           const currentCourse = courseList.find((item) => item.id === id) ?? allCourses.find((item) => item.id === id);
           if (!currentCourse) {
-            throw new Error("Course not found");
+            throw new Error(t("msg.courseNotFound"));
           }
           await deleteCourse(id, currentCourse.version);
           await Promise.all([loadCourses(), loadAllCourses()]);
@@ -1277,7 +1277,7 @@ export default function App() {
       const parsed = Number(trimmed.replace(",", "."));
       if (!Number.isFinite(parsed)) {
         clearAttendanceDraft(r.enrollmentId);
-        showMessage(t("msg.errorGeneric", { message: "Invalid hours value" }), "error");
+        showMessage(t("msg.errorGeneric", { message: t("msg.invalidHoursValue") }), "error");
         return;
       }
 
@@ -1344,7 +1344,7 @@ export default function App() {
       const parsed = Number(trimmed.replace(",", "."));
       if (!Number.isFinite(parsed) || parsed < 0) {
         clearSubscriptionMonthLessonsDraft(row.courseId);
-        showMessage(t("msg.errorGeneric", { message: "Invalid lessons value" }), "error");
+        showMessage(t("msg.errorGeneric", { message: t("msg.invalidLessonsValue") }), "error");
         return;
       }
       const normalized = normalizeQuarterHours(parsed);
@@ -1753,7 +1753,7 @@ export default function App() {
       setReturnToDebtDetailsAfterPayment(false);
       setReturnToStudentCardAfterPayment(false);
     } catch (e: any) {
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   };
 
@@ -1763,7 +1763,7 @@ export default function App() {
       const scrollY = window.scrollY;
       const currentInvoice = invItems.find((item) => item.id === id) ?? (selectedInv?.id === id ? selectedInv : undefined);
       if (!currentInvoice) {
-        throw new Error("Invoice not found");
+        throw new Error(t("msg.invoiceNotFound"));
       }
       const res = await issueOne(id, currentInvoice.version);
       pendingInvoiceScrollRestoreRef.current = scrollY;
@@ -1777,7 +1777,7 @@ export default function App() {
         showMessage(t("msg.recordConflict"), "error");
         return;
       }
-      showMessage(`Ошибка: ${String(e?.message ?? e)}`, "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   };
 
@@ -1789,7 +1789,7 @@ export default function App() {
         try {
           const currentInvoice = invItems.find((item) => item.id === id) ?? (selectedInv?.id === id ? selectedInv : undefined);
           if (!currentInvoice) {
-            throw new Error("Invoice not found");
+            throw new Error(t("msg.invoiceNotFound"));
           }
           await reopenToDraft(id, currentInvoice.version);
           await loadInvoices({ syncDrafts: false });
@@ -2067,7 +2067,7 @@ export default function App() {
         )
       );
     } catch (e: any) {
-      showMessage(String(e?.message ?? e), "error");
+      showMessage(t("msg.userLoadError", { message: String(e?.message ?? e) }), "error");
     } finally {
       setUsersLoading(false);
     }
@@ -2092,9 +2092,9 @@ export default function App() {
       setNewUserUsername("");
       setNewUserPassword("");
       setNewUserRole("staff");
-      showMessage("User created");
+      showMessage(t("msg.userCreated"));
     } catch (e: any) {
-      showMessage(String(e?.message ?? e), "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     } finally {
       setCreatingUser(false);
     }
@@ -2108,9 +2108,9 @@ export default function App() {
       const updated = await transport.updateUser(userId, draft.username, draft.role, draft.isActive);
       setUsers((prev) => prev.map((item) => (item.id === userId ? updated : item)));
       setUserDrafts((prev) => ({ ...prev, [userId]: { username: updated.username, role: updated.role, isActive: updated.isActive } }));
-      showMessage("User updated");
+      showMessage(t("msg.userUpdated"));
     } catch (e: any) {
-      showMessage(String(e?.message ?? e), "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   };
 
@@ -2118,7 +2118,7 @@ export default function App() {
     const target = users.find((item) => item.id === userId);
     if (!target) return;
     showConfirm(
-      `Delete user "${target.username}"? This cannot be undone.`,
+      t("msg.userDeleteConfirm", { username: target.username }),
       async () => {
         try {
           const transport = await getTransport();
@@ -2134,28 +2134,28 @@ export default function App() {
             delete next[userId];
             return next;
           });
-          showMessage("User deleted");
+          showMessage(t("msg.userDeleted"));
         } catch (e: any) {
-          showMessage(String(e?.message ?? e), "error");
+          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
         }
       },
-      "Delete user"
+      t("settings.userDelete")
     );
   };
 
   const handleResetUserPassword = async (userId: number) => {
     const password = userPasswordDrafts[userId]?.trim() ?? "";
     if (!password) {
-      showMessage("Password is required", "error");
+      showMessage(t("msg.userPasswordRequired"), "error");
       return;
     }
     try {
       const transport = await getTransport();
       await transport.setUserPassword(userId, password);
       setUserPasswordDrafts((prev) => ({ ...prev, [userId]: "" }));
-      showMessage("Password reset");
+      showMessage(t("msg.userPasswordReset"));
     } catch (e: any) {
-      showMessage(String(e?.message ?? e), "error");
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
   };
 
@@ -2485,6 +2485,7 @@ export default function App() {
                 allStudents={allStudents}
                 allCourses={allCourses}
                 billingModeLabel={localizedBillingModeLabel}
+                courseTypeLabel={localizedCourseTypeLabel}
                 onStudentFilterChange={setEnrStudentFilter}
                 onCourseFilterChange={setEnrCourseFilter}
                 onAddEnrollment={openAddEnrollment}

@@ -125,7 +125,7 @@ export const httpTransport: AppTransport = {
 
     return {
       ready: health.ready && session.ready,
-      locale: session.locale || "en-US",
+      locale: session.locale || "lv-LV",
       appDirs: null,
       capabilities: {
         isDesktop: false,

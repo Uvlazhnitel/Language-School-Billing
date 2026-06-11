@@ -14,6 +14,7 @@ type EnrollmentsScreenProps = {
   allStudents: StudentDTO[];
   allCourses: CourseDTO[];
   billingModeLabel: (mode: string) => string;
+  courseTypeLabel: (type: string) => string;
   onStudentFilterChange: (value: number | undefined) => void;
   onCourseFilterChange: (value: number | undefined) => void;
   onAddEnrollment: () => void;
@@ -55,6 +56,7 @@ export function EnrollmentsScreen({
   allStudents,
   allCourses,
   billingModeLabel,
+  courseTypeLabel,
   onStudentFilterChange,
   onCourseFilterChange,
   onAddEnrollment,
@@ -156,6 +158,7 @@ export function EnrollmentsScreen({
             <tr>
               <th>{t("field.student")}</th>
               <th>{t("field.course")}</th>
+              <th>{t("field.type")}</th>
               <th>{t("field.teacher")}</th>
               <th>{t("field.billing")}</th>
               <th style={{ textAlign: "right" }}>{t("field.discount")}</th>
@@ -171,6 +174,7 @@ export function EnrollmentsScreen({
                   </button>
                 </td>
                 <td>{enrollment.courseName}</td>
+                <td>{courseTypeLabel(enrollment.courseType)}</td>
                 <td>{enrollment.teacherName || "—"}</td>
                 <td>{billingModeLabel(enrollment.billingMode)}</td>
                 <td style={{ textAlign: "right" }}>{enrollment.discountPct.toFixed(1)}%</td>

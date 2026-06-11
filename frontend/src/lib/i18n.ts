@@ -1,4 +1,6 @@
-export type UiLocale = "en-US" | "ru-RU";
+import { lvMonthNames, lvTranslations } from "./i18n.lv";
+
+export type UiLocale = "en-US" | "ru-RU" | "lv-LV";
 export type TranslateParams = Record<string, string | number>;
 export type TranslateFn = (key: string, params?: TranslateParams) => string;
 
@@ -255,6 +257,21 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "settings.languageDesc": "Choose the interface language for this installation.",
     "settings.languageEnglish": "English",
     "settings.languageRussian": "Russian",
+    "settings.languageLatvian": "Latvian",
+    "settings.usersTitle": "Users",
+    "settings.usersDesc": "Manage admin and staff accounts for the web app.",
+    "settings.userUsername": "Username",
+    "settings.userPassword": "Password",
+    "settings.userRole": "Role",
+    "settings.userActive": "Active",
+    "settings.userPasswordReset": "Password reset",
+    "settings.userCreate": "Create user",
+    "settings.userCreatePending": "Create...",
+    "settings.userPasswordPlaceholder": "New password",
+    "settings.userResetPassword": "Reset password",
+    "settings.userDelete": "Delete",
+    "settings.userRoleStaff": "staff",
+    "settings.userRoleAdmin": "admin",
     "msg.loadingFoldersError": "Failed to load application folders: {message}",
     "msg.dashboardLoadError": "Failed to load overview: {message}",
     "msg.studentNameRequired": "Enter the student name",
@@ -385,6 +402,18 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.deleteEnrollment": "Delete enrollment",
     "msg.deleteEnrollmentBlocked": "Cannot delete: used in invoices",
     "msg.lessonsTotalEur": "Hourly total (EUR)",
+    "msg.userCreated": "User created",
+    "msg.userUpdated": "User updated",
+    "msg.userDeleted": "User deleted",
+    "msg.userDeleteConfirm": "Delete user \"{username}\"? This cannot be undone.",
+    "msg.userPasswordRequired": "Password is required",
+    "msg.userPasswordReset": "Password reset",
+    "msg.userLoadError": "Failed to load users: {message}",
+    "msg.studentNotFound": "Student not found",
+    "msg.courseNotFound": "Course not found",
+    "msg.invoiceNotFound": "Invoice not found",
+    "msg.invalidHoursValue": "Invalid hours value",
+    "msg.invalidLessonsValue": "Invalid lessons value",
     "modal.confirm": "Confirmation",
     "modal.editStudent": "Edit student",
     "modal.addStudent": "Add student",
@@ -438,6 +467,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "audit.totalRows": "{count} rows",
     "audit.pageLabel": "Page {page}",
   },
+  "lv-LV": lvTranslations,
   "ru-RU": {
     "tabs.dashboard": "Обзор",
     "tabs.students": "Ученики",
@@ -702,6 +732,21 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "settings.languageDesc": "Выберите язык интерфейса для этой установки.",
     "settings.languageEnglish": "English",
     "settings.languageRussian": "Русский",
+    "settings.languageLatvian": "Latviešu",
+    "settings.usersTitle": "Пользователи",
+    "settings.usersDesc": "Управление аккаунтами admin и staff для веб-приложения.",
+    "settings.userUsername": "Username",
+    "settings.userPassword": "Пароль",
+    "settings.userRole": "Роль",
+    "settings.userActive": "Активен",
+    "settings.userPasswordReset": "Сброс пароля",
+    "settings.userCreate": "Создать пользователя",
+    "settings.userCreatePending": "Создание...",
+    "settings.userPasswordPlaceholder": "Новый пароль",
+    "settings.userResetPassword": "Сбросить пароль",
+    "settings.userDelete": "Удалить",
+    "settings.userRoleStaff": "staff",
+    "settings.userRoleAdmin": "admin",
     "msg.loadingFoldersError": "Не удалось загрузить папки приложения: {message}",
     "msg.dashboardLoadError": "Ошибка загрузки обзора: {message}",
     "msg.studentNameRequired": "Введите имя ученика",
@@ -833,6 +878,18 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.deleteEnrollment": "Удалить зачисление",
     "msg.deleteEnrollmentBlocked": "Нельзя удалить: используется в счетах",
     "msg.lessonsTotalEur": "Итого по часам (EUR)",
+    "msg.userCreated": "Пользователь создан",
+    "msg.userUpdated": "Пользователь обновлён",
+    "msg.userDeleted": "Пользователь удалён",
+    "msg.userDeleteConfirm": "Удалить пользователя \"{username}\"? Это действие нельзя отменить.",
+    "msg.userPasswordRequired": "Пароль обязателен",
+    "msg.userPasswordReset": "Пароль сброшен",
+    "msg.userLoadError": "Не удалось загрузить пользователей: {message}",
+    "msg.studentNotFound": "Ученик не найден",
+    "msg.courseNotFound": "Курс не найден",
+    "msg.invoiceNotFound": "Счёт не найден",
+    "msg.invalidHoursValue": "Некорректное значение часов",
+    "msg.invalidLessonsValue": "Некорректное значение занятий",
     "modal.confirm": "Подтверждение",
     "modal.editStudent": "Редактировать ученика",
     "modal.addStudent": "Добавить ученика",
@@ -906,16 +963,18 @@ const monthNames: Record<UiLocale, string[]> = {
     "Ноябрь",
     "Декабрь",
   ],
+  "lv-LV": [...lvMonthNames],
 };
 
 export function normalizeLocale(locale?: string | null): UiLocale {
+  if (locale === "lv-LV") return "lv-LV";
   if (locale === "ru-RU") return "ru-RU";
-  return "en-US";
+  return "lv-LV";
 }
 
 export function createTranslator(locale: UiLocale): TranslateFn {
   return (key, params) => {
-    const template = translations[locale][key] ?? translations["en-US"][key] ?? key;
+    const template = translations[locale][key] ?? translations["lv-LV"][key] ?? translations["en-US"][key] ?? key;
     if (!params) return template;
     return Object.entries(params).reduce(
       (result, [name, value]) => result.replaceAll(`{${name}}`, String(value)),

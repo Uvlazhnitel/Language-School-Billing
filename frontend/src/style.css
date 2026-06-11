@@ -1,6 +1,7 @@
 html {
   background-color: #f6f1e8;
   color: #1d2433;
+  font-synthesis: none;
 }
 
 body {
@@ -12,10 +13,9 @@ body {
 @font-face {
   font-family: "Nunito";
   font-style: normal;
-  font-weight: 400;
-  src:
-    local(""),
-    url("assets/fonts/nunito-v16-latin-regular.woff2") format("woff2");
+  font-weight: 200 1000;
+  font-display: swap;
+  src: url("assets/fonts/nunito-vf.ttf") format("truetype");
 }
 
 #app {

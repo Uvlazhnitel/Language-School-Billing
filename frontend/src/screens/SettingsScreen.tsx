@@ -93,6 +93,7 @@ export function SettingsScreen({
           >
             <option value="en-US">{t("settings.languageEnglish")}</option>
             <option value="ru-RU">{t("settings.languageRussian")}</option>
+            <option value="lv-LV">{t("settings.languageLatvian")}</option>
           </select>
         </div>
       </section>
@@ -174,16 +175,16 @@ export function SettingsScreen({
       {canManageUsers && (
         <section className="detailCard detailCard--wide">
           <div className="detailCardHeader">
-            <h3>Users</h3>
+            <h3>{t("settings.usersTitle")}</h3>
           </div>
-          <p className="mutedInline">Manage admin and staff accounts for the web app.</p>
+          <p className="mutedInline">{t("settings.usersDesc")}</p>
 
           <div className="formRow">
-            <label>Username</label>
+            <label>{t("settings.userUsername")}</label>
             <input value={newUserUsername} onChange={(e) => onNewUserUsernameChange(e.target.value)} />
           </div>
           <div className="formRow">
-            <label>Password</label>
+            <label>{t("settings.userPassword")}</label>
             <input
               type="password"
               value={newUserPassword}
@@ -191,10 +192,10 @@ export function SettingsScreen({
             />
           </div>
           <div className="formRow">
-            <label>Role</label>
+            <label>{t("settings.userRole")}</label>
             <select value={newUserRole} onChange={(e) => onNewUserRoleChange(e.target.value)}>
-              <option value="staff">staff</option>
-              <option value="admin">admin</option>
+              <option value="staff">{t("settings.userRoleStaff")}</option>
+              <option value="admin">{t("settings.userRoleAdmin")}</option>
             </select>
           </div>
           <div className="settingsActions">
@@ -204,7 +205,7 @@ export function SettingsScreen({
               onClick={() => void onCreateUser()}
               disabled={creatingUser}
             >
-              {creatingUser ? "Create..." : "Create user"}
+              {creatingUser ? t("settings.userCreatePending") : t("settings.userCreate")}
             </button>
             <button type="button" className="workspaceActionButton" onClick={() => void onRefreshUsers()}>
               {t("button.refresh")}
@@ -218,10 +219,10 @@ export function SettingsScreen({
               <table>
                 <thead>
                   <tr>
-                    <th>Username</th>
-                    <th>Role</th>
-                    <th>Active</th>
-                    <th>Password reset</th>
+                    <th>{t("settings.userUsername")}</th>
+                    <th>{t("settings.userRole")}</th>
+                    <th>{t("settings.userActive")}</th>
+                    <th>{t("settings.userPasswordReset")}</th>
                     <th>{t("field.actions")}</th>
                   </tr>
                 </thead>
@@ -255,8 +256,8 @@ export function SettingsScreen({
                               }))
                             }
                           >
-                            <option value="staff">staff</option>
-                            <option value="admin">admin</option>
+                            <option value="staff">{t("settings.userRoleStaff")}</option>
+                            <option value="admin">{t("settings.userRoleAdmin")}</option>
                           </select>
                         </td>
                         <td>
@@ -281,17 +282,19 @@ export function SettingsScreen({
                                 [user.id]: e.target.value,
                               }))
                             }
-                            placeholder="New password"
+                            placeholder={t("settings.userPasswordPlaceholder")}
                           />
                         </td>
                         <td>
                           <button onClick={() => void onSaveUser(user.id)}>{t("button.save")}</button>
-                          <button onClick={() => void onResetUserPassword(user.id)}>Reset password</button>
+                          <button onClick={() => void onResetUserPassword(user.id)}>
+                            {t("settings.userResetPassword")}
+                          </button>
                           <button
                             onClick={() => void onDeleteUser(user.id)}
                             disabled={currentSessionUser?.id === user.id}
                           >
-                            Delete
+                            {t("settings.userDelete")}
                           </button>
                         </td>
                       </tr>

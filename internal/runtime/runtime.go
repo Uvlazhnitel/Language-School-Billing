@@ -119,7 +119,7 @@ func ensureSettings(ctx context.Context, client *ent.Client) error {
 			SetNextSeq(1).
 			SetInvoiceDayOfMonth(1).
 			SetCurrency("EUR").
-			SetLocale("en-US").
+			SetLocale("lv-LV").
 			Save(ctx)
 		return err
 	}
