@@ -687,9 +687,13 @@ export default function App() {
   }
 
   // ---------------- Courses ----------------
-  const [courseList, setCourseList] = useState<CourseDTO[]>([]);
   const [allCourses, setAllCourses] = useState<CourseDTO[]>([]);
   const [courseQ, setCourseQ] = useState("");
+  const [courseTypeFilter, setCourseTypeFilter] = useState<"" | "group" | "individual">("");
+  const [courseTeacherFilter, setCourseTeacherFilter] = useState("all");
+  const [coursePricingFilter, setCoursePricingFilter] = useState<
+    "all" | "lesson" | "subscription" | "both" | "lesson_only" | "subscription_only"
+  >("all");
   const [courseLoading, setCourseLoading] = useState(false);
 
   const [courseModalOpen, setCourseModalOpen] = useState(false);
@@ -710,21 +714,20 @@ export default function App() {
     if (next !== null) setter(next);
   };
 
-  const loadCourses = useCallback(async () => {
-    setCourseLoading(true);
-    try {
-      const data = await listCourses(courseQ);
-      setCourseList(data);
-    } finally {
-      setCourseLoading(false);
-    }
-  }, [courseQ]);
-
   const loadAllCourses = useCallback(async () => {
     const data = await listCourses("");
     setAllCourses(data);
     return data;
   }, []);
+
+  const loadCourses = useCallback(async () => {
+    setCourseLoading(true);
+    try {
+      return await loadAllCourses();
+    } finally {
+      setCourseLoading(false);
+    }
+  }, [loadAllCourses]);
 
   const loadAllTeachers = useCallback(async () => {
     const data = await listTeachers("");
@@ -763,6 +766,76 @@ export default function App() {
     if (!q) return null;
     return allTeachers.find((t) => t.fullName.trim().toLowerCase() === q) ?? null;
   }, [allTeachers, cfTeacherSearch]);
+
+  const courseTeacherOptions = useMemo(() => {
+    const seen = new Map<number, string>();
+    for (const course of allCourses) {
+      if (!course.teacherId || !course.teacherName) continue;
+      if (!seen.has(course.teacherId)) {
+        seen.set(course.teacherId, course.teacherName);
+      }
+    }
+    return Array.from(seen.entries())
+      .map(([id, label]) => ({ value: String(id), label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [allCourses]);
+
+  const courseList = useMemo(() => {
+    const q = courseQ.trim().toLowerCase();
+    return allCourses.filter((course) => {
+      if (q) {
+        const haystack = `${course.name} ${course.teacherName || ""}`.toLowerCase();
+        if (!haystack.includes(q)) {
+          return false;
+        }
+      }
+
+      if (courseTypeFilter && course.type !== courseTypeFilter) {
+        return false;
+      }
+
+      if (courseTeacherFilter === "none") {
+        if (course.teacherId || course.teacherName?.trim()) {
+          return false;
+        }
+      } else if (courseTeacherFilter !== "all" && String(course.teacherId ?? "") !== courseTeacherFilter) {
+        return false;
+      }
+
+      const hasLessonPrice = course.lessonPrice > 0;
+      const hasSubscriptionPrice = course.subscriptionPrice > 0;
+      switch (coursePricingFilter) {
+        case "lesson":
+          if (!hasLessonPrice) return false;
+          break;
+        case "subscription":
+          if (!hasSubscriptionPrice) return false;
+          break;
+        case "both":
+          if (!hasLessonPrice || !hasSubscriptionPrice) return false;
+          break;
+        case "lesson_only":
+          if (!hasLessonPrice || hasSubscriptionPrice) return false;
+          break;
+        case "subscription_only":
+          if (!hasSubscriptionPrice || hasLessonPrice) return false;
+          break;
+      }
+
+      return true;
+    });
+  }, [allCourses, coursePricingFilter, courseQ, courseTeacherFilter, courseTypeFilter]);
+
+  const courseFiltersActive = Boolean(
+    courseQ.trim() || courseTypeFilter || courseTeacherFilter !== "all" || coursePricingFilter !== "all"
+  );
+
+  const clearCourseFilters = useCallback(() => {
+    setCourseQ("");
+    setCourseTypeFilter("");
+    setCourseTeacherFilter("all");
+    setCoursePricingFilter("all");
+  }, []);
 
   useEffect(() => {
     if (!cfTeacherPickerOpen) return;
@@ -864,7 +937,7 @@ export default function App() {
       }
 
       setCourseModalOpen(false);
-      await Promise.all([loadCourses(), loadAllCourses()]);
+      await loadCourses();
       showMessage(editingCourse ? t("msg.courseUpdated") : t("msg.courseCreated"));
     } catch (e: any) {
       if (isStaleRevisionError(e)) {
@@ -880,12 +953,13 @@ export default function App() {
       t("msg.courseDeleteConfirm"),
       async () => {
         try {
-          const currentCourse = courseList.find((item) => item.id === id) ?? allCourses.find((item) => item.id === id);
+          const currentCourse =
+            courseList.find((item) => item.id === id) ?? allCourses.find((item) => item.id === id);
           if (!currentCourse) {
             throw new Error(t("msg.courseNotFound"));
           }
           await deleteCourse(id, currentCourse.version);
-          await Promise.all([loadCourses(), loadAllCourses()]);
+          await loadCourses();
           showMessage(t("msg.courseDeleted"));
         } catch (e: any) {
           if (isStaleRevisionError(e)) {
@@ -2440,10 +2514,19 @@ export default function App() {
                 loading={courseLoading}
                 courses={courseList}
                 query={courseQ}
+                typeFilter={courseTypeFilter}
+                teacherFilter={courseTeacherFilter}
+                pricingFilter={coursePricingFilter}
+                teacherOptions={courseTeacherOptions}
+                hasActiveFilters={courseFiltersActive}
                 canDeleteCourses={canDeleteCourses}
                 courseTypeLabel={localizedCourseTypeLabel}
                 formatEUR={formatEUR}
                 onQueryChange={setCourseQ}
+                onTypeFilterChange={setCourseTypeFilter}
+                onTeacherFilterChange={setCourseTeacherFilter}
+                onPricingFilterChange={setCoursePricingFilter}
+                onClearFilters={clearCourseFilters}
                 onAddCourse={openAddCourse}
                 onEditCourse={openEditCourse}
                 onDeleteCourse={(courseId) => void removeCourse(courseId)}

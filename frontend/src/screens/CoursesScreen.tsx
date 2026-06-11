@@ -9,10 +9,27 @@ type CoursesScreenProps = {
   loading: boolean;
   courses: CourseDTO[];
   query: string;
+  typeFilter: "" | "group" | "individual";
+  teacherFilter: string;
+  pricingFilter:
+    | "all"
+    | "lesson"
+    | "subscription"
+    | "both"
+    | "lesson_only"
+    | "subscription_only";
+  teacherOptions: Array<{ value: string; label: string }>;
+  hasActiveFilters: boolean;
   canDeleteCourses: boolean;
   courseTypeLabel: (type: string) => string;
   formatEUR: (value: number) => string;
   onQueryChange: (value: string) => void;
+  onTypeFilterChange: (value: "" | "group" | "individual") => void;
+  onTeacherFilterChange: (value: string) => void;
+  onPricingFilterChange: (
+    value: "all" | "lesson" | "subscription" | "both" | "lesson_only" | "subscription_only"
+  ) => void;
+  onClearFilters: () => void;
   onAddCourse: () => void;
   onEditCourse: (course: CourseDTO) => void;
   onDeleteCourse: (courseId: number) => void | Promise<void>;
@@ -47,10 +64,19 @@ export function CoursesScreen({
   loading,
   courses,
   query,
+  typeFilter,
+  teacherFilter,
+  pricingFilter,
+  teacherOptions,
+  hasActiveFilters,
   canDeleteCourses,
   courseTypeLabel,
   formatEUR,
   onQueryChange,
+  onTypeFilterChange,
+  onTeacherFilterChange,
+  onPricingFilterChange,
+  onClearFilters,
   onAddCourse,
   onEditCourse,
   onDeleteCourse,
@@ -82,7 +108,7 @@ export function CoursesScreen({
 }: CoursesScreenProps) {
   return (
     <>
-      <div className="controls">
+      <div className="controls controls--wrap">
         <button onClick={onAddCourse}>{t("button.addCourse")}</button>
         <input
           className="searchField"
@@ -90,17 +116,56 @@ export function CoursesScreen({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
         />
+        <select
+          value={typeFilter}
+          onChange={(e) => onTypeFilterChange(e.target.value as "" | "group" | "individual")}
+        >
+          <option value="">{t("filter.allTypes")}</option>
+          <option value="group">{courseTypeLabel("group")}</option>
+          <option value="individual">{courseTypeLabel("individual")}</option>
+        </select>
+        <select value={teacherFilter} onChange={(e) => onTeacherFilterChange(e.target.value)}>
+          <option value="all">{t("filter.allTeachers")}</option>
+          <option value="none">{t("filter.withoutTeacher")}</option>
+          {teacherOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={pricingFilter}
+          onChange={(e) =>
+            onPricingFilterChange(
+              e.target.value as
+                | "all"
+                | "lesson"
+                | "subscription"
+                | "both"
+                | "lesson_only"
+                | "subscription_only"
+            )
+          }
+        >
+          <option value="all">{t("filter.pricingAll")}</option>
+          <option value="lesson">{t("filter.pricingLesson")}</option>
+          <option value="subscription">{t("filter.pricingSubscription")}</option>
+          <option value="both">{t("filter.pricingBoth")}</option>
+          <option value="lesson_only">{t("filter.pricingLessonOnly")}</option>
+          <option value="subscription_only">{t("filter.pricingSubscriptionOnly")}</option>
+        </select>
+        {hasActiveFilters && <button onClick={onClearFilters}>{t("button.clearFilters")}</button>}
       </div>
 
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : courses.length === 0 ? (
-        query.trim() ? (
+        hasActiveFilters ? (
           <EmptyState
             title={t("msg.noCoursesSearchTitle")}
             description={t("msg.noCoursesSearchDescription")}
-            actionLabel={t("button.clearSearch")}
-            onAction={() => onQueryChange("")}
+            actionLabel={t("button.clearFilters")}
+            onAction={onClearFilters}
           />
         ) : (
           <EmptyState
