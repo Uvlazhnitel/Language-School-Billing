@@ -467,6 +467,7 @@ a {
 
 .dashboardHeroStats--monthly {
   grid-template-columns: repeat(4, minmax(140px, 1fr));
+  align-self: start;
 }
 
 .dashboardHeroStat,
@@ -522,7 +523,11 @@ a {
 }
 
 .dashboardCard--queue {
-  grid-column: span 8;
+  grid-column: span 7;
+}
+
+.dashboardCard--control {
+  grid-column: span 5;
 }
 
 .dashboardCard--compact {
@@ -532,7 +537,7 @@ a {
 
 .dashboardCard--priority,
 .dashboardCard--money {
-  grid-column: span 12;
+  grid-column: span 8;
 }
 
 .dashboardCard--activity {
@@ -590,6 +595,28 @@ a {
 
 .dashboardCard--compact .dashboardMetrics {
   grid-template-columns: 1fr;
+}
+
+.dashboardCard--money .dashboardMetrics {
+  margin-bottom: 20px;
+}
+
+@media (max-width: 1320px) {
+  .dashboardHeroStats--monthly {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+
+  .dashboardCard,
+  .dashboardCard--control,
+  .dashboardCard--queue,
+  .dashboardCard--money,
+  .dashboardCard--compact {
+    grid-column: span 6;
+  }
+
+  .dashboardCard--feed {
+    grid-column: span 12;
+  }
 }
 
 .dashboardProgress {
@@ -970,8 +997,10 @@ a {
   .detailCard,
   .dashboardCard--feed,
   .detailCard--wide,
+  .dashboardCard--control,
   .dashboardCard--queue,
-  .dashboardCard--compact {
+  .dashboardCard--compact,
+  .dashboardCard--money {
     grid-column: span 12;
   }
 

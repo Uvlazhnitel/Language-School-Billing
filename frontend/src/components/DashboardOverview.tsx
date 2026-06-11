@@ -240,7 +240,7 @@ export function DashboardOverview({
           </div>
         </section>
 
-        <section className="dashboardCard">
+        <section className="dashboardCard dashboardCard--control">
           <div className="dashboardCardHeader">
             <div>
               <div className="dashboardCardEyebrow">{t("label.monthControl")}</div>
