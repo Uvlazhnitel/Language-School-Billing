@@ -45,6 +45,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/auth/logout", s.handleAuthLogout)
 	s.mux.HandleFunc("GET /api/auth/session", s.handleAuthSession)
 	s.mux.HandleFunc("GET /api/meta", s.handleMeta)
+	s.mux.HandleFunc("GET /api/me/locale", s.handleCurrentUserGetLocale)
+	s.mux.HandleFunc("POST /api/me/locale", s.handleCurrentUserSetLocale)
 	s.mux.HandleFunc("POST /api/backups", s.handleBackupsCreate)
 
 	s.mux.HandleFunc("GET /api/students", s.handleStudentsList)
@@ -815,6 +817,40 @@ func (s *Server) handleSettingsSetLocale(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"locale": req.Locale})
+}
+
+func (s *Server) handleCurrentUserGetLocale(w http.ResponseWriter, r *http.Request) {
+	currentUser := currentUserFromContext(r.Context())
+	if currentUser == nil {
+		writeUnauthorized(w, "authentication required")
+		return
+	}
+	locale, err := s.svc.UserGetLocale(r.Context(), currentUser.ID)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"locale": locale})
+}
+
+func (s *Server) handleCurrentUserSetLocale(w http.ResponseWriter, r *http.Request) {
+	currentUser := currentUserFromContext(r.Context())
+	if currentUser == nil {
+		writeUnauthorized(w, "authentication required")
+		return
+	}
+	var req struct {
+		Locale string `json:"locale"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	locale, err := s.svc.UserSetLocale(r.Context(), currentUser.ID, req.Locale)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"locale": locale})
 }
 
 func (s *Server) handleUsersList(w http.ResponseWriter, r *http.Request) {

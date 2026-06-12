@@ -365,6 +365,7 @@ var (
 		{Name: "password_hash", Type: field.TypeString},
 		{Name: "role", Type: field.TypeString, Default: "admin"},
 		{Name: "is_active", Type: field.TypeBool, Default: true},
+		{Name: "ui_locale", Type: field.TypeString, Default: "lv-LV"},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
 	}

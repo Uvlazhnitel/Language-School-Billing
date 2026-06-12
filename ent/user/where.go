@@ -75,6 +75,11 @@ func IsActive(v bool) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldIsActive, v))
 }
 
+// UILocale applies equality check predicate on the "ui_locale" field. It's identical to UILocaleEQ.
+func UILocale(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldUILocale, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.User {
 	return predicate.User(sql.FieldEQ(FieldCreatedAt, v))
@@ -288,6 +293,71 @@ func IsActiveEQ(v bool) predicate.User {
 // IsActiveNEQ applies the NEQ predicate on the "is_active" field.
 func IsActiveNEQ(v bool) predicate.User {
 	return predicate.User(sql.FieldNEQ(FieldIsActive, v))
+}
+
+// UILocaleEQ applies the EQ predicate on the "ui_locale" field.
+func UILocaleEQ(v string) predicate.User {
+	return predicate.User(sql.FieldEQ(FieldUILocale, v))
+}
+
+// UILocaleNEQ applies the NEQ predicate on the "ui_locale" field.
+func UILocaleNEQ(v string) predicate.User {
+	return predicate.User(sql.FieldNEQ(FieldUILocale, v))
+}
+
+// UILocaleIn applies the In predicate on the "ui_locale" field.
+func UILocaleIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldIn(FieldUILocale, vs...))
+}
+
+// UILocaleNotIn applies the NotIn predicate on the "ui_locale" field.
+func UILocaleNotIn(vs ...string) predicate.User {
+	return predicate.User(sql.FieldNotIn(FieldUILocale, vs...))
+}
+
+// UILocaleGT applies the GT predicate on the "ui_locale" field.
+func UILocaleGT(v string) predicate.User {
+	return predicate.User(sql.FieldGT(FieldUILocale, v))
+}
+
+// UILocaleGTE applies the GTE predicate on the "ui_locale" field.
+func UILocaleGTE(v string) predicate.User {
+	return predicate.User(sql.FieldGTE(FieldUILocale, v))
+}
+
+// UILocaleLT applies the LT predicate on the "ui_locale" field.
+func UILocaleLT(v string) predicate.User {
+	return predicate.User(sql.FieldLT(FieldUILocale, v))
+}
+
+// UILocaleLTE applies the LTE predicate on the "ui_locale" field.
+func UILocaleLTE(v string) predicate.User {
+	return predicate.User(sql.FieldLTE(FieldUILocale, v))
+}
+
+// UILocaleContains applies the Contains predicate on the "ui_locale" field.
+func UILocaleContains(v string) predicate.User {
+	return predicate.User(sql.FieldContains(FieldUILocale, v))
+}
+
+// UILocaleHasPrefix applies the HasPrefix predicate on the "ui_locale" field.
+func UILocaleHasPrefix(v string) predicate.User {
+	return predicate.User(sql.FieldHasPrefix(FieldUILocale, v))
+}
+
+// UILocaleHasSuffix applies the HasSuffix predicate on the "ui_locale" field.
+func UILocaleHasSuffix(v string) predicate.User {
+	return predicate.User(sql.FieldHasSuffix(FieldUILocale, v))
+}
+
+// UILocaleEqualFold applies the EqualFold predicate on the "ui_locale" field.
+func UILocaleEqualFold(v string) predicate.User {
+	return predicate.User(sql.FieldEqualFold(FieldUILocale, v))
+}
+
+// UILocaleContainsFold applies the ContainsFold predicate on the "ui_locale" field.
+func UILocaleContainsFold(v string) predicate.User {
+	return predicate.User(sql.FieldContainsFold(FieldUILocale, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

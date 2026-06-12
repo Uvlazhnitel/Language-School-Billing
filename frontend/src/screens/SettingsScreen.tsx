@@ -7,7 +7,6 @@ type UserDraft = { username: string; role: string; isActive: boolean };
 
 type SettingsScreenProps = {
   uiLocale: UiLocale;
-  canManageSettings: boolean;
   canCreateBackups: boolean;
   creatingBackup: boolean;
   transportCapabilities: {
@@ -46,7 +45,6 @@ type SettingsScreenProps = {
 
 export function SettingsScreen({
   uiLocale,
-  canManageSettings,
   canCreateBackups,
   creatingBackup,
   transportCapabilities,
@@ -88,7 +86,6 @@ export function SettingsScreen({
           <label>{t("settings.locale")}</label>
           <select
             value={uiLocale}
-            disabled={!canManageSettings}
             onChange={(e) => void onLocaleChange(e.target.value as UiLocale)}
           >
             <option value="en-US">{t("settings.languageEnglish")}</option>

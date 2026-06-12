@@ -39,6 +39,7 @@ type UserInfo struct {
 	ID       int    `json:"id"`
 	Username string `json:"username"`
 	Role     string `json:"role"`
+	UILocale string `json:"-"`
 }
 
 type UserRecord struct {
@@ -46,6 +47,7 @@ type UserRecord struct {
 	Username string `json:"username"`
 	Role     string `json:"role"`
 	IsActive bool   `json:"isActive"`
+	UILocale string `json:"uiLocale"`
 }
 
 type Service struct {
@@ -85,6 +87,7 @@ func (s *Service) BootstrapAdmin(ctx context.Context) error {
 			SetPasswordHash(passwordHash).
 			SetRole(DefaultAdminRole).
 			SetIsActive(true).
+			SetUILocale("lv-LV").
 			Save(ctx)
 		return err
 	}
@@ -96,6 +99,7 @@ func (s *Service) BootstrapAdmin(ctx context.Context) error {
 		SetPasswordHash(passwordHash).
 		SetRole(DefaultAdminRole).
 		SetIsActive(true).
+		SetUILocale(normalizeUILocale(existing.UILocale)).
 		Save(ctx)
 	return err
 }
@@ -139,6 +143,7 @@ func (s *Service) CreateUser(ctx context.Context, username, password, role strin
 		SetPasswordHash(passwordHash).
 		SetRole(role).
 		SetIsActive(true).
+		SetUILocale("lv-LV").
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -163,6 +168,7 @@ func (s *Service) UpdateUser(ctx context.Context, id int, username, role string,
 		SetUsername(username).
 		SetRole(role).
 		SetIsActive(isActive).
+		SetUILocale(normalizeUILocale(currentUILocale(ctx, s.client, id))).
 		Save(ctx)
 	if err != nil {
 		return nil, err
@@ -386,6 +392,7 @@ func userInfoFromEnt(u *ent.User) *UserInfo {
 		ID:       u.ID,
 		Username: u.Username,
 		Role:     u.Role,
+		UILocale: normalizeUILocale(u.UILocale),
 	}
 }
 
@@ -395,7 +402,32 @@ func userRecordFromEnt(u *ent.User) UserRecord {
 		Username: u.Username,
 		Role:     u.Role,
 		IsActive: u.IsActive,
+		UILocale: normalizeUILocale(u.UILocale),
 	}
+}
+
+func normalizeUILocale(locale string) string {
+	switch strings.TrimSpace(locale) {
+	case "en-US":
+		return "en-US"
+	case "ru-RU":
+		return "ru-RU"
+	case "lv-LV":
+		return "lv-LV"
+	default:
+		return "lv-LV"
+	}
+}
+
+func currentUILocale(ctx context.Context, client *ent.Client, id int) string {
+	if client == nil || id <= 0 {
+		return "lv-LV"
+	}
+	u, err := client.User.Get(ctx, id)
+	if err != nil {
+		return "lv-LV"
+	}
+	return normalizeUILocale(u.UILocale)
 }
 
 func normalizeUsername(value string) string {
