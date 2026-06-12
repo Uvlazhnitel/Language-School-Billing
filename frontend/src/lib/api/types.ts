@@ -79,6 +79,8 @@ export type StudentDTO = {
   payerName: string;
   payerRole: string;
   isActive: boolean;
+  balance: number;
+  debt: number;
 };
 
 export type TeacherDTO = {

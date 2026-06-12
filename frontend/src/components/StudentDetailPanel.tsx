@@ -80,6 +80,9 @@ export function StudentDetailPanel({
   const activeEnrollmentsCount = enrollments.length;
   const hasBusinessAction = Boolean(nextAction);
   const showRecordPaymentAsPrimary = !hasBusinessAction;
+  const balanceValue = balance?.balance ?? 0;
+  const balanceToneClass =
+    balanceValue > 0 ? "metricSuccess" : balanceValue < 0 ? "metricDanger" : "";
 
   const handlePrimaryAction = () => {
     switch (nextAction?.action) {
@@ -174,9 +177,15 @@ export function StudentDetailPanel({
           <strong>{balance ? formatEUR(balance.totalPaid) : "—"}</strong>
         </div>
         <div className="summaryMetricCard">
+          <span>{t("label.balance")}</span>
+          <strong className={balance ? balanceToneClass : ""}>
+            {balance ? formatEUR(balance.balance) : "—"}
+          </strong>
+        </div>
+        <div className="summaryMetricCard">
           <span>{t("label.debt")}</span>
-          <strong className={balance && balance.debt > 0 ? "metricDanger" : "metricSuccess"}>
-            {balance ? (balance.debt > 0 ? formatEUR(balance.debt) : t("msg.noOpenDebts")) : "—"}
+          <strong className={balance && balance.debt > 0 ? "metricDanger" : ""}>
+            {balance ? formatEUR(balance.debt) : "—"}
           </strong>
         </div>
         <div className="summaryMetricCard">

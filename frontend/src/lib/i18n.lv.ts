@@ -88,6 +88,7 @@ export const lvTranslations: Record<string, string> = {
   "label.monthInvoices": "Mēneša rēķini",
   "label.invoiced": "Izrakstīts",
   "label.paid": "Apmaksāts",
+  "label.balance": "Bilance",
   "label.debt": "Parāds",
   "label.contactsAndStatus": "Kontakti un statuss",
   "label.payer": "Maksātājs",

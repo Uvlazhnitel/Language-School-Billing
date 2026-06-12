@@ -41,17 +41,19 @@ const (
 )
 
 type StudentDTO struct {
-	ID           int    `json:"id"`
-	Version      int    `json:"version"`
-	FullName     string `json:"fullName"`
-	PersonalCode string `json:"personalCode"`
-	Phone        string `json:"phone"`
-	Email        string `json:"email"`
-	Note         string `json:"note"`
-	IsMinor      bool   `json:"isMinor"`
-	PayerName    string `json:"payerName"`
-	PayerRole    string `json:"payerRole"`
-	IsActive     bool   `json:"isActive"`
+	ID           int     `json:"id"`
+	Version      int     `json:"version"`
+	FullName     string  `json:"fullName"`
+	PersonalCode string  `json:"personalCode"`
+	Phone        string  `json:"phone"`
+	Email        string  `json:"email"`
+	Note         string  `json:"note"`
+	IsMinor      bool    `json:"isMinor"`
+	PayerName    string  `json:"payerName"`
+	PayerRole    string  `json:"payerRole"`
+	IsActive     bool    `json:"isActive"`
+	Balance      float64 `json:"balance"`
+	Debt         float64 `json:"debt"`
 }
 
 type CourseDTO struct {
@@ -721,9 +723,13 @@ func (s *Service) StudentList(ctx context.Context, q string, includeInactive boo
 	if err != nil {
 		return nil, err
 	}
+	summaries, err := s.studentBalanceSummaries(ctx, studs)
+	if err != nil {
+		return nil, err
+	}
 	out := make([]StudentDTO, 0, len(studs))
 	for _, item := range studs {
-		out = append(out, toStudentDTO(item))
+		out = append(out, toStudentDTO(item, summaries[item.ID]))
 	}
 	return out, nil
 }
@@ -733,8 +739,101 @@ func (s *Service) StudentGet(ctx context.Context, id int) (*StudentDTO, error) {
 	if err != nil {
 		return nil, err
 	}
-	dto := toStudentDTO(item)
+	dto := toStudentDTO(item, s.studentBalanceSummary(ctx, item.ID))
 	return &dto, nil
+}
+
+type studentBalanceSummary struct {
+	Balance float64
+	Debt    float64
+}
+
+type studentMoneyAggregate struct {
+	StudentID int   `json:"student_id"`
+	Total     int64 `json:"total"`
+}
+
+func (s *Service) studentBalanceSummaries(ctx context.Context, studs []*ent.Student) (map[int]studentBalanceSummary, error) {
+	summaries := make(map[int]studentBalanceSummary, len(studs))
+	if len(studs) == 0 {
+		return summaries, nil
+	}
+	studentIDs := make([]int, 0, len(studs))
+	for _, st := range studs {
+		studentIDs = append(studentIDs, st.ID)
+	}
+	invoicedByStudent, err := s.aggregateInvoiceTotalsByStudent(ctx, studentIDs)
+	if err != nil {
+		return nil, err
+	}
+	paidByStudent, err := s.aggregatePaymentTotalsByStudent(ctx, studentIDs)
+	if err != nil {
+		return nil, err
+	}
+	for _, st := range studs {
+		summaries[st.ID] = makeStudentBalanceSummary(invoicedByStudent[st.ID], paidByStudent[st.ID])
+	}
+	return summaries, nil
+}
+
+func (s *Service) studentBalanceSummary(ctx context.Context, studentID int) studentBalanceSummary {
+	invoicedByStudent, err := s.aggregateInvoiceTotalsByStudent(ctx, []int{studentID})
+	if err != nil {
+		return studentBalanceSummary{}
+	}
+	paidByStudent, err := s.aggregatePaymentTotalsByStudent(ctx, []int{studentID})
+	if err != nil {
+		return studentBalanceSummary{}
+	}
+	return makeStudentBalanceSummary(invoicedByStudent[studentID], paidByStudent[studentID])
+}
+
+func makeStudentBalanceSummary(invoicedCents, paidCents int64) studentBalanceSummary {
+	balanceCents := paidCents - invoicedCents
+	summary := studentBalanceSummary{
+		Balance: money.CentsToEuros(balanceCents),
+	}
+	if balanceCents < 0 {
+		summary.Debt = money.CentsToEuros(-balanceCents)
+	}
+	return summary
+}
+
+func (s *Service) aggregateInvoiceTotalsByStudent(ctx context.Context, studentIDs []int) (map[int]int64, error) {
+	rows := []studentMoneyAggregate{}
+	err := s.rt.DB.Ent.Invoice.Query().
+		Where(
+			invoice.StudentIDIn(studentIDs...),
+			invoice.StatusIn(invoice.StatusIssued, invoice.StatusPaid),
+		).
+		GroupBy(invoice.FieldStudentID).
+		Aggregate(ent.As(ent.Sum(invoice.FieldTotalAmountCents), "total")).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[int]int64, len(rows))
+	for _, row := range rows {
+		out[row.StudentID] = row.Total
+	}
+	return out, nil
+}
+
+func (s *Service) aggregatePaymentTotalsByStudent(ctx context.Context, studentIDs []int) (map[int]int64, error) {
+	rows := []studentMoneyAggregate{}
+	err := s.rt.DB.Ent.Payment.Query().
+		Where(payment.StudentIDIn(studentIDs...)).
+		GroupBy(payment.FieldStudentID).
+		Aggregate(ent.As(ent.Sum(payment.FieldAmountCents), "total")).
+		Scan(ctx, &rows)
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[int]int64, len(rows))
+	for _, row := range rows {
+		out[row.StudentID] = row.Total
+	}
+	return out, nil
 }
 
 func (s *Service) StudentCreate(ctx context.Context, fullName, personalCode, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
@@ -762,7 +861,7 @@ func (s *Service) StudentCreate(ctx context.Context, fullName, personalCode, pho
 	if err != nil {
 		return nil, err
 	}
-	dto := toStudentDTO(item)
+	dto := toStudentDTO(item, studentBalanceSummary{})
 	return &dto, nil
 }
 
@@ -791,7 +890,7 @@ func (s *Service) StudentUpdate(ctx context.Context, id int, fullName, personalC
 	if err != nil {
 		return nil, err
 	}
-	dto := toStudentDTO(item)
+	dto := toStudentDTO(item, s.studentBalanceSummary(ctx, item.ID))
 	return &dto, nil
 }
 
@@ -824,7 +923,7 @@ func (s *Service) StudentUpdateWithVersion(ctx context.Context, id, version int,
 	if err != nil {
 		return nil, staleOnNotFound(err)
 	}
-	dto := toStudentDTO(item)
+	dto := toStudentDTO(item, s.studentBalanceSummary(ctx, item.ID))
 	return &dto, nil
 }
 
@@ -1360,7 +1459,7 @@ func (s *Service) invoicePDFPaths(dto *invsvc.InvoiceDTO) []string {
 	}
 }
 
-func toStudentDTO(s *ent.Student) StudentDTO {
+func toStudentDTO(s *ent.Student, summary studentBalanceSummary) StudentDTO {
 	return StudentDTO{
 		ID:           s.ID,
 		Version:      s.Version,
@@ -1373,6 +1472,8 @@ func toStudentDTO(s *ent.Student) StudentDTO {
 		PayerName:    s.PayerName,
 		PayerRole:    s.PayerRole,
 		IsActive:     s.IsActive,
+		Balance:      summary.Balance,
+		Debt:         summary.Debt,
 	}
 }
 

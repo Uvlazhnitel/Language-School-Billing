@@ -84,6 +84,28 @@ export function StudentWorkspace({
   formatEUR,
   months,
 }: StudentWorkspaceProps) {
+  const studentBalanceMeta = (student: StudentDTO) => {
+    if (student.debt > 0) {
+      return {
+        label: t("label.debt"),
+        value: formatEUR(student.debt),
+        toneClass: "studentBalancePill studentBalancePill--danger",
+      };
+    }
+    if (student.balance > 0) {
+      return {
+        label: t("label.creditOnAccount"),
+        value: formatEUR(student.balance),
+        toneClass: "studentBalancePill studentBalancePill--success",
+      };
+    }
+    return {
+      label: t("label.balance"),
+      value: formatEUR(0),
+      toneClass: "studentBalancePill studentBalancePill--neutral",
+    };
+  };
+
   return (
     <div className="studentWorkspace">
       <div className="studentSidebar">
@@ -129,6 +151,7 @@ export function StudentWorkspace({
           <div className="studentListPane">
             {students.map((student) => {
               const selected = selectedStudent?.id === student.id;
+              const balanceMeta = studentBalanceMeta(student);
               return (
                 <button
                   key={student.id}
@@ -145,6 +168,10 @@ export function StudentWorkspace({
                   <div className="studentListItemMeta">
                     <span>{student.phone || t("student.noPhone")}</span>
                     <span>{student.email || t("student.noEmail")}</span>
+                  </div>
+                  <div className="studentListItemFooter">
+                    <span className="studentListItemBalanceLabel">{balanceMeta.label}</span>
+                    <span className={balanceMeta.toneClass}>{balanceMeta.value}</span>
                   </div>
                 </button>
               );
