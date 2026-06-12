@@ -156,6 +156,8 @@ var (
 		{Name: "discount_pct", Type: field.TypeFloat64, Default: 0},
 		{Name: "subscription_discount_pct", Type: field.TypeFloat64, Default: 20},
 		{Name: "note", Type: field.TypeString, Default: ""},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "course_id", Type: field.TypeInt},
 		{Name: "student_id", Type: field.TypeInt},
 	}
@@ -167,13 +169,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "enrollments_courses_enrollments",
-				Columns:    []*schema.Column{EnrollmentsColumns[6]},
+				Columns:    []*schema.Column{EnrollmentsColumns[8]},
 				RefColumns: []*schema.Column{CoursesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "enrollments_students_enrollments",
-				Columns:    []*schema.Column{EnrollmentsColumns[7]},
+				Columns:    []*schema.Column{EnrollmentsColumns[9]},
 				RefColumns: []*schema.Column{StudentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -182,7 +184,7 @@ var (
 			{
 				Name:    "enrollment_student_id_course_id",
 				Unique:  true,
-				Columns: []*schema.Column{EnrollmentsColumns[7], EnrollmentsColumns[6]},
+				Columns: []*schema.Column{EnrollmentsColumns[9], EnrollmentsColumns[8]},
 			},
 		},
 	}
@@ -196,6 +198,8 @@ var (
 		{Name: "total_amount_cents", Type: field.TypeInt64, Default: 0},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "issued", "paid", "canceled"}, Default: "draft"},
 		{Name: "number", Type: field.TypeString, Nullable: true},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
 		{Name: "student_id", Type: field.TypeInt},
 	}
 	// InvoicesTable holds the schema information for the "invoices" table.
@@ -206,7 +210,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "invoices_students_invoices",
-				Columns:    []*schema.Column{InvoicesColumns[8]},
+				Columns:    []*schema.Column{InvoicesColumns[10]},
 				RefColumns: []*schema.Column{StudentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -215,7 +219,7 @@ var (
 			{
 				Name:    "invoice_student_id_period_year_period_month",
 				Unique:  true,
-				Columns: []*schema.Column{InvoicesColumns[8], InvoicesColumns[2], InvoicesColumns[3]},
+				Columns: []*schema.Column{InvoicesColumns[10], InvoicesColumns[2], InvoicesColumns[3]},
 			},
 		},
 	}

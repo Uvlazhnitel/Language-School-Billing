@@ -60,6 +60,7 @@ type ListItem struct {
 	Status      string  `json:"status"`           // Invoice status
 	LinesCount  int     `json:"linesCount"`       // Number of line items
 	Number      *string `json:"number,omitempty"` // Invoice number (nil for drafts)
+	EventDate   string  `json:"eventDate"`        // Real timeline event date for draft/update/issue/pay
 }
 
 // LineDTO represents a single line item in an invoice.
@@ -492,6 +493,7 @@ func (s *Service) ListDrafts(ctx context.Context, y, m int) ([]ListItem, error) 
 			ID: iv.ID, StudentID: iv.StudentID, StudentName: getStudentName(iv),
 			Year: iv.PeriodYear, Month: iv.PeriodMonth,
 			Total: money.CentsToEuros(iv.TotalAmountCents), Status: string(iv.Status), LinesCount: count, Number: iv.Number,
+			EventDate: iv.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
 	return items, nil
@@ -967,6 +969,7 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 			Status:      string(iv.Status),
 			LinesCount:  cnt,
 			Number:      iv.Number,
+			EventDate:   iv.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
 	return out, nil

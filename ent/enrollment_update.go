@@ -11,6 +11,7 @@ import (
 	"langschool/ent/invoiceline"
 	"langschool/ent/predicate"
 	"langschool/ent/student"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -149,6 +150,26 @@ func (_u *EnrollmentUpdate) SetNillableNote(v *string) *EnrollmentUpdate {
 	return _u
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (_u *EnrollmentUpdate) SetCreatedAt(v time.Time) *EnrollmentUpdate {
+	_u.mutation.SetCreatedAt(v)
+	return _u
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (_u *EnrollmentUpdate) SetNillableCreatedAt(v *time.Time) *EnrollmentUpdate {
+	if v != nil {
+		_u.SetCreatedAt(*v)
+	}
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *EnrollmentUpdate) SetUpdatedAt(v time.Time) *EnrollmentUpdate {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
 // SetStudent sets the "student" edge to the Student entity.
 func (_u *EnrollmentUpdate) SetStudent(v *Student) *EnrollmentUpdate {
 	return _u.SetStudentID(v.ID)
@@ -214,6 +235,7 @@ func (_u *EnrollmentUpdate) RemoveInvoiceLines(v ...*InvoiceLine) *EnrollmentUpd
 
 // Save executes the query and returns the number of nodes affected by the update operation.
 func (_u *EnrollmentUpdate) Save(ctx context.Context) (int, error) {
+	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -236,6 +258,14 @@ func (_u *EnrollmentUpdate) Exec(ctx context.Context) error {
 func (_u *EnrollmentUpdate) ExecX(ctx context.Context) {
 	if err := _u.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (_u *EnrollmentUpdate) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		v := enrollment.UpdateDefaultUpdatedAt()
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -290,6 +320,12 @@ func (_u *EnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(enrollment.FieldNote, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CreatedAt(); ok {
+		_spec.SetField(enrollment.FieldCreatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(enrollment.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.StudentCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -533,6 +569,26 @@ func (_u *EnrollmentUpdateOne) SetNillableNote(v *string) *EnrollmentUpdateOne {
 	return _u
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (_u *EnrollmentUpdateOne) SetCreatedAt(v time.Time) *EnrollmentUpdateOne {
+	_u.mutation.SetCreatedAt(v)
+	return _u
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (_u *EnrollmentUpdateOne) SetNillableCreatedAt(v *time.Time) *EnrollmentUpdateOne {
+	if v != nil {
+		_u.SetCreatedAt(*v)
+	}
+	return _u
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_u *EnrollmentUpdateOne) SetUpdatedAt(v time.Time) *EnrollmentUpdateOne {
+	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
 // SetStudent sets the "student" edge to the Student entity.
 func (_u *EnrollmentUpdateOne) SetStudent(v *Student) *EnrollmentUpdateOne {
 	return _u.SetStudentID(v.ID)
@@ -611,6 +667,7 @@ func (_u *EnrollmentUpdateOne) Select(field string, fields ...string) *Enrollmen
 
 // Save executes the query and returns the updated Enrollment entity.
 func (_u *EnrollmentUpdateOne) Save(ctx context.Context) (*Enrollment, error) {
+	_u.defaults()
 	return withHooks(ctx, _u.sqlSave, _u.mutation, _u.hooks)
 }
 
@@ -633,6 +690,14 @@ func (_u *EnrollmentUpdateOne) Exec(ctx context.Context) error {
 func (_u *EnrollmentUpdateOne) ExecX(ctx context.Context) {
 	if err := _u.Exec(ctx); err != nil {
 		panic(err)
+	}
+}
+
+// defaults sets the default values of the builder before save.
+func (_u *EnrollmentUpdateOne) defaults() {
+	if _, ok := _u.mutation.UpdatedAt(); !ok {
+		v := enrollment.UpdateDefaultUpdatedAt()
+		_u.mutation.SetUpdatedAt(v)
 	}
 }
 
@@ -704,6 +769,12 @@ func (_u *EnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Enrollment, 
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(enrollment.FieldNote, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CreatedAt(); ok {
+		_spec.SetField(enrollment.FieldCreatedAt, field.TypeTime, value)
+	}
+	if value, ok := _u.mutation.UpdatedAt(); ok {
+		_spec.SetField(enrollment.FieldUpdatedAt, field.TypeTime, value)
 	}
 	if _u.mutation.StudentCleared() {
 		edge := &sqlgraph.EdgeSpec{

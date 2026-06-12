@@ -31,14 +31,6 @@ export type DebtorActionQueueItem = {
   hasRecentPayment: boolean;
 };
 
-function pad(value: number): string {
-  return String(value).padStart(2, "0");
-}
-
-function monthIsoDate(year: number, month: number): string {
-  return `${year}-${pad(month)}-01`;
-}
-
 export function buildStudentNextAction(args: {
   debt: number;
   enrollments: EnrollmentDTO[];
@@ -136,7 +128,7 @@ export function buildStudentActivity(args: {
     items.push({
       id: `debt-${debt.invoiceId}`,
       kind: "debt",
-      date: monthIsoDate(debt.year, debt.month),
+      date: `${debt.year}-${String(debt.month).padStart(2, "0")}-01`,
       title: `${t("label.openDebts")} ${months[debt.month - 1]} ${debt.year}`,
       subtitle: debt.number ? `${t("tabs.invoice")} ${debt.number}` : `${t("tabs.invoice")} —`,
       amount: debt.remaining,
@@ -149,7 +141,7 @@ export function buildStudentActivity(args: {
     items.push({
       id: `enrollment-${enrollment.id}`,
       kind: "enrollment",
-      date: `9999-12-${pad(Math.max(1, 31 - enrollment.id))}`,
+      date: enrollment.createdAt,
       title: `${t("action.addEnrollment")}: ${enrollment.courseName}`,
       subtitle: `${enrollment.teacherName || t("field.teacher")} · ${billingModeLabel(enrollment.billingMode)}`,
       actionTarget: "enrollment",
@@ -160,7 +152,7 @@ export function buildStudentActivity(args: {
     items.push({
       id: `invoice-${invoice.id}`,
       kind: "invoice",
-      date: monthIsoDate(invoice.year, invoice.month),
+      date: invoice.eventDate,
       title: `${t("tabs.invoice")} ${months[invoice.month - 1]} ${invoice.year}`,
       subtitle: invoice.number ? `${t("field.number")} ${invoice.number}` : t("status.draft"),
       amount: invoice.total,

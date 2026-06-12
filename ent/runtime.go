@@ -108,6 +108,16 @@ func init() {
 	enrollmentDescNote := enrollmentFields[5].Descriptor()
 	// enrollment.DefaultNote holds the default value on creation for the note field.
 	enrollment.DefaultNote = enrollmentDescNote.Default.(string)
+	// enrollmentDescCreatedAt is the schema descriptor for created_at field.
+	enrollmentDescCreatedAt := enrollmentFields[6].Descriptor()
+	// enrollment.DefaultCreatedAt holds the default value on creation for the created_at field.
+	enrollment.DefaultCreatedAt = enrollmentDescCreatedAt.Default.(func() time.Time)
+	// enrollmentDescUpdatedAt is the schema descriptor for updated_at field.
+	enrollmentDescUpdatedAt := enrollmentFields[7].Descriptor()
+	// enrollment.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	enrollment.DefaultUpdatedAt = enrollmentDescUpdatedAt.Default.(func() time.Time)
+	// enrollment.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	enrollment.UpdateDefaultUpdatedAt = enrollmentDescUpdatedAt.UpdateDefault.(func() time.Time)
 	invoiceMixin := schema.Invoice{}.Mixin()
 	invoiceMixinFields0 := invoiceMixin[0].Fields()
 	_ = invoiceMixinFields0
@@ -125,6 +135,16 @@ func init() {
 	invoiceDescTotalAmountCents := invoiceFields[4].Descriptor()
 	// invoice.DefaultTotalAmountCents holds the default value on creation for the total_amount_cents field.
 	invoice.DefaultTotalAmountCents = invoiceDescTotalAmountCents.Default.(int64)
+	// invoiceDescCreatedAt is the schema descriptor for created_at field.
+	invoiceDescCreatedAt := invoiceFields[7].Descriptor()
+	// invoice.DefaultCreatedAt holds the default value on creation for the created_at field.
+	invoice.DefaultCreatedAt = invoiceDescCreatedAt.Default.(func() time.Time)
+	// invoiceDescUpdatedAt is the schema descriptor for updated_at field.
+	invoiceDescUpdatedAt := invoiceFields[8].Descriptor()
+	// invoice.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	invoice.DefaultUpdatedAt = invoiceDescUpdatedAt.Default.(func() time.Time)
+	// invoice.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	invoice.UpdateDefaultUpdatedAt = invoiceDescUpdatedAt.UpdateDefault.(func() time.Time)
 	invoicelineFields := schema.InvoiceLine{}.Fields()
 	_ = invoicelineFields
 	// invoicelineDescLegacyUnitPrice is the schema descriptor for legacy_unit_price field.

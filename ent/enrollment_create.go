@@ -10,6 +10,7 @@ import (
 	"langschool/ent/enrollment"
 	"langschool/ent/invoiceline"
 	"langschool/ent/student"
+	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -96,6 +97,34 @@ func (_c *EnrollmentCreate) SetNillableNote(v *string) *EnrollmentCreate {
 	return _c
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (_c *EnrollmentCreate) SetCreatedAt(v time.Time) *EnrollmentCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (_c *EnrollmentCreate) SetNillableCreatedAt(v *time.Time) *EnrollmentCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
+	}
+	return _c
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_c *EnrollmentCreate) SetUpdatedAt(v time.Time) *EnrollmentCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_c *EnrollmentCreate) SetNillableUpdatedAt(v *time.Time) *EnrollmentCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
+	}
+	return _c
+}
+
 // SetStudent sets the "student" edge to the Student entity.
 func (_c *EnrollmentCreate) SetStudent(v *Student) *EnrollmentCreate {
 	return _c.SetStudentID(v.ID)
@@ -172,6 +201,14 @@ func (_c *EnrollmentCreate) defaults() {
 		v := enrollment.DefaultNote
 		_c.mutation.SetNote(v)
 	}
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		v := enrollment.DefaultCreatedAt()
+		_c.mutation.SetCreatedAt(v)
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		v := enrollment.DefaultUpdatedAt()
+		_c.mutation.SetUpdatedAt(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -201,6 +238,12 @@ func (_c *EnrollmentCreate) check() error {
 	}
 	if _, ok := _c.mutation.Note(); !ok {
 		return &ValidationError{Name: "note", err: errors.New(`ent: missing required field "Enrollment.note"`)}
+	}
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Enrollment.created_at"`)}
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Enrollment.updated_at"`)}
 	}
 	if len(_c.mutation.StudentIDs()) == 0 {
 		return &ValidationError{Name: "student", err: errors.New(`ent: missing required edge "Enrollment.student"`)}
@@ -253,6 +296,14 @@ func (_c *EnrollmentCreate) createSpec() (*Enrollment, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Note(); ok {
 		_spec.SetField(enrollment.FieldNote, field.TypeString, value)
 		_node.Note = value
+	}
+	if value, ok := _c.mutation.CreatedAt(); ok {
+		_spec.SetField(enrollment.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(enrollment.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
 	}
 	if nodes := _c.mutation.StudentIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

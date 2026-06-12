@@ -114,6 +114,7 @@ export type EnrollmentDTO = {
   discountPct: number;
   subscriptionDiscountPct: number;
   note: string;
+  createdAt: string;
 };
 
 export type CourseMonthSubscriptionDTO = {
@@ -134,6 +135,7 @@ export type InvoiceListItem = {
   status: InvoiceStatus;
   linesCount: number;
   number?: string;
+  eventDate: string;
 };
 
 export type InvoiceListItemView = InvoiceListItem & {

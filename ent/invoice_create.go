@@ -10,6 +10,7 @@ import (
 	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
 	"langschool/ent/student"
+	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -110,6 +111,34 @@ func (_c *InvoiceCreate) SetNillableNumber(v *string) *InvoiceCreate {
 	return _c
 }
 
+// SetCreatedAt sets the "created_at" field.
+func (_c *InvoiceCreate) SetCreatedAt(v time.Time) *InvoiceCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillableCreatedAt(v *time.Time) *InvoiceCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
+	}
+	return _c
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (_c *InvoiceCreate) SetUpdatedAt(v time.Time) *InvoiceCreate {
+	_c.mutation.SetUpdatedAt(v)
+	return _c
+}
+
+// SetNillableUpdatedAt sets the "updated_at" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillableUpdatedAt(v *time.Time) *InvoiceCreate {
+	if v != nil {
+		_c.SetUpdatedAt(*v)
+	}
+	return _c
+}
+
 // SetStudent sets the "student" edge to the Student entity.
 func (_c *InvoiceCreate) SetStudent(v *Student) *InvoiceCreate {
 	return _c.SetStudentID(v.ID)
@@ -196,6 +225,14 @@ func (_c *InvoiceCreate) defaults() {
 		v := invoice.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		v := invoice.DefaultCreatedAt()
+		_c.mutation.SetCreatedAt(v)
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		v := invoice.DefaultUpdatedAt()
+		_c.mutation.SetUpdatedAt(v)
+	}
 }
 
 // check runs all checks and user-defined validators on the builder.
@@ -225,6 +262,12 @@ func (_c *InvoiceCreate) check() error {
 		if err := invoice.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Invoice.status": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Invoice.created_at"`)}
+	}
+	if _, ok := _c.mutation.UpdatedAt(); !ok {
+		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Invoice.updated_at"`)}
 	}
 	if len(_c.mutation.StudentIDs()) == 0 {
 		return &ValidationError{Name: "student", err: errors.New(`ent: missing required edge "Invoice.student"`)}
@@ -282,6 +325,14 @@ func (_c *InvoiceCreate) createSpec() (*Invoice, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Number(); ok {
 		_spec.SetField(invoice.FieldNumber, field.TypeString, value)
 		_node.Number = &value
+	}
+	if value, ok := _c.mutation.CreatedAt(); ok {
+		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = value
+	}
+	if value, ok := _c.mutation.UpdatedAt(); ok {
+		_spec.SetField(invoice.FieldUpdatedAt, field.TypeTime, value)
+		_node.UpdatedAt = value
 	}
 	if nodes := _c.mutation.StudentIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

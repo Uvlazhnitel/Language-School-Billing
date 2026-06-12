@@ -1,6 +1,8 @@
 package schema
 
 import (
+	"time"
+
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
@@ -24,6 +26,8 @@ func (Invoice) Fields() []ent.Field {
 		field.Int64("total_amount_cents").Default(0),
 		field.Enum("status").Values("draft", "issued", "paid", "canceled").Default("draft"),
 		field.String("number").Nillable().Optional(),
+		field.Time("created_at").Default(time.Now),
+		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}
 }
 

@@ -81,6 +81,7 @@ type EnrollmentDTO struct {
 	DiscountPct             float64 `json:"discountPct"`
 	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"`
 	Note                    string  `json:"note"`
+	CreatedAt               string  `json:"createdAt"`
 }
 
 type CourseMonthSubscriptionDTO struct {
@@ -1534,6 +1535,7 @@ func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
 		DiscountPct:             e.DiscountPct,
 		SubscriptionDiscountPct: e.SubscriptionDiscountPct,
 		Note:                    e.Note,
+		CreatedAt:               e.CreatedAt.Format(time.RFC3339),
 	}
 	if e.Edges.Student != nil {
 		dto.StudentName = e.Edges.Student.FullName
