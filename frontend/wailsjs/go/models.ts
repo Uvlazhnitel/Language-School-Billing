@@ -268,6 +268,8 @@ export namespace main {
     payerName: string;
     payerRole: string;
     isActive: boolean;
+    balance: number;
+    debt: number;
 
     static createFrom(source: any = {}) {
       return new StudentDTO(source);
@@ -286,6 +288,8 @@ export namespace main {
       this.payerName = source["payerName"];
       this.payerRole = source["payerRole"];
       this.isActive = source["isActive"];
+      this.balance = source["balance"];
+      this.debt = source["debt"];
     }
   }
   export class TeacherDTO {

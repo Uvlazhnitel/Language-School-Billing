@@ -735,6 +735,48 @@ a {
   font-size: 0.92rem;
 }
 
+.studentListItemFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(133, 102, 69, 0.08);
+}
+
+.studentListItemBalanceLabel {
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.studentBalancePill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.studentBalancePill--neutral {
+  color: var(--muted-strong);
+  background: rgba(133, 102, 69, 0.08);
+}
+
+.studentBalancePill--success {
+  color: var(--good);
+  background: var(--good-soft);
+}
+
+.studentBalancePill--danger {
+  color: var(--bad);
+  background: var(--bad-soft);
+}
+
 .statusDot {
   white-space: nowrap;
   font-size: 0.86rem;
