@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
@@ -493,7 +494,7 @@ func (s *Service) ListDrafts(ctx context.Context, y, m int) ([]ListItem, error) 
 			ID: iv.ID, StudentID: iv.StudentID, StudentName: getStudentName(iv),
 			Year: iv.PeriodYear, Month: iv.PeriodMonth,
 			Total: money.CentsToEuros(iv.TotalAmountCents), Status: string(iv.Status), LinesCount: count, Number: iv.Number,
-			EventDate: iv.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			EventDate: invoiceEventDate(iv),
 		})
 	}
 	return items, nil
@@ -969,8 +970,18 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 			Status:      string(iv.Status),
 			LinesCount:  cnt,
 			Number:      iv.Number,
-			EventDate:   iv.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			EventDate:   invoiceEventDate(iv),
 		})
 	}
 	return out, nil
+}
+
+func invoiceEventDate(iv *ent.Invoice) string {
+	if iv.UpdatedAt != nil && !iv.UpdatedAt.IsZero() {
+		return iv.UpdatedAt.Format(time.RFC3339)
+	}
+	if iv.CreatedAt != nil && !iv.CreatedAt.IsZero() {
+		return iv.CreatedAt.Format(time.RFC3339)
+	}
+	return ""
 }

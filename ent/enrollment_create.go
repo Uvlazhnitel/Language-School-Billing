@@ -239,12 +239,6 @@ func (_c *EnrollmentCreate) check() error {
 	if _, ok := _c.mutation.Note(); !ok {
 		return &ValidationError{Name: "note", err: errors.New(`ent: missing required field "Enrollment.note"`)}
 	}
-	if _, ok := _c.mutation.CreatedAt(); !ok {
-		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Enrollment.created_at"`)}
-	}
-	if _, ok := _c.mutation.UpdatedAt(); !ok {
-		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Enrollment.updated_at"`)}
-	}
 	if len(_c.mutation.StudentIDs()) == 0 {
 		return &ValidationError{Name: "student", err: errors.New(`ent: missing required edge "Enrollment.student"`)}
 	}
@@ -299,11 +293,11 @@ func (_c *EnrollmentCreate) createSpec() (*Enrollment, *sqlgraph.CreateSpec) {
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(enrollment.FieldCreatedAt, field.TypeTime, value)
-		_node.CreatedAt = value
+		_node.CreatedAt = &value
 	}
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(enrollment.FieldUpdatedAt, field.TypeTime, value)
-		_node.UpdatedAt = value
+		_node.UpdatedAt = &value
 	}
 	if nodes := _c.mutation.StudentIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{

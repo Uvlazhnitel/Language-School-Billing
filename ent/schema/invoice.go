@@ -26,8 +26,8 @@ func (Invoice) Fields() []ent.Field {
 		field.Int64("total_amount_cents").Default(0),
 		field.Enum("status").Values("draft", "issued", "paid", "canceled").Default("draft"),
 		field.String("number").Nillable().Optional(),
-		field.Time("created_at").Default(time.Now),
-		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
+		field.Time("created_at").Optional().Nillable().Default(time.Now),
+		field.Time("updated_at").Optional().Nillable().Default(time.Now).UpdateDefault(time.Now),
 	}
 }
 

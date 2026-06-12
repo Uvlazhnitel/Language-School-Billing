@@ -156,8 +156,8 @@ var (
 		{Name: "discount_pct", Type: field.TypeFloat64, Default: 0},
 		{Name: "subscription_discount_pct", Type: field.TypeFloat64, Default: 20},
 		{Name: "note", Type: field.TypeString, Default: ""},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "course_id", Type: field.TypeInt},
 		{Name: "student_id", Type: field.TypeInt},
 	}
@@ -198,8 +198,8 @@ var (
 		{Name: "total_amount_cents", Type: field.TypeInt64, Default: 0},
 		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "issued", "paid", "canceled"}, Default: "draft"},
 		{Name: "number", Type: field.TypeString, Nullable: true},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
+		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "student_id", Type: field.TypeInt},
 	}
 	// InvoicesTable holds the schema information for the "invoices" table.

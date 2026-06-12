@@ -455,6 +455,16 @@ func CreatedAtLTE(v time.Time) predicate.Invoice {
 	return predicate.Invoice(sql.FieldLTE(FieldCreatedAt, v))
 }
 
+// CreatedAtIsNil applies the IsNil predicate on the "created_at" field.
+func CreatedAtIsNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldIsNull(FieldCreatedAt))
+}
+
+// CreatedAtNotNil applies the NotNil predicate on the "created_at" field.
+func CreatedAtNotNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotNull(FieldCreatedAt))
+}
+
 // UpdatedAtEQ applies the EQ predicate on the "updated_at" field.
 func UpdatedAtEQ(v time.Time) predicate.Invoice {
 	return predicate.Invoice(sql.FieldEQ(FieldUpdatedAt, v))
@@ -493,6 +503,16 @@ func UpdatedAtLT(v time.Time) predicate.Invoice {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Invoice {
 	return predicate.Invoice(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// UpdatedAtIsNil applies the IsNil predicate on the "updated_at" field.
+func UpdatedAtIsNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldIsNull(FieldUpdatedAt))
+}
+
+// UpdatedAtNotNil applies the NotNil predicate on the "updated_at" field.
+func UpdatedAtNotNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotNull(FieldUpdatedAt))
 }
 
 // HasStudent applies the HasEdge predicate on the "student" edge.

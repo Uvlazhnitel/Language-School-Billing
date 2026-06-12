@@ -25,8 +25,8 @@ func (Enrollment) Fields() []ent.Field {
 		field.Float("discount_pct").Default(0),
 		field.Float("subscription_discount_pct").Default(20),
 		field.String("note").Default(""),
-		field.Time("created_at").Default(time.Now),
-		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
+		field.Time("created_at").Optional().Nillable().Default(time.Now),
+		field.Time("updated_at").Optional().Nillable().Default(time.Now).UpdateDefault(time.Now),
 	}
 }
 

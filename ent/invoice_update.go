@@ -198,9 +198,21 @@ func (_u *InvoiceUpdate) SetNillableCreatedAt(v *time.Time) *InvoiceUpdate {
 	return _u
 }
 
+// ClearCreatedAt clears the value of the "created_at" field.
+func (_u *InvoiceUpdate) ClearCreatedAt() *InvoiceUpdate {
+	_u.mutation.ClearCreatedAt()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InvoiceUpdate) SetUpdatedAt(v time.Time) *InvoiceUpdate {
 	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (_u *InvoiceUpdate) ClearUpdatedAt() *InvoiceUpdate {
+	_u.mutation.ClearUpdatedAt()
 	return _u
 }
 
@@ -322,7 +334,7 @@ func (_u *InvoiceUpdate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_u *InvoiceUpdate) defaults() {
-	if _, ok := _u.mutation.UpdatedAt(); !ok {
+	if _, ok := _u.mutation.UpdatedAt(); !ok && !_u.mutation.UpdatedAtCleared() {
 		v := invoice.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
@@ -395,8 +407,14 @@ func (_u *InvoiceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)
 	}
+	if _u.mutation.CreatedAtCleared() {
+		_spec.ClearField(invoice.FieldCreatedAt, field.TypeTime)
+	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(invoice.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.UpdatedAtCleared() {
+		_spec.ClearField(invoice.FieldUpdatedAt, field.TypeTime)
 	}
 	if _u.mutation.StudentCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -704,9 +722,21 @@ func (_u *InvoiceUpdateOne) SetNillableCreatedAt(v *time.Time) *InvoiceUpdateOne
 	return _u
 }
 
+// ClearCreatedAt clears the value of the "created_at" field.
+func (_u *InvoiceUpdateOne) ClearCreatedAt() *InvoiceUpdateOne {
+	_u.mutation.ClearCreatedAt()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *InvoiceUpdateOne) SetUpdatedAt(v time.Time) *InvoiceUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (_u *InvoiceUpdateOne) ClearUpdatedAt() *InvoiceUpdateOne {
+	_u.mutation.ClearUpdatedAt()
 	return _u
 }
 
@@ -841,7 +871,7 @@ func (_u *InvoiceUpdateOne) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_u *InvoiceUpdateOne) defaults() {
-	if _, ok := _u.mutation.UpdatedAt(); !ok {
+	if _, ok := _u.mutation.UpdatedAt(); !ok && !_u.mutation.UpdatedAtCleared() {
 		v := invoice.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
@@ -931,8 +961,14 @@ func (_u *InvoiceUpdateOne) sqlSave(ctx context.Context) (_node *Invoice, err er
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)
 	}
+	if _u.mutation.CreatedAtCleared() {
+		_spec.ClearField(invoice.FieldCreatedAt, field.TypeTime)
+	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(invoice.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.UpdatedAtCleared() {
+		_spec.ClearField(invoice.FieldUpdatedAt, field.TypeTime)
 	}
 	if _u.mutation.StudentCleared() {
 		edge := &sqlgraph.EdgeSpec{

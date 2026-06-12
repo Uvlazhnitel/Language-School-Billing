@@ -164,9 +164,21 @@ func (_u *EnrollmentUpdate) SetNillableCreatedAt(v *time.Time) *EnrollmentUpdate
 	return _u
 }
 
+// ClearCreatedAt clears the value of the "created_at" field.
+func (_u *EnrollmentUpdate) ClearCreatedAt() *EnrollmentUpdate {
+	_u.mutation.ClearCreatedAt()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *EnrollmentUpdate) SetUpdatedAt(v time.Time) *EnrollmentUpdate {
 	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (_u *EnrollmentUpdate) ClearUpdatedAt() *EnrollmentUpdate {
+	_u.mutation.ClearUpdatedAt()
 	return _u
 }
 
@@ -263,7 +275,7 @@ func (_u *EnrollmentUpdate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_u *EnrollmentUpdate) defaults() {
-	if _, ok := _u.mutation.UpdatedAt(); !ok {
+	if _, ok := _u.mutation.UpdatedAt(); !ok && !_u.mutation.UpdatedAtCleared() {
 		v := enrollment.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
@@ -324,8 +336,14 @@ func (_u *EnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(enrollment.FieldCreatedAt, field.TypeTime, value)
 	}
+	if _u.mutation.CreatedAtCleared() {
+		_spec.ClearField(enrollment.FieldCreatedAt, field.TypeTime)
+	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(enrollment.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.UpdatedAtCleared() {
+		_spec.ClearField(enrollment.FieldUpdatedAt, field.TypeTime)
 	}
 	if _u.mutation.StudentCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -583,9 +601,21 @@ func (_u *EnrollmentUpdateOne) SetNillableCreatedAt(v *time.Time) *EnrollmentUpd
 	return _u
 }
 
+// ClearCreatedAt clears the value of the "created_at" field.
+func (_u *EnrollmentUpdateOne) ClearCreatedAt() *EnrollmentUpdateOne {
+	_u.mutation.ClearCreatedAt()
+	return _u
+}
+
 // SetUpdatedAt sets the "updated_at" field.
 func (_u *EnrollmentUpdateOne) SetUpdatedAt(v time.Time) *EnrollmentUpdateOne {
 	_u.mutation.SetUpdatedAt(v)
+	return _u
+}
+
+// ClearUpdatedAt clears the value of the "updated_at" field.
+func (_u *EnrollmentUpdateOne) ClearUpdatedAt() *EnrollmentUpdateOne {
+	_u.mutation.ClearUpdatedAt()
 	return _u
 }
 
@@ -695,7 +725,7 @@ func (_u *EnrollmentUpdateOne) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_u *EnrollmentUpdateOne) defaults() {
-	if _, ok := _u.mutation.UpdatedAt(); !ok {
+	if _, ok := _u.mutation.UpdatedAt(); !ok && !_u.mutation.UpdatedAtCleared() {
 		v := enrollment.UpdateDefaultUpdatedAt()
 		_u.mutation.SetUpdatedAt(v)
 	}
@@ -773,8 +803,14 @@ func (_u *EnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Enrollment, 
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(enrollment.FieldCreatedAt, field.TypeTime, value)
 	}
+	if _u.mutation.CreatedAtCleared() {
+		_spec.ClearField(enrollment.FieldCreatedAt, field.TypeTime)
+	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(enrollment.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.UpdatedAtCleared() {
+		_spec.ClearField(enrollment.FieldUpdatedAt, field.TypeTime)
 	}
 	if _u.mutation.StudentCleared() {
 		edge := &sqlgraph.EdgeSpec{
