@@ -308,6 +308,60 @@ func TestLocaleBackupAndErrors(t *testing.T) {
 	}
 }
 
+func TestLocaleIsPerUserAndStaffCanChangeIt(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	adminLocale := getJSON[map[string]string](t, env.Client, env.Server.URL, "/api/me/locale")
+	if adminLocale["locale"] != "lv-LV" {
+		t.Fatalf("admin locale = %q, want lv-LV", adminLocale["locale"])
+	}
+
+	created := postJSON[backend.UserDTO](t, env.Client, env.Server.URL, "/api/users", map[string]any{
+		"username": "staff-locale",
+		"password": "staff-pass-123",
+		"role":     "staff",
+	})
+	if created.Role != "staff" {
+		t.Fatalf("created role = %q, want staff", created.Role)
+	}
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staffClient := &http.Client{Jar: jar}
+	login := postJSON[backend.SessionDTO](t, staffClient, env.Server.URL, "/api/auth/login", map[string]any{
+		"username": "staff-locale",
+		"password": "staff-pass-123",
+	})
+	if !login.Authenticated || login.Locale != "lv-LV" {
+		t.Fatalf("unexpected staff login locale: %+v", login)
+	}
+
+	staffLocale := postJSON[map[string]string](t, staffClient, env.Server.URL, "/api/me/locale", map[string]any{
+		"locale": "ru-RU",
+	})
+	if staffLocale["locale"] != "ru-RU" {
+		t.Fatalf("staff locale response = %q", staffLocale["locale"])
+	}
+
+	staffSession := getJSON[backend.SessionDTO](t, staffClient, env.Server.URL, "/api/auth/session")
+	if staffSession.Locale != "ru-RU" {
+		t.Fatalf("staff session locale = %q, want ru-RU", staffSession.Locale)
+	}
+
+	adminSession := getJSON[backend.SessionDTO](t, env.Client, env.Server.URL, "/api/auth/session")
+	if adminSession.Locale != "lv-LV" {
+		t.Fatalf("admin session locale = %q, want lv-LV", adminSession.Locale)
+	}
+
+	adminLocaleAfter := getJSON[map[string]string](t, env.Client, env.Server.URL, "/api/me/locale")
+	if adminLocaleAfter["locale"] != "lv-LV" {
+		t.Fatalf("admin locale after staff change = %q, want lv-LV", adminLocaleAfter["locale"])
+	}
+}
+
 func TestAuthLoginProtectsAPIAndLogout(t *testing.T) {
 	env := newAnonymousTestServer(t)
 	defer env.Close()
@@ -339,6 +393,9 @@ func TestAuthLoginProtectsAPIAndLogout(t *testing.T) {
 	})
 	if !login.Authenticated || login.User == nil || login.User.Username != env.AdminUsername {
 		t.Fatalf("unexpected login session: %+v", login)
+	}
+	if login.Locale != "lv-LV" {
+		t.Fatalf("login locale = %q, want lv-LV", login.Locale)
 	}
 
 	_ = getJSON[[]backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students?q=&includeInactive=false")

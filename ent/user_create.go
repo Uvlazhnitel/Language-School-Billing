@@ -62,6 +62,20 @@ func (_c *UserCreate) SetNillableIsActive(v *bool) *UserCreate {
 	return _c
 }
 
+// SetUILocale sets the "ui_locale" field.
+func (_c *UserCreate) SetUILocale(v string) *UserCreate {
+	_c.mutation.SetUILocale(v)
+	return _c
+}
+
+// SetNillableUILocale sets the "ui_locale" field if the given value is not nil.
+func (_c *UserCreate) SetNillableUILocale(v *string) *UserCreate {
+	if v != nil {
+		_c.SetUILocale(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *UserCreate) SetCreatedAt(v time.Time) *UserCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -163,6 +177,10 @@ func (_c *UserCreate) defaults() {
 		v := user.DefaultIsActive
 		_c.mutation.SetIsActive(v)
 	}
+	if _, ok := _c.mutation.UILocale(); !ok {
+		v := user.DefaultUILocale
+		_c.mutation.SetUILocale(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := user.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -186,6 +204,9 @@ func (_c *UserCreate) check() error {
 	}
 	if _, ok := _c.mutation.IsActive(); !ok {
 		return &ValidationError{Name: "is_active", err: errors.New(`ent: missing required field "User.is_active"`)}
+	}
+	if _, ok := _c.mutation.UILocale(); !ok {
+		return &ValidationError{Name: "ui_locale", err: errors.New(`ent: missing required field "User.ui_locale"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "User.created_at"`)}
@@ -234,6 +255,10 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.IsActive(); ok {
 		_spec.SetField(user.FieldIsActive, field.TypeBool, value)
 		_node.IsActive = value
+	}
+	if value, ok := _c.mutation.UILocale(); ok {
+		_spec.SetField(user.FieldUILocale, field.TypeString, value)
+		_node.UILocale = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)

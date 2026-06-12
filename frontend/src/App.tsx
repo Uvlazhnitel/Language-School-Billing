@@ -245,8 +245,6 @@ export default function App() {
   const tabMeta = useMemo(() => buildTabMeta(t), [t]);
   const canManageUsers =
     Boolean(sessionCapabilities.manageUsers) || transportCapabilities.isDesktop;
-  const canManageSettings =
-    Boolean(sessionCapabilities.manageSettings) || transportCapabilities.isDesktop;
   const canCreateBackups = Boolean(sessionCapabilities.backups) || transportCapabilities.isDesktop;
   const canDeleteStudents =
     Boolean(sessionCapabilities.deleteStudents) || transportCapabilities.isDesktop;
@@ -2824,7 +2822,6 @@ export default function App() {
             {tab === "settings" && (
               <SettingsScreen
                 uiLocale={uiLocale}
-                canManageSettings={canManageSettings}
                 canCreateBackups={canCreateBackups}
                 creatingBackup={creatingBackup}
                 transportCapabilities={transportCapabilities}

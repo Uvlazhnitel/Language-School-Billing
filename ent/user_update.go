@@ -86,6 +86,20 @@ func (_u *UserUpdate) SetNillableIsActive(v *bool) *UserUpdate {
 	return _u
 }
 
+// SetUILocale sets the "ui_locale" field.
+func (_u *UserUpdate) SetUILocale(v string) *UserUpdate {
+	_u.mutation.SetUILocale(v)
+	return _u
+}
+
+// SetNillableUILocale sets the "ui_locale" field if the given value is not nil.
+func (_u *UserUpdate) SetNillableUILocale(v *string) *UserUpdate {
+	if v != nil {
+		_u.SetUILocale(*v)
+	}
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *UserUpdate) SetCreatedAt(v time.Time) *UserUpdate {
 	_u.mutation.SetCreatedAt(v)
@@ -239,6 +253,9 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.IsActive(); ok {
 		_spec.SetField(user.FieldIsActive, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.UILocale(); ok {
+		_spec.SetField(user.FieldUILocale, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)
@@ -408,6 +425,20 @@ func (_u *UserUpdateOne) SetIsActive(v bool) *UserUpdateOne {
 func (_u *UserUpdateOne) SetNillableIsActive(v *bool) *UserUpdateOne {
 	if v != nil {
 		_u.SetIsActive(*v)
+	}
+	return _u
+}
+
+// SetUILocale sets the "ui_locale" field.
+func (_u *UserUpdateOne) SetUILocale(v string) *UserUpdateOne {
+	_u.mutation.SetUILocale(v)
+	return _u
+}
+
+// SetNillableUILocale sets the "ui_locale" field if the given value is not nil.
+func (_u *UserUpdateOne) SetNillableUILocale(v *string) *UserUpdateOne {
+	if v != nil {
+		_u.SetUILocale(*v)
 	}
 	return _u
 }
@@ -595,6 +626,9 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 	}
 	if value, ok := _u.mutation.IsActive(); ok {
 		_spec.SetField(user.FieldIsActive, field.TypeBool, value)
+	}
+	if value, ok := _u.mutation.UILocale(); ok {
+		_spec.SetField(user.FieldUILocale, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(user.FieldCreatedAt, field.TypeTime, value)

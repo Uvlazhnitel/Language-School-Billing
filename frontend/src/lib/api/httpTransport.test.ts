@@ -81,6 +81,20 @@ describe("httpTransport", () => {
     });
   });
 
+  it("uses per-user locale endpoints", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/me/locale")) {
+        return jsonResponse({ locale: "ru-RU" });
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(httpTransport.getLocale()).resolves.toBe("ru-RU");
+    await expect(httpTransport.setLocale("ru-RU")).resolves.toBeUndefined();
+  });
+
   it("throws readable error messages", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "boom" }, 400)));
 

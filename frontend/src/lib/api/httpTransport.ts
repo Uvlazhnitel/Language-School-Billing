@@ -158,12 +158,12 @@ export const httpTransport: AppTransport = {
   },
 
   async getLocale() {
-    const res = await request<{ locale: string }>("/settings/locale");
+    const res = await request<{ locale: string }>("/me/locale");
     return res.locale;
   },
 
   async setLocale(locale: string) {
-    await request("/settings/locale", {
+    await request("/me/locale", {
       method: "POST",
       ...body({ locale }),
     });

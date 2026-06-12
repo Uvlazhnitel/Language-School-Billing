@@ -157,9 +157,9 @@ func (s *Service) Meta(ctx context.Context) (*Meta, error) {
 }
 
 func (s *Service) SessionState(ctx context.Context, currentUser *auth.UserInfo) (*SessionDTO, error) {
-	locale, err := s.SettingsGetLocale(ctx)
-	if err != nil {
-		return nil, err
+	locale := "lv-LV"
+	if currentUser != nil {
+		locale = normalizeUILocale(currentUser.UILocale)
 	}
 	return &SessionDTO{
 		Authenticated: currentUser != nil,
@@ -242,6 +242,31 @@ func (s *Service) UserSetActive(ctx context.Context, id int, active bool) (*User
 
 func (s *Service) UserDelete(ctx context.Context, currentUserID, targetUserID int) error {
 	return s.rt.Auth.DeleteUser(ctx, currentUserID, targetUserID)
+}
+
+func (s *Service) UserGetLocale(ctx context.Context, userID int) (string, error) {
+	if s.rt == nil || s.rt.DB == nil || s.rt.DB.Ent == nil {
+		return "lv-LV", nil
+	}
+	u, err := s.rt.DB.Ent.User.Get(ctx, userID)
+	if err != nil {
+		return "", err
+	}
+	return normalizeUILocale(u.UILocale), nil
+}
+
+func (s *Service) UserSetLocale(ctx context.Context, userID int, loc string) (string, error) {
+	if err := validateUILocale(loc); err != nil {
+		return "", err
+	}
+	if s.rt == nil || s.rt.DB == nil || s.rt.DB.Ent == nil {
+		return "", errors.New("user store unavailable")
+	}
+	item, err := s.rt.DB.Ent.User.UpdateOneID(userID).SetUILocale(loc).Save(ctx)
+	if err != nil {
+		return "", err
+	}
+	return normalizeUILocale(item.UILocale), nil
 }
 
 func (s *Service) AttendanceListPerLesson(ctx context.Context, year, month int, courseID *int) ([]attendance.Row, error) {
@@ -1614,6 +1639,28 @@ func validateMinorPayer(isMinor bool, payerName, payerRole string) error {
 		return errors.New("payerRole is required when isMinor is true")
 	}
 	return nil
+}
+
+func validateUILocale(locale string) error {
+	switch strings.TrimSpace(locale) {
+	case "lv-LV", "ru-RU", "en-US":
+		return nil
+	default:
+		return errors.New("locale must be one of: lv-LV, ru-RU, en-US")
+	}
+}
+
+func normalizeUILocale(locale string) string {
+	switch strings.TrimSpace(locale) {
+	case "en-US":
+		return "en-US"
+	case "ru-RU":
+		return "ru-RU"
+	case "lv-LV":
+		return "lv-LV"
+	default:
+		return "lv-LV"
+	}
 }
 
 func normalizePayerRole(role string) string {

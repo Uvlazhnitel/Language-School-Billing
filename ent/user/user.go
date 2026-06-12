@@ -22,6 +22,8 @@ const (
 	FieldRole = "role"
 	// FieldIsActive holds the string denoting the is_active field in the database.
 	FieldIsActive = "is_active"
+	// FieldUILocale holds the string denoting the ui_locale field in the database.
+	FieldUILocale = "ui_locale"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -55,6 +57,7 @@ var Columns = []string{
 	FieldPasswordHash,
 	FieldRole,
 	FieldIsActive,
+	FieldUILocale,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -74,6 +77,8 @@ var (
 	DefaultRole string
 	// DefaultIsActive holds the default value on creation for the "is_active" field.
 	DefaultIsActive bool
+	// DefaultUILocale holds the default value on creation for the "ui_locale" field.
+	DefaultUILocale string
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -108,6 +113,11 @@ func ByRole(opts ...sql.OrderTermOption) OrderOption {
 // ByIsActive orders the results by the is_active field.
 func ByIsActive(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldIsActive, opts...).ToFunc()
+}
+
+// ByUILocale orders the results by the ui_locale field.
+func ByUILocale(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldUILocale, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

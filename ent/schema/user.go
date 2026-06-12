@@ -16,6 +16,7 @@ func (User) Fields() []ent.Field {
 		field.String("password_hash"),
 		field.String("role").Default("admin"),
 		field.Bool("is_active").Default(true),
+		field.String("ui_locale").Default("lv-LV"),
 		field.Time("created_at").Default(time.Now),
 		field.Time("updated_at").Default(time.Now).UpdateDefault(time.Now),
 	}
