@@ -1,6 +1,8 @@
 import { Fragment } from "react";
 import type { AuditLogItem } from "../lib/audit";
 import type { TranslateFn } from "../lib/i18n";
+import { EmptyState } from "../components/EmptyState";
+import { FilterToolbar } from "../components/FilterToolbar";
 
 type AuditScreenProps = {
   loading: boolean;
@@ -22,6 +24,7 @@ type AuditScreenProps = {
   onDateFromChange: (value: string) => void;
   onDateToChange: (value: string) => void;
   onRefresh: () => void;
+  onResetFilters: () => void;
   onToggleExpanded: (id: number) => void;
   onPrevPage: () => void;
   onNextPage: () => void;
@@ -49,12 +52,17 @@ export function AuditScreen({
   onDateFromChange,
   onDateToChange,
   onRefresh,
+  onResetFilters,
   onToggleExpanded,
   onPrevPage,
   onNextPage,
   actionLabel,
   t,
 }: AuditScreenProps) {
+  const hasActiveFilters = Boolean(
+    q.trim() || actorFilter.trim() || entityTypeFilter || actionFilter || dateFrom || dateTo
+  );
+
   return (
     <>
       <div className="sectionBanner">
@@ -63,53 +71,77 @@ export function AuditScreen({
           <strong>{t("title.audit")}</strong>
           <span className="mutedInline">{t("audit.subtitle")}</span>
         </div>
-        <div className="sectionBannerActions">
+      </div>
+
+      <FilterToolbar
+        search={
+          <input
+            className="searchField searchFieldWide"
+            placeholder={t("audit.searchPlaceholder")}
+            value={q}
+            onChange={(e) => onQChange(e.target.value)}
+          />
+        }
+        filters={
+          <>
+            <input
+              className="searchField"
+              placeholder={t("audit.actorPlaceholder")}
+              value={actorFilter}
+              onChange={(e) => onActorFilterChange(e.target.value)}
+            />
+            <select
+              value={entityTypeFilter}
+              onChange={(e) => onEntityTypeFilterChange(e.target.value)}
+            >
+              <option value="">{t("audit.allEntities")}</option>
+              <option value="invoice">invoice</option>
+              <option value="payment">payment</option>
+              <option value="invoice_batch">{t("audit.batchEntity")}</option>
+            </select>
+            <select value={actionFilter} onChange={(e) => onActionFilterChange(e.target.value)}>
+              <option value="">{t("audit.allActions")}</option>
+              <option value="invoice.generate_drafts">invoice.generate_drafts</option>
+              <option value="invoice.rebuild_student_draft">invoice.rebuild_student_draft</option>
+              <option value="invoice.delete_draft">invoice.delete_draft</option>
+              <option value="invoice.issue">invoice.issue</option>
+              <option value="invoice.issue_all">invoice.issue_all</option>
+              <option value="invoice.reopen_draft">invoice.reopen_draft</option>
+              <option value="payment.create">payment.create</option>
+              <option value="payment.allocate_or_credit">payment.allocate_or_credit</option>
+              <option value="payment.delete">payment.delete</option>
+            </select>
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => onDateFromChange(e.target.value)}
+            />
+            <input type="date" value={dateTo} onChange={(e) => onDateToChange(e.target.value)} />
+          </>
+        }
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={onResetFilters}
+        clearLabel={t("button.clearFilters")}
+        secondaryActions={
           <button className="workspaceActionButton" onClick={onRefresh}>
             {t("button.refresh")}
           </button>
-        </div>
-      </div>
-
-      <div className="controls controls--wrap">
-        <input
-          className="searchField searchFieldWide"
-          placeholder={t("audit.searchPlaceholder")}
-          value={q}
-          onChange={(e) => onQChange(e.target.value)}
-        />
-        <input
-          className="searchField"
-          placeholder={t("audit.actorPlaceholder")}
-          value={actorFilter}
-          onChange={(e) => onActorFilterChange(e.target.value)}
-        />
-        <select value={entityTypeFilter} onChange={(e) => onEntityTypeFilterChange(e.target.value)}>
-          <option value="">{t("audit.allEntities")}</option>
-          <option value="invoice">invoice</option>
-          <option value="payment">payment</option>
-          <option value="invoice_batch">{t("audit.batchEntity")}</option>
-        </select>
-        <select value={actionFilter} onChange={(e) => onActionFilterChange(e.target.value)}>
-          <option value="">{t("audit.allActions")}</option>
-          <option value="invoice.generate_drafts">invoice.generate_drafts</option>
-          <option value="invoice.rebuild_student_draft">invoice.rebuild_student_draft</option>
-          <option value="invoice.delete_draft">invoice.delete_draft</option>
-          <option value="invoice.issue">invoice.issue</option>
-          <option value="invoice.issue_all">invoice.issue_all</option>
-          <option value="invoice.reopen_draft">invoice.reopen_draft</option>
-          <option value="payment.create">payment.create</option>
-          <option value="payment.allocate_or_credit">payment.allocate_or_credit</option>
-          <option value="payment.delete">payment.delete</option>
-        </select>
-        <input type="date" value={dateFrom} onChange={(e) => onDateFromChange(e.target.value)} />
-        <input type="date" value={dateTo} onChange={(e) => onDateToChange(e.target.value)} />
-        <button onClick={onRefresh}>{t("button.refresh")}</button>
-      </div>
+        }
+      />
 
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : items.length === 0 ? (
-        <div className="empty">{t("audit.empty")}</div>
+        hasActiveFilters ? (
+          <EmptyState
+            title={t("audit.emptyFiltered")}
+            description={t("audit.subtitle")}
+            actionLabel={t("button.clearFilters")}
+            onAction={onResetFilters}
+          />
+        ) : (
+          <div className="empty">{t("audit.empty")}</div>
+        )
       ) : (
         <>
           <table>
@@ -146,8 +178,12 @@ export function AuditScreen({
                       <td colSpan={6}>
                         <div className="auditDetails">
                           <div className="auditDetailMeta">
-                            <span>{t("field.studentId")}: {item.studentId ?? "—"}</span>
-                            <span>{t("field.invoiceId")}: {item.invoiceId ?? "—"}</span>
+                            <span>
+                              {t("field.studentId")}: {item.studentId ?? "—"}
+                            </span>
+                            <span>
+                              {t("field.invoiceId")}: {item.invoiceId ?? "—"}
+                            </span>
                           </div>
                           <div className="auditJsonGrid">
                             <div>

@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { EmptyState } from "../components/EmptyState";
 import type { InvoiceListItemView } from "../lib/invoices";
 import type { TranslateFn } from "../lib/i18n";
+import { FilterToolbar } from "../components/FilterToolbar";
 
 type InvoicesScreenProps = {
   currentMonthLabel: string;
@@ -48,6 +49,8 @@ export function InvoicesScreen({
   onOpenPaymentModal,
   t,
 }: InvoicesScreenProps) {
+  const hasActiveFilters = Boolean(query.trim() || status !== "all");
+
   return (
     <>
       <div className="sectionBanner">
@@ -56,33 +59,39 @@ export function InvoicesScreen({
           <strong>{currentMonthLabel}</strong>
           <span className="mutedInline">{t("title.invoice")}</span>
         </div>
-        <div className="sectionBannerActions">
+      </div>
+
+      <FilterToolbar
+        search={
+          <input
+            className="searchField searchFieldWide"
+            placeholder={t("msg.searchPlaceholderInvoice")}
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+          />
+        }
+        filters={
+          <select value={status} onChange={(e) => onStatusChange(e.target.value)}>
+            <option value="draft">{t("filter.selectStatusDraft")}</option>
+            <option value="issued">{t("filter.selectStatusIssued")}</option>
+            <option value="paid">{t("filter.selectStatusPaid")}</option>
+            <option value="all">{t("filter.selectStatusAll")}</option>
+          </select>
+        }
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={onResetFilters}
+        clearLabel={t("button.clearFilters")}
+        secondaryActions={
           <button className="workspaceActionButton" onClick={onRefresh}>
             {t("button.sync")}
           </button>
-        </div>
-      </div>
-
-      <div className="controls">
-        <select value={status} onChange={(e) => onStatusChange(e.target.value)}>
-          <option value="draft">{t("filter.selectStatusDraft")}</option>
-          <option value="issued">{t("filter.selectStatusIssued")}</option>
-          <option value="paid">{t("filter.selectStatusPaid")}</option>
-          <option value="all">{t("filter.selectStatusAll")}</option>
-        </select>
-
-        <input
-          className="searchField searchFieldWide"
-          placeholder={t("msg.searchPlaceholderInvoice")}
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-        />
-      </div>
+        }
+      />
 
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : items.length === 0 ? (
-        query.trim() || status !== "all" ? (
+        hasActiveFilters ? (
           <EmptyState
             title={t("msg.noInvoiceSearchTitle")}
             description={t("msg.noInvoiceSearchDescription")}
@@ -138,7 +147,10 @@ export function InvoicesScreen({
                 </td>
                 <td>
                   <div className="invoiceRowActions">
-                    <button className="workspaceActionButton" onClick={() => void onOpenInvoice(item.id)}>
+                    <button
+                      className="workspaceActionButton"
+                      onClick={() => void onOpenInvoice(item.id)}
+                    >
                       {t("button.open")}
                     </button>
                     {item.status === "draft" && (

@@ -124,7 +124,9 @@ body {
   color: var(--text);
   padding: 14px 16px;
   font: inherit;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .authField input:focus {
@@ -372,6 +374,14 @@ a {
   border-radius: 20px;
   background: var(--surface);
   border: 1px solid rgba(133, 102, 69, 0.1);
+}
+
+.filterToolbarTrailing {
+  margin-left: auto;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
 }
 
 .searchField {
@@ -1676,8 +1686,13 @@ tfoot td {
   }
 
   .controls button,
-  .controls .inline {
+  .controls .inline,
+  .controls .filterToolbarTrailing {
     width: auto;
+  }
+
+  .controls .filterToolbarTrailing {
+    margin-left: 0;
   }
 
   .invoiceRowActions {

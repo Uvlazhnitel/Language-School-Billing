@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef, type FormEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  useCallback,
+  useRef,
+  type FormEvent,
+} from "react";
 import "./App.css";
 
 import {
@@ -35,10 +43,7 @@ import {
 
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
-import {
-  BillingModePerLesson,
-  BillingModeSubscription,
-} from "./lib/constants";
+import { BillingModePerLesson, BillingModeSubscription } from "./lib/constants";
 
 import {
   listEnrollments,
@@ -112,8 +117,13 @@ import {
 const staleRevisionMessage = "record was changed or deleted by another user";
 
 function isStaleRevisionError(error: unknown): boolean {
-  const message = String((error as { message?: string } | undefined)?.message ?? error ?? "").toLowerCase();
-  return (isConflictError(error) || message.includes("conflict")) && message.includes(staleRevisionMessage);
+  const message = String(
+    (error as { message?: string } | undefined)?.message ?? error ?? ""
+  ).toLowerCase();
+  return (
+    (isConflictError(error) || message.includes("conflict")) &&
+    message.includes(staleRevisionMessage)
+  );
 }
 import { AttendanceScreen } from "./screens/AttendanceScreen";
 import { AuditScreen } from "./screens/AuditScreen";
@@ -147,7 +157,11 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authRequired, setAuthRequired] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [currentSessionUser, setCurrentSessionUser] = useState<{ id: number; username: string; role: string } | null>(null);
+  const [currentSessionUser, setCurrentSessionUser] = useState<{
+    id: number;
+    username: string;
+    role: string;
+  } | null>(null);
   const [sessionCapabilities, setSessionCapabilities] = useState<Record<string, boolean>>({});
   const [loginUsername, setLoginUsername] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
@@ -184,7 +198,10 @@ export default function App() {
         setIsAuthenticated(bootstrapResult.session.authenticated);
         setCurrentSessionUser(bootstrapResult.session.user ?? null);
         setSessionCapabilities(bootstrapResult.session.capabilities ?? {});
-        setAppReady(bootstrapResult.ready && (!bootstrapResult.authRequired || bootstrapResult.session.authenticated));
+        setAppReady(
+          bootstrapResult.ready &&
+            (!bootstrapResult.authRequired || bootstrapResult.session.authenticated)
+        );
         setAuthLoading(false);
       } catch (e: any) {
         if (!cancelled) {
@@ -226,23 +243,26 @@ export default function App() {
   const t = useMemo(() => createTranslator(uiLocale), [uiLocale]);
   const uiMonths = useMemo(() => getMonthNames(uiLocale), [uiLocale]);
   const tabMeta = useMemo(() => buildTabMeta(t), [t]);
-  const canManageUsers = Boolean(sessionCapabilities.manageUsers) || transportCapabilities.isDesktop;
-  const canManageSettings = Boolean(sessionCapabilities.manageSettings) || transportCapabilities.isDesktop;
+  const canManageUsers =
+    Boolean(sessionCapabilities.manageUsers) || transportCapabilities.isDesktop;
+  const canManageSettings =
+    Boolean(sessionCapabilities.manageSettings) || transportCapabilities.isDesktop;
   const canCreateBackups = Boolean(sessionCapabilities.backups) || transportCapabilities.isDesktop;
-  const canDeleteStudents = Boolean(sessionCapabilities.deleteStudents) || transportCapabilities.isDesktop;
-  const canDeleteCourses = Boolean(sessionCapabilities.deleteCourses) || transportCapabilities.isDesktop;
-  const canDeletePayments = Boolean(sessionCapabilities.deletePayments) || transportCapabilities.isDesktop;
-  const canViewAuditLog = Boolean(sessionCapabilities.viewAuditLog) || transportCapabilities.isDesktop;
+  const canDeleteStudents =
+    Boolean(sessionCapabilities.deleteStudents) || transportCapabilities.isDesktop;
+  const canDeleteCourses =
+    Boolean(sessionCapabilities.deleteCourses) || transportCapabilities.isDesktop;
+  const canDeletePayments =
+    Boolean(sessionCapabilities.deletePayments) || transportCapabilities.isDesktop;
+  const canViewAuditLog =
+    Boolean(sessionCapabilities.viewAuditLog) || transportCapabilities.isDesktop;
 
   const localizedPayerRoleLabel = useCallback(
     (relation: string) => payerRoleLabel(relation, t),
     [t]
   );
   const localizedCourseTypeLabel = useCallback((type: string) => courseTypeLabel(type, t), [t]);
-  const localizedBillingModeLabel = useCallback(
-    (mode: string) => billingModeLabel(mode, t),
-    [t]
-  );
+  const localizedBillingModeLabel = useCallback((mode: string) => billingModeLabel(mode, t), [t]);
   const localizedPaymentMethodLabel = useCallback(
     (method: string) => paymentMethodLabel(method, t),
     [t]
@@ -271,6 +291,15 @@ export default function App() {
   const [auditPageSize] = useState(50);
   const [auditTotal, setAuditTotal] = useState(0);
   const [auditExpandedId, setAuditExpandedId] = useState<number | null>(null);
+  const resetAuditFilters = useCallback(() => {
+    setAuditQ("");
+    setAuditActorFilter("");
+    setAuditEntityTypeFilter("");
+    setAuditActionFilter("");
+    setAuditDateFrom("");
+    setAuditDateTo("");
+    setAuditPage(1);
+  }, []);
 
   // ---------------- Students ----------------
   const [studentList, setStudentList] = useState<StudentDTO[]>([]);
@@ -502,97 +531,93 @@ export default function App() {
   }
 
   async function removeStudent(id: number) {
-    showConfirm(
-      t("msg.studentDeleteConfirm"),
-      async () => {
-        try {
-          const currentStudent = studentList.find((item) => item.id === id) ?? allStudents.find((item) => item.id === id);
-          if (!currentStudent) {
-            throw new Error(t("msg.studentNotFound"));
-          }
-          await deleteStudent(id, currentStudent.version);
-          await Promise.all([loadStudents(), loadAllStudents()]);
-          showMessage(t("msg.studentDeleted"));
-        } catch (e: any) {
-          if (isStaleRevisionError(e)) {
-            showMessage(t("msg.recordConflict"), "error");
-            return;
-          }
-          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    showConfirm(t("msg.studentDeleteConfirm"), async () => {
+      try {
+        const currentStudent =
+          studentList.find((item) => item.id === id) ?? allStudents.find((item) => item.id === id);
+        if (!currentStudent) {
+          throw new Error(t("msg.studentNotFound"));
         }
+        await deleteStudent(id, currentStudent.version);
+        await Promise.all([loadStudents(), loadAllStudents()]);
+        showMessage(t("msg.studentDeleted"));
+      } catch (e: any) {
+        if (isStaleRevisionError(e)) {
+          showMessage(t("msg.recordConflict"), "error");
+          return;
+        }
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
-    );
+    });
   }
 
-  const refreshStudentCardData = useCallback(async (studentId: number) => {
-    try {
-      const [enr, bal, debts, payments, monthInvoices] = await Promise.all([
-        listEnrollments(studentId, undefined),
-        studentBalance(studentId),
-        studentDebtDetails(studentId),
-        paymentListForStudent(studentId),
-        listInvoices(year, month, "all"),
-      ]);
-      const studentMonthInvoices = monthInvoices.filter(
-        (invoice) => invoice.studentId === studentId
-      );
-      setStudentCardEnrollments(enr);
-      setStudentCardBalance(bal);
-      setStudentCardDebts(debts);
-      setStudentCardPayments(payments);
-      setStudentCardMonthInvoices(studentMonthInvoices);
-      setStudentNextAction(
-        buildStudentNextAction({
-          debt: bal?.debt ?? 0,
-          enrollments: enr,
-          debts,
-          payments,
-          monthInvoices: studentMonthInvoices,
-          t,
-        })
-      );
-      setStudentActivity(
-        buildStudentActivity({
-          enrollments: enr,
-          payments,
-          debts,
-          monthInvoices: studentMonthInvoices,
-          months: uiMonths,
-          t,
-          paymentMethodLabel: localizedPaymentMethodLabel,
-          billingModeLabel: localizedBillingModeLabel,
-        })
-      );
-    } catch (e: any) {
-      showMessage(t("msg.studentCardLoadError", { message: String(e?.message ?? e) }), "error");
-    }
-  }, [
-    localizedBillingModeLabel,
-    localizedPaymentMethodLabel,
-    month,
-    showMessage,
-    t,
-    uiMonths,
-    year,
-  ]);
+  const refreshStudentCardData = useCallback(
+    async (studentId: number) => {
+      try {
+        const [enr, bal, debts, payments, monthInvoices] = await Promise.all([
+          listEnrollments(studentId, undefined),
+          studentBalance(studentId),
+          studentDebtDetails(studentId),
+          paymentListForStudent(studentId),
+          listInvoices(year, month, "all"),
+        ]);
+        const studentMonthInvoices = monthInvoices.filter(
+          (invoice) => invoice.studentId === studentId
+        );
+        setStudentCardEnrollments(enr);
+        setStudentCardBalance(bal);
+        setStudentCardDebts(debts);
+        setStudentCardPayments(payments);
+        setStudentCardMonthInvoices(studentMonthInvoices);
+        setStudentNextAction(
+          buildStudentNextAction({
+            debt: bal?.debt ?? 0,
+            enrollments: enr,
+            debts,
+            payments,
+            monthInvoices: studentMonthInvoices,
+            t,
+          })
+        );
+        setStudentActivity(
+          buildStudentActivity({
+            enrollments: enr,
+            payments,
+            debts,
+            monthInvoices: studentMonthInvoices,
+            months: uiMonths,
+            t,
+            paymentMethodLabel: localizedPaymentMethodLabel,
+            billingModeLabel: localizedBillingModeLabel,
+          })
+        );
+      } catch (e: any) {
+        showMessage(t("msg.studentCardLoadError", { message: String(e?.message ?? e) }), "error");
+      }
+    },
+    [localizedBillingModeLabel, localizedPaymentMethodLabel, month, showMessage, t, uiMonths, year]
+  );
 
-  const openStudentCard = useCallback(async (s: StudentDTO, options?: { inline?: boolean }) => {
-    setSelectedStudentCard(s);
-    setStudentCardOpen(!(options?.inline || tab === "students"));
-    setStudentCardLoading(true);
-    setStudentCardEnrollments([]);
-    setStudentCardBalance(null);
-    setStudentCardDebts([]);
-    setStudentCardPayments([]);
-    setStudentCardMonthInvoices([]);
-    setStudentNextAction(null);
-    setStudentActivity([]);
-    try {
-      await refreshStudentCardData(s.id);
-    } finally {
-      setStudentCardLoading(false);
-    }
-  }, [refreshStudentCardData, tab]);
+  const openStudentCard = useCallback(
+    async (s: StudentDTO, options?: { inline?: boolean }) => {
+      setSelectedStudentCard(s);
+      setStudentCardOpen(!(options?.inline || tab === "students"));
+      setStudentCardLoading(true);
+      setStudentCardEnrollments([]);
+      setStudentCardBalance(null);
+      setStudentCardDebts([]);
+      setStudentCardPayments([]);
+      setStudentCardMonthInvoices([]);
+      setStudentNextAction(null);
+      setStudentActivity([]);
+      try {
+        await refreshStudentCardData(s.id);
+      } finally {
+        setStudentCardLoading(false);
+      }
+    },
+    [refreshStudentCardData, tab]
+  );
 
   useEffect(() => {
     if (tab !== "students" || studentLoading || studentList.length === 0) return;
@@ -798,7 +823,10 @@ export default function App() {
         if (course.teacherId || course.teacherName?.trim()) {
           return false;
         }
-      } else if (courseTeacherFilter !== "all" && String(course.teacherId ?? "") !== courseTeacherFilter) {
+      } else if (
+        courseTeacherFilter !== "all" &&
+        String(course.teacherId ?? "") !== courseTeacherFilter
+      ) {
         return false;
       }
 
@@ -827,7 +855,10 @@ export default function App() {
   }, [allCourses, coursePricingFilter, courseQ, courseTeacherFilter, courseTypeFilter]);
 
   const courseFiltersActive = Boolean(
-    courseQ.trim() || courseTypeFilter || courseTeacherFilter !== "all" || coursePricingFilter !== "all"
+    courseQ.trim() ||
+    courseTypeFilter ||
+    courseTeacherFilter !== "all" ||
+    coursePricingFilter !== "all"
   );
 
   const clearCourseFilters = useCallback(() => {
@@ -949,27 +980,24 @@ export default function App() {
   }
 
   async function removeCourse(id: number) {
-    showConfirm(
-      t("msg.courseDeleteConfirm"),
-      async () => {
-        try {
-          const currentCourse =
-            courseList.find((item) => item.id === id) ?? allCourses.find((item) => item.id === id);
-          if (!currentCourse) {
-            throw new Error(t("msg.courseNotFound"));
-          }
-          await deleteCourse(id, currentCourse.version);
-          await loadCourses();
-          showMessage(t("msg.courseDeleted"));
-        } catch (e: any) {
-          if (isStaleRevisionError(e)) {
-            showMessage(t("msg.recordConflict"), "error");
-            return;
-          }
-          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    showConfirm(t("msg.courseDeleteConfirm"), async () => {
+      try {
+        const currentCourse =
+          courseList.find((item) => item.id === id) ?? allCourses.find((item) => item.id === id);
+        if (!currentCourse) {
+          throw new Error(t("msg.courseNotFound"));
         }
+        await deleteCourse(id, currentCourse.version);
+        await loadCourses();
+        showMessage(t("msg.courseDeleted"));
+      } catch (e: any) {
+        if (isStaleRevisionError(e)) {
+          showMessage(t("msg.recordConflict"), "error");
+          return;
+        }
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
-    );
+    });
   }
 
   // ---------------- Enrollments ----------------
@@ -1161,9 +1189,15 @@ export default function App() {
   const attendanceSavingRowsRef = useRef<Record<number, boolean>>({});
   const [attendanceInputDrafts, setAttendanceInputDrafts] = useState<Record<number, string>>({});
   const attendancePendingSelectRef = useRef<number | null>(null);
-  const [subscriptionMonthLessons, setSubscriptionMonthLessons] = useState<Record<number, number>>({});
-  const [subscriptionMonthDrafts, setSubscriptionMonthDrafts] = useState<Record<number, string>>({});
-  const [subscriptionMonthSaving, setSubscriptionMonthSaving] = useState<Record<number, boolean>>({});
+  const [subscriptionMonthLessons, setSubscriptionMonthLessons] = useState<Record<number, number>>(
+    {}
+  );
+  const [subscriptionMonthDrafts, setSubscriptionMonthDrafts] = useState<Record<number, string>>(
+    {}
+  );
+  const [subscriptionMonthSaving, setSubscriptionMonthSaving] = useState<Record<number, boolean>>(
+    {}
+  );
 
   // For search by phone we need students list (shared with invoices and attendance)
   const studentIndex = useMemo(() => {
@@ -1280,49 +1314,52 @@ export default function App() {
     return leadIds;
   }, [filteredAttendanceRows]);
 
-  const onChangeHours = useCallback(async (r: Row, v: number) => {
-    if (r.billingMode !== BillingModePerLesson) return;
-    if (r.attendanceLocked) {
-      showMessage(
-        t("msg.attendanceLocked", {
-          status: localizedInvoiceStatusLabel(r.invoiceStatus ?? "issued"),
-        }),
-        "error"
-      );
-      return;
-    }
-    if (!Number.isFinite(v)) return;
-    const n = normalizeQuarterHours(v);
-    if (attendanceSavingRowsRef.current[r.enrollmentId]) return;
-
-    try {
-      setAttendanceSavingRows((prev) => ({ ...prev, [r.enrollmentId]: true }));
-      await saveHours(r.studentId, r.courseId, year, month, n);
-      setRows((prev) =>
-        prev.map((x) =>
-          x.enrollmentId === r.enrollmentId ? { ...x, hours: n, hasRecord: true } : x
-        )
-      );
-      try {
-        await rebuildStudentDraft(r.studentId, year, month);
-      } catch (invoiceError: any) {
+  const onChangeHours = useCallback(
+    async (r: Row, v: number) => {
+      if (r.billingMode !== BillingModePerLesson) return;
+      if (r.attendanceLocked) {
         showMessage(
-          t("msg.attendanceSavedDraftError", {
-            message: String(invoiceError?.message ?? invoiceError),
+          t("msg.attendanceLocked", {
+            status: localizedInvoiceStatusLabel(r.invoiceStatus ?? "issued"),
           }),
           "error"
         );
+        return;
       }
-    } catch (e: any) {
-      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-    } finally {
-      setAttendanceSavingRows((prev) => {
-        const next = { ...prev };
-        delete next[r.enrollmentId];
-        return next;
-      });
-    }
-  }, [localizedInvoiceStatusLabel, month, showMessage, t, year]);
+      if (!Number.isFinite(v)) return;
+      const n = normalizeQuarterHours(v);
+      if (attendanceSavingRowsRef.current[r.enrollmentId]) return;
+
+      try {
+        setAttendanceSavingRows((prev) => ({ ...prev, [r.enrollmentId]: true }));
+        await saveHours(r.studentId, r.courseId, year, month, n);
+        setRows((prev) =>
+          prev.map((x) =>
+            x.enrollmentId === r.enrollmentId ? { ...x, hours: n, hasRecord: true } : x
+          )
+        );
+        try {
+          await rebuildStudentDraft(r.studentId, year, month);
+        } catch (invoiceError: any) {
+          showMessage(
+            t("msg.attendanceSavedDraftError", {
+              message: String(invoiceError?.message ?? invoiceError),
+            }),
+            "error"
+          );
+        }
+      } catch (e: any) {
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+      } finally {
+        setAttendanceSavingRows((prev) => {
+          const next = { ...prev };
+          delete next[r.enrollmentId];
+          return next;
+        });
+      }
+    },
+    [localizedInvoiceStatusLabel, month, showMessage, t, year]
+  );
 
   const setAttendanceDraft = useCallback((enrollmentId: number, value: string) => {
     setAttendanceInputDrafts((prev) => ({ ...prev, [enrollmentId]: value }));
@@ -1429,7 +1466,12 @@ export default function App() {
 
       try {
         setSubscriptionMonthSaving((prev) => ({ ...prev, [row.courseId]: true }));
-        const updated = await saveCourseMonthSubscriptionLessons(row.courseId, year, month, normalized);
+        const updated = await saveCourseMonthSubscriptionLessons(
+          row.courseId,
+          year,
+          month,
+          normalized
+        );
         setSubscriptionMonthLessons((prev) => ({ ...prev, [row.courseId]: updated.lessonsHeld }));
         await loadAttendance();
       } catch (e: any) {
@@ -1456,22 +1498,19 @@ export default function App() {
   );
 
   const onDeleteEnrollmentFromSheet = async (id: number, version: number) => {
-    showConfirm(
-      t("msg.enrollmentDeleteConfirm"),
-      async () => {
-        try {
-          await deleteEnrollment(id, version);
-          await loadAttendance();
-          showMessage(t("msg.enrollmentDeleted"));
-        } catch (e: any) {
-          if (isStaleRevisionError(e)) {
-            showMessage(t("msg.recordConflict"), "error");
-            return;
-          }
-          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    showConfirm(t("msg.enrollmentDeleteConfirm"), async () => {
+      try {
+        await deleteEnrollment(id, version);
+        await loadAttendance();
+        showMessage(t("msg.enrollmentDeleted"));
+      } catch (e: any) {
+        if (isStaleRevisionError(e)) {
+          showMessage(t("msg.recordConflict"), "error");
+          return;
         }
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
-    );
+    });
   };
 
   // ---------------- Invoices ----------------
@@ -1836,7 +1875,9 @@ export default function App() {
     try {
       closeInvoiceMenu();
       const scrollY = window.scrollY;
-      const currentInvoice = invItems.find((item) => item.id === id) ?? (selectedInv?.id === id ? selectedInv : undefined);
+      const currentInvoice =
+        invItems.find((item) => item.id === id) ??
+        (selectedInv?.id === id ? selectedInv : undefined);
       if (!currentInvoice) {
         throw new Error(t("msg.invoiceNotFound"));
       }
@@ -1856,102 +1897,131 @@ export default function App() {
     }
   };
 
-  const onReopenToDraft = useCallback(async (id: number) => {
-    closeInvoiceMenu();
-    showConfirm(
-      t("msg.invoiceReopenConfirm"),
-      async () => {
-        try {
-          const currentInvoice = invItems.find((item) => item.id === id) ?? (selectedInv?.id === id ? selectedInv : undefined);
-          if (!currentInvoice) {
-            throw new Error(t("msg.invoiceNotFound"));
+  const onReopenToDraft = useCallback(
+    async (id: number) => {
+      closeInvoiceMenu();
+      showConfirm(
+        t("msg.invoiceReopenConfirm"),
+        async () => {
+          try {
+            const currentInvoice =
+              invItems.find((item) => item.id === id) ??
+              (selectedInv?.id === id ? selectedInv : undefined);
+            if (!currentInvoice) {
+              throw new Error(t("msg.invoiceNotFound"));
+            }
+            await reopenToDraft(id, currentInvoice.version);
+            await loadInvoices({ syncDrafts: false });
+            if (invoiceDetailsOpen && selectedInv?.id === id) {
+              await loadInvoiceDetails(id);
+            }
+            showMessage(t("msg.invoiceReopened"));
+          } catch (e: any) {
+            if (isStaleRevisionError(e)) {
+              showMessage(t("msg.recordConflict"), "error");
+              return;
+            }
+            showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
           }
-          await reopenToDraft(id, currentInvoice.version);
-          await loadInvoices({ syncDrafts: false });
-          if (invoiceDetailsOpen && selectedInv?.id === id) {
-            await loadInvoiceDetails(id);
-          }
-          showMessage(t("msg.invoiceReopened"));
-        } catch (e: any) {
-          if (isStaleRevisionError(e)) {
-            showMessage(t("msg.recordConflict"), "error");
+        },
+        t("button.reopenDraft")
+      );
+    },
+    [
+      closeInvoiceMenu,
+      invoiceDetailsOpen,
+      loadInvoiceDetails,
+      loadInvoices,
+      selectedInv,
+      showConfirm,
+      showMessage,
+      t,
+    ]
+  );
+
+  const onGeneratePdf = useCallback(
+    async (id: number) => {
+      try {
+        closeInvoiceMenu();
+        const pdf = await ensurePdf(id);
+        setInvItems((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
+        );
+        showMessage(t("msg.pdfReady", { path: pdf.localPath ?? pdf.filename }));
+        if (!transportCapabilities.isDesktop && pdf.downloadUrl) {
+          window.open(pdf.downloadUrl, "_blank", "noopener,noreferrer");
+        }
+      } catch (e: any) {
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+      }
+    },
+    [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]
+  );
+
+  const onDownloadPdf = useCallback(
+    async (id: number) => {
+      try {
+        closeInvoiceMenu();
+        const pdf = await ensurePdf(id);
+        setInvItems((prev) =>
+          prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
+        );
+
+        if (transportCapabilities.isDesktop) {
+          if (!pdf.localPath) {
+            showMessage(
+              t("msg.errorGeneric", { message: t("msg.pdfDownloadUnavailable") }),
+              "error"
+            );
             return;
           }
-          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+          const transport = await getTransport();
+          await transport.openLocalPath(pdf.localPath);
+          showMessage(t("msg.pdfReady", { path: pdf.localPath }));
+          return;
         }
-      },
-      t("button.reopenDraft")
-    );
-  }, [closeInvoiceMenu, invoiceDetailsOpen, loadInvoiceDetails, loadInvoices, selectedInv, showConfirm, showMessage, t]);
 
-  const onGeneratePdf = useCallback(async (id: number) => {
-    try {
-      closeInvoiceMenu();
-      const pdf = await ensurePdf(id);
-      setInvItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
-      );
-      showMessage(t("msg.pdfReady", { path: pdf.localPath ?? pdf.filename }));
-      if (!transportCapabilities.isDesktop && pdf.downloadUrl) {
-        window.open(pdf.downloadUrl, "_blank", "noopener,noreferrer");
-      }
-    } catch (e: any) {
-      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-    }
-  }, [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]);
-
-  const onDownloadPdf = useCallback(async (id: number) => {
-    try {
-      closeInvoiceMenu();
-      const pdf = await ensurePdf(id);
-      setInvItems((prev) =>
-        prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
-      );
-
-      if (transportCapabilities.isDesktop) {
-        if (!pdf.localPath) {
+        if (!pdf.downloadUrl) {
           showMessage(t("msg.errorGeneric", { message: t("msg.pdfDownloadUnavailable") }), "error");
+          return;
+        }
+
+        const link = document.createElement("a");
+        link.href = pdf.downloadUrl;
+        link.download = pdf.filename;
+        link.rel = "noopener";
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showMessage(t("msg.pdfDownloaded", { filename: pdf.filename }));
+      } catch (e: any) {
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+      }
+    },
+    [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]
+  );
+
+  const onRevealInvoiceFile = useCallback(
+    async (id: number) => {
+      try {
+        closeInvoiceMenu();
+        const pdf = await ensurePdf(id);
+        if (!pdf.localPath) {
+          showMessage(
+            t("msg.folderUnavailable", { label: t("tabs.invoice").toLowerCase() }),
+            "error"
+          );
           return;
         }
         const transport = await getTransport();
         await transport.openLocalPath(pdf.localPath);
-        showMessage(t("msg.pdfReady", { path: pdf.localPath }));
-        return;
+      } catch (e: any) {
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
-
-      if (!pdf.downloadUrl) {
-        showMessage(t("msg.errorGeneric", { message: t("msg.pdfDownloadUnavailable") }), "error");
-        return;
-      }
-
-      const link = document.createElement("a");
-      link.href = pdf.downloadUrl;
-      link.download = pdf.filename;
-      link.rel = "noopener";
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      showMessage(t("msg.pdfDownloaded", { filename: pdf.filename }));
-    } catch (e: any) {
-      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-    }
-  }, [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]);
-
-  const onRevealInvoiceFile = useCallback(async (id: number) => {
-    try {
-      closeInvoiceMenu();
-      const pdf = await ensurePdf(id);
-      if (!pdf.localPath) {
-        showMessage(t("msg.folderUnavailable", { label: t("tabs.invoice").toLowerCase() }), "error");
-        return;
-      }
-      const transport = await getTransport();
-      await transport.openLocalPath(pdf.localPath);
-    } catch (e: any) {
-      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-    }
-  }, [closeInvoiceMenu, showMessage, t]);
+    },
+    [closeInvoiceMenu, showMessage, t]
+  );
 
   const buildInvoiceMenuItems = useCallback(
     (invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean }) => {
@@ -2109,10 +2179,7 @@ export default function App() {
       const transport = await getTransport();
       await transport.openLocalPath(path);
     } catch (e: any) {
-      showMessage(
-        t("msg.folderOpenError", { label, message: String(e?.message ?? e) }),
-        "error"
-      );
+      showMessage(t("msg.folderOpenError", { label, message: String(e?.message ?? e) }), "error");
     }
   };
 
@@ -2138,7 +2205,10 @@ export default function App() {
       setUsers(items);
       setUserDrafts(
         Object.fromEntries(
-          items.map((item) => [item.id, { username: item.username, role: item.role, isActive: item.isActive }])
+          items.map((item) => [
+            item.id,
+            { username: item.username, role: item.role, isActive: item.isActive },
+          ])
         )
       );
     } catch (e: any) {
@@ -2162,7 +2232,11 @@ export default function App() {
       setUsers((prev) => [...prev, created]);
       setUserDrafts((prev) => ({
         ...prev,
-        [created.id]: { username: created.username, role: created.role, isActive: created.isActive },
+        [created.id]: {
+          username: created.username,
+          role: created.role,
+          isActive: created.isActive,
+        },
       }));
       setNewUserUsername("");
       setNewUserPassword("");
@@ -2180,9 +2254,17 @@ export default function App() {
     if (!draft) return;
     try {
       const transport = await getTransport();
-      const updated = await transport.updateUser(userId, draft.username, draft.role, draft.isActive);
+      const updated = await transport.updateUser(
+        userId,
+        draft.username,
+        draft.role,
+        draft.isActive
+      );
       setUsers((prev) => prev.map((item) => (item.id === userId ? updated : item)));
-      setUserDrafts((prev) => ({ ...prev, [userId]: { username: updated.username, role: updated.role, isActive: updated.isActive } }));
+      setUserDrafts((prev) => ({
+        ...prev,
+        [userId]: { username: updated.username, role: updated.role, isActive: updated.isActive },
+      }));
       showMessage(t("msg.userUpdated"));
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
@@ -2346,7 +2428,9 @@ export default function App() {
               },
             }
           : null,
-      ].filter((value): value is { id: string; label: string; onClick: () => void } => value !== null),
+      ].filter(
+        (value): value is { id: string; label: string; onClick: () => void } => value !== null
+      ),
     [authRequired, handleLogout, t, transportCapabilities.isDesktop]
   );
 
@@ -2690,8 +2774,12 @@ export default function App() {
                 onOpenPaymentForStudent={openDebtorPaymentModalByStudentId}
                 onOpenPaymentForDebtor={openDebtorPaymentModal}
                 onOpenDebtDetails={openDebtDetails}
-                onCopyDebtForStudentRu={(studentId) => void copyDebtMessageForStudentId(studentId, "ru")}
-                onCopyDebtForStudentLv={(studentId) => void copyDebtMessageForStudentId(studentId, "lv")}
+                onCopyDebtForStudentRu={(studentId) =>
+                  void copyDebtMessageForStudentId(studentId, "ru")
+                }
+                onCopyDebtForStudentLv={(studentId) =>
+                  void copyDebtMessageForStudentId(studentId, "lv")
+                }
                 onCopyDebtForDebtorRu={(debtor) => void copyDebtMessageForDebtor(debtor, "ru")}
                 onCopyDebtForDebtorLv={(debtor) => void copyDebtMessageForDebtor(debtor, "lv")}
                 t={t}
@@ -2722,6 +2810,7 @@ export default function App() {
                   setAuditPage(1);
                   void loadAuditLog();
                 }}
+                onResetFilters={resetAuditFilters}
                 onToggleExpanded={(id) =>
                   setAuditExpandedId((current) => (current === id ? null : id))
                 }

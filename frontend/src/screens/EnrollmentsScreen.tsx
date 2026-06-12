@@ -5,6 +5,7 @@ import type { CourseDTO } from "../lib/courses";
 import type { EnrollmentDTO } from "../lib/enrollments";
 import type { StudentDTO } from "../lib/students";
 import type { TranslateFn } from "../lib/i18n";
+import { FilterToolbar } from "../components/FilterToolbar";
 
 type EnrollmentsScreenProps = {
   loading: boolean;
@@ -89,38 +90,61 @@ export function EnrollmentsScreen({
   onCloseEnrollmentModal,
   t,
 }: EnrollmentsScreenProps) {
+  const hasActiveFilters = studentFilter !== undefined || courseFilter !== undefined;
+
+  function courseOptionLabel(course: CourseDTO): string {
+    const typeLabel = courseTypeLabel(course.type);
+    return course.teacherName
+      ? `${course.name} — ${typeLabel} — ${course.teacherName}`
+      : `${course.name} — ${typeLabel}`;
+  }
+
   return (
     <>
-      <div className="controls">
-        <button onClick={onAddEnrollment}>{t("button.addEnrollment")}</button>
-        <select
-          value={studentFilter ?? ""}
-          onChange={(e) => onStudentFilterChange(e.target.value ? parseInt(e.target.value, 10) : undefined)}
-        >
-          <option value="">{t("filter.allStudents")}</option>
-          {allStudents.map((student) => (
-            <option key={student.id} value={student.id}>
-              {student.fullName}
-            </option>
-          ))}
-        </select>
-        <select
-          value={courseFilter ?? ""}
-          onChange={(e) => onCourseFilterChange(e.target.value ? parseInt(e.target.value, 10) : undefined)}
-        >
-          <option value="">{t("filter.allCourses")}</option>
-          {allCourses.map((course) => (
-            <option key={course.id} value={course.id}>
-              {course.teacherName ? `${course.name} — ${course.teacherName}` : course.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <FilterToolbar
+        primaryAction={<button onClick={onAddEnrollment}>{t("button.addEnrollment")}</button>}
+        filters={
+          <>
+            <select
+              value={studentFilter ?? ""}
+              onChange={(e) =>
+                onStudentFilterChange(e.target.value ? parseInt(e.target.value, 10) : undefined)
+              }
+            >
+              <option value="">{t("filter.allStudents")}</option>
+              {allStudents.map((student) => (
+                <option key={student.id} value={student.id}>
+                  {student.fullName}
+                </option>
+              ))}
+            </select>
+            <select
+              value={courseFilter ?? ""}
+              onChange={(e) =>
+                onCourseFilterChange(e.target.value ? parseInt(e.target.value, 10) : undefined)
+              }
+            >
+              <option value="">{t("filter.allCourses")}</option>
+              {allCourses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {courseOptionLabel(course)}
+                </option>
+              ))}
+            </select>
+          </>
+        }
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={() => {
+          onStudentFilterChange(undefined);
+          onCourseFilterChange(undefined);
+        }}
+        clearLabel={t("button.clearFilters")}
+      />
 
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : enrollments.length === 0 ? (
-        studentFilter || courseFilter ? (
+        hasActiveFilters ? (
           <EmptyState
             title={t("msg.noEnrollmentsSearchTitle")}
             description={t("msg.noEnrollmentsSearchDescription")}
@@ -169,7 +193,10 @@ export function EnrollmentsScreen({
             {enrollments.map((enrollment) => (
               <tr key={enrollment.id}>
                 <td>
-                  <button className="linkButton" onClick={() => void onOpenStudent(enrollment.studentId)}>
+                  <button
+                    className="linkButton"
+                    onClick={() => void onOpenStudent(enrollment.studentId)}
+                  >
                     {enrollment.studentName}
                   </button>
                 </td>

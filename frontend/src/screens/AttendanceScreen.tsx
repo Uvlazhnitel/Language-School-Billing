@@ -7,15 +7,17 @@ import {
   InvoiceStatusPaid,
 } from "../lib/constants";
 import type { Row } from "../lib/attendance";
+import type { CourseDTO } from "../lib/courses";
 import type { TranslateFn } from "../lib/i18n";
 import { EmptyState } from "../components/EmptyState";
+import { FilterToolbar } from "../components/FilterToolbar";
 
 type AttendanceFilter = "all" | "missing" | "filled" | "zero";
 
 type AttendanceScreenProps = {
   attendanceSummary: { missing: number; total: number; filled: number; zero: number };
   courseFilter?: number;
-  allCourses: Array<{ id: number; name: string; teacherName?: string }>;
+  allCourses: CourseDTO[];
   query: string;
   filter: AttendanceFilter;
   rows: Row[];
@@ -50,7 +52,10 @@ type AttendanceScreenProps = {
   onQueryChange: (value: string) => void;
   onFilterChange: (value: AttendanceFilter) => void;
   onOpenStudent: (studentId: number) => void | Promise<void>;
-  onDeleteEnrollmentFromSheet: (enrollmentId: number, enrollmentVersion: number) => void | Promise<void>;
+  onDeleteEnrollmentFromSheet: (
+    enrollmentId: number,
+    enrollmentVersion: number
+  ) => void | Promise<void>;
   t: TranslateFn;
 };
 
@@ -95,6 +100,15 @@ export function AttendanceScreen({
   onDeleteEnrollmentFromSheet,
   t,
 }: AttendanceScreenProps) {
+  const hasActiveFilters = Boolean(query.trim() || filter !== "all" || courseFilter);
+
+  function courseOptionLabel(course: CourseDTO): string {
+    const typeLabel = courseTypeLabel(course.type);
+    return course.teacherName
+      ? `${course.name} — ${typeLabel} — ${course.teacherName}`
+      : `${course.name} — ${typeLabel}`;
+  }
+
   return (
     <>
       <div className="sectionBanner">
@@ -108,47 +122,65 @@ export function AttendanceScreen({
                 : t("msg.monthStatusEmpty")}
           </strong>
         </div>
-        <div className="sectionBannerActions">
-          <button className="workspaceActionButton" onClick={onRefresh}>
-            {t("msg.refreshSheet")}
-          </button>
-          <button
-            className="workspaceActionButton workspaceActionButtonPrimary"
-            onClick={onOpenInvoices}
-            disabled={attendanceSummary.total === 0}
-          >
-            {t("msg.openMonthInvoices")}
-          </button>
-        </div>
       </div>
 
-      <div className="controls">
-        <select
-          value={courseFilter ?? ""}
-          onChange={(e) => onCourseFilterChange(e.target.value ? parseInt(e.target.value, 10) : undefined)}
-        >
-          <option value="">{t("filter.allGroups")}</option>
-          {allCourses.map((course) => (
-            <option key={course.id} value={course.id}>
-              {course.teacherName ? `${course.name} — ${course.teacherName}` : course.name}
-            </option>
-          ))}
-        </select>
-
-        <input
-          className="searchField"
-          placeholder={t("msg.searchPlaceholderAttendance")}
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-        />
-
-        <select value={filter} onChange={(e) => onFilterChange(e.target.value as AttendanceFilter)}>
-          <option value="all">{t("status.showAll")}</option>
-          <option value="missing">{t("status.onlyMissing")}</option>
-          <option value="filled">{t("status.onlyFilled")}</option>
-          <option value="zero">{t("status.zeroLessons")}</option>
-        </select>
-      </div>
+      <FilterToolbar
+        search={
+          <input
+            className="searchField"
+            placeholder={t("msg.searchPlaceholderAttendance")}
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+          />
+        }
+        filters={
+          <>
+            <select
+              value={courseFilter ?? ""}
+              onChange={(e) =>
+                onCourseFilterChange(e.target.value ? parseInt(e.target.value, 10) : undefined)
+              }
+            >
+              <option value="">{t("filter.allGroups")}</option>
+              {allCourses.map((course) => (
+                <option key={course.id} value={course.id}>
+                  {courseOptionLabel(course)}
+                </option>
+              ))}
+            </select>
+            <select
+              value={filter}
+              onChange={(e) => onFilterChange(e.target.value as AttendanceFilter)}
+            >
+              <option value="all">{t("status.showAll")}</option>
+              <option value="missing">{t("status.onlyMissing")}</option>
+              <option value="filled">{t("status.onlyFilled")}</option>
+              <option value="zero">{t("status.zeroLessons")}</option>
+            </select>
+          </>
+        }
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={() => {
+          onCourseFilterChange(undefined);
+          onQueryChange("");
+          onFilterChange("all");
+        }}
+        clearLabel={t("button.clearFilters")}
+        secondaryActions={
+          <>
+            <button className="workspaceActionButton" onClick={onRefresh}>
+              {t("msg.refreshSheet")}
+            </button>
+            <button
+              className="workspaceActionButton workspaceActionButtonPrimary"
+              onClick={onOpenInvoices}
+              disabled={attendanceSummary.total === 0}
+            >
+              {t("msg.openMonthInvoices")}
+            </button>
+          </>
+        }
+      />
 
       {rows.length > 0 && (
         <div className="attSummary">
@@ -161,7 +193,7 @@ export function AttendanceScreen({
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : filteredRows.length === 0 ? (
-        query.trim() || filter !== "all" || courseFilter ? (
+        hasActiveFilters ? (
           <EmptyState
             title={t("msg.noAttendanceSearchTitle")}
             description={t("msg.noAttendanceSearchDescription")}
@@ -205,7 +237,9 @@ export function AttendanceScreen({
                   {row.billingMode === BillingModeSubscription && (
                     <>
                       {" "}
-                      <span className="attBadge attBadge--subscription">{t("billing.subscription")}</span>
+                      <span className="attBadge attBadge--subscription">
+                        {t("billing.subscription")}
+                      </span>
                     </>
                   )}
                 </td>
@@ -222,8 +256,12 @@ export function AttendanceScreen({
                       <button
                         type="button"
                         className="attendanceStepperButton"
-                        onClick={() => onChangeHours(row, Math.max(0, getAttendanceStepBase(row) - 1))}
-                        disabled={attendanceSavingRows[row.enrollmentId] || getAttendanceStepBase(row) <= 0}
+                        onClick={() =>
+                          onChangeHours(row, Math.max(0, getAttendanceStepBase(row) - 1))
+                        }
+                        disabled={
+                          attendanceSavingRows[row.enrollmentId] || getAttendanceStepBase(row) <= 0
+                        }
                         aria-label={`Decrease hours for ${row.studentName}`}
                       >
                         −
@@ -373,22 +411,34 @@ export function AttendanceScreen({
                   {row.billingMode === BillingModePerLesson
                     ? formatEUR(row.hours * row.lessonPrice)
                     : formatEUR(
-                        (row.lessonPrice * (subscriptionMonthLessons[row.courseId] ?? 0) *
-                          (1 - Math.max(0, Math.min(100, row.discountPct + row.subscriptionDiscountPct)) / 100))
+                        row.lessonPrice *
+                          (subscriptionMonthLessons[row.courseId] ?? 0) *
+                          (1 -
+                            Math.max(
+                              0,
+                              Math.min(100, row.discountPct + row.subscriptionDiscountPct)
+                            ) /
+                              100)
                       )}
                 </td>
                 <td>
-                  {row.billingMode === BillingModePerLesson && !row.attendanceLocked && !row.hasRecord && (
-                    <button
-                      onClick={() => onChangeHours(row, 0)}
-                      disabled={attendanceSavingRows[row.enrollmentId]}
-                      style={{ marginRight: "0.5rem" }}
-                    >
-                      {t("msg.setZeroHours")}
-                    </button>
-                  )}
+                  {row.billingMode === BillingModePerLesson &&
+                    !row.attendanceLocked &&
+                    !row.hasRecord && (
+                      <button
+                        onClick={() => onChangeHours(row, 0)}
+                        disabled={attendanceSavingRows[row.enrollmentId]}
+                        style={{ marginRight: "0.5rem" }}
+                      >
+                        {t("msg.setZeroHours")}
+                      </button>
+                    )}
                   {row.canDelete ? (
-                    <button onClick={() => void onDeleteEnrollmentFromSheet(row.enrollmentId, row.enrollmentVersion)}>
+                    <button
+                      onClick={() =>
+                        void onDeleteEnrollmentFromSheet(row.enrollmentId, row.enrollmentVersion)
+                      }
+                    >
                       {t("msg.deleteEnrollment")}
                     </button>
                   ) : (

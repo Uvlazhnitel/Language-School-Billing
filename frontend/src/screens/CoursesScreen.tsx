@@ -4,6 +4,7 @@ import type { TeacherDTO } from "../lib/teachers";
 import type { TranslateFn } from "../lib/i18n";
 import type { Ref, RefObject } from "react";
 import { EmptyState } from "../components/EmptyState";
+import { FilterToolbar } from "../components/FilterToolbar";
 
 type CoursesScreenProps = {
   loading: boolean;
@@ -11,13 +12,7 @@ type CoursesScreenProps = {
   query: string;
   typeFilter: "" | "group" | "individual";
   teacherFilter: string;
-  pricingFilter:
-    | "all"
-    | "lesson"
-    | "subscription"
-    | "both"
-    | "lesson_only"
-    | "subscription_only";
+  pricingFilter: "all" | "lesson" | "subscription" | "both" | "lesson_only" | "subscription_only";
   teacherOptions: Array<{ value: string; label: string }>;
   hasActiveFilters: boolean;
   canDeleteCourses: boolean;
@@ -108,54 +103,62 @@ export function CoursesScreen({
 }: CoursesScreenProps) {
   return (
     <>
-      <div className="controls controls--wrap">
-        <button onClick={onAddCourse}>{t("button.addCourse")}</button>
-        <input
-          className="searchField"
-          placeholder={t("msg.searchPlaceholderCourse")}
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-        />
-        <select
-          value={typeFilter}
-          onChange={(e) => onTypeFilterChange(e.target.value as "" | "group" | "individual")}
-        >
-          <option value="">{t("filter.allTypes")}</option>
-          <option value="group">{courseTypeLabel("group")}</option>
-          <option value="individual">{courseTypeLabel("individual")}</option>
-        </select>
-        <select value={teacherFilter} onChange={(e) => onTeacherFilterChange(e.target.value)}>
-          <option value="all">{t("filter.allTeachers")}</option>
-          <option value="none">{t("filter.withoutTeacher")}</option>
-          {teacherOptions.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <select
-          value={pricingFilter}
-          onChange={(e) =>
-            onPricingFilterChange(
-              e.target.value as
-                | "all"
-                | "lesson"
-                | "subscription"
-                | "both"
-                | "lesson_only"
-                | "subscription_only"
-            )
-          }
-        >
-          <option value="all">{t("filter.pricingAll")}</option>
-          <option value="lesson">{t("filter.pricingLesson")}</option>
-          <option value="subscription">{t("filter.pricingSubscription")}</option>
-          <option value="both">{t("filter.pricingBoth")}</option>
-          <option value="lesson_only">{t("filter.pricingLessonOnly")}</option>
-          <option value="subscription_only">{t("filter.pricingSubscriptionOnly")}</option>
-        </select>
-        {hasActiveFilters && <button onClick={onClearFilters}>{t("button.clearFilters")}</button>}
-      </div>
+      <FilterToolbar
+        primaryAction={<button onClick={onAddCourse}>{t("button.addCourse")}</button>}
+        search={
+          <input
+            className="searchField"
+            placeholder={t("msg.searchPlaceholderCourse")}
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+          />
+        }
+        filters={
+          <>
+            <select
+              value={typeFilter}
+              onChange={(e) => onTypeFilterChange(e.target.value as "" | "group" | "individual")}
+            >
+              <option value="">{t("filter.allTypes")}</option>
+              <option value="group">{courseTypeLabel("group")}</option>
+              <option value="individual">{courseTypeLabel("individual")}</option>
+            </select>
+            <select value={teacherFilter} onChange={(e) => onTeacherFilterChange(e.target.value)}>
+              <option value="all">{t("filter.allTeachers")}</option>
+              <option value="none">{t("filter.withoutTeacher")}</option>
+              {teacherOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <select
+              value={pricingFilter}
+              onChange={(e) =>
+                onPricingFilterChange(
+                  e.target.value as
+                    | "all"
+                    | "lesson"
+                    | "subscription"
+                    | "both"
+                    | "lesson_only"
+                    | "subscription_only"
+                )
+              }
+            >
+              <option value="all">{t("filter.pricingAll")}</option>
+              <option value="lesson">{t("filter.pricingLesson")}</option>
+              <option value="subscription">{t("filter.pricingSubscription")}</option>
+              <option value="both">{t("filter.pricingBoth")}</option>
+              <option value="lesson_only">{t("filter.pricingLessonOnly")}</option>
+              <option value="subscription_only">{t("filter.pricingSubscriptionOnly")}</option>
+            </select>
+          </>
+        }
+        hasActiveFilters={hasActiveFilters}
+        onClearFilters={onClearFilters}
+        clearLabel={t("button.clearFilters")}
+      />
 
       {loading ? (
         <div>{t("label.loading")}</div>
@@ -198,7 +201,9 @@ export function CoursesScreen({
                 <td>
                   <button onClick={() => onEditCourse(course)}>{t("button.edit")}</button>
                   {canDeleteCourses && (
-                    <button onClick={() => void onDeleteCourse(course.id)}>{t("button.delete")}</button>
+                    <button onClick={() => void onDeleteCourse(course.id)}>
+                      {t("button.delete")}
+                    </button>
                   )}
                 </td>
               </tr>

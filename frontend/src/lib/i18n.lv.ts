@@ -472,6 +472,7 @@ export const lvTranslations: Record<string, string> = {
   "audit.batchEntity": "Rēķinu paka",
   "audit.allActions": "Visas darbības",
   "audit.empty": "Audita ierakstu vēl nav.",
+  "audit.emptyFiltered": "Pašreizējie filtri neatgrieza nevienu audita ierakstu.",
   "audit.before": "Pirms",
   "audit.after": "Pēc",
   "audit.totalRows": "{count} rindas",
