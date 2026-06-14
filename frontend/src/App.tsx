@@ -73,7 +73,7 @@ import {
   RecentPaymentDTO,
 } from "./lib/dashboard";
 import { AuditLogItem, listAuditLogs } from "./lib/audit";
-import { getTransport, type TransportCapabilities, type UserDTO } from "./lib/api";
+import { getTransport, type UserDTO } from "./lib/api";
 import { AUTH_REQUIRED_EVENT, isConflictError } from "./lib/api/shared";
 import { AppShell, type AppTab } from "./components/AppShell";
 import { ConfirmDialog } from "./components/ConfirmDialog";
@@ -93,7 +93,6 @@ import {
   StudentActivityItem,
   StudentNextAction,
 } from "./lib/studentActivity";
-import { canShowInvoiceFolderAction } from "./lib/uiCapabilities";
 import { createTranslator, getMonthNames, normalizeLocale, UiLocale } from "./lib/i18n";
 import {
   AppTabId,
@@ -146,12 +145,6 @@ function auditActionLabel(action: string): string {
 
 export default function App() {
   const now = new Date();
-  const [transportCapabilities, setTransportCapabilities] = useState<TransportCapabilities>({
-    isDesktop: false,
-    canOpenLocalFiles: false,
-    canOpenFolders: false,
-    canDownloadPdf: true,
-  });
   const [tab, setTab] = useState<Tab>("dashboard");
   const [appReady, setAppReady] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
@@ -170,7 +163,6 @@ export default function App() {
   const [loginError, setLoginError] = useState<string | null>(null);
   const [sessionExpired, setSessionExpired] = useState(false);
   const [uiLocale, setUiLocale] = useState<UiLocale>("lv-LV");
-  const [appDirs, setAppDirs] = useState<Record<string, string> | null>(null);
   const [creatingBackup, setCreatingBackup] = useState(false);
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
@@ -191,8 +183,6 @@ export default function App() {
         const transport = await getTransport();
         const bootstrapResult = await transport.bootstrap();
         if (cancelled) return;
-        setAppDirs(bootstrapResult.appDirs);
-        setTransportCapabilities(bootstrapResult.capabilities);
         setUiLocale(normalizeLocale(bootstrapResult.locale));
         setAuthRequired(bootstrapResult.authRequired);
         setIsAuthenticated(bootstrapResult.session.authenticated);
@@ -243,17 +233,12 @@ export default function App() {
   const t = useMemo(() => createTranslator(uiLocale), [uiLocale]);
   const uiMonths = useMemo(() => getMonthNames(uiLocale), [uiLocale]);
   const tabMeta = useMemo(() => buildTabMeta(t), [t]);
-  const canManageUsers =
-    Boolean(sessionCapabilities.manageUsers) || transportCapabilities.isDesktop;
-  const canCreateBackups = Boolean(sessionCapabilities.backups) || transportCapabilities.isDesktop;
-  const canDeleteStudents =
-    Boolean(sessionCapabilities.deleteStudents) || transportCapabilities.isDesktop;
-  const canDeleteCourses =
-    Boolean(sessionCapabilities.deleteCourses) || transportCapabilities.isDesktop;
-  const canDeletePayments =
-    Boolean(sessionCapabilities.deletePayments) || transportCapabilities.isDesktop;
-  const canViewAuditLog =
-    Boolean(sessionCapabilities.viewAuditLog) || transportCapabilities.isDesktop;
+  const canManageUsers = Boolean(sessionCapabilities.manageUsers);
+  const canCreateBackups = Boolean(sessionCapabilities.backups);
+  const canDeleteStudents = Boolean(sessionCapabilities.deleteStudents);
+  const canDeleteCourses = Boolean(sessionCapabilities.deleteCourses);
+  const canDeletePayments = Boolean(sessionCapabilities.deletePayments);
+  const canViewAuditLog = Boolean(sessionCapabilities.viewAuditLog);
 
   const localizedPayerRoleLabel = useCallback(
     (relation: string) => payerRoleLabel(relation, t),
@@ -1928,6 +1913,7 @@ export default function App() {
     [
       closeInvoiceMenu,
       invoiceDetailsOpen,
+      invItems,
       loadInvoiceDetails,
       loadInvoices,
       selectedInv,
@@ -1946,14 +1932,14 @@ export default function App() {
           prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
         );
         showMessage(t("msg.pdfReady", { path: pdf.localPath ?? pdf.filename }));
-        if (!transportCapabilities.isDesktop && pdf.downloadUrl) {
+        if (pdf.downloadUrl) {
           window.open(pdf.downloadUrl, "_blank", "noopener,noreferrer");
         }
       } catch (e: any) {
         showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
     },
-    [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]
+    [closeInvoiceMenu, showMessage, t]
   );
 
   const onDownloadPdf = useCallback(
@@ -1964,20 +1950,6 @@ export default function App() {
         setInvItems((prev) =>
           prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
         );
-
-        if (transportCapabilities.isDesktop) {
-          if (!pdf.localPath) {
-            showMessage(
-              t("msg.errorGeneric", { message: t("msg.pdfDownloadUnavailable") }),
-              "error"
-            );
-            return;
-          }
-          const transport = await getTransport();
-          await transport.openLocalPath(pdf.localPath);
-          showMessage(t("msg.pdfReady", { path: pdf.localPath }));
-          return;
-        }
 
         if (!pdf.downloadUrl) {
           showMessage(t("msg.errorGeneric", { message: t("msg.pdfDownloadUnavailable") }), "error");
@@ -1997,27 +1969,6 @@ export default function App() {
         showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
     },
-    [closeInvoiceMenu, showMessage, t, transportCapabilities.isDesktop]
-  );
-
-  const onRevealInvoiceFile = useCallback(
-    async (id: number) => {
-      try {
-        closeInvoiceMenu();
-        const pdf = await ensurePdf(id);
-        if (!pdf.localPath) {
-          showMessage(
-            t("msg.folderUnavailable", { label: t("tabs.invoice").toLowerCase() }),
-            "error"
-          );
-          return;
-        }
-        const transport = await getTransport();
-        await transport.openLocalPath(pdf.localPath);
-      } catch (e: any) {
-        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-      }
-    },
     [closeInvoiceMenu, showMessage, t]
   );
 
@@ -2031,24 +1982,16 @@ export default function App() {
           onClick: () => void onReopenToDraft(invoice.id),
         });
       }
-      if (invoice.status !== "draft") {
-        if (canShowInvoiceFolderAction(transportCapabilities)) {
-          menuItems.push({
-            label: t("button.showInFolder"),
-            onClick: () => void onRevealInvoiceFile(invoice.id),
-          });
-        }
-        if (transportCapabilities.isDesktop && !invoice.pdfReady) {
-          menuItems.push({
-            label: t("button.createPdf"),
-            onClick: () => void onGeneratePdf(invoice.id),
-          });
-        }
+      if (invoice.status !== "draft" && !invoice.pdfReady) {
+        menuItems.push({
+          label: t("button.createPdf"),
+          onClick: () => void onGeneratePdf(invoice.id),
+        });
       }
 
       return menuItems;
     },
-    [onGeneratePdf, onReopenToDraft, onRevealInvoiceFile, t, transportCapabilities]
+    [onGeneratePdf, onReopenToDraft, t]
   );
 
   const openInvoiceMenuAtTrigger = useCallback(
@@ -2168,19 +2111,6 @@ export default function App() {
     );
   };
 
-  const openAppFolder = async (path: string | undefined, label: string) => {
-    if (!path) {
-      showMessage(t("msg.folderUnavailable", { label }), "error");
-      return;
-    }
-    try {
-      const transport = await getTransport();
-      await transport.openLocalPath(path);
-    } catch (e: any) {
-      showMessage(t("msg.folderOpenError", { label, message: String(e?.message ?? e) }), "error");
-    }
-  };
-
   const createManualBackup = async () => {
     try {
       setCreatingBackup(true);
@@ -2214,7 +2144,7 @@ export default function App() {
     } finally {
       setUsersLoading(false);
     }
-  }, [canManageUsers, showMessage]);
+  }, [canManageUsers, showMessage, t]);
 
   useEffect(() => {
     if (isAuthenticated && canManageUsers) {
@@ -2358,12 +2288,6 @@ export default function App() {
         setUiLocale(normalizeLocale(session.locale));
         setCurrentSessionUser(session.user ?? null);
         setSessionCapabilities(session.capabilities ?? {});
-        setTransportCapabilities({
-          isDesktop: false,
-          canOpenLocalFiles: false,
-          canOpenFolders: false,
-          canDownloadPdf: Boolean(session.capabilities?.pdfDownload),
-        });
         setIsAuthenticated(session.authenticated);
         setAppReady(session.ready && session.authenticated);
         setLoginError(null);
@@ -2417,7 +2341,7 @@ export default function App() {
           label: t("button.filesAndCopies"),
           onClick: () => setTab("settings"),
         },
-        authRequired && !transportCapabilities.isDesktop
+        authRequired
           ? {
               id: "logout",
               label: t("auth.logout"),
@@ -2429,7 +2353,7 @@ export default function App() {
       ].filter(
         (value): value is { id: string; label: string; onClick: () => void } => value !== null
       ),
-    [authRequired, handleLogout, t, transportCapabilities.isDesktop]
+    [authRequired, handleLogout, t]
   );
 
   const adjustSubscriptionLessons = useCallback(
@@ -2824,8 +2748,6 @@ export default function App() {
                 uiLocale={uiLocale}
                 canCreateBackups={canCreateBackups}
                 creatingBackup={creatingBackup}
-                transportCapabilities={transportCapabilities}
-                appDirs={appDirs}
                 canManageUsers={canManageUsers}
                 usersLoading={usersLoading}
                 users={users}
@@ -2838,7 +2760,6 @@ export default function App() {
                 currentSessionUser={currentSessionUser}
                 onLocaleChange={handleLocaleChange}
                 onCreateBackup={createManualBackup}
-                onOpenAppFolder={openAppFolder}
                 onSetTab={setTab}
                 onNewUserUsernameChange={setNewUserUsername}
                 onNewUserPasswordChange={setNewUserPassword}
@@ -2875,8 +2796,6 @@ export default function App() {
               invoice={selectedInv}
               summary={invSummary}
               months={uiMonths}
-              pdfReady={selectedInvPdfReady}
-              transportCapabilities={transportCapabilities}
               invoiceStatusLabel={localizedInvoiceStatusLabel}
               formatEUR={formatEUR}
               formatHoursValue={formatHoursValue}
@@ -2885,8 +2804,6 @@ export default function App() {
               onDownloadPdf={(invoiceId) => void onDownloadPdf(invoiceId)}
               onAddPayment={() => openPaymentModal(selectedInv, invSummary)}
               onReopenToDraft={(invoiceId) => void onReopenToDraft(invoiceId)}
-              onRevealInvoiceFile={(invoiceId) => void onRevealInvoiceFile(invoiceId)}
-              onGeneratePdf={onGeneratePdf}
               onClose={() => setInvoiceDetailsOpen(false)}
               t={t}
             />

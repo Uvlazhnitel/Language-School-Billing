@@ -10,8 +10,9 @@ import (
 )
 
 const (
-	AppDirName       = "StudentDesk"
-	LegacyAppDirName = "LangSchool"
+	DefaultServerBaseDir = "/var/lib/langschool"
+	AppDirName           = "StudentDesk"
+	LegacyAppDirName     = "LangSchool"
 )
 
 type Config struct {
@@ -27,14 +28,14 @@ type Config struct {
 	SessionSecret string
 }
 
-func LoadConfig(home string) Config {
-	base := ResolveAppBaseDir(home)
+func LoadConfig(_ string) Config {
+	base := defaultServerBaseDir()
 	cfg := Config{
 		BaseDir:       base,
-		DataDir:       envOrDefault("APP_DATA_DIR", filepath.Join(base, "Data")),
-		BackupsDir:    envOrDefault("BACKUPS_DIR", filepath.Join(base, "Backups")),
-		InvoicesDir:   envOrDefault("INVOICES_DIR", filepath.Join(base, "Invoices")),
-		ExportsDir:    filepath.Join(base, "Exports"),
+		DataDir:       envOrDefault("APP_DATA_DIR", filepath.Join(base, "data")),
+		BackupsDir:    envOrDefault("BACKUPS_DIR", filepath.Join(base, "backups")),
+		InvoicesDir:   envOrDefault("INVOICES_DIR", filepath.Join(base, "invoices")),
+		ExportsDir:    filepath.Join(base, "exports"),
 		FontsDir:      strings.TrimSpace(os.Getenv("LS_FONTS_DIR")),
 		BaseURL:       strings.TrimSpace(os.Getenv("APP_BASE_URL")),
 		AdminUsername: firstNonEmpty(os.Getenv("ADMIN_USERNAME"), os.Getenv("ADMIN_EMAIL")),
@@ -42,6 +43,10 @@ func LoadConfig(home string) Config {
 		SessionSecret: strings.TrimSpace(os.Getenv("SESSION_SECRET")),
 	}
 	return cfg
+}
+
+func defaultServerBaseDir() string {
+	return envOrDefault("APP_BASE_DIR", DefaultServerBaseDir)
 }
 
 func ResolveAppBaseDir(home string) string {
@@ -80,18 +85,7 @@ func ResolveDirs(cfg Config) (paths.Dirs, error) {
 		Exports:  cfg.ExportsDir,
 	}
 
-	if usesDefaultLayout(cfg) {
-		return paths.Ensure(cfg.BaseDir)
-	}
-
 	return paths.EnsureLayout(dirs)
-}
-
-func usesDefaultLayout(cfg Config) bool {
-	return cfg.DataDir == filepath.Join(cfg.BaseDir, "Data") &&
-		cfg.BackupsDir == filepath.Join(cfg.BaseDir, "Backups") &&
-		cfg.InvoicesDir == filepath.Join(cfg.BaseDir, "Invoices") &&
-		cfg.ExportsDir == filepath.Join(cfg.BaseDir, "Exports")
 }
 
 func envOrDefault(key, fallback string) string {

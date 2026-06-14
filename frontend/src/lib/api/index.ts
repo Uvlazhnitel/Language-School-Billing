@@ -2,7 +2,6 @@ export type {
   AppTransport,
   AuditLogItem,
   AuditLogListResult,
-  AppDirs,
   BackupResult,
   BalanceDTO,
   BillingMode,
@@ -33,4 +32,4 @@ export type {
   UserDTO,
 } from "./types";
 
-export { getTransport, isWailsRuntime, setTransportForTests } from "./shared";
+export { getTransport, setTransportForTests } from "./shared";

@@ -153,7 +153,7 @@ func (s *Service) Meta(ctx context.Context) (*Meta, error) {
 	return &Meta{
 		Ready:        s.Ready(),
 		Locale:       locale,
-		Capabilities: capabilitiesForRole(auth.RoleAdmin, false),
+		Capabilities: capabilitiesForRole(auth.RoleAdmin),
 	}, nil
 }
 
@@ -166,7 +166,7 @@ func (s *Service) SessionState(ctx context.Context, currentUser *auth.UserInfo) 
 		Authenticated: currentUser != nil,
 		User:          currentUser,
 		Locale:        locale,
-		Capabilities:  capabilitiesForCurrentUser(currentUser, false),
+		Capabilities:  capabilitiesForCurrentUser(currentUser),
 		Ready:         s.Ready(),
 	}, nil
 }
@@ -1676,20 +1676,19 @@ func normalizePayerRole(role string) string {
 	return strings.ToLower(strings.TrimSpace(role))
 }
 
-func capabilitiesForCurrentUser(currentUser *auth.UserInfo, isDesktop bool) map[string]bool {
+func capabilitiesForCurrentUser(currentUser *auth.UserInfo) map[string]bool {
 	if currentUser == nil {
-		return capabilitiesForRole("", isDesktop)
+		return capabilitiesForRole("")
 	}
-	return capabilitiesForRole(currentUser.Role, isDesktop)
+	return capabilitiesForRole(currentUser.Role)
 }
 
-func capabilitiesForRole(role string, isDesktop bool) map[string]bool {
-	isAdmin := role == auth.RoleAdmin || isDesktop
+func capabilitiesForRole(role string) map[string]bool {
+	isAdmin := role == auth.RoleAdmin
 	return map[string]bool{
 		"backups":        isAdmin,
 		"pdfDownload":    true,
 		"pdfGenerate":    true,
-		"desktopPaths":   isDesktop,
 		"manageUsers":    isAdmin,
 		"manageSettings": isAdmin,
 		"viewAuditLog":   isAdmin,

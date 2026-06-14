@@ -207,7 +207,7 @@ func ResolveFontsDir(cfg Config, dirs paths.Dirs) (string, error) {
 		}
 	}
 
-	return "", fmt.Errorf("DejaVuSans.ttf & DejaVuSans-Bold.ttf not found in any known location; set LS_FONTS_DIR or place fonts into ~/StudentDesk/Fonts or ./Fonts")
+	return "", fmt.Errorf("DejaVuSans.ttf & DejaVuSans-Bold.ttf not found in any known location; set LS_FONTS_DIR or place fonts into the configured server fonts directory")
 }
 
 func copyFile(src, dst string) error {

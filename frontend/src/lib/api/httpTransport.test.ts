@@ -37,7 +37,7 @@ describe("httpTransport", () => {
     const result = await httpTransport.bootstrap();
 
     expect(result.ready).toBe(true);
-    expect(result.capabilities.isDesktop).toBe(false);
+    expect(result.capabilities.canDownloadPdf).toBe(true);
     expect(result.authRequired).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
