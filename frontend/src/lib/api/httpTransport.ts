@@ -126,11 +126,7 @@ export const httpTransport: AppTransport = {
     return {
       ready: health.ready && session.ready,
       locale: session.locale || "lv-LV",
-      appDirs: null,
       capabilities: {
-        isDesktop: false,
-        canOpenLocalFiles: false,
-        canOpenFolders: false,
         canDownloadPdf: Boolean(session.capabilities?.pdfDownload),
       },
       authRequired: true,
@@ -190,10 +186,6 @@ export const httpTransport: AppTransport = {
   },
   async setUserActive(id, active) {
     return request<UserDTO>(`/users/${id}/active`, { method: "POST", ...body({ active }) });
-  },
-
-  async openLocalPath() {
-    throw new Error("Local file access is unavailable in web mode");
   },
 
   async listStudents(q, includeInactive) {

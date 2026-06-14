@@ -6,9 +6,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
-	"path/filepath"
-	rt "runtime"
 	"strings"
 
 	"langschool/ent/settings"
@@ -24,9 +21,9 @@ import (
 	paysvc "langschool/internal/app/payment"
 )
 
-// App is the main application struct that holds all application state and services.
-// It provides methods that are bound to the frontend via Wails, allowing the
-// frontend to interact with the database, file system, and business logic.
+// App is a lightweight test/helper facade over the backend services.
+// It remains in the root package so the legacy CRUD and invoice tests can
+// exercise service behavior without going through the HTTP layer.
 type App struct {
 	ctx       context.Context // Application context for database operations
 	dirs      paths.Dirs      // Application directory paths (data, backups, invoices, etc.)
@@ -41,48 +38,11 @@ type App struct {
 	pay *paysvc.Service     // Payment processing service
 }
 
-// NewApp creates a new App instance. The instance is initialized with
-// default values and will be fully configured during the startup lifecycle hook.
-func NewApp() *App { return &App{} }
-
-const appDisplayName = "StudentDesk"
 const appDirName = appruntime.AppDirName
 const legacyAppDirName = appruntime.LegacyAppDirName
 
-// startup is called by Wails when the application starts.
-// It initializes the database connection, ensures required directories exist,
-// creates the singleton Settings record if it doesn't exist, and initializes
-// all service instances. This is where all one-time setup logic runs.
-func (a *App) startup(ctx context.Context) {
-	a.ctx = ctx
-
-	runtimeInstance, err := appruntime.Start(ctx, appruntime.LoadConfig(userHome()))
-	if err != nil {
-		log.Fatal(err)
-	}
-	a.attachRuntime(runtimeInstance)
-}
-
 func resolveAppBaseDir(home string) string {
 	return appruntime.ResolveAppBaseDir(home)
-}
-
-// domReady is called by Wails when the frontend DOM is ready.
-// Currently unused, but available for any initialization that needs to
-// happen after the frontend has fully loaded.
-func (a *App) domReady(ctx context.Context) {}
-
-// shutdown is called by Wails when the application is quitting.
-// It performs cleanup operations, such as closing the database connection
-// to ensure data integrity and proper resource cleanup.
-func (a *App) shutdown(ctx context.Context) {
-	if a.runtime != nil {
-		_ = a.runtime.Close()
-		return
-	}
-	if a.db != nil && a.db.Ent != nil {
-		_ = a.db.Ent.Close()
-	}
 }
 
 // EnrollmentDelete deletes an enrollment and all associated attendance records.
@@ -110,30 +70,6 @@ func (a *App) resolveFontsDir() (string, error) {
 		log.Printf("resolveFontsDir: using %s", fontsDir)
 	}
 	return fontsDir, err
-}
-
-// ---------- App info / utilities ----------
-
-// AppDirs returns application directories for UI (useful for exports/backups).
-func (a *App) AppDirs() map[string]string {
-	if a.dirs.Base == "" {
-		dirs, err := appruntime.ResolveDirs(appruntime.LoadConfig(userHome()))
-		if err == nil {
-			a.dirs = dirs
-		}
-	}
-	return map[string]string{
-		"base": a.dirs.Base, "data": a.dirs.Data, "backups": a.dirs.Backups,
-		"invoices": a.dirs.Invoices, "exports": a.dirs.Exports,
-	}
-}
-
-// AppReady reports whether startup completed enough for frontend data calls.
-func (a *App) AppReady() bool {
-	if a.svc != nil {
-		return a.svc.Ready()
-	}
-	return a.ctx != nil && a.db != nil && a.db.Ent != nil && a.att != nil && a.inv != nil && a.pay != nil
 }
 
 // BackupNow creates a timestamped copy of the SQLite DB in Backups/ and returns the file path.
@@ -365,64 +301,6 @@ func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 		}
 	}
 	return IssueAllResult{Count: cnt, PdfPaths: paths}, nil
-}
-
-// OpenFile opens a directory or reveals a file in the OS file manager.
-// Only allows paths within the StudentDesk directory tree to prevent path traversal attacks.
-func (a *App) OpenFile(path string) error {
-	// Normalize the path
-	if abs, err := filepath.Abs(path); err == nil {
-		path = abs
-	}
-
-	cleanPath := filepath.Clean(path)
-
-	allowedRoots := a.allowedFileRoots()
-	allowed := false
-	for _, root := range allowedRoots {
-		root = filepath.Clean(root)
-		if root == "" {
-			continue
-		}
-		if cleanPath == root || strings.HasPrefix(cleanPath, root+string(os.PathSeparator)) {
-			allowed = true
-			break
-		}
-	}
-	if !allowed {
-		return fmt.Errorf("доступ запрещён: файл должен находиться внутри каталога приложения")
-	}
-
-	info, err := os.Stat(path)
-	if err != nil {
-		return err
-	}
-
-	var cmd *exec.Cmd
-
-	if info.IsDir() {
-		switch rt.GOOS {
-		case "darwin":
-			cmd = exec.Command("open", path)
-		case "windows":
-			cmd = exec.Command("cmd", "/C", "start", "", path)
-		default:
-			cmd = exec.Command("xdg-open", path)
-		}
-		return cmd.Start()
-	}
-
-	switch rt.GOOS {
-	case "darwin":
-		cmd = exec.Command("open", "-R", path)
-	case "windows":
-		cmd = exec.Command("explorer", "/select,"+path)
-	default:
-		// Linux file-manager support for selecting a file is inconsistent,
-		// so fall back to opening the containing directory.
-		cmd = exec.Command("xdg-open", filepath.Dir(path))
-	}
-	return cmd.Start()
 }
 
 // InvoiceEnsurePDF ensures that a PDF exists for an issued invoice.

@@ -1,15 +1,11 @@
 import type { InvoiceDTO } from "../../lib/invoices";
 import type { InvoiceSummaryDTO } from "../../lib/payments";
-import type { TransportCapabilities } from "../../lib/api";
 import type { TranslateFn } from "../../lib/i18n";
-import { canShowInvoiceFolderAction } from "../../lib/uiCapabilities";
 
 type InvoiceDetailsModalProps = {
   invoice: InvoiceDTO;
   summary: InvoiceSummaryDTO | null;
   months: string[];
-  pdfReady: boolean;
-  transportCapabilities: TransportCapabilities;
   invoiceStatusLabel: (status: string) => string;
   formatEUR: (value: number) => string;
   formatHoursValue: (value: number) => string;
@@ -18,8 +14,6 @@ type InvoiceDetailsModalProps = {
   onDownloadPdf: (invoiceId: number) => void | Promise<void>;
   onAddPayment: () => void;
   onReopenToDraft: (invoiceId: number) => void | Promise<void>;
-  onRevealInvoiceFile: (invoiceId: number) => void | Promise<void>;
-  onGeneratePdf: (invoiceId: number) => void;
   onClose: () => void;
   t: TranslateFn;
 };
@@ -28,8 +22,6 @@ export function InvoiceDetailsModal({
   invoice,
   summary,
   months,
-  pdfReady,
-  transportCapabilities,
   invoiceStatusLabel,
   formatEUR,
   formatHoursValue,
@@ -38,8 +30,6 @@ export function InvoiceDetailsModal({
   onDownloadPdf,
   onAddPayment,
   onReopenToDraft,
-  onRevealInvoiceFile,
-  onGeneratePdf,
   onClose,
   t,
 }: InvoiceDetailsModalProps) {
@@ -140,12 +130,6 @@ export function InvoiceDetailsModal({
           {invoice.status !== "draft" && <button onClick={onAddPayment}>{t("button.recordPayment")}</button>}
           {invoice.status === "issued" && (
             <button onClick={() => void onReopenToDraft(invoice.id)}>{t("button.reopenDraft")}</button>
-          )}
-          {invoice.status !== "draft" && canShowInvoiceFolderAction(transportCapabilities) && (
-            <button onClick={() => void onRevealInvoiceFile(invoice.id)}>{t("button.showInFolder")}</button>
-          )}
-          {transportCapabilities.isDesktop && invoice.status !== "draft" && !pdfReady && (
-            <button onClick={() => onGeneratePdf(invoice.id)}>{t("button.createPdf")}</button>
           )}
           <button onClick={onClose}>{t("button.close")}</button>
         </div>

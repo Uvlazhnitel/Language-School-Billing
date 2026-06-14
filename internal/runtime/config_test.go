@@ -48,22 +48,22 @@ func TestLoadConfigUsesEnvironmentOverrides(t *testing.T) {
 	}
 }
 
-func TestLoadConfigFallsBackToDesktopLayout(t *testing.T) {
+func TestLoadConfigUsesServerLayoutByDefault(t *testing.T) {
 	home := t.TempDir()
 
 	cfg := LoadConfig(home)
 
-	wantBase := filepath.Join(home, AppDirName)
+	wantBase := DefaultServerBaseDir
 	if cfg.BaseDir != wantBase {
 		t.Fatalf("BaseDir = %q, want %q", cfg.BaseDir, wantBase)
 	}
-	if cfg.DataDir != filepath.Join(wantBase, "Data") {
-		t.Fatalf("DataDir = %q, want %q", cfg.DataDir, filepath.Join(wantBase, "Data"))
+	if cfg.DataDir != filepath.Join(wantBase, "data") {
+		t.Fatalf("DataDir = %q, want %q", cfg.DataDir, filepath.Join(wantBase, "data"))
 	}
-	if cfg.BackupsDir != filepath.Join(wantBase, "Backups") {
-		t.Fatalf("BackupsDir = %q, want %q", cfg.BackupsDir, filepath.Join(wantBase, "Backups"))
+	if cfg.BackupsDir != filepath.Join(wantBase, "backups") {
+		t.Fatalf("BackupsDir = %q, want %q", cfg.BackupsDir, filepath.Join(wantBase, "backups"))
 	}
-	if cfg.InvoicesDir != filepath.Join(wantBase, "Invoices") {
-		t.Fatalf("InvoicesDir = %q, want %q", cfg.InvoicesDir, filepath.Join(wantBase, "Invoices"))
+	if cfg.InvoicesDir != filepath.Join(wantBase, "invoices") {
+		t.Fatalf("InvoicesDir = %q, want %q", cfg.InvoicesDir, filepath.Join(wantBase, "invoices"))
 	}
 }

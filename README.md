@@ -1,41 +1,134 @@
-# Language School Billing
+# LangSchool
 
-Billing and operations app for a small language school.  
-The project can run in two modes:
+Web-only billing and operations system for a small language school.
 
-- a desktop app via **Wails**
-- a browser-based web app via the Go HTTP server
+LangSchool helps a school administrator manage students, enrollments, attendance, invoices, payments, debt follow-up, and backups from a browser-based interface.
 
-It is built for one school administrator who needs to keep students, enrollments, attendance, invoices, payments, and debt follow-up in one place.
-
-## What the app does
-
-The current app covers the full monthly workflow:
+## Features
 
 - students with adult/minor handling and payer contact fields
 - courses and teachers
 - enrollments with billing mode and discounts
 - attendance for `per_lesson` students
-- monthly lesson count for `subscription` students
-- invoice draft generation, issuing, reopening to draft, PDF generation, and PDF download
+- shared monthly lesson counts for `subscription` courses
+- invoice draft generation, issuing, reopening, PDF generation, and PDF download
 - payments and debtor tracking
-- web user accounts with roles, password auth, and "remember me"
-- backups for both the SQLite database and invoice files
+- role-based browser login with persistent sessions
+- database and invoice-file backups
 
-Main UI sections in the web app:
+## Stack
 
-- `Overview`
-- `Students`
-- `Courses`
-- `Enrollments`
-- `Attendance`
-- `Invoices`
-- `Debtors`
-- `Files`
+- Backend: Go
+- HTTP server: Go `net/http`
+- Frontend: React + Vite + TypeScript
+- ORM: ent
+- Database: SQLite
+- PDF invoices: `go-pdf/fpdf`
+- Deployment: Docker Compose
 
-## Billing model
+## Repository Layout
 
-The app supports two billing modes:
+- [cmd/web/main.go](/Users/uvlazhnitel/Documents/coding/langschool/langschool/cmd/web/main.go) — web server entrypoint
+- [cmd/backupctl/main.go](/Users/uvlazhnitel/Documents/coding/langschool/langschool/cmd/backupctl/main.go) — backup and restore CLI for deployed environments
+- [internal/](/Users/uvlazhnitel/Documents/coding/langschool/langschool/internal) — business logic, auth, runtime, PDF, and HTTP handlers
+- [ent/](/Users/uvlazhnitel/Documents/coding/langschool/langschool/ent) — schema and generated ORM
+- [frontend/](/Users/uvlazhnitel/Documents/coding/langschool/langschool/frontend) — React application
+- [compose.yaml](/Users/uvlazhnitel/Documents/coding/langschool/langschool/compose.yaml) — primary deployment entrypoint
+
+## Runtime Storage
+
+The server runtime is configured through environment variables:
+
+- `APP_BASE_URL`
+- `APP_DATA_DIR`
+- `INVOICES_DIR`
+- `BACKUPS_DIR`
+- `LS_FONTS_DIR`
+- `ADMIN_USERNAME`
+- `ADMIN_PASSWORD`
+- `SESSION_SECRET`
+
+The included Docker setup uses these paths:
+
+- `/var/lib/langschool/data`
+- `/var/lib/langschool/invoices`
+- `/var/lib/langschool/backups`
+- `/app/Fonts`
+
+The SQLite database file is stored at `${APP_DATA_DIR}/app.sqlite`.
+
+## Backups and Safety
+
+- startup creates a pre-migration backup before schema changes
+- startup stops if that backup cannot be created
+- manual backups are available in the web UI for authorized users
+- `backupctl` can create and restore DB/full backups from the server side
+
+Backup formats:
+
+- `app-YYYYMMDD-HHMMSS.sqlite` — database only
+- `full-YYYYMMDD-HHMMSS.tar.gz` — database plus invoice files
+
+## Requirements
+
+- Go 1.24+
+- Node.js 22+
+- npm
+- Docker and Docker Compose
+
+## Local Development
+
+Install dependencies:
+
+```bash
+go mod download
+cd frontend
+npm install
+cd ..
+```
+
+Run the backend:
+
+```bash
+go run ./cmd/web
+```
+
+Run the frontend dev server in another terminal:
+
+```bash
+cd frontend
+npm run dev
+```
+
+Vite proxies `/api` and `/healthz` to `http://127.0.0.1:8080` by default.
+
+## Docker-First Run
+
+Create `.env` from [.env.example](/Users/uvlazhnitel/Documents/coding/langschool/langschool/.env.example), then start the app:
+
+```bash
+docker compose build
+docker compose up -d
+```
+
+The compose file publishes the app on `http://localhost:8082`.
+
+## Testing
+
+Backend:
+
+```bash
+go test ./...
+```
+
+Frontend:
+
+```bash
+cd frontend
+npm test
+```
+
+## Billing Model
 
 ### `per_lesson`
 
@@ -45,506 +138,10 @@ The app supports two billing modes:
 
 ### `subscription`
 
-- the invoice is not based on the student's personal attendance
-- the invoice is based on the number of lessons actually held for the course in that month
-- that monthly lesson count is shared at the course level
-- subscription amount is calculated from:
+- invoice totals depend on the number of lessons actually held for the course in that month
+- that lesson count is shared at the course level
+- subscription amount is calculated as:
 
 ```text
 lesson_price × lessons_held × (1 - total_discount_pct / 100)
 ```
-
-Where:
-
-- `subscription_discount_pct` is the base subscription discount
-- `discount_pct` is the personal student discount
-- both discounts stack, capped by the backend as needed
-
-## Stack
-
-- **Backend:** Go
-- **Desktop shell:** Wails v2
-- **Web server:** Go `net/http`
-- **Frontend:** React + Vite + TypeScript
-- **ORM:** ent
-- **Database:** SQLite
-- **PDF invoices:** `go-pdf/fpdf`
-
-## Repository layout
-
-- [main.go](/Users/uvlazhnitel/Documents/coding/langschool/langschool/main.go) — Wails desktop entrypoint
-- [app.go](/Users/uvlazhnitel/Documents/coding/langschool/langschool/app.go) — desktop-exposed backend methods
-- [cmd/web/main.go](/Users/uvlazhnitel/Documents/coding/langschool/langschool/cmd/web/main.go) — web server entrypoint
-- [cmd/backupctl/main.go](/Users/uvlazhnitel/Documents/coding/langschool/langschool/cmd/backupctl/main.go) — CLI for DB/full backups
-- [internal/](/Users/uvlazhnitel/Documents/coding/langschool/langschool/internal) — business logic, auth, runtime, PDF, web API
-- [ent/](/Users/uvlazhnitel/Documents/coding/langschool/langschool/ent) — schema and generated ORM
-- [frontend/](/Users/uvlazhnitel/Documents/coding/langschool/langschool/frontend) — React app
-- [scripts/](/Users/uvlazhnitel/Documents/coding/langschool/langschool/scripts) — backup and server helper scripts
-
-## Data storage
-
-The app keeps its own working directories for:
-
-- database
-- backups
-- invoice PDFs
-- exports
-- fonts
-
-### Desktop default directories
-
-On desktop installs the base app folder is created automatically:
-
-- macOS / Linux: `~/StudentDesk/`
-- legacy folder names are migrated from older `~/LangSchool/` layouts when possible
-
-Typical directories:
-
-- `StudentDesk/Data/`
-- `StudentDesk/Backups/`
-- `StudentDesk/Invoices/`
-- `StudentDesk/Exports/`
-- `StudentDesk/Fonts/`
-
-SQLite database file:
-
-- `StudentDesk/Data/app.sqlite`
-
-### Web / server directories
-
-In web/server deployments the storage paths are controlled by environment variables:
-
-- `APP_DATA_DIR`
-- `INVOICES_DIR`
-- `BACKUPS_DIR`
-- `LS_FONTS_DIR`
-
-The included Docker setup stores them under:
-
-- `/var/lib/langschool/data`
-- `/var/lib/langschool/invoices`
-- `/var/lib/langschool/backups`
-- `/app/Fonts`
-
-## Backups and migration safety
-
-The runtime is intentionally conservative with data:
-
-- before applying schema migrations to an existing database, it creates a pre-migration backup
-- startup stops if that backup cannot be created
-- schema updates are additive / non-destructive by default
-
-SQLite is configured for safer local durability:
-
-- `journal_mode=WAL`
-- `synchronous=FULL`
-
-Retention defaults:
-
-- latest `30` DB-only backups
-- latest `8` full backups
-
-Backup formats:
-
-- `app-YYYYMMDD-HHMMSS.sqlite` — database only
-- `full-YYYYMMDD-HHMMSS.tar.gz` — database + invoice files
-
-A full backup contains:
-
-- `data/app.sqlite`
-- full `invoices/` tree
-- `manifest.json`
-
-## Requirements
-
-### For desktop development
-
-- Go
-- Node.js + npm
-- Wails CLI
-
-macOS also needs:
-
-```bash
-xcode-select --install
-```
-
-Install Wails CLI if needed:
-
-```bash
-go install github.com/wailsapp/wails/v2/cmd/wails@latest
-```
-
-Check desktop environment:
-
-```bash
-wails doctor
-```
-
-### For web development
-
-- Go
-- Node.js + npm
-
-## Quick start
-
-Clone the repo:
-
-```bash
-git clone https://github.com/Uvlazhnitel/Language-School-Billing.git
-cd Language-School-Billing
-```
-
-Install backend/frontend dependencies:
-
-```bash
-go mod download
-cd frontend
-npm install
-cd ..
-```
-
-## Run the web app in development
-
-Start the Go API/server:
-
-```bash
-go run ./cmd/web
-```
-
-In a second terminal start Vite:
-
-```bash
-cd frontend
-npm run dev
-```
-
-By default Vite proxies:
-
-- `/api`
-- `/healthz`
-
-to:
-
-- `http://127.0.0.1:8080`
-
-If needed, create `frontend/.env.local` and override the dev target there.
-
-For local-only development, the backend can stay on `127.0.0.1`.
-For access from other devices, bind the backend to `0.0.0.0` explicitly:
-
-```bash
-HOST=0.0.0.0 PORT=8080 go run ./cmd/web
-```
-
-## Run the web app in production-style mode
-
-Build the frontend:
-
-```bash
-cd frontend
-npm run build
-cd ..
-```
-
-Start the Go server:
-
-```bash
-go run ./cmd/web
-```
-
-If `frontend/dist` exists, the Go server serves:
-
-- the SPA
-- the JSON API under `/api`
-
-If `frontend/dist` is missing, the server still starts in API-only mode.
-
-## Desktop development
-
-Build the frontend once:
-
-```bash
-cd frontend
-npm run build
-cd ..
-```
-
-Run desktop dev mode:
-
-```bash
-wails dev
-```
-
-## Build desktop artifacts
-
-### macOS
-
-```bash
-cd frontend
-npm run build
-cd ..
-wails build
-```
-
-### Windows
-
-```powershell
-cd frontend
-npm run build
-cd ..
-wails build
-```
-
-Recommended Windows installer build:
-
-```powershell
-$env:CGO_ENABLED = "0"
-wails build -clean -nsis -webview2 download
-```
-
-## Web authentication
-
-The web app uses username/password authentication.
-
-Login payload:
-
-- `username`
-- `password`
-- `rememberMe`
-
-Behavior:
-
-- with `rememberMe=true`, the session cookie is persistent
-- without it, the cookie is session-only
-
-Bootstrap admin account is configured by environment variables:
-
-- `ADMIN_USERNAME`
-- `ADMIN_PASSWORD`
-- `SESSION_SECRET`
-
-Legacy fallback:
-
-- `ADMIN_EMAIL` still works as a fallback source for the admin username
-
-## Environment variables
-
-See [.env.example](/Users/uvlazhnitel/Documents/coding/langschool/langschool/.env.example) for the current baseline.
-
-Important variables:
-
-- `APP_BASE_URL`
-- `ADMIN_USERNAME`
-- `ADMIN_PASSWORD`
-- `SESSION_SECRET`
-- `APP_DATA_DIR`
-- `INVOICES_DIR`
-- `BACKUPS_DIR`
-- `LS_FONTS_DIR`
-- `HOST`
-- `PORT`
-
-Web server also supports:
-
-- `ADDR`
-- `WEB_DIST_DIR`
-
-## Docker deployment
-
-The repository includes [compose.yaml](/Users/uvlazhnitel/Documents/coding/langschool/langschool/compose.yaml) for a simple server deployment.
-
-Default behavior:
-
-- publishes the app on `8082`
-- runs the Go web server inside Docker
-- bind-mounts data, invoices, and backups from the host
-
-Basic flow:
-
-1. Copy the repo to the server.
-2. Create `.env` from `.env.example`.
-3. Set `APP_BASE_URL` to the canonical public hostname of the server.
-
-Preferred public setup:
-
-```bash
-APP_BASE_URL=https://homeserver.tail25398e.ts.net
-```
-
-Do not leave it on `127.0.0.1` for a public deployment.
-4. Make sure the host storage directories exist.
-5. Start the app:
-
-```bash
-docker compose up -d --build
-```
-
-The included [compose.yaml](/Users/uvlazhnitel/Documents/coding/langschool/langschool/compose.yaml) already:
-
-- publishes host port `8082` to container port `8080`
-- sets `HOST=0.0.0.0`
-- sets `PORT=8080`
-
-This means the container is ready for local network traffic immediately.
-For internet access, use the configured Tailscale Funnel hostname as the canonical URL.
-
-Health check:
-
-```bash
-curl http://127.0.0.1:8082/healthz
-```
-
-Recommended public access with Tailscale Funnel:
-
-```bash
-tailscale funnel --bg 8082
-```
-
-After Funnel is enabled for your tailnet, the site becomes available on the node's Tailscale HTTPS hostname,
-for example:
-
-```bash
-https://homeserver.tail25398e.ts.net
-```
-
-In that setup:
-
-- set `APP_BASE_URL` to the HTTPS Tailscale hostname
-- keep Docker published on `8082` locally
-- let Tailscale terminate TLS and proxy to the local app
-
-Production/public health check:
-
-```bash
-curl https://homeserver.tail25398e.ts.net/healthz
-```
-
-If the local health check works but the public hostname check does not, the problem is outside the app.
-Check these only if Funnel or hostname-based access stops working:
-
-1. The server firewall allows inbound TCP `8082`.
-2. The router forwards public TCP `8082` to the server if the machine is behind home NAT.
-3. The ISP is not placing the connection behind CG-NAT.
-
-CG-NAT note:
-
-- direct public port exposure may fail behind CG-NAT
-- the preferred production setup here avoids that by using Tailscale Funnel and the hostname above
-
-## Automated deployment
-
-Production deploys can run automatically from `main` using GitHub Actions and Tailscale.
-
-Deployment flow:
-
-1. A push lands on `main`.
-2. GitHub Actions joins the tailnet using the Tailscale GitHub Action.
-3. The workflow syncs the repository to `/home/ilya/langschool` over SSH with `rsync`.
-4. The server runs `docker compose up -d --build`.
-5. The workflow waits for `http://127.0.0.1:8082/healthz` and then checks the public Funnel URL.
-
-Required GitHub repository secrets:
-
-- `TAILSCALE_AUTHKEY`
-- `DEPLOY_SSH_PRIVATE_KEY`
-
-Workflow defaults:
-
-- deploy host: `homeserver`
-- deploy user: `ilya`
-- deploy path: `/home/ilya/langschool`
-
-Tailscale notes:
-
-- the auth key should be reusable, ephemeral, and tagged for CI use
-- the GitHub Action connects to the tailnet before any SSH or `rsync` step
-
-Manual fallback:
-
-```bash
-./scripts/deploy-server.sh
-```
-
-Dry-run sync check:
-
-```bash
-./scripts/deploy-server.sh --dry-run
-```
-
-The deploy script uses the same remote flow as the GitHub Action:
-
-- sync files to the server
-- run `docker compose up -d --build`
-- verify `http://127.0.0.1:8082/healthz`
-- print `tailscale funnel status` as a smoke-check
-
-## Backup scripts
-
-Available helper scripts in [scripts/](/Users/uvlazhnitel/Documents/coding/langschool/langschool/scripts):
-
-- `create-db-backup.sh`
-- `create-full-backup.sh`
-- `restore-backup.sh`
-- `install-server-backup-cron.sh`
-- `pull-backups-mac.sh`
-- `install-mac-backup-launchd.sh`
-
-Examples:
-
-Create DB-only backup:
-
-```bash
-./scripts/create-db-backup.sh
-```
-
-Create full backup:
-
-```bash
-./scripts/create-full-backup.sh
-```
-
-Restore full backup:
-
-```bash
-./scripts/restore-backup.sh full-20260604-142500.tar.gz
-```
-
-## Fonts for PDF invoices
-
-Required fonts:
-
-- `DejaVuSans.ttf`
-- `DejaVuSans-Bold.ttf`
-
-Preferred directory:
-
-- desktop: `StudentDesk/Fonts/`
-- server/Docker: `/app/Fonts`
-
-Alternative lookup locations are also supported by the runtime, but `LS_FONTS_DIR`
-is the most predictable option for deployments.
-
-## Checks during development
-
-Frontend:
-
-```bash
-cd frontend
-npm run lint
-npm test
-npm run build
-```
-
-Backend:
-
-```bash
-go test ./...
-```
-
-## Notes
-
-- the web app is stateful because it uses SQLite and server-side generated PDFs
-- invoice PDFs are stored on disk, not only generated in memory
-- backup/restore is a first-class part of the project, not an afterthought
-- the repository currently contains both desktop and web runtime paths, so README and deployment instructions need to reflect both

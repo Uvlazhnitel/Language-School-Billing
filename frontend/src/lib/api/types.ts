@@ -1,16 +1,10 @@
-export type AppDirs = Record<string, string> | null;
-
 export type TransportCapabilities = {
-  isDesktop: boolean;
-  canOpenLocalFiles: boolean;
-  canOpenFolders: boolean;
   canDownloadPdf: boolean;
 };
 
 export type BootstrapResult = {
   ready: boolean;
   locale: string;
-  appDirs: AppDirs;
   capabilities: TransportCapabilities;
   authRequired: boolean;
   session: SessionInfo;
@@ -305,7 +299,6 @@ export interface AppTransport {
   getLocale(): Promise<string>;
   setLocale(locale: string): Promise<void>;
   createBackup(): Promise<BackupResult>;
-  openLocalPath(path: string): Promise<void>;
   listUsers(): Promise<UserDTO[]>;
   createUser(username: string, password: string, role: string): Promise<UserDTO>;
   updateUser(id: number, username: string, role: string, isActive: boolean): Promise<UserDTO>;

@@ -1,7 +1,6 @@
 import type { UserDTO } from "../lib/api";
 import type { TranslateFn, UiLocale } from "../lib/i18n";
 import type { AppTabId } from "../lib/appUi";
-import { canShowInvoiceFolderAction, canShowSettingsFilesCard } from "../lib/uiCapabilities";
 
 type UserDraft = { username: string; role: string; isActive: boolean };
 
@@ -9,13 +8,6 @@ type SettingsScreenProps = {
   uiLocale: UiLocale;
   canCreateBackups: boolean;
   creatingBackup: boolean;
-  transportCapabilities: {
-    isDesktop: boolean;
-    canOpenLocalFiles: boolean;
-    canOpenFolders: boolean;
-    canDownloadPdf: boolean;
-  };
-  appDirs: Record<string, string> | null;
   canManageUsers: boolean;
   usersLoading: boolean;
   users: UserDTO[];
@@ -28,7 +20,6 @@ type SettingsScreenProps = {
   currentSessionUser: { id: number; username: string; role: string } | null;
   onLocaleChange: (value: UiLocale) => void | Promise<void>;
   onCreateBackup: () => void | Promise<void>;
-  onOpenAppFolder: (path: string | undefined, label: string) => void | Promise<void>;
   onSetTab: (tab: AppTabId) => void;
   onNewUserUsernameChange: (value: string) => void;
   onNewUserPasswordChange: (value: string) => void;
@@ -47,8 +38,6 @@ export function SettingsScreen({
   uiLocale,
   canCreateBackups,
   creatingBackup,
-  transportCapabilities,
-  appDirs,
   canManageUsers,
   usersLoading,
   users,
@@ -61,7 +50,6 @@ export function SettingsScreen({
   currentSessionUser,
   onLocaleChange,
   onCreateBackup,
-  onOpenAppFolder,
   onSetTab,
   onNewUserUsernameChange,
   onNewUserPasswordChange,
@@ -109,53 +97,8 @@ export function SettingsScreen({
           >
             {creatingBackup ? `${t("button.createBackup")}...` : t("button.createBackup")}
           </button>
-          {canShowInvoiceFolderAction(transportCapabilities) && (
-            <button
-              type="button"
-              className="workspaceActionButton"
-              onClick={() => void onOpenAppFolder(appDirs?.backups, t("field.backups").toLowerCase())}
-              disabled={!appDirs?.backups}
-            >
-              {t("button.backupsFolder")}
-            </button>
-          )}
         </div>
       </section>
-
-      {canShowSettingsFilesCard(transportCapabilities) && (
-        <section className="detailCard">
-          <div className="detailCardHeader">
-            <h3>{t("settings.filesTitle")}</h3>
-          </div>
-          <p className="mutedInline">{t("settings.filesDesc")}</p>
-          <div className="settingsActions">
-            <button
-              type="button"
-              className="workspaceActionButton"
-              onClick={() => void onOpenAppFolder(appDirs?.invoices, t("tabs.invoice").toLowerCase())}
-              disabled={!appDirs?.invoices}
-            >
-              {t("button.invoicesFolder")}
-            </button>
-            <button
-              type="button"
-              className="workspaceActionButton"
-              onClick={() => void onOpenAppFolder(appDirs?.exports, "exports")}
-              disabled={!appDirs?.exports}
-            >
-              {t("button.exportsFolder")}
-            </button>
-            <button
-              type="button"
-              className="workspaceActionButton"
-              onClick={() => void onOpenAppFolder(appDirs?.data, "data")}
-              disabled={!appDirs?.data}
-            >
-              {t("button.dataFolder")}
-            </button>
-          </div>
-        </section>
-      )}
 
       <section className="detailCard">
         <div className="detailCardHeader">
