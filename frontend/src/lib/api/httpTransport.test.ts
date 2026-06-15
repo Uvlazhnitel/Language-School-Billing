@@ -42,6 +42,57 @@ describe("httpTransport", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it("bootstraps authenticated users with persisted per-user locale", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/healthz")) return jsonResponse({ ready: true });
+      if (url.endsWith("/api/auth/session")) {
+        return jsonResponse({
+          authenticated: true,
+          ready: true,
+          locale: "lv-LV",
+          capabilities: { pdfDownload: true },
+          user: { id: 1, username: "tester", role: "staff" },
+        });
+      }
+      if (url.endsWith("/api/me/locale")) {
+        return jsonResponse({ locale: "ru-RU" });
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await httpTransport.bootstrap();
+
+    expect(result.locale).toBe("ru-RU");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
+  it("falls back to session locale when per-user locale fetch fails", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/healthz")) return jsonResponse({ ready: true });
+      if (url.endsWith("/api/auth/session")) {
+        return jsonResponse({
+          authenticated: true,
+          ready: true,
+          locale: "lv-LV",
+          capabilities: { pdfDownload: true },
+          user: { id: 1, username: "tester", role: "staff" },
+        });
+      }
+      if (url.endsWith("/api/me/locale")) {
+        return jsonResponse({ error: "boom" }, 500);
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await httpTransport.bootstrap();
+
+    expect(result.locale).toBe("lv-LV");
+  });
+
   it("uses VITE_API_BASE_URL override", async () => {
     vi.stubEnv("VITE_API_BASE_URL", "http://localhost:9999/api");
     const fetchMock = vi.fn(async () => jsonResponse([]));

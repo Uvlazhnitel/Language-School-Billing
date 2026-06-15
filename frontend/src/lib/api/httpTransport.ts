@@ -123,9 +123,18 @@ export const httpTransport: AppTransport = {
       request<SessionInfo>("/auth/session"),
     ]);
 
+    let locale = session.locale || "lv-LV";
+    if (session.authenticated) {
+      try {
+        locale = await this.getLocale();
+      } catch (error) {
+        void error;
+      }
+    }
+
     return {
       ready: health.ready && session.ready,
-      locale: session.locale || "lv-LV",
+      locale,
       capabilities: {
         canDownloadPdf: Boolean(session.capabilities?.pdfDownload),
       },
