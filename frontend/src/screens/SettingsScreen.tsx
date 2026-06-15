@@ -126,7 +126,7 @@ export function SettingsScreen({
 
       <section className="detailCard">
         <div className="detailCardHeader">
-          <h3>{t("button.filesAndCopies")}</h3>
+          <h3>{t("tabs.settings")}</h3>
         </div>
         <p className="mutedInline">{t("msg.systemSectionsNav")}</p>
         <div className="settingsActions">
