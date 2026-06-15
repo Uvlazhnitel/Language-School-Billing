@@ -149,6 +149,7 @@ export function EnrollmentFormModal({
         <div className="formRow">
           <label>{t("field.chargeMaterials")}</label>
           <input
+            className="formCheckbox"
             type="checkbox"
             checked={chargeMaterials}
             onChange={(e) => onChargeMaterialsChange(e.target.checked)}
