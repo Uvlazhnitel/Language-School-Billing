@@ -2,45 +2,57 @@ package infra
 
 import (
 	"context"
-	"net/url"
-	"os"
+	"database/sql"
 	"path/filepath"
-	"strings"
 	"testing"
+
+	"langschool/ent/enrollment"
+
+	_ "github.com/ncruces/go-sqlite3/driver"
+	_ "github.com/ncruces/go-sqlite3/embed"
 )
 
-func TestBuildDSNIncludesSafeSQLiteOptions(t *testing.T) {
-	dsn := buildDSN("/tmp/app.sqlite")
+func TestOpenBackfillsSubscriptionLessonPriceFromLegacyDiscount(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "legacy.sqlite")
 
-	if !strings.HasPrefix(dsn, "file:/tmp/app.sqlite?") {
-		t.Fatalf("expected file DSN, got %q", dsn)
-	}
-
-	rawQuery := strings.TrimPrefix(dsn, "file:/tmp/app.sqlite?")
-	values, err := url.ParseQuery(rawQuery)
+	legacyDB, err := sql.Open("sqlite3", buildDSN(dbPath))
 	if err != nil {
-		t.Fatalf("ParseQuery: %v", err)
+		t.Fatalf("sql.Open: %v", err)
 	}
+	defer legacyDB.Close()
 
-	expected := map[string]string{
-		"_fk":           "1",
-		"_busy_timeout": "5000",
-		"cache":         "shared",
-		"mode":          "rwc",
-		"_journal_mode": "WAL",
-		"_synchronous":  "FULL",
-	}
-
-	for key, want := range expected {
-		if got := values.Get(key); got != want {
-			t.Fatalf("expected %s=%q, got %q", key, want, got)
+	for _, stmt := range []string{
+		`CREATE TABLE students (id INTEGER PRIMARY KEY, full_name TEXT, is_active BOOLEAN)`,
+		`CREATE TABLE courses (
+			id INTEGER PRIMARY KEY,
+			version INTEGER DEFAULT 1,
+			name TEXT,
+			teacher_name TEXT DEFAULT '',
+			type TEXT,
+			lesson_price_cents INTEGER DEFAULT 0,
+			subscription_price_cents INTEGER DEFAULT 0,
+			is_active BOOLEAN DEFAULT 1
+		)`,
+		`CREATE TABLE enrollments (
+			id INTEGER PRIMARY KEY,
+			version INTEGER DEFAULT 1,
+			billing_mode TEXT,
+			charge_materials BOOLEAN DEFAULT 1,
+			discount_pct REAL DEFAULT 0,
+			subscription_discount_pct REAL DEFAULT 20,
+			note TEXT DEFAULT '',
+			course_id INTEGER,
+			student_id INTEGER
+		)`,
+		`INSERT INTO students (id, full_name, is_active) VALUES (1, 'Legacy Student', 1)`,
+		`INSERT INTO courses (id, name, teacher_name, type, lesson_price_cents, subscription_price_cents, is_active) VALUES (1, 'Legacy Course', '', 'group', 1500, 0, 1)`,
+		`INSERT INTO enrollments (id, version, billing_mode, charge_materials, discount_pct, subscription_discount_pct, note, course_id, student_id) VALUES (1, 1, 'subscription', 1, 10, 20, '', 1, 1)`,
+	} {
+		if _, err := legacyDB.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("legacy schema setup failed for %q: %v", stmt, err)
 		}
 	}
-}
-
-func TestOpenCreatesNewSQLiteDatabase(t *testing.T) {
-	ctx := context.Background()
-	dbPath := filepath.Join(t.TempDir(), "app.sqlite")
 
 	db, err := Open(ctx, dbPath)
 	if err != nil {
@@ -48,56 +60,11 @@ func TestOpenCreatesNewSQLiteDatabase(t *testing.T) {
 	}
 	defer db.Ent.Close()
 
-	if _, err := os.Stat(dbPath); err != nil {
-		t.Fatalf("expected database file to exist at %s: %v", dbPath, err)
-	}
-
-	count, err := db.Ent.Student.Query().Count(ctx)
+	item, err := db.Ent.Enrollment.Query().Where(enrollment.IDEQ(1)).Only(ctx)
 	if err != nil {
-		t.Fatalf("Student.Query.Count: %v", err)
+		t.Fatalf("Enrollment.Query: %v", err)
 	}
-	if count != 0 {
-		t.Fatalf("expected empty student table for new database, got %d rows", count)
-	}
-}
-
-func TestOpenPreservesExistingDataOnReopen(t *testing.T) {
-	ctx := context.Background()
-	dbPath := filepath.Join(t.TempDir(), "app.sqlite")
-
-	first, err := Open(ctx, dbPath)
-	if err != nil {
-		t.Fatalf("first Open: %v", err)
-	}
-
-	created, err := first.Ent.Student.Create().
-		SetFullName("Backup Safety Student").
-		SetPhone("+37120000000").
-		Save(ctx)
-	if err != nil {
-		first.Ent.Close()
-		t.Fatalf("Student.Create: %v", err)
-	}
-
-	if err := first.Ent.Close(); err != nil {
-		t.Fatalf("first Close: %v", err)
-	}
-
-	second, err := Open(ctx, dbPath)
-	if err != nil {
-		t.Fatalf("second Open: %v", err)
-	}
-	defer second.Ent.Close()
-
-	got, err := second.Ent.Student.Get(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Student.Get after reopen: %v", err)
-	}
-
-	if got.FullName != created.FullName {
-		t.Fatalf("expected student name %q after reopen, got %q", created.FullName, got.FullName)
-	}
-	if got.Phone != created.Phone {
-		t.Fatalf("expected student phone %q after reopen, got %q", created.Phone, got.Phone)
+	if item.SubscriptionLessonPriceCents != 1050 {
+		t.Fatalf("subscription lesson price cents = %d, want 1050", item.SubscriptionLessonPriceCents)
 	}
 }

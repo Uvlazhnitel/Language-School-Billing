@@ -16,7 +16,7 @@ type EnrollmentFormModalProps = {
   mode: "per_lesson" | "subscription";
   chargeMaterials: boolean;
   discount: string;
-  subscriptionDiscount: string;
+  subscriptionLessonPrice: string;
   note: string;
   allCourses: CourseDTO[];
   studentComboRef: Ref<HTMLDivElement>;
@@ -27,7 +27,7 @@ type EnrollmentFormModalProps = {
   onModeChange: (value: "per_lesson" | "subscription") => void;
   onChargeMaterialsChange: (value: boolean) => void;
   onDiscountChange: (value: string) => void;
-  onSubscriptionDiscountChange: (value: string) => void;
+  onSubscriptionLessonPriceChange: (value: string) => void;
   onNoteChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -45,7 +45,7 @@ export function EnrollmentFormModal({
   mode,
   chargeMaterials,
   discount,
-  subscriptionDiscount,
+  subscriptionLessonPrice,
   note,
   allCourses,
   studentComboRef,
@@ -56,7 +56,7 @@ export function EnrollmentFormModal({
   onModeChange,
   onChargeMaterialsChange,
   onDiscountChange,
-  onSubscriptionDiscountChange,
+  onSubscriptionLessonPriceChange,
   onNoteChange,
   onSave,
   onCancel,
@@ -171,15 +171,14 @@ export function EnrollmentFormModal({
 
         {mode === "subscription" && (
           <div className="formRow">
-            <label>{t("field.subscriptionDiscount")} %</label>
+            <label>{t("field.subscriptionLessonPrice")} (EUR)</label>
             <input
               type="number"
               min={0}
-              max={100}
               step="0.1"
-              value={subscriptionDiscount}
+              value={subscriptionLessonPrice}
               onFocus={(e) => e.currentTarget.select()}
-              onChange={(e) => onSubscriptionDiscountChange(e.target.value)}
+              onChange={(e) => onSubscriptionLessonPriceChange(e.target.value)}
             />
           </div>
         )}

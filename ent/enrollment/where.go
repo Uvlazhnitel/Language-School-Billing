@@ -80,9 +80,9 @@ func DiscountPct(v float64) predicate.Enrollment {
 	return predicate.Enrollment(sql.FieldEQ(FieldDiscountPct, v))
 }
 
-// SubscriptionDiscountPct applies equality check predicate on the "subscription_discount_pct" field. It's identical to SubscriptionDiscountPctEQ.
-func SubscriptionDiscountPct(v float64) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldEQ(FieldSubscriptionDiscountPct, v))
+// SubscriptionLessonPriceCents applies equality check predicate on the "subscription_lesson_price_cents" field. It's identical to SubscriptionLessonPriceCentsEQ.
+func SubscriptionLessonPriceCents(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldEQ(FieldSubscriptionLessonPriceCents, v))
 }
 
 // Note applies equality check predicate on the "note" field. It's identical to NoteEQ.
@@ -250,44 +250,44 @@ func DiscountPctLTE(v float64) predicate.Enrollment {
 	return predicate.Enrollment(sql.FieldLTE(FieldDiscountPct, v))
 }
 
-// SubscriptionDiscountPctEQ applies the EQ predicate on the "subscription_discount_pct" field.
-func SubscriptionDiscountPctEQ(v float64) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldEQ(FieldSubscriptionDiscountPct, v))
+// SubscriptionLessonPriceCentsEQ applies the EQ predicate on the "subscription_lesson_price_cents" field.
+func SubscriptionLessonPriceCentsEQ(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldEQ(FieldSubscriptionLessonPriceCents, v))
 }
 
-// SubscriptionDiscountPctNEQ applies the NEQ predicate on the "subscription_discount_pct" field.
-func SubscriptionDiscountPctNEQ(v float64) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldNEQ(FieldSubscriptionDiscountPct, v))
+// SubscriptionLessonPriceCentsNEQ applies the NEQ predicate on the "subscription_lesson_price_cents" field.
+func SubscriptionLessonPriceCentsNEQ(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldNEQ(FieldSubscriptionLessonPriceCents, v))
 }
 
-// SubscriptionDiscountPctIn applies the In predicate on the "subscription_discount_pct" field.
-func SubscriptionDiscountPctIn(vs ...float64) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldIn(FieldSubscriptionDiscountPct, vs...))
+// SubscriptionLessonPriceCentsIn applies the In predicate on the "subscription_lesson_price_cents" field.
+func SubscriptionLessonPriceCentsIn(vs ...int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldIn(FieldSubscriptionLessonPriceCents, vs...))
 }
 
-// SubscriptionDiscountPctNotIn applies the NotIn predicate on the "subscription_discount_pct" field.
-func SubscriptionDiscountPctNotIn(vs ...float64) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldNotIn(FieldSubscriptionDiscountPct, vs...))
+// SubscriptionLessonPriceCentsNotIn applies the NotIn predicate on the "subscription_lesson_price_cents" field.
+func SubscriptionLessonPriceCentsNotIn(vs ...int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldNotIn(FieldSubscriptionLessonPriceCents, vs...))
 }
 
-// SubscriptionDiscountPctGT applies the GT predicate on the "subscription_discount_pct" field.
-func SubscriptionDiscountPctGT(v float64) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldGT(FieldSubscriptionDiscountPct, v))
+// SubscriptionLessonPriceCentsGT applies the GT predicate on the "subscription_lesson_price_cents" field.
+func SubscriptionLessonPriceCentsGT(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldGT(FieldSubscriptionLessonPriceCents, v))
 }
 
-// SubscriptionDiscountPctGTE applies the GTE predicate on the "subscription_discount_pct" field.
-func SubscriptionDiscountPctGTE(v float64) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldGTE(FieldSubscriptionDiscountPct, v))
+// SubscriptionLessonPriceCentsGTE applies the GTE predicate on the "subscription_lesson_price_cents" field.
+func SubscriptionLessonPriceCentsGTE(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldGTE(FieldSubscriptionLessonPriceCents, v))
 }
 
-// SubscriptionDiscountPctLT applies the LT predicate on the "subscription_discount_pct" field.
-func SubscriptionDiscountPctLT(v float64) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldLT(FieldSubscriptionDiscountPct, v))
+// SubscriptionLessonPriceCentsLT applies the LT predicate on the "subscription_lesson_price_cents" field.
+func SubscriptionLessonPriceCentsLT(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldLT(FieldSubscriptionLessonPriceCents, v))
 }
 
-// SubscriptionDiscountPctLTE applies the LTE predicate on the "subscription_discount_pct" field.
-func SubscriptionDiscountPctLTE(v float64) predicate.Enrollment {
-	return predicate.Enrollment(sql.FieldLTE(FieldSubscriptionDiscountPct, v))
+// SubscriptionLessonPriceCentsLTE applies the LTE predicate on the "subscription_lesson_price_cents" field.
+func SubscriptionLessonPriceCentsLTE(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldLTE(FieldSubscriptionLessonPriceCents, v))
 }
 
 // NoteEQ applies the EQ predicate on the "note" field.

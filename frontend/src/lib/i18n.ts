@@ -244,7 +244,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "field.backups": "Backups",
     "field.lessonPrice": "Hourly rate",
     "field.subscriptionPrice": "Subscription price",
-    "field.subscriptionDiscount": "Subscription discount",
+    "field.subscriptionLessonPrice": "Subscription lesson price",
     "field.quantity": "Hours",
     "field.student": "Student",
     "field.recipient": "Recipient",
@@ -311,6 +311,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noAvailableCourses": "There are no courses yet. Add a course first.",
     "msg.chooseStudentAndCourse": "Choose a student and a course",
     "msg.discountRange": "Discount must be between 0 and 100",
+    "msg.subscriptionLessonPriceRange": "Subscription lesson price must be 0 or more",
     "msg.enrollmentUpdated": "Enrollment updated",
     "msg.enrollmentCreated": "Enrollment created: {student} -> {course}",
     "msg.enrollmentCreatedFiltered":
@@ -729,7 +730,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "field.backups": "Резервные копии",
     "field.lessonPrice": "Ставка за час",
     "field.subscriptionPrice": "Цена абонемента",
-    "field.subscriptionDiscount": "Скидка абонемента",
+    "field.subscriptionLessonPrice": "Цена за урок по абонементу",
     "field.quantity": "Часы",
     "field.student": "Ученик",
     "field.recipient": "Получатель",
@@ -809,6 +810,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noAvailableCourses": "Нет доступных курсов. Сначала добавьте курс.",
     "msg.chooseStudentAndCourse": "Выберите ученика и курс",
     "msg.discountRange": "Скидка должна быть от 0 до 100",
+    "msg.subscriptionLessonPriceRange": "Цена урока по абонементу должна быть 0 или больше",
     "msg.enrollmentUpdated": "Зачисление обновлено",
     "msg.enrollmentCreated": "Зачисление создано: {student} -> {course}",
     "msg.enrollmentCreatedFiltered":

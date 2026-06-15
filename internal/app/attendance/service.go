@@ -42,7 +42,7 @@ type Row struct {
 	BillingMode             string  `json:"billingMode"`             // Enrollment billing mode
 	LessonPrice             float64 `json:"lessonPrice"`             // Hourly rate for this enrollment
 	DiscountPct             float64 `json:"discountPct"`             // Personal discount percentage for the enrollment
-	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"` // Base subscription discount percentage
+	SubscriptionLessonPrice float64 `json:"subscriptionLessonPrice"` // Explicit subscription lesson price for this enrollment
 	Hours                   float64 `json:"hours"`                   // Hours attended in the month
 	HasRecord               bool    `json:"hasRecord"`               // Whether an AttendanceMonth record exists for this month
 	CanDelete               bool    `json:"canDelete"`               // Whether enrollment can be safely deleted
@@ -153,7 +153,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			BillingMode:             string(e.BillingMode),
 			LessonPrice:             money.CentsToEuros(c.LessonPriceCents),
 			DiscountPct:             utils.Round2(e.DiscountPct),
-			SubscriptionDiscountPct: utils.Round2(e.SubscriptionDiscountPct),
+			SubscriptionLessonPrice: utils.Round2(money.CentsToEuros(e.SubscriptionLessonPriceCents)),
 			Hours:                   hours,
 			HasRecord:               hasRecord,
 			CanDelete:               canDelete,

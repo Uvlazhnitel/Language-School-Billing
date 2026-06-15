@@ -27,8 +27,8 @@ const (
 	FieldChargeMaterials = "charge_materials"
 	// FieldDiscountPct holds the string denoting the discount_pct field in the database.
 	FieldDiscountPct = "discount_pct"
-	// FieldSubscriptionDiscountPct holds the string denoting the subscription_discount_pct field in the database.
-	FieldSubscriptionDiscountPct = "subscription_discount_pct"
+	// FieldSubscriptionLessonPriceCents holds the string denoting the subscription_lesson_price_cents field in the database.
+	FieldSubscriptionLessonPriceCents = "subscription_lesson_price_cents"
 	// FieldNote holds the string denoting the note field in the database.
 	FieldNote = "note"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -75,7 +75,7 @@ var Columns = []string{
 	FieldBillingMode,
 	FieldChargeMaterials,
 	FieldDiscountPct,
-	FieldSubscriptionDiscountPct,
+	FieldSubscriptionLessonPriceCents,
 	FieldNote,
 	FieldCreatedAt,
 	FieldUpdatedAt,
@@ -98,8 +98,8 @@ var (
 	DefaultChargeMaterials bool
 	// DefaultDiscountPct holds the default value on creation for the "discount_pct" field.
 	DefaultDiscountPct float64
-	// DefaultSubscriptionDiscountPct holds the default value on creation for the "subscription_discount_pct" field.
-	DefaultSubscriptionDiscountPct float64
+	// DefaultSubscriptionLessonPriceCents holds the default value on creation for the "subscription_lesson_price_cents" field.
+	DefaultSubscriptionLessonPriceCents int64
 	// DefaultNote holds the default value on creation for the "note" field.
 	DefaultNote string
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
@@ -171,9 +171,9 @@ func ByDiscountPct(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDiscountPct, opts...).ToFunc()
 }
 
-// BySubscriptionDiscountPct orders the results by the subscription_discount_pct field.
-func BySubscriptionDiscountPct(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSubscriptionDiscountPct, opts...).ToFunc()
+// BySubscriptionLessonPriceCents orders the results by the subscription_lesson_price_cents field.
+func BySubscriptionLessonPriceCents(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSubscriptionLessonPriceCents, opts...).ToFunc()
 }
 
 // ByNote orders the results by the note field.

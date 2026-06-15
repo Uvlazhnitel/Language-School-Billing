@@ -54,7 +54,7 @@ func TestGenerateDraftsSubscriptionWithoutLessonsDoesNotAddMaterials(t *testing.
 		SetCourseID(crs.ID).
 		SetBillingMode(enrollment.BillingModeSubscription).
 		SetDiscountPct(0).
-		SetSubscriptionDiscountPct(0).
+		SetSubscriptionLessonPriceCents(money.EurosToCents(20)).
 		SetNote("").
 		Save(ctx)
 	if err != nil {

@@ -105,7 +105,7 @@ func TestStudentCourseEnrollmentCRUD(t *testing.T) {
 		"billingMode":             "per_lesson",
 		"chargeMaterials":         false,
 		"discountPct":             0,
-		"subscriptionDiscountPct": 0,
+		"subscriptionLessonPrice": 0,
 		"note":                    "online",
 	})
 	if updated.ChargeMaterials {
@@ -196,6 +196,72 @@ func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 	summary := getJSON[backend.InvoiceSummaryDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/payment-summary")
 	if summary.Paid <= 0 {
 		t.Fatalf("summary paid = %f, want > 0", summary.Paid)
+	}
+}
+
+func TestIssuedInvoiceCanReopenAfterEnsuringPDF(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "PDF Reopen Student"})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Reopen Course",
+		"type":              "group",
+		"lessonPrice":       20,
+		"subscriptionPrice": 60,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
+	})
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      2026,
+		"month":     9,
+		"hours":     2,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  2026,
+		"month": 9,
+	})
+
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=9&status=all")
+	if len(invoices) != 1 {
+		t.Fatalf("invoice count = %d, want 1", len(invoices))
+	}
+
+	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
+	if issue.Number == "" {
+		t.Fatal("missing issue number")
+	}
+
+	pdfMeta := postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf", map[string]any{})
+	if pdfMeta["downloadUrl"] == "" {
+		t.Fatal("missing pdf downloadUrl")
+	}
+
+	invoiceDetails := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID))
+	resp, body := rawRequest(
+		t,
+		env.Client,
+		http.MethodPost,
+		env.Server.URL+"/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/reopen-draft",
+		bytes.NewReader([]byte(fmt.Sprintf(`{"version":%d}`, invoiceDetails.Version))),
+	)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("reopen after pdf status = %d body=%s, want 200", resp.StatusCode, body)
+	}
+
+	reopened := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID))
+	if reopened.Status != "draft" {
+		t.Fatalf("invoice status = %q, want draft", reopened.Status)
 	}
 }
 
@@ -607,7 +673,7 @@ func TestStaffCanManageEnrollmentMaterialsToggle(t *testing.T) {
 		"billingMode":             "per_lesson",
 		"chargeMaterials":         true,
 		"discountPct":             0,
-		"subscriptionDiscountPct": 0,
+		"subscriptionLessonPrice": 0,
 		"note":                    "offline",
 	})
 	if !updated.ChargeMaterials {

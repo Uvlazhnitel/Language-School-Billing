@@ -104,10 +104,10 @@ func init() {
 	enrollmentDescDiscountPct := enrollmentFields[4].Descriptor()
 	// enrollment.DefaultDiscountPct holds the default value on creation for the discount_pct field.
 	enrollment.DefaultDiscountPct = enrollmentDescDiscountPct.Default.(float64)
-	// enrollmentDescSubscriptionDiscountPct is the schema descriptor for subscription_discount_pct field.
-	enrollmentDescSubscriptionDiscountPct := enrollmentFields[5].Descriptor()
-	// enrollment.DefaultSubscriptionDiscountPct holds the default value on creation for the subscription_discount_pct field.
-	enrollment.DefaultSubscriptionDiscountPct = enrollmentDescSubscriptionDiscountPct.Default.(float64)
+	// enrollmentDescSubscriptionLessonPriceCents is the schema descriptor for subscription_lesson_price_cents field.
+	enrollmentDescSubscriptionLessonPriceCents := enrollmentFields[5].Descriptor()
+	// enrollment.DefaultSubscriptionLessonPriceCents holds the default value on creation for the subscription_lesson_price_cents field.
+	enrollment.DefaultSubscriptionLessonPriceCents = enrollmentDescSubscriptionLessonPriceCents.Default.(int64)
 	// enrollmentDescNote is the schema descriptor for note field.
 	enrollmentDescNote := enrollmentFields[6].Descriptor()
 	// enrollment.DefaultNote holds the default value on creation for the note field.

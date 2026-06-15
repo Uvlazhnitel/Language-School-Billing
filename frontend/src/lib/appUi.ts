@@ -206,9 +206,7 @@ export function clampPct(value: number): number {
 }
 
 export function subscriptionTotal(row: Row, lessonsHeld: number): number {
-  const totalDiscountPct = clampPct(row.discountPct + row.subscriptionDiscountPct);
-  const base = row.lessonPrice * lessonsHeld;
-  return Math.round(base * (1 - totalDiscountPct / 100) * 100) / 100;
+  return Math.round(row.subscriptionLessonPrice * lessonsHeld * 100) / 100;
 }
 
 export function normalizeHoursDraftInput(value: string): string | null {

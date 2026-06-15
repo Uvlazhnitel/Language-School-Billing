@@ -22,7 +22,7 @@ describe("studentActivity", () => {
           billingMode: "per_lesson",
           chargeMaterials: true,
           discountPct: 0,
-          subscriptionDiscountPct: 20,
+          subscriptionLessonPrice: 0,
           note: "",
           createdAt: "2026-06-03T11:15:00Z",
         },

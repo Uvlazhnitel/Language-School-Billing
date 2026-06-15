@@ -410,16 +410,7 @@ export function AttendanceScreen({
                 <td style={{ textAlign: "right" }}>
                   {row.billingMode === BillingModePerLesson
                     ? formatEUR(row.hours * row.lessonPrice)
-                    : formatEUR(
-                        row.lessonPrice *
-                          (subscriptionMonthLessons[row.courseId] ?? 0) *
-                          (1 -
-                            Math.max(
-                              0,
-                              Math.min(100, row.discountPct + row.subscriptionDiscountPct)
-                            ) /
-                              100)
-                      )}
+                    : formatEUR(row.subscriptionLessonPrice * (subscriptionMonthLessons[row.courseId] ?? 0))}
                 </td>
                 <td>
                   {row.billingMode === BillingModePerLesson &&

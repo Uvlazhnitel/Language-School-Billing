@@ -3,8 +3,10 @@ package infra
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"log"
+	"math"
 	"net/url"
 
 	"langschool/ent"
@@ -33,6 +35,10 @@ type DB struct {
 // automatically dropping existing columns or indexes from user databases.
 func Open(ctx context.Context, dbPath string) (*DB, error) {
 	dsn := buildDSN(dbPath)
+	legacySubscriptionPrices, err := loadLegacySubscriptionLessonPrices(ctx, dsn)
+	if err != nil {
+		return nil, err
+	}
 
 	client, err := ent.Open("sqlite3", dsn)
 	if err != nil {
@@ -42,6 +48,10 @@ func Open(ctx context.Context, dbPath string) (*DB, error) {
 	// Apply non-destructive automatic migrations only. Schema removals must be
 	// handled through explicit, manual migrations in future updates.
 	if err := client.Schema.Create(ctx); err != nil {
+		_ = client.Close()
+		return nil, err
+	}
+	if err := applyLegacySubscriptionLessonPrices(ctx, dsn, legacySubscriptionPrices); err != nil {
 		_ = client.Close()
 		return nil, err
 	}
@@ -59,4 +69,109 @@ func buildDSN(dbPath string) string {
 	params.Set("_journal_mode", "WAL")
 	params.Set("_synchronous", "FULL")
 	return fmt.Sprintf("file:%s?%s", dbPath, params.Encode())
+}
+
+func loadLegacySubscriptionLessonPrices(ctx context.Context, dsn string) (map[int]int64, error) {
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return nil, err
+	}
+	defer db.Close()
+
+	hasOldColumn, err := hasColumn(ctx, db, "enrollments", "subscription_discount_pct")
+	if err != nil {
+		return nil, err
+	}
+	hasNewColumn, err := hasColumn(ctx, db, "enrollments", "subscription_lesson_price_cents")
+	if err != nil {
+		return nil, err
+	}
+	if !hasOldColumn || hasNewColumn {
+		return nil, nil
+	}
+
+	rows, err := db.QueryContext(ctx, `
+SELECT e.id, e.billing_mode, e.discount_pct, e.subscription_discount_pct, COALESCE(c.lesson_price_cents, 0)
+FROM enrollments e
+LEFT JOIN courses c ON c.id = e.course_id
+`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	out := map[int]int64{}
+	for rows.Next() {
+		var (
+			id                      int
+			billingMode             string
+			discountPct             float64
+			subscriptionDiscountPct float64
+			lessonPriceCents        int64
+		)
+		if err := rows.Scan(&id, &billingMode, &discountPct, &subscriptionDiscountPct, &lessonPriceCents); err != nil {
+			return nil, err
+		}
+		if billingMode != "subscription" {
+			out[id] = 0
+			continue
+		}
+		totalDiscountPct := discountPct + subscriptionDiscountPct
+		if totalDiscountPct < 0 {
+			totalDiscountPct = 0
+		}
+		if totalDiscountPct > 100 {
+			totalDiscountPct = 100
+		}
+		out[id] = int64(math.Round(float64(lessonPriceCents) * (1 - totalDiscountPct/100.0)))
+	}
+	return out, rows.Err()
+}
+
+func applyLegacySubscriptionLessonPrices(ctx context.Context, dsn string, prices map[int]int64) error {
+	if len(prices) == 0 {
+		return nil
+	}
+
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	for enrollmentID, priceCents := range prices {
+		if _, err := db.ExecContext(
+			ctx,
+			`UPDATE enrollments SET subscription_lesson_price_cents = ? WHERE id = ? AND subscription_lesson_price_cents < 0`,
+			priceCents,
+			enrollmentID,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func hasColumn(ctx context.Context, db *sql.DB, tableName, columnName string) (bool, error) {
+	rows, err := db.QueryContext(ctx, "PRAGMA table_info("+tableName+")")
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var cid int
+		var name string
+		var dataType string
+		var notNull int
+		var defaultValue sql.NullString
+		var pk int
+		if err := rows.Scan(&cid, &name, &dataType, &notNull, &defaultValue, &pk); err != nil {
+			return false, err
+		}
+		if name == columnName {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
 }

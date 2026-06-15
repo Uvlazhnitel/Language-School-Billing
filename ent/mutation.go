@@ -3736,31 +3736,31 @@ func (m *CourseMonthStatMutation) ResetEdge(name string) error {
 // EnrollmentMutation represents an operation that mutates the Enrollment nodes in the graph.
 type EnrollmentMutation struct {
 	config
-	op                           Op
-	typ                          string
-	id                           *int
-	version                      *int
-	addversion                   *int
-	billing_mode                 *enrollment.BillingMode
-	charge_materials             *bool
-	discount_pct                 *float64
-	adddiscount_pct              *float64
-	subscription_discount_pct    *float64
-	addsubscription_discount_pct *float64
-	note                         *string
-	created_at                   *time.Time
-	updated_at                   *time.Time
-	clearedFields                map[string]struct{}
-	student                      *int
-	clearedstudent               bool
-	course                       *int
-	clearedcourse                bool
-	invoice_lines                map[int]struct{}
-	removedinvoice_lines         map[int]struct{}
-	clearedinvoice_lines         bool
-	done                         bool
-	oldValue                     func(context.Context) (*Enrollment, error)
-	predicates                   []predicate.Enrollment
+	op                                 Op
+	typ                                string
+	id                                 *int
+	version                            *int
+	addversion                         *int
+	billing_mode                       *enrollment.BillingMode
+	charge_materials                   *bool
+	discount_pct                       *float64
+	adddiscount_pct                    *float64
+	subscription_lesson_price_cents    *int64
+	addsubscription_lesson_price_cents *int64
+	note                               *string
+	created_at                         *time.Time
+	updated_at                         *time.Time
+	clearedFields                      map[string]struct{}
+	student                            *int
+	clearedstudent                     bool
+	course                             *int
+	clearedcourse                      bool
+	invoice_lines                      map[int]struct{}
+	removedinvoice_lines               map[int]struct{}
+	clearedinvoice_lines               bool
+	done                               bool
+	oldValue                           func(context.Context) (*Enrollment, error)
+	predicates                         []predicate.Enrollment
 }
 
 var _ ent.Mutation = (*EnrollmentMutation)(nil)
@@ -4117,60 +4117,60 @@ func (m *EnrollmentMutation) ResetDiscountPct() {
 	m.adddiscount_pct = nil
 }
 
-// SetSubscriptionDiscountPct sets the "subscription_discount_pct" field.
-func (m *EnrollmentMutation) SetSubscriptionDiscountPct(f float64) {
-	m.subscription_discount_pct = &f
-	m.addsubscription_discount_pct = nil
+// SetSubscriptionLessonPriceCents sets the "subscription_lesson_price_cents" field.
+func (m *EnrollmentMutation) SetSubscriptionLessonPriceCents(i int64) {
+	m.subscription_lesson_price_cents = &i
+	m.addsubscription_lesson_price_cents = nil
 }
 
-// SubscriptionDiscountPct returns the value of the "subscription_discount_pct" field in the mutation.
-func (m *EnrollmentMutation) SubscriptionDiscountPct() (r float64, exists bool) {
-	v := m.subscription_discount_pct
+// SubscriptionLessonPriceCents returns the value of the "subscription_lesson_price_cents" field in the mutation.
+func (m *EnrollmentMutation) SubscriptionLessonPriceCents() (r int64, exists bool) {
+	v := m.subscription_lesson_price_cents
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldSubscriptionDiscountPct returns the old "subscription_discount_pct" field's value of the Enrollment entity.
+// OldSubscriptionLessonPriceCents returns the old "subscription_lesson_price_cents" field's value of the Enrollment entity.
 // If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *EnrollmentMutation) OldSubscriptionDiscountPct(ctx context.Context) (v float64, err error) {
+func (m *EnrollmentMutation) OldSubscriptionLessonPriceCents(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSubscriptionDiscountPct is only allowed on UpdateOne operations")
+		return v, errors.New("OldSubscriptionLessonPriceCents is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSubscriptionDiscountPct requires an ID field in the mutation")
+		return v, errors.New("OldSubscriptionLessonPriceCents requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSubscriptionDiscountPct: %w", err)
+		return v, fmt.Errorf("querying old value for OldSubscriptionLessonPriceCents: %w", err)
 	}
-	return oldValue.SubscriptionDiscountPct, nil
+	return oldValue.SubscriptionLessonPriceCents, nil
 }
 
-// AddSubscriptionDiscountPct adds f to the "subscription_discount_pct" field.
-func (m *EnrollmentMutation) AddSubscriptionDiscountPct(f float64) {
-	if m.addsubscription_discount_pct != nil {
-		*m.addsubscription_discount_pct += f
+// AddSubscriptionLessonPriceCents adds i to the "subscription_lesson_price_cents" field.
+func (m *EnrollmentMutation) AddSubscriptionLessonPriceCents(i int64) {
+	if m.addsubscription_lesson_price_cents != nil {
+		*m.addsubscription_lesson_price_cents += i
 	} else {
-		m.addsubscription_discount_pct = &f
+		m.addsubscription_lesson_price_cents = &i
 	}
 }
 
-// AddedSubscriptionDiscountPct returns the value that was added to the "subscription_discount_pct" field in this mutation.
-func (m *EnrollmentMutation) AddedSubscriptionDiscountPct() (r float64, exists bool) {
-	v := m.addsubscription_discount_pct
+// AddedSubscriptionLessonPriceCents returns the value that was added to the "subscription_lesson_price_cents" field in this mutation.
+func (m *EnrollmentMutation) AddedSubscriptionLessonPriceCents() (r int64, exists bool) {
+	v := m.addsubscription_lesson_price_cents
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// ResetSubscriptionDiscountPct resets all changes to the "subscription_discount_pct" field.
-func (m *EnrollmentMutation) ResetSubscriptionDiscountPct() {
-	m.subscription_discount_pct = nil
-	m.addsubscription_discount_pct = nil
+// ResetSubscriptionLessonPriceCents resets all changes to the "subscription_lesson_price_cents" field.
+func (m *EnrollmentMutation) ResetSubscriptionLessonPriceCents() {
+	m.subscription_lesson_price_cents = nil
+	m.addsubscription_lesson_price_cents = nil
 }
 
 // SetNote sets the "note" field.
@@ -4468,8 +4468,8 @@ func (m *EnrollmentMutation) Fields() []string {
 	if m.discount_pct != nil {
 		fields = append(fields, enrollment.FieldDiscountPct)
 	}
-	if m.subscription_discount_pct != nil {
-		fields = append(fields, enrollment.FieldSubscriptionDiscountPct)
+	if m.subscription_lesson_price_cents != nil {
+		fields = append(fields, enrollment.FieldSubscriptionLessonPriceCents)
 	}
 	if m.note != nil {
 		fields = append(fields, enrollment.FieldNote)
@@ -4500,8 +4500,8 @@ func (m *EnrollmentMutation) Field(name string) (ent.Value, bool) {
 		return m.ChargeMaterials()
 	case enrollment.FieldDiscountPct:
 		return m.DiscountPct()
-	case enrollment.FieldSubscriptionDiscountPct:
-		return m.SubscriptionDiscountPct()
+	case enrollment.FieldSubscriptionLessonPriceCents:
+		return m.SubscriptionLessonPriceCents()
 	case enrollment.FieldNote:
 		return m.Note()
 	case enrollment.FieldCreatedAt:
@@ -4529,8 +4529,8 @@ func (m *EnrollmentMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldChargeMaterials(ctx)
 	case enrollment.FieldDiscountPct:
 		return m.OldDiscountPct(ctx)
-	case enrollment.FieldSubscriptionDiscountPct:
-		return m.OldSubscriptionDiscountPct(ctx)
+	case enrollment.FieldSubscriptionLessonPriceCents:
+		return m.OldSubscriptionLessonPriceCents(ctx)
 	case enrollment.FieldNote:
 		return m.OldNote(ctx)
 	case enrollment.FieldCreatedAt:
@@ -4588,12 +4588,12 @@ func (m *EnrollmentMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDiscountPct(v)
 		return nil
-	case enrollment.FieldSubscriptionDiscountPct:
-		v, ok := value.(float64)
+	case enrollment.FieldSubscriptionLessonPriceCents:
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetSubscriptionDiscountPct(v)
+		m.SetSubscriptionLessonPriceCents(v)
 		return nil
 	case enrollment.FieldNote:
 		v, ok := value.(string)
@@ -4630,8 +4630,8 @@ func (m *EnrollmentMutation) AddedFields() []string {
 	if m.adddiscount_pct != nil {
 		fields = append(fields, enrollment.FieldDiscountPct)
 	}
-	if m.addsubscription_discount_pct != nil {
-		fields = append(fields, enrollment.FieldSubscriptionDiscountPct)
+	if m.addsubscription_lesson_price_cents != nil {
+		fields = append(fields, enrollment.FieldSubscriptionLessonPriceCents)
 	}
 	return fields
 }
@@ -4645,8 +4645,8 @@ func (m *EnrollmentMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedVersion()
 	case enrollment.FieldDiscountPct:
 		return m.AddedDiscountPct()
-	case enrollment.FieldSubscriptionDiscountPct:
-		return m.AddedSubscriptionDiscountPct()
+	case enrollment.FieldSubscriptionLessonPriceCents:
+		return m.AddedSubscriptionLessonPriceCents()
 	}
 	return nil, false
 }
@@ -4670,12 +4670,12 @@ func (m *EnrollmentMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddDiscountPct(v)
 		return nil
-	case enrollment.FieldSubscriptionDiscountPct:
-		v, ok := value.(float64)
+	case enrollment.FieldSubscriptionLessonPriceCents:
+		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.AddSubscriptionDiscountPct(v)
+		m.AddSubscriptionLessonPriceCents(v)
 		return nil
 	}
 	return fmt.Errorf("unknown Enrollment numeric field %s", name)
@@ -4737,8 +4737,8 @@ func (m *EnrollmentMutation) ResetField(name string) error {
 	case enrollment.FieldDiscountPct:
 		m.ResetDiscountPct()
 		return nil
-	case enrollment.FieldSubscriptionDiscountPct:
-		m.ResetSubscriptionDiscountPct()
+	case enrollment.FieldSubscriptionLessonPriceCents:
+		m.ResetSubscriptionLessonPriceCents()
 		return nil
 	case enrollment.FieldNote:
 		m.ResetNote()

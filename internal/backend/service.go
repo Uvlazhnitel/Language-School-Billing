@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -80,7 +81,7 @@ type EnrollmentDTO struct {
 	BillingMode             string  `json:"billingMode"`
 	ChargeMaterials         bool    `json:"chargeMaterials"`
 	DiscountPct             float64 `json:"discountPct"`
-	SubscriptionDiscountPct float64 `json:"subscriptionDiscountPct"`
+	SubscriptionLessonPrice float64 `json:"subscriptionLessonPrice"`
 	Note                    string  `json:"note"`
 	CreatedAt               string  `json:"createdAt"`
 }
@@ -1341,7 +1342,7 @@ func (s *Service) EnrollmentList(ctx context.Context, studentID *int, courseID *
 	return out, nil
 }
 
-func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int, billingMode string, chargeMaterials bool, discountPct, subscriptionDiscountPct float64, note string) (*EnrollmentDTO, error) {
+func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int, billingMode string, chargeMaterials bool, discountPct, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
 	if studentID <= 0 || courseID <= 0 {
 		return nil, errors.New("studentID and courseID must be > 0")
 	}
@@ -1352,8 +1353,11 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 	if err := validateDiscountPct(discountPct); err != nil {
 		return nil, err
 	}
-	if err := validateDiscountPct(subscriptionDiscountPct); err != nil {
+	if err := validateSubscriptionLessonPrice(subscriptionLessonPrice); err != nil {
 		return nil, err
+	}
+	if billingMode != BillingModeSubscription {
+		subscriptionLessonPrice = 0
 	}
 	st, err := s.rt.DB.Ent.Student.Get(ctx, studentID)
 	if err != nil {
@@ -1380,7 +1384,7 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetChargeMaterials(chargeMaterials).
 		SetDiscountPct(discountPct).
-		SetSubscriptionDiscountPct(subscriptionDiscountPct).
+		SetSubscriptionLessonPriceCents(money.EurosToCents(subscriptionLessonPrice)).
 		SetNote(sanitizeInput(note)).
 		Save(ctx)
 	if err != nil {
@@ -1398,7 +1402,7 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 	return &dto, nil
 }
 
-func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billingMode string, chargeMaterials bool, discountPct, subscriptionDiscountPct float64, note string) (*EnrollmentDTO, error) {
+func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billingMode string, chargeMaterials bool, discountPct, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
 	billingMode = strings.TrimSpace(billingMode)
 	if err := validateBillingMode(billingMode); err != nil {
 		return nil, err
@@ -1406,15 +1410,18 @@ func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billin
 	if err := validateDiscountPct(discountPct); err != nil {
 		return nil, err
 	}
-	if err := validateDiscountPct(subscriptionDiscountPct); err != nil {
+	if err := validateSubscriptionLessonPrice(subscriptionLessonPrice); err != nil {
 		return nil, err
+	}
+	if billingMode != BillingModeSubscription {
+		subscriptionLessonPrice = 0
 	}
 	if _, err := s.rt.DB.Ent.Enrollment.UpdateOneID(enrollmentID).
 		AddVersion(1).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetChargeMaterials(chargeMaterials).
 		SetDiscountPct(discountPct).
-		SetSubscriptionDiscountPct(subscriptionDiscountPct).
+		SetSubscriptionLessonPriceCents(money.EurosToCents(subscriptionLessonPrice)).
 		SetNote(sanitizeInput(note)).
 		Save(ctx); err != nil {
 		return nil, err
@@ -1431,7 +1438,7 @@ func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billin
 	return &dto, nil
 }
 
-func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID, version int, billingMode string, chargeMaterials bool, discountPct, subscriptionDiscountPct float64, note string) (*EnrollmentDTO, error) {
+func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID, version int, billingMode string, chargeMaterials bool, discountPct, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
 	billingMode = strings.TrimSpace(billingMode)
 	if err := validateVersion(version); err != nil {
 		return nil, err
@@ -1442,8 +1449,11 @@ func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID,
 	if err := validateDiscountPct(discountPct); err != nil {
 		return nil, err
 	}
-	if err := validateDiscountPct(subscriptionDiscountPct); err != nil {
+	if err := validateSubscriptionLessonPrice(subscriptionLessonPrice); err != nil {
 		return nil, err
+	}
+	if billingMode != BillingModeSubscription {
+		subscriptionLessonPrice = 0
 	}
 	if _, err := s.rt.DB.Ent.Enrollment.UpdateOneID(enrollmentID).
 		Where(enrollment.VersionEQ(version)).
@@ -1451,7 +1461,7 @@ func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID,
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetChargeMaterials(chargeMaterials).
 		SetDiscountPct(discountPct).
-		SetSubscriptionDiscountPct(subscriptionDiscountPct).
+		SetSubscriptionLessonPriceCents(money.EurosToCents(subscriptionLessonPrice)).
 		SetNote(sanitizeInput(note)).
 		Save(ctx); err != nil {
 		return nil, staleOnNotFound(err)
@@ -1538,7 +1548,7 @@ func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
 		BillingMode:             string(e.BillingMode),
 		ChargeMaterials:         e.ChargeMaterials,
 		DiscountPct:             e.DiscountPct,
-		SubscriptionDiscountPct: e.SubscriptionDiscountPct,
+		SubscriptionLessonPrice: money.CentsToEuros(e.SubscriptionLessonPriceCents),
 		Note:                    e.Note,
 		CreatedAt:               formatOptionalTime(e.CreatedAt),
 	}
@@ -1622,6 +1632,13 @@ func validateBillingMode(billingMode string) error {
 func validateDiscountPct(discountPct float64) error {
 	if discountPct < 0 || discountPct > 100 {
 		return errors.New("discountPct must be between 0 and 100")
+	}
+	return nil
+}
+
+func validateSubscriptionLessonPrice(subscriptionLessonPrice float64) error {
+	if math.IsNaN(subscriptionLessonPrice) || math.IsInf(subscriptionLessonPrice, 0) || subscriptionLessonPrice < 0 {
+		return errors.New("subscriptionLessonPrice must be >= 0")
 	}
 	return nil
 }

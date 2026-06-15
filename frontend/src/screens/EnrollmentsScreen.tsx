@@ -34,7 +34,7 @@ type EnrollmentsScreenProps = {
   enrollmentMode: "per_lesson" | "subscription";
   enrollmentChargeMaterials: boolean;
   enrollmentDiscount: string;
-  enrollmentSubscriptionDiscount: string;
+  enrollmentSubscriptionLessonPrice: string;
   enrollmentNote: string;
   studentComboRef: RefObject<HTMLDivElement | null>;
   onStudentSearchChange: (value: string) => void;
@@ -44,7 +44,7 @@ type EnrollmentsScreenProps = {
   onEnrollmentModeChange: (value: "per_lesson" | "subscription") => void;
   onEnrollmentChargeMaterialsChange: (value: boolean) => void;
   onEnrollmentDiscountChange: (value: string) => void;
-  onEnrollmentSubscriptionDiscountChange: (value: string) => void;
+  onEnrollmentSubscriptionLessonPriceChange: (value: string) => void;
   onEnrollmentNoteChange: (value: string) => void;
   onSaveEnrollment: () => void;
   onCloseEnrollmentModal: () => void;
@@ -78,7 +78,7 @@ export function EnrollmentsScreen({
   enrollmentMode,
   enrollmentChargeMaterials,
   enrollmentDiscount,
-  enrollmentSubscriptionDiscount,
+  enrollmentSubscriptionLessonPrice,
   enrollmentNote,
   studentComboRef,
   onStudentSearchChange,
@@ -88,7 +88,7 @@ export function EnrollmentsScreen({
   onEnrollmentModeChange,
   onEnrollmentChargeMaterialsChange,
   onEnrollmentDiscountChange,
-  onEnrollmentSubscriptionDiscountChange,
+  onEnrollmentSubscriptionLessonPriceChange,
   onEnrollmentNoteChange,
   onSaveEnrollment,
   onCloseEnrollmentModal,
@@ -230,7 +230,7 @@ export function EnrollmentsScreen({
           mode={enrollmentMode}
           chargeMaterials={enrollmentChargeMaterials}
           discount={enrollmentDiscount}
-          subscriptionDiscount={enrollmentSubscriptionDiscount}
+          subscriptionLessonPrice={enrollmentSubscriptionLessonPrice}
           note={enrollmentNote}
           allCourses={allCourses}
           studentComboRef={studentComboRef as Ref<HTMLDivElement>}
@@ -241,7 +241,7 @@ export function EnrollmentsScreen({
           onModeChange={onEnrollmentModeChange}
           onChargeMaterialsChange={onEnrollmentChargeMaterialsChange}
           onDiscountChange={onEnrollmentDiscountChange}
-          onSubscriptionDiscountChange={onEnrollmentSubscriptionDiscountChange}
+          onSubscriptionLessonPriceChange={onEnrollmentSubscriptionLessonPriceChange}
           onNoteChange={onEnrollmentNoteChange}
           onSave={onSaveEnrollment}
           onCancel={onCloseEnrollmentModal}

@@ -160,15 +160,11 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 
 // buildSubscriptionLine creates an invoice line for subscription billing
 func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPriceCents int64, lessonsHeld float64) (*ent.InvoiceLineCreate, int64) {
-	baseAmountCents := money.MulFloatToCents(lessonsHeld, lessonPriceCents)
-	totalDiscountPct := en.SubscriptionDiscountPct + en.DiscountPct
-	if totalDiscountPct > 100 {
-		totalDiscountPct = 100
+	unitPriceCents := en.SubscriptionLessonPriceCents
+	if unitPriceCents < 0 {
+		unitPriceCents = lessonPriceCents
 	}
-	if totalDiscountPct < 0 {
-		totalDiscountPct = 0
-	}
-	amountCents := int64(float64(baseAmountCents) * (1 - totalDiscountPct/100.0))
+	amountCents := money.MulFloatToCents(lessonsHeld, unitPriceCents)
 	courseName := ""
 	if c, err := s.db.Course.Get(ctx, en.CourseID); err == nil {
 		courseName = c.Name
@@ -179,7 +175,7 @@ func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment,
 		SetEnrollmentID(en.ID).
 		SetDescription(desc).
 		SetQty(lessonsHeld).
-		SetUnitPriceCents(lessonPriceCents).
+		SetUnitPriceCents(unitPriceCents).
 		SetAmountCents(amountCents)
 
 	return line, amountCents

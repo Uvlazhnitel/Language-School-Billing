@@ -31,8 +31,8 @@ type Enrollment struct {
 	ChargeMaterials bool `json:"charge_materials,omitempty"`
 	// DiscountPct holds the value of the "discount_pct" field.
 	DiscountPct float64 `json:"discount_pct,omitempty"`
-	// SubscriptionDiscountPct holds the value of the "subscription_discount_pct" field.
-	SubscriptionDiscountPct float64 `json:"subscription_discount_pct,omitempty"`
+	// SubscriptionLessonPriceCents holds the value of the "subscription_lesson_price_cents" field.
+	SubscriptionLessonPriceCents int64 `json:"subscription_lesson_price_cents,omitempty"`
 	// Note holds the value of the "note" field.
 	Note string `json:"note,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -96,9 +96,9 @@ func (*Enrollment) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case enrollment.FieldChargeMaterials:
 			values[i] = new(sql.NullBool)
-		case enrollment.FieldDiscountPct, enrollment.FieldSubscriptionDiscountPct:
+		case enrollment.FieldDiscountPct:
 			values[i] = new(sql.NullFloat64)
-		case enrollment.FieldID, enrollment.FieldVersion, enrollment.FieldStudentID, enrollment.FieldCourseID:
+		case enrollment.FieldID, enrollment.FieldVersion, enrollment.FieldStudentID, enrollment.FieldCourseID, enrollment.FieldSubscriptionLessonPriceCents:
 			values[i] = new(sql.NullInt64)
 		case enrollment.FieldBillingMode, enrollment.FieldNote:
 			values[i] = new(sql.NullString)
@@ -161,11 +161,11 @@ func (_m *Enrollment) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.DiscountPct = value.Float64
 			}
-		case enrollment.FieldSubscriptionDiscountPct:
-			if value, ok := values[i].(*sql.NullFloat64); !ok {
-				return fmt.Errorf("unexpected type %T for field subscription_discount_pct", values[i])
+		case enrollment.FieldSubscriptionLessonPriceCents:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field subscription_lesson_price_cents", values[i])
 			} else if value.Valid {
-				_m.SubscriptionDiscountPct = value.Float64
+				_m.SubscriptionLessonPriceCents = value.Int64
 			}
 		case enrollment.FieldNote:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -256,8 +256,8 @@ func (_m *Enrollment) String() string {
 	builder.WriteString("discount_pct=")
 	builder.WriteString(fmt.Sprintf("%v", _m.DiscountPct))
 	builder.WriteString(", ")
-	builder.WriteString("subscription_discount_pct=")
-	builder.WriteString(fmt.Sprintf("%v", _m.SubscriptionDiscountPct))
+	builder.WriteString("subscription_lesson_price_cents=")
+	builder.WriteString(fmt.Sprintf("%v", _m.SubscriptionLessonPriceCents))
 	builder.WriteString(", ")
 	builder.WriteString("note=")
 	builder.WriteString(_m.Note)

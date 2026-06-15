@@ -155,7 +155,7 @@ var (
 		{Name: "billing_mode", Type: field.TypeEnum, Enums: []string{"subscription", "per_lesson"}},
 		{Name: "charge_materials", Type: field.TypeBool, Default: true},
 		{Name: "discount_pct", Type: field.TypeFloat64, Default: 0},
-		{Name: "subscription_discount_pct", Type: field.TypeFloat64, Default: 20},
+		{Name: "subscription_lesson_price_cents", Type: field.TypeInt64, Default: -1},
 		{Name: "note", Type: field.TypeString, Default: ""},
 		{Name: "created_at", Type: field.TypeTime, Nullable: true},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},

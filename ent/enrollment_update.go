@@ -129,24 +129,24 @@ func (_u *EnrollmentUpdate) AddDiscountPct(v float64) *EnrollmentUpdate {
 	return _u
 }
 
-// SetSubscriptionDiscountPct sets the "subscription_discount_pct" field.
-func (_u *EnrollmentUpdate) SetSubscriptionDiscountPct(v float64) *EnrollmentUpdate {
-	_u.mutation.ResetSubscriptionDiscountPct()
-	_u.mutation.SetSubscriptionDiscountPct(v)
+// SetSubscriptionLessonPriceCents sets the "subscription_lesson_price_cents" field.
+func (_u *EnrollmentUpdate) SetSubscriptionLessonPriceCents(v int64) *EnrollmentUpdate {
+	_u.mutation.ResetSubscriptionLessonPriceCents()
+	_u.mutation.SetSubscriptionLessonPriceCents(v)
 	return _u
 }
 
-// SetNillableSubscriptionDiscountPct sets the "subscription_discount_pct" field if the given value is not nil.
-func (_u *EnrollmentUpdate) SetNillableSubscriptionDiscountPct(v *float64) *EnrollmentUpdate {
+// SetNillableSubscriptionLessonPriceCents sets the "subscription_lesson_price_cents" field if the given value is not nil.
+func (_u *EnrollmentUpdate) SetNillableSubscriptionLessonPriceCents(v *int64) *EnrollmentUpdate {
 	if v != nil {
-		_u.SetSubscriptionDiscountPct(*v)
+		_u.SetSubscriptionLessonPriceCents(*v)
 	}
 	return _u
 }
 
-// AddSubscriptionDiscountPct adds value to the "subscription_discount_pct" field.
-func (_u *EnrollmentUpdate) AddSubscriptionDiscountPct(v float64) *EnrollmentUpdate {
-	_u.mutation.AddSubscriptionDiscountPct(v)
+// AddSubscriptionLessonPriceCents adds value to the "subscription_lesson_price_cents" field.
+func (_u *EnrollmentUpdate) AddSubscriptionLessonPriceCents(v int64) *EnrollmentUpdate {
+	_u.mutation.AddSubscriptionLessonPriceCents(v)
 	return _u
 }
 
@@ -341,11 +341,11 @@ func (_u *EnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if value, ok := _u.mutation.AddedDiscountPct(); ok {
 		_spec.AddField(enrollment.FieldDiscountPct, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.SubscriptionDiscountPct(); ok {
-		_spec.SetField(enrollment.FieldSubscriptionDiscountPct, field.TypeFloat64, value)
+	if value, ok := _u.mutation.SubscriptionLessonPriceCents(); ok {
+		_spec.SetField(enrollment.FieldSubscriptionLessonPriceCents, field.TypeInt64, value)
 	}
-	if value, ok := _u.mutation.AddedSubscriptionDiscountPct(); ok {
-		_spec.AddField(enrollment.FieldSubscriptionDiscountPct, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedSubscriptionLessonPriceCents(); ok {
+		_spec.AddField(enrollment.FieldSubscriptionLessonPriceCents, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(enrollment.FieldNote, field.TypeString, value)
@@ -583,24 +583,24 @@ func (_u *EnrollmentUpdateOne) AddDiscountPct(v float64) *EnrollmentUpdateOne {
 	return _u
 }
 
-// SetSubscriptionDiscountPct sets the "subscription_discount_pct" field.
-func (_u *EnrollmentUpdateOne) SetSubscriptionDiscountPct(v float64) *EnrollmentUpdateOne {
-	_u.mutation.ResetSubscriptionDiscountPct()
-	_u.mutation.SetSubscriptionDiscountPct(v)
+// SetSubscriptionLessonPriceCents sets the "subscription_lesson_price_cents" field.
+func (_u *EnrollmentUpdateOne) SetSubscriptionLessonPriceCents(v int64) *EnrollmentUpdateOne {
+	_u.mutation.ResetSubscriptionLessonPriceCents()
+	_u.mutation.SetSubscriptionLessonPriceCents(v)
 	return _u
 }
 
-// SetNillableSubscriptionDiscountPct sets the "subscription_discount_pct" field if the given value is not nil.
-func (_u *EnrollmentUpdateOne) SetNillableSubscriptionDiscountPct(v *float64) *EnrollmentUpdateOne {
+// SetNillableSubscriptionLessonPriceCents sets the "subscription_lesson_price_cents" field if the given value is not nil.
+func (_u *EnrollmentUpdateOne) SetNillableSubscriptionLessonPriceCents(v *int64) *EnrollmentUpdateOne {
 	if v != nil {
-		_u.SetSubscriptionDiscountPct(*v)
+		_u.SetSubscriptionLessonPriceCents(*v)
 	}
 	return _u
 }
 
-// AddSubscriptionDiscountPct adds value to the "subscription_discount_pct" field.
-func (_u *EnrollmentUpdateOne) AddSubscriptionDiscountPct(v float64) *EnrollmentUpdateOne {
-	_u.mutation.AddSubscriptionDiscountPct(v)
+// AddSubscriptionLessonPriceCents adds value to the "subscription_lesson_price_cents" field.
+func (_u *EnrollmentUpdateOne) AddSubscriptionLessonPriceCents(v int64) *EnrollmentUpdateOne {
+	_u.mutation.AddSubscriptionLessonPriceCents(v)
 	return _u
 }
 
@@ -825,11 +825,11 @@ func (_u *EnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Enrollment, 
 	if value, ok := _u.mutation.AddedDiscountPct(); ok {
 		_spec.AddField(enrollment.FieldDiscountPct, field.TypeFloat64, value)
 	}
-	if value, ok := _u.mutation.SubscriptionDiscountPct(); ok {
-		_spec.SetField(enrollment.FieldSubscriptionDiscountPct, field.TypeFloat64, value)
+	if value, ok := _u.mutation.SubscriptionLessonPriceCents(); ok {
+		_spec.SetField(enrollment.FieldSubscriptionLessonPriceCents, field.TypeInt64, value)
 	}
-	if value, ok := _u.mutation.AddedSubscriptionDiscountPct(); ok {
-		_spec.AddField(enrollment.FieldSubscriptionDiscountPct, field.TypeFloat64, value)
+	if value, ok := _u.mutation.AddedSubscriptionLessonPriceCents(); ok {
+		_spec.AddField(enrollment.FieldSubscriptionLessonPriceCents, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(enrollment.FieldNote, field.TypeString, value)

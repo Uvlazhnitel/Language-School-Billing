@@ -239,7 +239,7 @@ export const lvTranslations: Record<string, string> = {
   "field.backups": "Rezerves kopijas",
   "field.lessonPrice": "Stundas cena",
   "field.subscriptionPrice": "Abonementa cena",
-  "field.subscriptionDiscount": "Abonementa atlaide",
+  "field.subscriptionLessonPrice": "Abonementa nodarbības cena",
   "field.quantity": "Stundas",
   "field.student": "Skolēns",
   "field.recipient": "Saņēmējs",
@@ -305,6 +305,7 @@ export const lvTranslations: Record<string, string> = {
   "msg.noAvailableCourses": "Kursu vēl nav. Vispirms pievienojiet kursu.",
   "msg.chooseStudentAndCourse": "Izvēlieties skolēnu un kursu",
   "msg.discountRange": "Atlaidei jābūt no 0 līdz 100",
+  "msg.subscriptionLessonPriceRange": "Abonementa nodarbības cenai jābūt 0 vai lielākai",
   "msg.enrollmentUpdated": "Uzņemšana atjaunināta",
   "msg.enrollmentCreated": "Uzņemšana izveidota: {student} -> {course}",
   "msg.enrollmentCreatedFiltered":

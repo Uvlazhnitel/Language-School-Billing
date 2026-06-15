@@ -83,16 +83,16 @@ func (_c *EnrollmentCreate) SetNillableDiscountPct(v *float64) *EnrollmentCreate
 	return _c
 }
 
-// SetSubscriptionDiscountPct sets the "subscription_discount_pct" field.
-func (_c *EnrollmentCreate) SetSubscriptionDiscountPct(v float64) *EnrollmentCreate {
-	_c.mutation.SetSubscriptionDiscountPct(v)
+// SetSubscriptionLessonPriceCents sets the "subscription_lesson_price_cents" field.
+func (_c *EnrollmentCreate) SetSubscriptionLessonPriceCents(v int64) *EnrollmentCreate {
+	_c.mutation.SetSubscriptionLessonPriceCents(v)
 	return _c
 }
 
-// SetNillableSubscriptionDiscountPct sets the "subscription_discount_pct" field if the given value is not nil.
-func (_c *EnrollmentCreate) SetNillableSubscriptionDiscountPct(v *float64) *EnrollmentCreate {
+// SetNillableSubscriptionLessonPriceCents sets the "subscription_lesson_price_cents" field if the given value is not nil.
+func (_c *EnrollmentCreate) SetNillableSubscriptionLessonPriceCents(v *int64) *EnrollmentCreate {
 	if v != nil {
-		_c.SetSubscriptionDiscountPct(*v)
+		_c.SetSubscriptionLessonPriceCents(*v)
 	}
 	return _c
 }
@@ -211,9 +211,9 @@ func (_c *EnrollmentCreate) defaults() {
 		v := enrollment.DefaultDiscountPct
 		_c.mutation.SetDiscountPct(v)
 	}
-	if _, ok := _c.mutation.SubscriptionDiscountPct(); !ok {
-		v := enrollment.DefaultSubscriptionDiscountPct
-		_c.mutation.SetSubscriptionDiscountPct(v)
+	if _, ok := _c.mutation.SubscriptionLessonPriceCents(); !ok {
+		v := enrollment.DefaultSubscriptionLessonPriceCents
+		_c.mutation.SetSubscriptionLessonPriceCents(v)
 	}
 	if _, ok := _c.mutation.Note(); !ok {
 		v := enrollment.DefaultNote
@@ -254,8 +254,8 @@ func (_c *EnrollmentCreate) check() error {
 	if _, ok := _c.mutation.DiscountPct(); !ok {
 		return &ValidationError{Name: "discount_pct", err: errors.New(`ent: missing required field "Enrollment.discount_pct"`)}
 	}
-	if _, ok := _c.mutation.SubscriptionDiscountPct(); !ok {
-		return &ValidationError{Name: "subscription_discount_pct", err: errors.New(`ent: missing required field "Enrollment.subscription_discount_pct"`)}
+	if _, ok := _c.mutation.SubscriptionLessonPriceCents(); !ok {
+		return &ValidationError{Name: "subscription_lesson_price_cents", err: errors.New(`ent: missing required field "Enrollment.subscription_lesson_price_cents"`)}
 	}
 	if _, ok := _c.mutation.Note(); !ok {
 		return &ValidationError{Name: "note", err: errors.New(`ent: missing required field "Enrollment.note"`)}
@@ -308,9 +308,9 @@ func (_c *EnrollmentCreate) createSpec() (*Enrollment, *sqlgraph.CreateSpec) {
 		_spec.SetField(enrollment.FieldDiscountPct, field.TypeFloat64, value)
 		_node.DiscountPct = value
 	}
-	if value, ok := _c.mutation.SubscriptionDiscountPct(); ok {
-		_spec.SetField(enrollment.FieldSubscriptionDiscountPct, field.TypeFloat64, value)
-		_node.SubscriptionDiscountPct = value
+	if value, ok := _c.mutation.SubscriptionLessonPriceCents(); ok {
+		_spec.SetField(enrollment.FieldSubscriptionLessonPriceCents, field.TypeInt64, value)
+		_node.SubscriptionLessonPriceCents = value
 	}
 	if value, ok := _c.mutation.Note(); ok {
 		_spec.SetField(enrollment.FieldNote, field.TypeString, value)

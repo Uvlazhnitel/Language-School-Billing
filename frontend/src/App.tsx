@@ -30,6 +30,7 @@ import {
   InvoiceListItemView,
   InvoiceDTO,
 } from "./lib/invoices";
+import { getInvoiceMenuActions } from "./lib/invoiceUi";
 
 import {
   listStudents,
@@ -999,7 +1000,7 @@ export default function App() {
   const [efMode, setEfMode] = useState<"subscription" | "per_lesson">("per_lesson");
   const [efChargeMaterials, setEfChargeMaterials] = useState(true);
   const [efDiscount, setEfDiscount] = useState("0");
-  const [efSubscriptionDiscount, setEfSubscriptionDiscount] = useState("20");
+  const [efSubscriptionLessonPrice, setEfSubscriptionLessonPrice] = useState("0");
   const [efNote, setEfNote] = useState("");
 
   const activeStudents = useMemo(() => allStudents.filter((s) => s.isActive), [allStudents]);
@@ -1030,6 +1031,11 @@ export default function App() {
       document.removeEventListener("mousedown", handlePointerDown);
     };
   }, [efStudentPickerOpen]);
+
+  const selectedEnrollmentCourse = useMemo(
+    () => allCourses.find((course) => course.id === efCourseId) ?? null,
+    [allCourses, efCourseId]
+  );
 
   const loadEnrollments = useCallback(async () => {
     setEnrLoading(true);
@@ -1078,7 +1084,7 @@ export default function App() {
     setEfMode("per_lesson");
     setEfChargeMaterials(true);
     setEfDiscount("0");
-    setEfSubscriptionDiscount("20");
+    setEfSubscriptionLessonPrice(String(allCourses[0]?.lessonPrice ?? 0));
     setEfNote("");
     setEnrModalOpen(true);
   }
@@ -1092,15 +1098,30 @@ export default function App() {
     setEfMode(e.billingMode);
     setEfChargeMaterials(e.chargeMaterials);
     setEfDiscount(String(e.discountPct));
-    setEfSubscriptionDiscount(String(e.subscriptionDiscountPct));
+    setEfSubscriptionLessonPrice(String(e.subscriptionLessonPrice));
     setEfNote(e.note);
     setEnrModalOpen(true);
   }
 
+  function handleEnrollmentCourseIdChange(value: number) {
+    setEfCourseId(value);
+    const course = allCourses.find((item) => item.id === value);
+    if (course) {
+      setEfSubscriptionLessonPrice(String(course.lessonPrice));
+    }
+  }
+
+  function handleEnrollmentModeChange(value: "per_lesson" | "subscription") {
+    setEfMode(value);
+    if (value === "subscription" && (efSubscriptionLessonPrice.trim() === "" || Number(efSubscriptionLessonPrice) === 0)) {
+      setEfSubscriptionLessonPrice(String(selectedEnrollmentCourse?.lessonPrice ?? 0));
+    }
+  }
+
   async function saveEnrollment() {
     const discountValue = efDiscount.trim() === "" ? 0 : Number(efDiscount);
-    const subscriptionDiscountValue =
-      efSubscriptionDiscount.trim() === "" ? 0 : Number(efSubscriptionDiscount);
+    const subscriptionLessonPriceValue =
+      efSubscriptionLessonPrice.trim() === "" ? 0 : Number(efSubscriptionLessonPrice);
 
     if (efStudentId <= 0 || efCourseId <= 0) {
       showMessage(t("msg.chooseStudentAndCourse"), "error");
@@ -1110,12 +1131,8 @@ export default function App() {
       showMessage(t("msg.discountRange"), "error");
       return;
     }
-    if (
-      !Number.isFinite(subscriptionDiscountValue) ||
-      subscriptionDiscountValue < 0 ||
-      subscriptionDiscountValue > 100
-    ) {
-      showMessage(t("msg.discountRange"), "error");
+    if (!Number.isFinite(subscriptionLessonPriceValue) || subscriptionLessonPriceValue < 0) {
+      showMessage(t("msg.subscriptionLessonPriceRange"), "error");
       return;
     }
 
@@ -1128,7 +1145,7 @@ export default function App() {
           efMode,
           efChargeMaterials,
           discountValue,
-          efMode === "subscription" ? subscriptionDiscountValue : 0,
+          efMode === "subscription" ? subscriptionLessonPriceValue : 0,
           efNote
         );
         showMessage(t("msg.enrollmentUpdated"));
@@ -1139,7 +1156,7 @@ export default function App() {
           efMode,
           efChargeMaterials,
           discountValue,
-          efMode === "subscription" ? subscriptionDiscountValue : 0,
+          efMode === "subscription" ? subscriptionLessonPriceValue : 0,
           efNote
         );
 
@@ -1941,9 +1958,10 @@ export default function App() {
       try {
         closeInvoiceMenu();
         const pdf = await ensurePdf(id);
-        setInvItems((prev) =>
-          prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
-        );
+        await loadInvoices({ syncDrafts: false });
+        if (invoiceDetailsOpen && selectedInv?.id === id) {
+          await loadInvoiceDetails(id);
+        }
         showMessage(t("msg.pdfReady", { path: pdf.localPath ?? pdf.filename }));
         if (pdf.downloadUrl) {
           window.open(pdf.downloadUrl, "_blank", "noopener,noreferrer");
@@ -1952,7 +1970,7 @@ export default function App() {
         showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
     },
-    [closeInvoiceMenu, showMessage, t]
+    [closeInvoiceMenu, invoiceDetailsOpen, loadInvoiceDetails, loadInvoices, selectedInv, showMessage, t]
   );
 
   const onDownloadPdf = useCallback(
@@ -1960,9 +1978,10 @@ export default function App() {
       try {
         closeInvoiceMenu();
         const pdf = await ensurePdf(id);
-        setInvItems((prev) =>
-          prev.map((item) => (item.id === id ? { ...item, pdfReady: true } : item))
-        );
+        await loadInvoices({ syncDrafts: false });
+        if (invoiceDetailsOpen && selectedInv?.id === id) {
+          await loadInvoiceDetails(id);
+        }
 
         if (!pdf.downloadUrl) {
           showMessage(t("msg.errorGeneric", { message: t("msg.pdfDownloadUnavailable") }), "error");
@@ -1982,24 +2001,27 @@ export default function App() {
         showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
     },
-    [closeInvoiceMenu, showMessage, t]
+    [closeInvoiceMenu, invoiceDetailsOpen, loadInvoiceDetails, loadInvoices, selectedInv, showMessage, t]
   );
 
   const buildInvoiceMenuItems = useCallback(
     (invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean }) => {
       const menuItems: Array<{ label: string; onClick: () => void }> = [];
 
-      if (invoice.status === "issued") {
-        menuItems.push({
-          label: t("button.reopenDraft"),
-          onClick: () => void onReopenToDraft(invoice.id),
-        });
-      }
-      if (invoice.status !== "draft" && !invoice.pdfReady) {
-        menuItems.push({
-          label: t("button.createPdf"),
-          onClick: () => void onGeneratePdf(invoice.id),
-        });
+      for (const action of getInvoiceMenuActions(invoice)) {
+        if (action === "reopenDraft") {
+          menuItems.push({
+            label: t("button.reopenDraft"),
+            onClick: () => void onReopenToDraft(invoice.id),
+          });
+          continue;
+        }
+        if (action === "createPdf") {
+          menuItems.push({
+            label: t("button.createPdf"),
+            onClick: () => void onGeneratePdf(invoice.id),
+          });
+        }
       }
 
       return menuItems;
@@ -2607,17 +2629,17 @@ export default function App() {
                 enrollmentMode={efMode}
                 enrollmentChargeMaterials={efChargeMaterials}
                 enrollmentDiscount={efDiscount}
-                enrollmentSubscriptionDiscount={efSubscriptionDiscount}
+                enrollmentSubscriptionLessonPrice={efSubscriptionLessonPrice}
                 enrollmentNote={efNote}
                 studentComboRef={efStudentComboRef}
                 onStudentSearchChange={setEfStudentSearch}
                 onStudentIdChange={(value) => setEfStudentId(value ?? 0)}
                 onStudentPickerOpenChange={setEfStudentPickerOpen}
-                onEnrollmentCourseIdChange={setEfCourseId}
-                onEnrollmentModeChange={setEfMode}
+                onEnrollmentCourseIdChange={handleEnrollmentCourseIdChange}
+                onEnrollmentModeChange={handleEnrollmentModeChange}
                 onEnrollmentChargeMaterialsChange={setEfChargeMaterials}
                 onEnrollmentDiscountChange={setEfDiscount}
-                onEnrollmentSubscriptionDiscountChange={setEfSubscriptionDiscount}
+                onEnrollmentSubscriptionLessonPriceChange={setEfSubscriptionLessonPrice}
                 onEnrollmentNoteChange={setEfNote}
                 onSaveEnrollment={() => void saveEnrollment()}
                 onCloseEnrollmentModal={() => setEnrModalOpen(false)}

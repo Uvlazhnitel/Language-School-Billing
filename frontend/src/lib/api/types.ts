@@ -53,7 +53,7 @@ export type Row = {
   billingMode: BillingMode;
   lessonPrice: number;
   discountPct: number;
-  subscriptionDiscountPct: number;
+  subscriptionLessonPrice: number;
   hours: number;
   hasRecord: boolean;
   canDelete: boolean;
@@ -107,7 +107,7 @@ export type EnrollmentDTO = {
   billingMode: BillingMode;
   chargeMaterials: boolean;
   discountPct: number;
-  subscriptionDiscountPct: number;
+  subscriptionLessonPrice: number;
   note: string;
   createdAt: string;
 };
@@ -364,7 +364,7 @@ export interface AppTransport {
     billingMode: EnrollmentDTO["billingMode"],
     chargeMaterials: boolean,
     discountPct: number,
-    subscriptionDiscountPct: number,
+    subscriptionLessonPrice: number,
     note: string
   ): Promise<EnrollmentDTO>;
   updateEnrollment(
@@ -373,7 +373,7 @@ export interface AppTransport {
     billingMode: EnrollmentDTO["billingMode"],
     chargeMaterials: boolean,
     discountPct: number,
-    subscriptionDiscountPct: number,
+    subscriptionLessonPrice: number,
     note: string
   ): Promise<EnrollmentDTO>;
   deleteEnrollment(enrollmentId: number, version: number): Promise<void>;

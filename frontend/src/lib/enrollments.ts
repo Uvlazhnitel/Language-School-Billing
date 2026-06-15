@@ -19,7 +19,7 @@ export async function createEnrollment(
   billingMode: EnrollmentDTO["billingMode"],
   chargeMaterials: boolean,
   discountPct: number,
-  subscriptionDiscountPct: number,
+  subscriptionLessonPrice: number,
   note: string
 ): Promise<EnrollmentDTO> {
   const transport = await getTransport();
@@ -29,7 +29,7 @@ export async function createEnrollment(
     billingMode,
     chargeMaterials,
     discountPct,
-    subscriptionDiscountPct,
+    subscriptionLessonPrice,
     note
   );
 }
@@ -40,7 +40,7 @@ export async function updateEnrollment(
   billingMode: EnrollmentDTO["billingMode"],
   chargeMaterials: boolean,
   discountPct: number,
-  subscriptionDiscountPct: number,
+  subscriptionLessonPrice: number,
   note: string
 ): Promise<EnrollmentDTO> {
   const transport = await getTransport();
@@ -50,7 +50,7 @@ export async function updateEnrollment(
     billingMode,
     chargeMaterials,
     discountPct,
-    subscriptionDiscountPct,
+    subscriptionLessonPrice,
     note
   );
 }
