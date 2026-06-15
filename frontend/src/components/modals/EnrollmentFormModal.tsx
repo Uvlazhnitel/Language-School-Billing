@@ -15,8 +15,8 @@ type EnrollmentFormModalProps = {
   courseId: number;
   mode: "per_lesson" | "subscription";
   chargeMaterials: boolean;
-  discount: number;
-  subscriptionDiscount: number;
+  discount: string;
+  subscriptionDiscount: string;
   note: string;
   allCourses: CourseDTO[];
   studentComboRef: Ref<HTMLDivElement>;
@@ -26,8 +26,8 @@ type EnrollmentFormModalProps = {
   onCourseIdChange: (value: number) => void;
   onModeChange: (value: "per_lesson" | "subscription") => void;
   onChargeMaterialsChange: (value: boolean) => void;
-  onDiscountChange: (value: number) => void;
-  onSubscriptionDiscountChange: (value: number) => void;
+  onDiscountChange: (value: string) => void;
+  onSubscriptionDiscountChange: (value: string) => void;
   onNoteChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
@@ -164,7 +164,8 @@ export function EnrollmentFormModal({
             max={100}
             step="0.1"
             value={discount}
-            onChange={(e) => onDiscountChange(Number(e.target.value))}
+            onFocus={(e) => e.currentTarget.select()}
+            onChange={(e) => onDiscountChange(e.target.value)}
           />
         </div>
 
@@ -177,7 +178,8 @@ export function EnrollmentFormModal({
               max={100}
               step="0.1"
               value={subscriptionDiscount}
-              onChange={(e) => onSubscriptionDiscountChange(Number(e.target.value))}
+              onFocus={(e) => e.currentTarget.select()}
+              onChange={(e) => onSubscriptionDiscountChange(e.target.value)}
             />
           </div>
         )}

@@ -998,8 +998,8 @@ export default function App() {
   const [efCourseId, setEfCourseId] = useState<number>(0);
   const [efMode, setEfMode] = useState<"subscription" | "per_lesson">("per_lesson");
   const [efChargeMaterials, setEfChargeMaterials] = useState(true);
-  const [efDiscount, setEfDiscount] = useState(0);
-  const [efSubscriptionDiscount, setEfSubscriptionDiscount] = useState(20);
+  const [efDiscount, setEfDiscount] = useState("0");
+  const [efSubscriptionDiscount, setEfSubscriptionDiscount] = useState("20");
   const [efNote, setEfNote] = useState("");
 
   const activeStudents = useMemo(() => allStudents.filter((s) => s.isActive), [allStudents]);
@@ -1077,8 +1077,8 @@ export default function App() {
     setEfCourseId(initialCourseId);
     setEfMode("per_lesson");
     setEfChargeMaterials(true);
-    setEfDiscount(0);
-    setEfSubscriptionDiscount(20);
+    setEfDiscount("0");
+    setEfSubscriptionDiscount("20");
     setEfNote("");
     setEnrModalOpen(true);
   }
@@ -1091,22 +1091,30 @@ export default function App() {
     setEfCourseId(e.courseId);
     setEfMode(e.billingMode);
     setEfChargeMaterials(e.chargeMaterials);
-    setEfDiscount(e.discountPct);
-    setEfSubscriptionDiscount(e.subscriptionDiscountPct);
+    setEfDiscount(String(e.discountPct));
+    setEfSubscriptionDiscount(String(e.subscriptionDiscountPct));
     setEfNote(e.note);
     setEnrModalOpen(true);
   }
 
   async function saveEnrollment() {
+    const discountValue = efDiscount.trim() === "" ? 0 : Number(efDiscount);
+    const subscriptionDiscountValue =
+      efSubscriptionDiscount.trim() === "" ? 0 : Number(efSubscriptionDiscount);
+
     if (efStudentId <= 0 || efCourseId <= 0) {
       showMessage(t("msg.chooseStudentAndCourse"), "error");
       return;
     }
-    if (efDiscount < 0 || efDiscount > 100) {
+    if (!Number.isFinite(discountValue) || discountValue < 0 || discountValue > 100) {
       showMessage(t("msg.discountRange"), "error");
       return;
     }
-    if (efSubscriptionDiscount < 0 || efSubscriptionDiscount > 100) {
+    if (
+      !Number.isFinite(subscriptionDiscountValue) ||
+      subscriptionDiscountValue < 0 ||
+      subscriptionDiscountValue > 100
+    ) {
       showMessage(t("msg.discountRange"), "error");
       return;
     }
@@ -1119,8 +1127,8 @@ export default function App() {
           editingEnr.version,
           efMode,
           efChargeMaterials,
-          efDiscount,
-          efMode === "subscription" ? efSubscriptionDiscount : 0,
+          discountValue,
+          efMode === "subscription" ? subscriptionDiscountValue : 0,
           efNote
         );
         showMessage(t("msg.enrollmentUpdated"));
@@ -1130,8 +1138,8 @@ export default function App() {
           efCourseId,
           efMode,
           efChargeMaterials,
-          efDiscount,
-          efMode === "subscription" ? efSubscriptionDiscount : 0,
+          discountValue,
+          efMode === "subscription" ? subscriptionDiscountValue : 0,
           efNote
         );
 
