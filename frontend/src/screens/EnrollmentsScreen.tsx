@@ -33,8 +33,8 @@ type EnrollmentsScreenProps = {
   enrollmentCourseId: number;
   enrollmentMode: "per_lesson" | "subscription";
   enrollmentChargeMaterials: boolean;
-  enrollmentDiscount: number;
-  enrollmentSubscriptionDiscount: number;
+  enrollmentDiscount: string;
+  enrollmentSubscriptionDiscount: string;
   enrollmentNote: string;
   studentComboRef: RefObject<HTMLDivElement | null>;
   onStudentSearchChange: (value: string) => void;
@@ -43,8 +43,8 @@ type EnrollmentsScreenProps = {
   onEnrollmentCourseIdChange: (value: number) => void;
   onEnrollmentModeChange: (value: "per_lesson" | "subscription") => void;
   onEnrollmentChargeMaterialsChange: (value: boolean) => void;
-  onEnrollmentDiscountChange: (value: number) => void;
-  onEnrollmentSubscriptionDiscountChange: (value: number) => void;
+  onEnrollmentDiscountChange: (value: string) => void;
+  onEnrollmentSubscriptionDiscountChange: (value: string) => void;
   onEnrollmentNoteChange: (value: string) => void;
   onSaveEnrollment: () => void;
   onCloseEnrollmentModal: () => void;
