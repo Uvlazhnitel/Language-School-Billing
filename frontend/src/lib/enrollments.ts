@@ -17,6 +17,7 @@ export async function createEnrollment(
   studentId: number,
   courseId: number,
   billingMode: EnrollmentDTO["billingMode"],
+  chargeMaterials: boolean,
   discountPct: number,
   subscriptionDiscountPct: number,
   note: string
@@ -26,6 +27,7 @@ export async function createEnrollment(
     studentId,
     courseId,
     billingMode,
+    chargeMaterials,
     discountPct,
     subscriptionDiscountPct,
     note
@@ -36,6 +38,7 @@ export async function updateEnrollment(
   enrollmentId: number,
   version: number,
   billingMode: EnrollmentDTO["billingMode"],
+  chargeMaterials: boolean,
   discountPct: number,
   subscriptionDiscountPct: number,
   note: string
@@ -45,6 +48,7 @@ export async function updateEnrollment(
     enrollmentId,
     version,
     billingMode,
+    chargeMaterials,
     discountPct,
     subscriptionDiscountPct,
     note

@@ -96,24 +96,28 @@ func init() {
 	enrollmentDescVersion := enrollmentMixinFields0[0].Descriptor()
 	// enrollment.DefaultVersion holds the default value on creation for the version field.
 	enrollment.DefaultVersion = enrollmentDescVersion.Default.(int)
+	// enrollmentDescChargeMaterials is the schema descriptor for charge_materials field.
+	enrollmentDescChargeMaterials := enrollmentFields[3].Descriptor()
+	// enrollment.DefaultChargeMaterials holds the default value on creation for the charge_materials field.
+	enrollment.DefaultChargeMaterials = enrollmentDescChargeMaterials.Default.(bool)
 	// enrollmentDescDiscountPct is the schema descriptor for discount_pct field.
-	enrollmentDescDiscountPct := enrollmentFields[3].Descriptor()
+	enrollmentDescDiscountPct := enrollmentFields[4].Descriptor()
 	// enrollment.DefaultDiscountPct holds the default value on creation for the discount_pct field.
 	enrollment.DefaultDiscountPct = enrollmentDescDiscountPct.Default.(float64)
 	// enrollmentDescSubscriptionDiscountPct is the schema descriptor for subscription_discount_pct field.
-	enrollmentDescSubscriptionDiscountPct := enrollmentFields[4].Descriptor()
+	enrollmentDescSubscriptionDiscountPct := enrollmentFields[5].Descriptor()
 	// enrollment.DefaultSubscriptionDiscountPct holds the default value on creation for the subscription_discount_pct field.
 	enrollment.DefaultSubscriptionDiscountPct = enrollmentDescSubscriptionDiscountPct.Default.(float64)
 	// enrollmentDescNote is the schema descriptor for note field.
-	enrollmentDescNote := enrollmentFields[5].Descriptor()
+	enrollmentDescNote := enrollmentFields[6].Descriptor()
 	// enrollment.DefaultNote holds the default value on creation for the note field.
 	enrollment.DefaultNote = enrollmentDescNote.Default.(string)
 	// enrollmentDescCreatedAt is the schema descriptor for created_at field.
-	enrollmentDescCreatedAt := enrollmentFields[6].Descriptor()
+	enrollmentDescCreatedAt := enrollmentFields[7].Descriptor()
 	// enrollment.DefaultCreatedAt holds the default value on creation for the created_at field.
 	enrollment.DefaultCreatedAt = enrollmentDescCreatedAt.Default.(func() time.Time)
 	// enrollmentDescUpdatedAt is the schema descriptor for updated_at field.
-	enrollmentDescUpdatedAt := enrollmentFields[7].Descriptor()
+	enrollmentDescUpdatedAt := enrollmentFields[8].Descriptor()
 	// enrollment.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	enrollment.DefaultUpdatedAt = enrollmentDescUpdatedAt.Default.(func() time.Time)
 	// enrollment.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

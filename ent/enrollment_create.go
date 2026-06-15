@@ -55,6 +55,20 @@ func (_c *EnrollmentCreate) SetBillingMode(v enrollment.BillingMode) *Enrollment
 	return _c
 }
 
+// SetChargeMaterials sets the "charge_materials" field.
+func (_c *EnrollmentCreate) SetChargeMaterials(v bool) *EnrollmentCreate {
+	_c.mutation.SetChargeMaterials(v)
+	return _c
+}
+
+// SetNillableChargeMaterials sets the "charge_materials" field if the given value is not nil.
+func (_c *EnrollmentCreate) SetNillableChargeMaterials(v *bool) *EnrollmentCreate {
+	if v != nil {
+		_c.SetChargeMaterials(*v)
+	}
+	return _c
+}
+
 // SetDiscountPct sets the "discount_pct" field.
 func (_c *EnrollmentCreate) SetDiscountPct(v float64) *EnrollmentCreate {
 	_c.mutation.SetDiscountPct(v)
@@ -189,6 +203,10 @@ func (_c *EnrollmentCreate) defaults() {
 		v := enrollment.DefaultVersion
 		_c.mutation.SetVersion(v)
 	}
+	if _, ok := _c.mutation.ChargeMaterials(); !ok {
+		v := enrollment.DefaultChargeMaterials
+		_c.mutation.SetChargeMaterials(v)
+	}
 	if _, ok := _c.mutation.DiscountPct(); !ok {
 		v := enrollment.DefaultDiscountPct
 		_c.mutation.SetDiscountPct(v)
@@ -229,6 +247,9 @@ func (_c *EnrollmentCreate) check() error {
 		if err := enrollment.BillingModeValidator(v); err != nil {
 			return &ValidationError{Name: "billing_mode", err: fmt.Errorf(`ent: validator failed for field "Enrollment.billing_mode": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.ChargeMaterials(); !ok {
+		return &ValidationError{Name: "charge_materials", err: errors.New(`ent: missing required field "Enrollment.charge_materials"`)}
 	}
 	if _, ok := _c.mutation.DiscountPct(); !ok {
 		return &ValidationError{Name: "discount_pct", err: errors.New(`ent: missing required field "Enrollment.discount_pct"`)}
@@ -278,6 +299,10 @@ func (_c *EnrollmentCreate) createSpec() (*Enrollment, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.BillingMode(); ok {
 		_spec.SetField(enrollment.FieldBillingMode, field.TypeEnum, value)
 		_node.BillingMode = value
+	}
+	if value, ok := _c.mutation.ChargeMaterials(); ok {
+		_spec.SetField(enrollment.FieldChargeMaterials, field.TypeBool, value)
+		_node.ChargeMaterials = value
 	}
 	if value, ok := _c.mutation.DiscountPct(); ok {
 		_spec.SetField(enrollment.FieldDiscountPct, field.TypeFloat64, value)

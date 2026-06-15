@@ -3742,6 +3742,7 @@ type EnrollmentMutation struct {
 	version                      *int
 	addversion                   *int
 	billing_mode                 *enrollment.BillingMode
+	charge_materials             *bool
 	discount_pct                 *float64
 	adddiscount_pct              *float64
 	subscription_discount_pct    *float64
@@ -4022,6 +4023,42 @@ func (m *EnrollmentMutation) OldBillingMode(ctx context.Context) (v enrollment.B
 // ResetBillingMode resets all changes to the "billing_mode" field.
 func (m *EnrollmentMutation) ResetBillingMode() {
 	m.billing_mode = nil
+}
+
+// SetChargeMaterials sets the "charge_materials" field.
+func (m *EnrollmentMutation) SetChargeMaterials(b bool) {
+	m.charge_materials = &b
+}
+
+// ChargeMaterials returns the value of the "charge_materials" field in the mutation.
+func (m *EnrollmentMutation) ChargeMaterials() (r bool, exists bool) {
+	v := m.charge_materials
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldChargeMaterials returns the old "charge_materials" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldChargeMaterials(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldChargeMaterials is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldChargeMaterials requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldChargeMaterials: %w", err)
+	}
+	return oldValue.ChargeMaterials, nil
+}
+
+// ResetChargeMaterials resets all changes to the "charge_materials" field.
+func (m *EnrollmentMutation) ResetChargeMaterials() {
+	m.charge_materials = nil
 }
 
 // SetDiscountPct sets the "discount_pct" field.
@@ -4412,7 +4449,7 @@ func (m *EnrollmentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *EnrollmentMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.version != nil {
 		fields = append(fields, enrollment.FieldVersion)
 	}
@@ -4424,6 +4461,9 @@ func (m *EnrollmentMutation) Fields() []string {
 	}
 	if m.billing_mode != nil {
 		fields = append(fields, enrollment.FieldBillingMode)
+	}
+	if m.charge_materials != nil {
+		fields = append(fields, enrollment.FieldChargeMaterials)
 	}
 	if m.discount_pct != nil {
 		fields = append(fields, enrollment.FieldDiscountPct)
@@ -4456,6 +4496,8 @@ func (m *EnrollmentMutation) Field(name string) (ent.Value, bool) {
 		return m.CourseID()
 	case enrollment.FieldBillingMode:
 		return m.BillingMode()
+	case enrollment.FieldChargeMaterials:
+		return m.ChargeMaterials()
 	case enrollment.FieldDiscountPct:
 		return m.DiscountPct()
 	case enrollment.FieldSubscriptionDiscountPct:
@@ -4483,6 +4525,8 @@ func (m *EnrollmentMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldCourseID(ctx)
 	case enrollment.FieldBillingMode:
 		return m.OldBillingMode(ctx)
+	case enrollment.FieldChargeMaterials:
+		return m.OldChargeMaterials(ctx)
 	case enrollment.FieldDiscountPct:
 		return m.OldDiscountPct(ctx)
 	case enrollment.FieldSubscriptionDiscountPct:
@@ -4529,6 +4573,13 @@ func (m *EnrollmentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetBillingMode(v)
+		return nil
+	case enrollment.FieldChargeMaterials:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetChargeMaterials(v)
 		return nil
 	case enrollment.FieldDiscountPct:
 		v, ok := value.(float64)
@@ -4679,6 +4730,9 @@ func (m *EnrollmentMutation) ResetField(name string) error {
 		return nil
 	case enrollment.FieldBillingMode:
 		m.ResetBillingMode()
+		return nil
+	case enrollment.FieldChargeMaterials:
+		m.ResetChargeMaterials()
 		return nil
 	case enrollment.FieldDiscountPct:
 		m.ResetDiscountPct()

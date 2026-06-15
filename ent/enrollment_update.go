@@ -94,6 +94,20 @@ func (_u *EnrollmentUpdate) SetNillableBillingMode(v *enrollment.BillingMode) *E
 	return _u
 }
 
+// SetChargeMaterials sets the "charge_materials" field.
+func (_u *EnrollmentUpdate) SetChargeMaterials(v bool) *EnrollmentUpdate {
+	_u.mutation.SetChargeMaterials(v)
+	return _u
+}
+
+// SetNillableChargeMaterials sets the "charge_materials" field if the given value is not nil.
+func (_u *EnrollmentUpdate) SetNillableChargeMaterials(v *bool) *EnrollmentUpdate {
+	if v != nil {
+		_u.SetChargeMaterials(*v)
+	}
+	return _u
+}
+
 // SetDiscountPct sets the "discount_pct" field.
 func (_u *EnrollmentUpdate) SetDiscountPct(v float64) *EnrollmentUpdate {
 	_u.mutation.ResetDiscountPct()
@@ -318,6 +332,9 @@ func (_u *EnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if value, ok := _u.mutation.BillingMode(); ok {
 		_spec.SetField(enrollment.FieldBillingMode, field.TypeEnum, value)
 	}
+	if value, ok := _u.mutation.ChargeMaterials(); ok {
+		_spec.SetField(enrollment.FieldChargeMaterials, field.TypeBool, value)
+	}
 	if value, ok := _u.mutation.DiscountPct(); ok {
 		_spec.SetField(enrollment.FieldDiscountPct, field.TypeFloat64, value)
 	}
@@ -527,6 +544,20 @@ func (_u *EnrollmentUpdateOne) SetBillingMode(v enrollment.BillingMode) *Enrollm
 func (_u *EnrollmentUpdateOne) SetNillableBillingMode(v *enrollment.BillingMode) *EnrollmentUpdateOne {
 	if v != nil {
 		_u.SetBillingMode(*v)
+	}
+	return _u
+}
+
+// SetChargeMaterials sets the "charge_materials" field.
+func (_u *EnrollmentUpdateOne) SetChargeMaterials(v bool) *EnrollmentUpdateOne {
+	_u.mutation.SetChargeMaterials(v)
+	return _u
+}
+
+// SetNillableChargeMaterials sets the "charge_materials" field if the given value is not nil.
+func (_u *EnrollmentUpdateOne) SetNillableChargeMaterials(v *bool) *EnrollmentUpdateOne {
+	if v != nil {
+		_u.SetChargeMaterials(*v)
 	}
 	return _u
 }
@@ -784,6 +815,9 @@ func (_u *EnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Enrollment, 
 	}
 	if value, ok := _u.mutation.BillingMode(); ok {
 		_spec.SetField(enrollment.FieldBillingMode, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.ChargeMaterials(); ok {
+		_spec.SetField(enrollment.FieldChargeMaterials, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.DiscountPct(); ok {
 		_spec.SetField(enrollment.FieldDiscountPct, field.TypeFloat64, value)

@@ -32,6 +32,7 @@ type EnrollmentsScreenProps = {
   selectedStudent?: StudentDTO | null;
   enrollmentCourseId: number;
   enrollmentMode: "per_lesson" | "subscription";
+  enrollmentChargeMaterials: boolean;
   enrollmentDiscount: number;
   enrollmentSubscriptionDiscount: number;
   enrollmentNote: string;
@@ -41,6 +42,7 @@ type EnrollmentsScreenProps = {
   onStudentPickerOpenChange: (value: boolean) => void;
   onEnrollmentCourseIdChange: (value: number) => void;
   onEnrollmentModeChange: (value: "per_lesson" | "subscription") => void;
+  onEnrollmentChargeMaterialsChange: (value: boolean) => void;
   onEnrollmentDiscountChange: (value: number) => void;
   onEnrollmentSubscriptionDiscountChange: (value: number) => void;
   onEnrollmentNoteChange: (value: string) => void;
@@ -74,6 +76,7 @@ export function EnrollmentsScreen({
   selectedStudent,
   enrollmentCourseId,
   enrollmentMode,
+  enrollmentChargeMaterials,
   enrollmentDiscount,
   enrollmentSubscriptionDiscount,
   enrollmentNote,
@@ -83,6 +86,7 @@ export function EnrollmentsScreen({
   onStudentPickerOpenChange,
   onEnrollmentCourseIdChange,
   onEnrollmentModeChange,
+  onEnrollmentChargeMaterialsChange,
   onEnrollmentDiscountChange,
   onEnrollmentSubscriptionDiscountChange,
   onEnrollmentNoteChange,
@@ -224,6 +228,7 @@ export function EnrollmentsScreen({
           selectedStudent={selectedStudent}
           courseId={enrollmentCourseId}
           mode={enrollmentMode}
+          chargeMaterials={enrollmentChargeMaterials}
           discount={enrollmentDiscount}
           subscriptionDiscount={enrollmentSubscriptionDiscount}
           note={enrollmentNote}
@@ -234,6 +239,7 @@ export function EnrollmentsScreen({
           onStudentPickerOpenChange={onStudentPickerOpenChange}
           onCourseIdChange={onEnrollmentCourseIdChange}
           onModeChange={onEnrollmentModeChange}
+          onChargeMaterialsChange={onEnrollmentChargeMaterialsChange}
           onDiscountChange={onEnrollmentDiscountChange}
           onSubscriptionDiscountChange={onEnrollmentSubscriptionDiscountChange}
           onNoteChange={onEnrollmentNoteChange}

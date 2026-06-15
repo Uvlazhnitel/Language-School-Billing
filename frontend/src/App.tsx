@@ -997,6 +997,7 @@ export default function App() {
   const efStudentComboRef = useRef<HTMLDivElement | null>(null);
   const [efCourseId, setEfCourseId] = useState<number>(0);
   const [efMode, setEfMode] = useState<"subscription" | "per_lesson">("per_lesson");
+  const [efChargeMaterials, setEfChargeMaterials] = useState(true);
   const [efDiscount, setEfDiscount] = useState(0);
   const [efSubscriptionDiscount, setEfSubscriptionDiscount] = useState(20);
   const [efNote, setEfNote] = useState("");
@@ -1075,6 +1076,7 @@ export default function App() {
     setEfStudentPickerOpen(false);
     setEfCourseId(initialCourseId);
     setEfMode("per_lesson");
+    setEfChargeMaterials(true);
     setEfDiscount(0);
     setEfSubscriptionDiscount(20);
     setEfNote("");
@@ -1088,6 +1090,7 @@ export default function App() {
     setEfStudentPickerOpen(false);
     setEfCourseId(e.courseId);
     setEfMode(e.billingMode);
+    setEfChargeMaterials(e.chargeMaterials);
     setEfDiscount(e.discountPct);
     setEfSubscriptionDiscount(e.subscriptionDiscountPct);
     setEfNote(e.note);
@@ -1115,6 +1118,7 @@ export default function App() {
           editingEnr.id,
           editingEnr.version,
           efMode,
+          efChargeMaterials,
           efDiscount,
           efMode === "subscription" ? efSubscriptionDiscount : 0,
           efNote
@@ -1125,6 +1129,7 @@ export default function App() {
           efStudentId,
           efCourseId,
           efMode,
+          efChargeMaterials,
           efDiscount,
           efMode === "subscription" ? efSubscriptionDiscount : 0,
           efNote
@@ -2592,6 +2597,7 @@ export default function App() {
                 selectedStudent={selectedEnrollmentStudent}
                 enrollmentCourseId={efCourseId}
                 enrollmentMode={efMode}
+                enrollmentChargeMaterials={efChargeMaterials}
                 enrollmentDiscount={efDiscount}
                 enrollmentSubscriptionDiscount={efSubscriptionDiscount}
                 enrollmentNote={efNote}
@@ -2601,6 +2607,7 @@ export default function App() {
                 onStudentPickerOpenChange={setEfStudentPickerOpen}
                 onEnrollmentCourseIdChange={setEfCourseId}
                 onEnrollmentModeChange={setEfMode}
+                onEnrollmentChargeMaterialsChange={setEfChargeMaterials}
                 onEnrollmentDiscountChange={setEfDiscount}
                 onEnrollmentSubscriptionDiscountChange={setEfSubscriptionDiscount}
                 onEnrollmentNoteChange={setEfNote}

@@ -281,6 +281,15 @@ func (s *Service) hasAnyLessonsInMonth(ctx context.Context, ens []*ent.Enrollmen
 	return false
 }
 
+func firstMaterialsEnrollment(ens []*ent.Enrollment) *ent.Enrollment {
+	for _, en := range ens {
+		if en.ChargeMaterials {
+			return en
+		}
+	}
+	return nil
+}
+
 func mergeGenerateResult(dst *GenerateResult, src GenerateResult) {
 	dst.Created += src.Created
 	dst.Updated += src.Updated
@@ -355,8 +364,8 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 		}
 	}
 
-	if len(ens) > 0 && s.hasAnyLessonsInMonth(ctx, ens, y, m) {
-		materialsLine, materialsAmount := s.buildMaterialsLine(ens[0].ID)
+	if materialsEnrollment := firstMaterialsEnrollment(ens); materialsEnrollment != nil && s.hasAnyLessonsInMonth(ctx, ens, y, m) {
+		materialsLine, materialsAmount := s.buildMaterialsLine(materialsEnrollment.ID)
 		lines = append(lines, materialsLine)
 		totalCents += materialsAmount
 	}

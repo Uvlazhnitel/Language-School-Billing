@@ -105,6 +105,7 @@ export type EnrollmentDTO = {
   teacherId?: number;
   teacherName: string;
   billingMode: BillingMode;
+  chargeMaterials: boolean;
   discountPct: number;
   subscriptionDiscountPct: number;
   note: string;
@@ -361,6 +362,7 @@ export interface AppTransport {
     studentId: number,
     courseId: number,
     billingMode: EnrollmentDTO["billingMode"],
+    chargeMaterials: boolean,
     discountPct: number,
     subscriptionDiscountPct: number,
     note: string
@@ -369,6 +371,7 @@ export interface AppTransport {
     enrollmentId: number,
     version: number,
     billingMode: EnrollmentDTO["billingMode"],
+    chargeMaterials: boolean,
     discountPct: number,
     subscriptionDiscountPct: number,
     note: string

@@ -14,6 +14,7 @@ type EnrollmentFormModalProps = {
   selectedStudent?: StudentDTO | null;
   courseId: number;
   mode: "per_lesson" | "subscription";
+  chargeMaterials: boolean;
   discount: number;
   subscriptionDiscount: number;
   note: string;
@@ -24,6 +25,7 @@ type EnrollmentFormModalProps = {
   onStudentPickerOpenChange: (value: boolean) => void;
   onCourseIdChange: (value: number) => void;
   onModeChange: (value: "per_lesson" | "subscription") => void;
+  onChargeMaterialsChange: (value: boolean) => void;
   onDiscountChange: (value: number) => void;
   onSubscriptionDiscountChange: (value: number) => void;
   onNoteChange: (value: string) => void;
@@ -41,6 +43,7 @@ export function EnrollmentFormModal({
   selectedStudent,
   courseId,
   mode,
+  chargeMaterials,
   discount,
   subscriptionDiscount,
   note,
@@ -51,6 +54,7 @@ export function EnrollmentFormModal({
   onStudentPickerOpenChange,
   onCourseIdChange,
   onModeChange,
+  onChargeMaterialsChange,
   onDiscountChange,
   onSubscriptionDiscountChange,
   onNoteChange,
@@ -140,6 +144,15 @@ export function EnrollmentFormModal({
             <option value="per_lesson">{t("billing.perLesson")}</option>
             <option value="subscription">{t("billing.subscription")}</option>
           </select>
+        </div>
+
+        <div className="formRow">
+          <label>{t("field.chargeMaterials")}</label>
+          <input
+            type="checkbox"
+            checked={chargeMaterials}
+            onChange={(e) => onChargeMaterialsChange(e.target.checked)}
+          />
         </div>
 
         <div className="formRow">

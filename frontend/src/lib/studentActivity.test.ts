@@ -20,6 +20,7 @@ describe("studentActivity", () => {
           courseType: "group",
           teacherName: "Natalja",
           billingMode: "per_lesson",
+          chargeMaterials: true,
           discountPct: 0,
           subscriptionDiscountPct: 20,
           note: "",

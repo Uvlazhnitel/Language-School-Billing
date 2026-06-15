@@ -78,19 +78,38 @@ func TestStudentCourseEnrollmentCRUD(t *testing.T) {
 	}
 
 	enrollment := postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
-		"studentId":   st.ID,
-		"courseId":    course.ID,
-		"billingMode": "per_lesson",
-		"discountPct": 0,
-		"note":        "",
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
 	})
 	if enrollment.StudentID != st.ID {
 		t.Fatalf("enrollment studentID = %d, want %d", enrollment.StudentID, st.ID)
+	}
+	if !enrollment.ChargeMaterials {
+		t.Fatal("enrollment chargeMaterials = false, want true")
 	}
 
 	items := getJSON[[]backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments?studentId="+strconv.Itoa(st.ID))
 	if len(items) != 1 {
 		t.Fatalf("enrollment count = %d, want 1", len(items))
+	}
+	if !items[0].ChargeMaterials {
+		t.Fatal("listed chargeMaterials = false, want true")
+	}
+
+	updated := putJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments/"+strconv.Itoa(enrollment.ID), map[string]any{
+		"version":                 enrollment.Version,
+		"billingMode":             "per_lesson",
+		"chargeMaterials":         false,
+		"discountPct":             0,
+		"subscriptionDiscountPct": 0,
+		"note":                    "online",
+	})
+	if updated.ChargeMaterials {
+		t.Fatal("updated chargeMaterials = true, want false")
 	}
 }
 
@@ -106,11 +125,12 @@ func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 		"subscriptionPrice": 90,
 	})
 	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
-		"studentId":   st.ID,
-		"courseId":    course.ID,
-		"billingMode": "per_lesson",
-		"discountPct": 0,
-		"note":        "",
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
 	})
 
 	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
@@ -191,11 +211,12 @@ func TestAuditLogCapturesFinanceActions(t *testing.T) {
 		"subscriptionPrice": 90,
 	})
 	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
-		"studentId":   st.ID,
-		"courseId":    course.ID,
-		"billingMode": "per_lesson",
-		"discountPct": 0,
-		"note":        "",
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
 	})
 
 	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
@@ -536,6 +557,64 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 
 }
 
+func TestStaffCanManageEnrollmentMaterialsToggle(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	postJSON[backend.UserDTO](t, env.Client, env.Server.URL, "/api/users", map[string]any{
+		"username": "staff-enrollment",
+		"password": "staff-pass-123",
+		"role":     "staff",
+	})
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staffClient := &http.Client{Jar: jar}
+	login := postJSON[backend.SessionDTO](t, staffClient, env.Server.URL, "/api/auth/login", map[string]any{
+		"username": "staff-enrollment",
+		"password": "staff-pass-123",
+	})
+	if !login.Authenticated || login.User == nil || login.User.Role != "staff" {
+		t.Fatalf("unexpected staff session: %+v", login)
+	}
+
+	st := postJSON[backend.StudentDTO](t, staffClient, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "Staff Enrollment Student",
+	})
+	course := postJSON[backend.CourseDTO](t, staffClient, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Staff Enrollment Course",
+		"type":              "group",
+		"lessonPrice":       25,
+		"subscriptionPrice": 80,
+	})
+
+	enrollment := postJSON[backend.EnrollmentDTO](t, staffClient, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": false,
+		"discountPct":     0,
+		"note":            "online",
+	})
+	if enrollment.ChargeMaterials {
+		t.Fatal("created chargeMaterials = true, want false")
+	}
+
+	updated := putJSON[backend.EnrollmentDTO](t, staffClient, env.Server.URL, "/api/enrollments/"+strconv.Itoa(enrollment.ID), map[string]any{
+		"version":                 enrollment.Version,
+		"billingMode":             "per_lesson",
+		"chargeMaterials":         true,
+		"discountPct":             0,
+		"subscriptionDiscountPct": 0,
+		"note":                    "offline",
+	})
+	if !updated.ChargeMaterials {
+		t.Fatal("updated chargeMaterials = false, want true")
+	}
+}
+
 func TestStudentUpdateRejectsStaleVersion(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
@@ -579,11 +658,12 @@ func TestInvoicePaymentDeleteThenReopenWorkflow(t *testing.T) {
 		"subscriptionPrice": 100,
 	})
 	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
-		"studentId":   st.ID,
-		"courseId":    course.ID,
-		"billingMode": "per_lesson",
-		"discountPct": 0,
-		"note":        "",
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
 	})
 
 	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{

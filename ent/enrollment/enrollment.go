@@ -23,6 +23,8 @@ const (
 	FieldCourseID = "course_id"
 	// FieldBillingMode holds the string denoting the billing_mode field in the database.
 	FieldBillingMode = "billing_mode"
+	// FieldChargeMaterials holds the string denoting the charge_materials field in the database.
+	FieldChargeMaterials = "charge_materials"
 	// FieldDiscountPct holds the string denoting the discount_pct field in the database.
 	FieldDiscountPct = "discount_pct"
 	// FieldSubscriptionDiscountPct holds the string denoting the subscription_discount_pct field in the database.
@@ -71,6 +73,7 @@ var Columns = []string{
 	FieldStudentID,
 	FieldCourseID,
 	FieldBillingMode,
+	FieldChargeMaterials,
 	FieldDiscountPct,
 	FieldSubscriptionDiscountPct,
 	FieldNote,
@@ -91,6 +94,8 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultVersion holds the default value on creation for the "version" field.
 	DefaultVersion int
+	// DefaultChargeMaterials holds the default value on creation for the "charge_materials" field.
+	DefaultChargeMaterials bool
 	// DefaultDiscountPct holds the default value on creation for the "discount_pct" field.
 	DefaultDiscountPct float64
 	// DefaultSubscriptionDiscountPct holds the default value on creation for the "subscription_discount_pct" field.
@@ -154,6 +159,11 @@ func ByCourseID(opts ...sql.OrderTermOption) OrderOption {
 // ByBillingMode orders the results by the billing_mode field.
 func ByBillingMode(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldBillingMode, opts...).ToFunc()
+}
+
+// ByChargeMaterials orders the results by the charge_materials field.
+func ByChargeMaterials(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldChargeMaterials, opts...).ToFunc()
 }
 
 // ByDiscountPct orders the results by the discount_pct field.

@@ -27,6 +27,8 @@ type Enrollment struct {
 	CourseID int `json:"course_id,omitempty"`
 	// BillingMode holds the value of the "billing_mode" field.
 	BillingMode enrollment.BillingMode `json:"billing_mode,omitempty"`
+	// ChargeMaterials holds the value of the "charge_materials" field.
+	ChargeMaterials bool `json:"charge_materials,omitempty"`
 	// DiscountPct holds the value of the "discount_pct" field.
 	DiscountPct float64 `json:"discount_pct,omitempty"`
 	// SubscriptionDiscountPct holds the value of the "subscription_discount_pct" field.
@@ -92,6 +94,8 @@ func (*Enrollment) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
+		case enrollment.FieldChargeMaterials:
+			values[i] = new(sql.NullBool)
 		case enrollment.FieldDiscountPct, enrollment.FieldSubscriptionDiscountPct:
 			values[i] = new(sql.NullFloat64)
 		case enrollment.FieldID, enrollment.FieldVersion, enrollment.FieldStudentID, enrollment.FieldCourseID:
@@ -144,6 +148,12 @@ func (_m *Enrollment) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field billing_mode", values[i])
 			} else if value.Valid {
 				_m.BillingMode = enrollment.BillingMode(value.String)
+			}
+		case enrollment.FieldChargeMaterials:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field charge_materials", values[i])
+			} else if value.Valid {
+				_m.ChargeMaterials = value.Bool
 			}
 		case enrollment.FieldDiscountPct:
 			if value, ok := values[i].(*sql.NullFloat64); !ok {
@@ -239,6 +249,9 @@ func (_m *Enrollment) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("billing_mode=")
 	builder.WriteString(fmt.Sprintf("%v", _m.BillingMode))
+	builder.WriteString(", ")
+	builder.WriteString("charge_materials=")
+	builder.WriteString(fmt.Sprintf("%v", _m.ChargeMaterials))
 	builder.WriteString(", ")
 	builder.WriteString("discount_pct=")
 	builder.WriteString(fmt.Sprintf("%v", _m.DiscountPct))

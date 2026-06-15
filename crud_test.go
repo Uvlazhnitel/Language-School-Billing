@@ -139,9 +139,12 @@ func TestEnrollmentListIncludesTeacherName(t *testing.T) {
 		t.Fatalf("CourseCreate: %v", err)
 	}
 
-	_, err = app.EnrollmentCreate(st.ID, crs.ID, "per_lesson", 5, 0, "evening group")
+	created, err := app.EnrollmentCreate(st.ID, crs.ID, "per_lesson", true, 5, 0, "evening group")
 	if err != nil {
 		t.Fatalf("EnrollmentCreate: %v", err)
+	}
+	if !created.ChargeMaterials {
+		t.Fatal("created.ChargeMaterials = false, want true")
 	}
 
 	list, err := app.EnrollmentList(&st.ID, nil)
@@ -160,6 +163,17 @@ func TestEnrollmentListIncludesTeacherName(t *testing.T) {
 	}
 	if list[0].CourseName != "Grammar Lab" {
 		t.Fatalf("CourseName = %q, want %q", list[0].CourseName, "Grammar Lab")
+	}
+	if !list[0].ChargeMaterials {
+		t.Fatal("ChargeMaterials = false, want true")
+	}
+
+	updated, err := app.EnrollmentUpdate(created.ID, "per_lesson", false, 10, 0, "online")
+	if err != nil {
+		t.Fatalf("EnrollmentUpdate: %v", err)
+	}
+	if updated.ChargeMaterials {
+		t.Fatal("updated.ChargeMaterials = true, want false")
 	}
 }
 

@@ -204,6 +204,7 @@ export const lvTranslations: Record<string, string> = {
   "field.type": "Tips",
   "field.course": "Kurss",
   "field.billing": "Apmaksa",
+  "field.chargeMaterials": "Iekļaut materiālus rēķinā",
   "field.discount": "Atlaide",
   "field.amount": "Summa",
   "field.date": "Datums",

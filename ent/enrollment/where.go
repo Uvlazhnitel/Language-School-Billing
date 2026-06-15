@@ -70,6 +70,11 @@ func CourseID(v int) predicate.Enrollment {
 	return predicate.Enrollment(sql.FieldEQ(FieldCourseID, v))
 }
 
+// ChargeMaterials applies equality check predicate on the "charge_materials" field. It's identical to ChargeMaterialsEQ.
+func ChargeMaterials(v bool) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldEQ(FieldChargeMaterials, v))
+}
+
 // DiscountPct applies equality check predicate on the "discount_pct" field. It's identical to DiscountPctEQ.
 func DiscountPct(v float64) predicate.Enrollment {
 	return predicate.Enrollment(sql.FieldEQ(FieldDiscountPct, v))
@@ -193,6 +198,16 @@ func BillingModeIn(vs ...BillingMode) predicate.Enrollment {
 // BillingModeNotIn applies the NotIn predicate on the "billing_mode" field.
 func BillingModeNotIn(vs ...BillingMode) predicate.Enrollment {
 	return predicate.Enrollment(sql.FieldNotIn(FieldBillingMode, vs...))
+}
+
+// ChargeMaterialsEQ applies the EQ predicate on the "charge_materials" field.
+func ChargeMaterialsEQ(v bool) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldEQ(FieldChargeMaterials, v))
+}
+
+// ChargeMaterialsNEQ applies the NEQ predicate on the "charge_materials" field.
+func ChargeMaterialsNEQ(v bool) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldNEQ(FieldChargeMaterials, v))
 }
 
 // DiscountPctEQ applies the EQ predicate on the "discount_pct" field.
