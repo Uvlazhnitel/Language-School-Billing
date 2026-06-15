@@ -33,6 +33,7 @@ type Message struct {
 	To                 string
 	Subject            string
 	Body               string
+	ReplyTo            string
 	AttachmentFilename string
 	AttachmentData     []byte
 }
@@ -157,9 +158,11 @@ func buildMessage(cfg Config, msg Message) ([]byte, error) {
 		"Subject: " + mime.QEncoding.Encode("utf-8", msg.Subject),
 		"Date: " + time.Now().Format(time.RFC1123Z),
 		"Content-Type: multipart/mixed; boundary=" + quoteBoundary(boundary),
-		"",
-		"",
 	}
+	if replyTo := strings.TrimSpace(msg.ReplyTo); replyTo != "" {
+		headers = append(headers, "Reply-To: "+replyTo)
+	}
+	headers = append(headers, "", "")
 	if _, err := buf.WriteString(strings.Join(headers, "\r\n")); err != nil {
 		return nil, fmt.Errorf("build email headers: %w", err)
 	}

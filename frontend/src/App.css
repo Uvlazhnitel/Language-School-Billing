@@ -1454,6 +1454,24 @@ tfoot td {
   color: var(--bad);
 }
 
+.templatePlaceholderList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.templatePlaceholderTag {
+  display: inline-flex;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: rgba(255, 243, 232, 0.9);
+  border: 1px solid rgba(212, 109, 53, 0.16);
+  color: var(--muted-strong);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
 .formCheckbox {
   width: 22px;
   height: 22px;

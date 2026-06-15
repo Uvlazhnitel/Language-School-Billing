@@ -3,8 +3,10 @@ package backend
 import (
 	"context"
 	"fmt"
+	"net/mail"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +17,15 @@ import (
 	"langschool/internal/email"
 	appruntime "langschool/internal/runtime"
 )
+
+var invoiceEmailAvailablePlaceholders = []string{
+	"{recipient_name}",
+	"{invoice_number}",
+	"{month_name}",
+	"{year}",
+	"{amount}",
+	"{org_name}",
+}
 
 type InvoiceEmailPreviewResult struct {
 	To                 string `json:"to"`
@@ -30,15 +41,22 @@ type InvoiceSendEmailResult struct {
 	SentAt             string `json:"sentAt"`
 }
 
+type invoiceEmailSettings struct {
+	SubjectTemplate  string
+	BodyTemplate     string
+	ReplyTo          string
+	OrganizationName string
+}
+
 func (s *Service) InvoiceEmailPreview(ctx context.Context, id int) (*InvoiceEmailPreviewResult, error) {
-	dto, attachmentFilename, orgName, err := s.invoiceEmailDraft(ctx, id)
+	dto, attachmentFilename, templateSettings, err := s.invoiceEmailDraft(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 	return &InvoiceEmailPreviewResult{
 		To:                 strings.TrimSpace(dto.RecipientEmail),
-		Subject:            buildInvoiceEmailSubject(dto),
-		Body:               buildInvoiceEmailBody(dto, orgName),
+		Subject:            renderInvoiceEmailTemplate(templateSettings.SubjectTemplate, dto, templateSettings.OrganizationName),
+		Body:               renderInvoiceEmailTemplate(templateSettings.BodyTemplate, dto, templateSettings.OrganizationName),
 		AttachmentFilename: attachmentFilename,
 	}, nil
 }
@@ -57,7 +75,7 @@ func (s *Service) InvoiceSendEmail(ctx context.Context, id int, to, subject, bod
 		return nil, fmt.Errorf("email body is required")
 	}
 
-	dto, _, _, err := s.invoiceEmailDraft(ctx, id)
+	dto, _, templateSettings, err := s.invoiceEmailDraft(ctx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -77,6 +95,7 @@ func (s *Service) InvoiceSendEmail(ctx context.Context, id int, to, subject, bod
 		To:                 to,
 		Subject:            subject,
 		Body:               body,
+		ReplyTo:            templateSettings.ReplyTo,
 		AttachmentFilename: filename,
 		AttachmentData:     pdfData,
 	}); err != nil {
@@ -107,13 +126,51 @@ func (s *Service) InvoiceSendEmail(ctx context.Context, id int, to, subject, bod
 	}, nil
 }
 
-func (s *Service) invoiceEmailDraft(ctx context.Context, id int) (*InvoiceDTO, string, string, error) {
+func (s *Service) SettingsGetInvoiceEmail(ctx context.Context) (*InvoiceEmailSettingsDTO, error) {
+	templateSettings, err := s.invoiceEmailSettings(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return &InvoiceEmailSettingsDTO{
+		SubjectTemplate:       templateSettings.SubjectTemplate,
+		BodyTemplate:          templateSettings.BodyTemplate,
+		ReplyTo:               templateSettings.ReplyTo,
+		AvailablePlaceholders: append([]string(nil), invoiceEmailAvailablePlaceholders...),
+	}, nil
+}
+
+func (s *Service) SettingsSetInvoiceEmail(ctx context.Context, subjectTemplate, bodyTemplate, replyTo string) (*InvoiceEmailSettingsDTO, error) {
+	replyTo = strings.TrimSpace(replyTo)
+	if replyTo != "" {
+		if _, err := mail.ParseAddress(replyTo); err != nil {
+			return nil, fmt.Errorf("invalid invoice Reply-To email")
+		}
+	}
+
+	subjectTemplate = invoiceEmailTemplateOrDefault(subjectTemplate, appruntime.DefaultInvoiceEmailSubjectTemplate)
+	bodyTemplate = invoiceEmailTemplateOrDefault(bodyTemplate, appruntime.DefaultInvoiceEmailBodyTemplate)
+
+	_, err := s.rt.DB.Ent.Settings.
+		Update().
+		Where(settings.SingletonIDEQ(sharedapp.SettingsSingletonID)).
+		SetInvoiceEmailSubjectTemplate(subjectTemplate).
+		SetInvoiceEmailBodyTemplate(bodyTemplate).
+		SetInvoiceReplyTo(replyTo).
+		Save(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return s.SettingsGetInvoiceEmail(ctx)
+}
+
+func (s *Service) invoiceEmailDraft(ctx context.Context, id int) (*InvoiceDTO, string, invoiceEmailSettings, error) {
 	dto, err := s.rt.Invoice.Get(ctx, id)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", invoiceEmailSettings{}, err
 	}
 	if dto.Number == nil || strings.TrimSpace(*dto.Number) == "" {
-		return nil, "", "", fmt.Errorf("счёт ещё не выставлен")
+		return nil, "", invoiceEmailSettings{}, fmt.Errorf("счёт ещё не выставлен")
 	}
 	recipientInfo, err := recipient.ResolveInvoiceRecipient(ctx, s.rt.DB.Ent, dto.StudentID)
 	if err == nil {
@@ -127,13 +184,13 @@ func (s *Service) invoiceEmailDraft(ctx context.Context, id int) (*InvoiceDTO, s
 
 	attachmentFilename, err := s.resolveInvoiceAttachmentFilename(ctx, dto)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", invoiceEmailSettings{}, err
 	}
-	orgName, err := s.organizationName(ctx)
+	templateSettings, err := s.invoiceEmailSettings(ctx)
 	if err != nil {
-		return nil, "", "", err
+		return nil, "", invoiceEmailSettings{}, err
 	}
-	return dto, attachmentFilename, orgName, nil
+	return dto, attachmentFilename, templateSettings, nil
 }
 
 func (s *Service) resolveInvoiceAttachmentFilename(ctx context.Context, dto *InvoiceDTO) (string, error) {
@@ -153,41 +210,64 @@ func (s *Service) resolveInvoiceAttachmentFilename(ctx context.Context, dto *Inv
 	return filepath.Base(pdfPath), nil
 }
 
-func (s *Service) organizationName(ctx context.Context) (string, error) {
+func (s *Service) invoiceEmailSettings(ctx context.Context) (invoiceEmailSettings, error) {
 	st, err := s.rt.DB.Ent.Settings.
 		Query().
 		Where(settings.SingletonIDEQ(sharedapp.SettingsSingletonID)).
 		Only(ctx)
 	if err != nil {
-		return "", err
+		return invoiceEmailSettings{}, err
 	}
-	name := strings.TrimSpace(st.OrgName)
+	replyTo := strings.TrimSpace(st.InvoiceReplyTo)
+	if replyTo != "" {
+		if _, err := mail.ParseAddress(replyTo); err != nil {
+			return invoiceEmailSettings{}, fmt.Errorf("invalid invoice Reply-To email")
+		}
+	}
+
+	return invoiceEmailSettings{
+		SubjectTemplate:  invoiceEmailTemplateOrDefault(st.InvoiceEmailSubjectTemplate, appruntime.DefaultInvoiceEmailSubjectTemplate),
+		BodyTemplate:     invoiceEmailTemplateOrDefault(st.InvoiceEmailBodyTemplate, appruntime.DefaultInvoiceEmailBodyTemplate),
+		ReplyTo:          replyTo,
+		OrganizationName: s.organizationNameFromSettings(st.OrgName),
+	}, nil
+}
+
+func (s *Service) organizationNameFromSettings(name string) string {
+	name = strings.TrimSpace(name)
 	if name == "" {
-		name = appruntime.DefaultSchoolDisplayName
+		return appruntime.DefaultSchoolDisplayName
 	}
-	return name, nil
+	return name
 }
 
-func buildInvoiceEmailSubject(dto *InvoiceDTO) string {
-	number := invoiceLabel(dto.Number, dto.ID)
-	return fmt.Sprintf("Rēķins %s par %s %d", number, lvInvoiceMonthName(dto.Month), dto.Year)
-}
-
-func buildInvoiceEmailBody(dto *InvoiceDTO, orgName string) string {
+func renderInvoiceEmailTemplate(template string, dto *InvoiceDTO, orgName string) string {
 	number := invoiceLabel(dto.Number, dto.ID)
 	recipientName := strings.TrimSpace(dto.RecipientName)
 	if recipientName == "" {
 		recipientName = strings.TrimSpace(dto.StudentName)
 	}
-	return fmt.Sprintf(
-		"Labdien, %s!\n\nPielikumā nosūtām rēķinu %s par %s %d summā %.2f EUR.\n\nJa ir jautājumi, lūdzu, sazinieties ar mums.\n\nAr cieņu,\n%s",
-		recipientName,
-		number,
-		lvInvoiceMonthName(dto.Month),
-		dto.Year,
-		dto.Total,
-		orgName,
-	)
+	replacements := map[string]string{
+		"{recipient_name}": recipientName,
+		"{invoice_number}": number,
+		"{month_name}":     lvInvoiceMonthName(dto.Month),
+		"{year}":           strconv.Itoa(dto.Year),
+		"{amount}":         fmt.Sprintf("%.2f", dto.Total),
+		"{org_name}":       strings.TrimSpace(orgName),
+	}
+	out := template
+	for placeholder, value := range replacements {
+		out = strings.ReplaceAll(out, placeholder, value)
+	}
+	return out
+}
+
+func invoiceEmailTemplateOrDefault(value, fallback string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return fallback
+	}
+	return value
 }
 
 func lvInvoiceMonthName(month int) string {

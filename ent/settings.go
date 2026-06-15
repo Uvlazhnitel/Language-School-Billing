@@ -32,6 +32,12 @@ type Settings struct {
 	Currency string `json:"currency,omitempty"`
 	// Locale holds the value of the "locale" field.
 	Locale string `json:"locale,omitempty"`
+	// InvoiceEmailSubjectTemplate holds the value of the "invoice_email_subject_template" field.
+	InvoiceEmailSubjectTemplate string `json:"invoice_email_subject_template,omitempty"`
+	// InvoiceEmailBodyTemplate holds the value of the "invoice_email_body_template" field.
+	InvoiceEmailBodyTemplate string `json:"invoice_email_body_template,omitempty"`
+	// InvoiceReplyTo holds the value of the "invoice_reply_to" field.
+	InvoiceReplyTo string `json:"invoice_reply_to,omitempty"`
 	// MoneyCentsMigrated holds the value of the "money_cents_migrated" field.
 	MoneyCentsMigrated bool `json:"money_cents_migrated,omitempty"`
 	selectValues       sql.SelectValues
@@ -46,7 +52,7 @@ func (*Settings) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case settings.FieldID, settings.FieldSingletonID, settings.FieldNextSeq, settings.FieldInvoiceDayOfMonth:
 			values[i] = new(sql.NullInt64)
-		case settings.FieldOrgName, settings.FieldAddress, settings.FieldInvoicePrefix, settings.FieldCurrency, settings.FieldLocale:
+		case settings.FieldOrgName, settings.FieldAddress, settings.FieldInvoicePrefix, settings.FieldCurrency, settings.FieldLocale, settings.FieldInvoiceEmailSubjectTemplate, settings.FieldInvoiceEmailBodyTemplate, settings.FieldInvoiceReplyTo:
 			values[i] = new(sql.NullString)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -117,6 +123,24 @@ func (_m *Settings) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Locale = value.String
 			}
+		case settings.FieldInvoiceEmailSubjectTemplate:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field invoice_email_subject_template", values[i])
+			} else if value.Valid {
+				_m.InvoiceEmailSubjectTemplate = value.String
+			}
+		case settings.FieldInvoiceEmailBodyTemplate:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field invoice_email_body_template", values[i])
+			} else if value.Valid {
+				_m.InvoiceEmailBodyTemplate = value.String
+			}
+		case settings.FieldInvoiceReplyTo:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field invoice_reply_to", values[i])
+			} else if value.Valid {
+				_m.InvoiceReplyTo = value.String
+			}
 		case settings.FieldMoneyCentsMigrated:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field money_cents_migrated", values[i])
@@ -182,6 +206,15 @@ func (_m *Settings) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("locale=")
 	builder.WriteString(_m.Locale)
+	builder.WriteString(", ")
+	builder.WriteString("invoice_email_subject_template=")
+	builder.WriteString(_m.InvoiceEmailSubjectTemplate)
+	builder.WriteString(", ")
+	builder.WriteString("invoice_email_body_template=")
+	builder.WriteString(_m.InvoiceEmailBodyTemplate)
+	builder.WriteString(", ")
+	builder.WriteString("invoice_reply_to=")
+	builder.WriteString(_m.InvoiceReplyTo)
 	builder.WriteString(", ")
 	builder.WriteString("money_cents_migrated=")
 	builder.WriteString(fmt.Sprintf("%v", _m.MoneyCentsMigrated))

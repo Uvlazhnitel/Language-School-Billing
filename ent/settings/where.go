@@ -93,6 +93,21 @@ func Locale(v string) predicate.Settings {
 	return predicate.Settings(sql.FieldEQ(FieldLocale, v))
 }
 
+// InvoiceEmailSubjectTemplate applies equality check predicate on the "invoice_email_subject_template" field. It's identical to InvoiceEmailSubjectTemplateEQ.
+func InvoiceEmailSubjectTemplate(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldEQ(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailBodyTemplate applies equality check predicate on the "invoice_email_body_template" field. It's identical to InvoiceEmailBodyTemplateEQ.
+func InvoiceEmailBodyTemplate(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldEQ(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceReplyTo applies equality check predicate on the "invoice_reply_to" field. It's identical to InvoiceReplyToEQ.
+func InvoiceReplyTo(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldEQ(FieldInvoiceReplyTo, v))
+}
+
 // MoneyCentsMigrated applies equality check predicate on the "money_cents_migrated" field. It's identical to MoneyCentsMigratedEQ.
 func MoneyCentsMigrated(v bool) predicate.Settings {
 	return predicate.Settings(sql.FieldEQ(FieldMoneyCentsMigrated, v))
@@ -541,6 +556,201 @@ func LocaleEqualFold(v string) predicate.Settings {
 // LocaleContainsFold applies the ContainsFold predicate on the "locale" field.
 func LocaleContainsFold(v string) predicate.Settings {
 	return predicate.Settings(sql.FieldContainsFold(FieldLocale, v))
+}
+
+// InvoiceEmailSubjectTemplateEQ applies the EQ predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateEQ(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldEQ(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailSubjectTemplateNEQ applies the NEQ predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateNEQ(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldNEQ(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailSubjectTemplateIn applies the In predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateIn(vs ...string) predicate.Settings {
+	return predicate.Settings(sql.FieldIn(FieldInvoiceEmailSubjectTemplate, vs...))
+}
+
+// InvoiceEmailSubjectTemplateNotIn applies the NotIn predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateNotIn(vs ...string) predicate.Settings {
+	return predicate.Settings(sql.FieldNotIn(FieldInvoiceEmailSubjectTemplate, vs...))
+}
+
+// InvoiceEmailSubjectTemplateGT applies the GT predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateGT(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldGT(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailSubjectTemplateGTE applies the GTE predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateGTE(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldGTE(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailSubjectTemplateLT applies the LT predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateLT(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldLT(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailSubjectTemplateLTE applies the LTE predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateLTE(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldLTE(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailSubjectTemplateContains applies the Contains predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateContains(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldContains(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailSubjectTemplateHasPrefix applies the HasPrefix predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateHasPrefix(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldHasPrefix(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailSubjectTemplateHasSuffix applies the HasSuffix predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateHasSuffix(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldHasSuffix(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailSubjectTemplateEqualFold applies the EqualFold predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateEqualFold(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldEqualFold(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailSubjectTemplateContainsFold applies the ContainsFold predicate on the "invoice_email_subject_template" field.
+func InvoiceEmailSubjectTemplateContainsFold(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldContainsFold(FieldInvoiceEmailSubjectTemplate, v))
+}
+
+// InvoiceEmailBodyTemplateEQ applies the EQ predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateEQ(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldEQ(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceEmailBodyTemplateNEQ applies the NEQ predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateNEQ(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldNEQ(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceEmailBodyTemplateIn applies the In predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateIn(vs ...string) predicate.Settings {
+	return predicate.Settings(sql.FieldIn(FieldInvoiceEmailBodyTemplate, vs...))
+}
+
+// InvoiceEmailBodyTemplateNotIn applies the NotIn predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateNotIn(vs ...string) predicate.Settings {
+	return predicate.Settings(sql.FieldNotIn(FieldInvoiceEmailBodyTemplate, vs...))
+}
+
+// InvoiceEmailBodyTemplateGT applies the GT predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateGT(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldGT(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceEmailBodyTemplateGTE applies the GTE predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateGTE(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldGTE(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceEmailBodyTemplateLT applies the LT predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateLT(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldLT(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceEmailBodyTemplateLTE applies the LTE predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateLTE(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldLTE(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceEmailBodyTemplateContains applies the Contains predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateContains(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldContains(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceEmailBodyTemplateHasPrefix applies the HasPrefix predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateHasPrefix(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldHasPrefix(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceEmailBodyTemplateHasSuffix applies the HasSuffix predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateHasSuffix(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldHasSuffix(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceEmailBodyTemplateEqualFold applies the EqualFold predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateEqualFold(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldEqualFold(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceEmailBodyTemplateContainsFold applies the ContainsFold predicate on the "invoice_email_body_template" field.
+func InvoiceEmailBodyTemplateContainsFold(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldContainsFold(FieldInvoiceEmailBodyTemplate, v))
+}
+
+// InvoiceReplyToEQ applies the EQ predicate on the "invoice_reply_to" field.
+func InvoiceReplyToEQ(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldEQ(FieldInvoiceReplyTo, v))
+}
+
+// InvoiceReplyToNEQ applies the NEQ predicate on the "invoice_reply_to" field.
+func InvoiceReplyToNEQ(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldNEQ(FieldInvoiceReplyTo, v))
+}
+
+// InvoiceReplyToIn applies the In predicate on the "invoice_reply_to" field.
+func InvoiceReplyToIn(vs ...string) predicate.Settings {
+	return predicate.Settings(sql.FieldIn(FieldInvoiceReplyTo, vs...))
+}
+
+// InvoiceReplyToNotIn applies the NotIn predicate on the "invoice_reply_to" field.
+func InvoiceReplyToNotIn(vs ...string) predicate.Settings {
+	return predicate.Settings(sql.FieldNotIn(FieldInvoiceReplyTo, vs...))
+}
+
+// InvoiceReplyToGT applies the GT predicate on the "invoice_reply_to" field.
+func InvoiceReplyToGT(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldGT(FieldInvoiceReplyTo, v))
+}
+
+// InvoiceReplyToGTE applies the GTE predicate on the "invoice_reply_to" field.
+func InvoiceReplyToGTE(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldGTE(FieldInvoiceReplyTo, v))
+}
+
+// InvoiceReplyToLT applies the LT predicate on the "invoice_reply_to" field.
+func InvoiceReplyToLT(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldLT(FieldInvoiceReplyTo, v))
+}
+
+// InvoiceReplyToLTE applies the LTE predicate on the "invoice_reply_to" field.
+func InvoiceReplyToLTE(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldLTE(FieldInvoiceReplyTo, v))
+}
+
+// InvoiceReplyToContains applies the Contains predicate on the "invoice_reply_to" field.
+func InvoiceReplyToContains(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldContains(FieldInvoiceReplyTo, v))
+}
+
+// InvoiceReplyToHasPrefix applies the HasPrefix predicate on the "invoice_reply_to" field.
+func InvoiceReplyToHasPrefix(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldHasPrefix(FieldInvoiceReplyTo, v))
+}
+
+// InvoiceReplyToHasSuffix applies the HasSuffix predicate on the "invoice_reply_to" field.
+func InvoiceReplyToHasSuffix(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldHasSuffix(FieldInvoiceReplyTo, v))
+}
+
+// InvoiceReplyToEqualFold applies the EqualFold predicate on the "invoice_reply_to" field.
+func InvoiceReplyToEqualFold(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldEqualFold(FieldInvoiceReplyTo, v))
+}
+
+// InvoiceReplyToContainsFold applies the ContainsFold predicate on the "invoice_reply_to" field.
+func InvoiceReplyToContainsFold(v string) predicate.Settings {
+	return predicate.Settings(sql.FieldContainsFold(FieldInvoiceReplyTo, v))
 }
 
 // MoneyCentsMigratedEQ applies the EQ predicate on the "money_cents_migrated" field.

@@ -8005,25 +8005,28 @@ func (m *PaymentMutation) ResetEdge(name string) error {
 // SettingsMutation represents an operation that mutates the Settings nodes in the graph.
 type SettingsMutation struct {
 	config
-	op                      Op
-	typ                     string
-	id                      *int
-	singleton_id            *int
-	addsingleton_id         *int
-	org_name                *string
-	address                 *string
-	invoice_prefix          *string
-	next_seq                *int
-	addnext_seq             *int
-	invoice_day_of_month    *int
-	addinvoice_day_of_month *int
-	currency                *string
-	locale                  *string
-	money_cents_migrated    *bool
-	clearedFields           map[string]struct{}
-	done                    bool
-	oldValue                func(context.Context) (*Settings, error)
-	predicates              []predicate.Settings
+	op                             Op
+	typ                            string
+	id                             *int
+	singleton_id                   *int
+	addsingleton_id                *int
+	org_name                       *string
+	address                        *string
+	invoice_prefix                 *string
+	next_seq                       *int
+	addnext_seq                    *int
+	invoice_day_of_month           *int
+	addinvoice_day_of_month        *int
+	currency                       *string
+	locale                         *string
+	invoice_email_subject_template *string
+	invoice_email_body_template    *string
+	invoice_reply_to               *string
+	money_cents_migrated           *bool
+	clearedFields                  map[string]struct{}
+	done                           bool
+	oldValue                       func(context.Context) (*Settings, error)
+	predicates                     []predicate.Settings
 }
 
 var _ ent.Mutation = (*SettingsMutation)(nil)
@@ -8472,6 +8475,114 @@ func (m *SettingsMutation) ResetLocale() {
 	m.locale = nil
 }
 
+// SetInvoiceEmailSubjectTemplate sets the "invoice_email_subject_template" field.
+func (m *SettingsMutation) SetInvoiceEmailSubjectTemplate(s string) {
+	m.invoice_email_subject_template = &s
+}
+
+// InvoiceEmailSubjectTemplate returns the value of the "invoice_email_subject_template" field in the mutation.
+func (m *SettingsMutation) InvoiceEmailSubjectTemplate() (r string, exists bool) {
+	v := m.invoice_email_subject_template
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInvoiceEmailSubjectTemplate returns the old "invoice_email_subject_template" field's value of the Settings entity.
+// If the Settings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SettingsMutation) OldInvoiceEmailSubjectTemplate(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInvoiceEmailSubjectTemplate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInvoiceEmailSubjectTemplate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInvoiceEmailSubjectTemplate: %w", err)
+	}
+	return oldValue.InvoiceEmailSubjectTemplate, nil
+}
+
+// ResetInvoiceEmailSubjectTemplate resets all changes to the "invoice_email_subject_template" field.
+func (m *SettingsMutation) ResetInvoiceEmailSubjectTemplate() {
+	m.invoice_email_subject_template = nil
+}
+
+// SetInvoiceEmailBodyTemplate sets the "invoice_email_body_template" field.
+func (m *SettingsMutation) SetInvoiceEmailBodyTemplate(s string) {
+	m.invoice_email_body_template = &s
+}
+
+// InvoiceEmailBodyTemplate returns the value of the "invoice_email_body_template" field in the mutation.
+func (m *SettingsMutation) InvoiceEmailBodyTemplate() (r string, exists bool) {
+	v := m.invoice_email_body_template
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInvoiceEmailBodyTemplate returns the old "invoice_email_body_template" field's value of the Settings entity.
+// If the Settings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SettingsMutation) OldInvoiceEmailBodyTemplate(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInvoiceEmailBodyTemplate is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInvoiceEmailBodyTemplate requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInvoiceEmailBodyTemplate: %w", err)
+	}
+	return oldValue.InvoiceEmailBodyTemplate, nil
+}
+
+// ResetInvoiceEmailBodyTemplate resets all changes to the "invoice_email_body_template" field.
+func (m *SettingsMutation) ResetInvoiceEmailBodyTemplate() {
+	m.invoice_email_body_template = nil
+}
+
+// SetInvoiceReplyTo sets the "invoice_reply_to" field.
+func (m *SettingsMutation) SetInvoiceReplyTo(s string) {
+	m.invoice_reply_to = &s
+}
+
+// InvoiceReplyTo returns the value of the "invoice_reply_to" field in the mutation.
+func (m *SettingsMutation) InvoiceReplyTo() (r string, exists bool) {
+	v := m.invoice_reply_to
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldInvoiceReplyTo returns the old "invoice_reply_to" field's value of the Settings entity.
+// If the Settings object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SettingsMutation) OldInvoiceReplyTo(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldInvoiceReplyTo is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldInvoiceReplyTo requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldInvoiceReplyTo: %w", err)
+	}
+	return oldValue.InvoiceReplyTo, nil
+}
+
+// ResetInvoiceReplyTo resets all changes to the "invoice_reply_to" field.
+func (m *SettingsMutation) ResetInvoiceReplyTo() {
+	m.invoice_reply_to = nil
+}
+
 // SetMoneyCentsMigrated sets the "money_cents_migrated" field.
 func (m *SettingsMutation) SetMoneyCentsMigrated(b bool) {
 	m.money_cents_migrated = &b
@@ -8542,7 +8653,7 @@ func (m *SettingsMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SettingsMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 12)
 	if m.singleton_id != nil {
 		fields = append(fields, settings.FieldSingletonID)
 	}
@@ -8566,6 +8677,15 @@ func (m *SettingsMutation) Fields() []string {
 	}
 	if m.locale != nil {
 		fields = append(fields, settings.FieldLocale)
+	}
+	if m.invoice_email_subject_template != nil {
+		fields = append(fields, settings.FieldInvoiceEmailSubjectTemplate)
+	}
+	if m.invoice_email_body_template != nil {
+		fields = append(fields, settings.FieldInvoiceEmailBodyTemplate)
+	}
+	if m.invoice_reply_to != nil {
+		fields = append(fields, settings.FieldInvoiceReplyTo)
 	}
 	if m.money_cents_migrated != nil {
 		fields = append(fields, settings.FieldMoneyCentsMigrated)
@@ -8594,6 +8714,12 @@ func (m *SettingsMutation) Field(name string) (ent.Value, bool) {
 		return m.Currency()
 	case settings.FieldLocale:
 		return m.Locale()
+	case settings.FieldInvoiceEmailSubjectTemplate:
+		return m.InvoiceEmailSubjectTemplate()
+	case settings.FieldInvoiceEmailBodyTemplate:
+		return m.InvoiceEmailBodyTemplate()
+	case settings.FieldInvoiceReplyTo:
+		return m.InvoiceReplyTo()
 	case settings.FieldMoneyCentsMigrated:
 		return m.MoneyCentsMigrated()
 	}
@@ -8621,6 +8747,12 @@ func (m *SettingsMutation) OldField(ctx context.Context, name string) (ent.Value
 		return m.OldCurrency(ctx)
 	case settings.FieldLocale:
 		return m.OldLocale(ctx)
+	case settings.FieldInvoiceEmailSubjectTemplate:
+		return m.OldInvoiceEmailSubjectTemplate(ctx)
+	case settings.FieldInvoiceEmailBodyTemplate:
+		return m.OldInvoiceEmailBodyTemplate(ctx)
+	case settings.FieldInvoiceReplyTo:
+		return m.OldInvoiceReplyTo(ctx)
 	case settings.FieldMoneyCentsMigrated:
 		return m.OldMoneyCentsMigrated(ctx)
 	}
@@ -8687,6 +8819,27 @@ func (m *SettingsMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLocale(v)
+		return nil
+	case settings.FieldInvoiceEmailSubjectTemplate:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInvoiceEmailSubjectTemplate(v)
+		return nil
+	case settings.FieldInvoiceEmailBodyTemplate:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInvoiceEmailBodyTemplate(v)
+		return nil
+	case settings.FieldInvoiceReplyTo:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetInvoiceReplyTo(v)
 		return nil
 	case settings.FieldMoneyCentsMigrated:
 		v, ok := value.(bool)
@@ -8806,6 +8959,15 @@ func (m *SettingsMutation) ResetField(name string) error {
 		return nil
 	case settings.FieldLocale:
 		m.ResetLocale()
+		return nil
+	case settings.FieldInvoiceEmailSubjectTemplate:
+		m.ResetInvoiceEmailSubjectTemplate()
+		return nil
+	case settings.FieldInvoiceEmailBodyTemplate:
+		m.ResetInvoiceEmailBodyTemplate()
+		return nil
+	case settings.FieldInvoiceReplyTo:
+		m.ResetInvoiceReplyTo()
 		return nil
 	case settings.FieldMoneyCentsMigrated:
 		m.ResetMoneyCentsMigrated()

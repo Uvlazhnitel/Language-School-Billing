@@ -94,6 +94,8 @@ func (s *Server) routes() {
 
 	s.mux.HandleFunc("GET /api/settings/locale", s.handleSettingsGetLocale)
 	s.mux.HandleFunc("POST /api/settings/locale", s.handleSettingsSetLocale)
+	s.mux.HandleFunc("GET /api/settings/invoice-email", s.handleSettingsGetInvoiceEmail)
+	s.mux.HandleFunc("POST /api/settings/invoice-email", s.handleSettingsSetInvoiceEmail)
 	s.mux.HandleFunc("GET /api/audit-logs", s.handleAuditLogsList)
 	s.mux.HandleFunc("GET /api/users", s.handleUsersList)
 	s.mux.HandleFunc("POST /api/users", s.handleUsersCreate)
@@ -851,6 +853,32 @@ func (s *Server) handleSettingsSetLocale(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, map[string]string{"locale": req.Locale})
 }
 
+func (s *Server) handleSettingsGetInvoiceEmail(w http.ResponseWriter, r *http.Request) {
+	item, err := s.svc.SettingsGetInvoiceEmail(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (s *Server) handleSettingsSetInvoiceEmail(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		SubjectTemplate string `json:"subjectTemplate"`
+		BodyTemplate    string `json:"bodyTemplate"`
+		ReplyTo         string `json:"replyTo"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	item, err := s.svc.SettingsSetInvoiceEmail(r.Context(), req.SubjectTemplate, req.BodyTemplate, req.ReplyTo)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
 func (s *Server) handleCurrentUserGetLocale(w http.ResponseWriter, r *http.Request) {
 	currentUser := currentUserFromContext(r.Context())
 	if currentUser == nil {
@@ -1362,6 +1390,8 @@ func isAdminOnlyAPIPath(method, path string) bool {
 	case method == http.MethodPost && path == "/api/backups":
 		return true
 	case method == http.MethodPost && path == "/api/settings/locale":
+		return true
+	case (method == http.MethodGet || method == http.MethodPost) && path == "/api/settings/invoice-email":
 		return true
 	case method == http.MethodGet && path == "/api/audit-logs":
 		return true

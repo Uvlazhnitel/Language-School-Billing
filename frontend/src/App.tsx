@@ -77,7 +77,7 @@ import {
   RecentPaymentDTO,
 } from "./lib/dashboard";
 import { AuditLogItem, listAuditLogs } from "./lib/audit";
-import { getTransport, type UserDTO } from "./lib/api";
+import { getTransport, type InvoiceEmailSettingsDTO, type UserDTO } from "./lib/api";
 import { AUTH_REQUIRED_EVENT, isConflictError } from "./lib/api/shared";
 import { AppShell, type AppTab } from "./components/AppShell";
 import { ConfirmDialog } from "./components/ConfirmDialog";
@@ -169,6 +169,12 @@ export default function App() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [uiLocale, setUiLocale] = useState<UiLocale>("lv-LV");
   const [creatingBackup, setCreatingBackup] = useState(false);
+  const [invoiceEmailSettings, setInvoiceEmailSettings] = useState<InvoiceEmailSettingsDTO | null>(null);
+  const [invoiceEmailSettingsLoading, setInvoiceEmailSettingsLoading] = useState(false);
+  const [savingInvoiceEmailSettings, setSavingInvoiceEmailSettings] = useState(false);
+  const [invoiceEmailSubjectTemplate, setInvoiceEmailSubjectTemplate] = useState("");
+  const [invoiceEmailBodyTemplate, setInvoiceEmailBodyTemplate] = useState("");
+  const [invoiceEmailReplyTo, setInvoiceEmailReplyTo] = useState("");
   const [users, setUsers] = useState<UserDTO[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
@@ -239,6 +245,7 @@ export default function App() {
   const uiMonths = useMemo(() => getMonthNames(uiLocale), [uiLocale]);
   const tabMeta = useMemo(() => buildTabMeta(t), [t]);
   const canManageUsers = Boolean(sessionCapabilities.manageUsers);
+  const canManageSettings = Boolean(sessionCapabilities.manageSettings);
   const canCreateBackups = Boolean(sessionCapabilities.backups);
   const canDeleteStudents = Boolean(sessionCapabilities.deleteStudents);
   const canDeleteCourses = Boolean(sessionCapabilities.deleteCourses);
@@ -2344,6 +2351,75 @@ export default function App() {
     }
   };
 
+  const applyInvoiceEmailSettingsDraft = useCallback((settings: InvoiceEmailSettingsDTO) => {
+    setInvoiceEmailSettings(settings);
+    setInvoiceEmailSubjectTemplate(settings.subjectTemplate);
+    setInvoiceEmailBodyTemplate(settings.bodyTemplate);
+    setInvoiceEmailReplyTo(settings.replyTo);
+  }, []);
+
+  const loadInvoiceEmailSettings = useCallback(async () => {
+    if (!canManageSettings) return;
+    setInvoiceEmailSettingsLoading(true);
+    try {
+      const transport = await getTransport();
+      const settings = await transport.getInvoiceEmailSettings();
+      applyInvoiceEmailSettingsDraft(settings);
+    } catch (e: any) {
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    } finally {
+      setInvoiceEmailSettingsLoading(false);
+    }
+  }, [applyInvoiceEmailSettingsDraft, canManageSettings, showMessage, t]);
+
+  const handleSaveInvoiceEmailSettings = useCallback(async () => {
+    setSavingInvoiceEmailSettings(true);
+    try {
+      const transport = await getTransport();
+      const settings = await transport.saveInvoiceEmailSettings({
+        subjectTemplate: invoiceEmailSubjectTemplate,
+        bodyTemplate: invoiceEmailBodyTemplate,
+        replyTo: invoiceEmailReplyTo,
+      });
+      applyInvoiceEmailSettingsDraft(settings);
+      showMessage(t("settings.invoiceEmailSaved"));
+    } catch (e: any) {
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    } finally {
+      setSavingInvoiceEmailSettings(false);
+    }
+  }, [
+    applyInvoiceEmailSettingsDraft,
+    invoiceEmailBodyTemplate,
+    invoiceEmailReplyTo,
+    invoiceEmailSubjectTemplate,
+    showMessage,
+    t,
+  ]);
+
+  const handleResetInvoiceEmailSettings = useCallback(async () => {
+    setSavingInvoiceEmailSettings(true);
+    try {
+      const transport = await getTransport();
+      const settings = await transport.saveInvoiceEmailSettings({
+        subjectTemplate: "",
+        bodyTemplate: "",
+        replyTo: "",
+      });
+      applyInvoiceEmailSettingsDraft(settings);
+      showMessage(t("settings.invoiceEmailResetDone"));
+    } catch (e: any) {
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    } finally {
+      setSavingInvoiceEmailSettings(false);
+    }
+  }, [applyInvoiceEmailSettingsDraft, showMessage, t]);
+
+  useEffect(() => {
+    if (!appReady || tab !== "settings" || !canManageSettings) return;
+    void loadInvoiceEmailSettings();
+  }, [appReady, canManageSettings, loadInvoiceEmailSettings, tab]);
+
   // ---------------- Render ----------------
   const showMonthPicker = tab === "dashboard" || tab === "attendance" || tab === "invoice";
   const selectedInvPdfReady = selectedInv
@@ -2832,8 +2908,15 @@ export default function App() {
               <SettingsScreen
                 uiLocale={uiLocale}
                 canCreateBackups={canCreateBackups}
+                canManageSettings={canManageSettings}
                 creatingBackup={creatingBackup}
                 canManageUsers={canManageUsers}
+                invoiceEmailSettingsLoading={invoiceEmailSettingsLoading}
+                savingInvoiceEmailSettings={savingInvoiceEmailSettings}
+                invoiceEmailSettings={invoiceEmailSettings}
+                invoiceEmailSubjectTemplate={invoiceEmailSubjectTemplate}
+                invoiceEmailBodyTemplate={invoiceEmailBodyTemplate}
+                invoiceEmailReplyTo={invoiceEmailReplyTo}
                 usersLoading={usersLoading}
                 users={users}
                 creatingUser={creatingUser}
@@ -2846,6 +2929,11 @@ export default function App() {
                 onLocaleChange={handleLocaleChange}
                 onCreateBackup={createManualBackup}
                 onSetTab={setTab}
+                onInvoiceEmailSubjectTemplateChange={setInvoiceEmailSubjectTemplate}
+                onInvoiceEmailBodyTemplateChange={setInvoiceEmailBodyTemplate}
+                onInvoiceEmailReplyToChange={setInvoiceEmailReplyTo}
+                onSaveInvoiceEmailSettings={handleSaveInvoiceEmailSettings}
+                onResetInvoiceEmailSettings={handleResetInvoiceEmailSettings}
                 onNewUserUsernameChange={setNewUserUsername}
                 onNewUserPasswordChange={setNewUserPassword}
                 onNewUserRoleChange={setNewUserRole}

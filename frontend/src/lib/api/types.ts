@@ -57,6 +57,13 @@ export type InvoiceEmailSendResult = {
   sentAt: string;
 };
 
+export type InvoiceEmailSettingsDTO = {
+  subjectTemplate: string;
+  bodyTemplate: string;
+  replyTo: string;
+  availablePlaceholders: string[];
+};
+
 export type Row = {
   enrollmentId: number;
   enrollmentVersion: number;
@@ -428,6 +435,10 @@ export interface AppTransport {
     invoiceId: number,
     payload: Pick<InvoiceEmailPreviewResult, "to" | "subject" | "body">
   ): Promise<InvoiceEmailSendResult>;
+  getInvoiceEmailSettings(): Promise<InvoiceEmailSettingsDTO>;
+  saveInvoiceEmailSettings(
+    payload: Pick<InvoiceEmailSettingsDTO, "subjectTemplate" | "bodyTemplate" | "replyTo">
+  ): Promise<InvoiceEmailSettingsDTO>;
 
   createPayment(
     studentId: number,

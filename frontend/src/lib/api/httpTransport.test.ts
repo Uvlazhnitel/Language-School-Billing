@@ -168,6 +168,41 @@ describe("httpTransport", () => {
     });
   });
 
+  it("maps invoice email settings endpoints", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/settings/invoice-email")) {
+        return jsonResponse({
+          subjectTemplate: "Rēķins {invoice_number}",
+          bodyTemplate: "Labdien!",
+          replyTo: "hello@example.com",
+          availablePlaceholders: ["{invoice_number}"],
+        });
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(httpTransport.getInvoiceEmailSettings()).resolves.toEqual({
+      subjectTemplate: "Rēķins {invoice_number}",
+      bodyTemplate: "Labdien!",
+      replyTo: "hello@example.com",
+      availablePlaceholders: ["{invoice_number}"],
+    });
+    await expect(
+      httpTransport.saveInvoiceEmailSettings({
+        subjectTemplate: "",
+        bodyTemplate: "",
+        replyTo: "",
+      })
+    ).resolves.toEqual({
+      subjectTemplate: "Rēķins {invoice_number}",
+      bodyTemplate: "Labdien!",
+      replyTo: "hello@example.com",
+      availablePlaceholders: ["{invoice_number}"],
+    });
+  });
+
   it("creates backups and returns safe metadata", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ filename: "app-20260602.sqlite" })));
 

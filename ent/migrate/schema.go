@@ -323,6 +323,9 @@ var (
 		{Name: "invoice_day_of_month", Type: field.TypeInt, Default: 1},
 		{Name: "currency", Type: field.TypeString, Default: "EUR"},
 		{Name: "locale", Type: field.TypeString, Default: "en-US"},
+		{Name: "invoice_email_subject_template", Type: field.TypeString, Default: ""},
+		{Name: "invoice_email_body_template", Type: field.TypeString, Default: ""},
+		{Name: "invoice_reply_to", Type: field.TypeString, Default: ""},
 		{Name: "money_cents_migrated", Type: field.TypeBool, Default: false},
 	}
 	// SettingsTable holds the schema information for the "settings" table.

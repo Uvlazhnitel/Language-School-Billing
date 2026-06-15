@@ -27,6 +27,12 @@ const (
 	FieldCurrency = "currency"
 	// FieldLocale holds the string denoting the locale field in the database.
 	FieldLocale = "locale"
+	// FieldInvoiceEmailSubjectTemplate holds the string denoting the invoice_email_subject_template field in the database.
+	FieldInvoiceEmailSubjectTemplate = "invoice_email_subject_template"
+	// FieldInvoiceEmailBodyTemplate holds the string denoting the invoice_email_body_template field in the database.
+	FieldInvoiceEmailBodyTemplate = "invoice_email_body_template"
+	// FieldInvoiceReplyTo holds the string denoting the invoice_reply_to field in the database.
+	FieldInvoiceReplyTo = "invoice_reply_to"
 	// FieldMoneyCentsMigrated holds the string denoting the money_cents_migrated field in the database.
 	FieldMoneyCentsMigrated = "money_cents_migrated"
 	// Table holds the table name of the settings in the database.
@@ -44,6 +50,9 @@ var Columns = []string{
 	FieldInvoiceDayOfMonth,
 	FieldCurrency,
 	FieldLocale,
+	FieldInvoiceEmailSubjectTemplate,
+	FieldInvoiceEmailBodyTemplate,
+	FieldInvoiceReplyTo,
 	FieldMoneyCentsMigrated,
 }
 
@@ -72,6 +81,12 @@ var (
 	DefaultCurrency string
 	// DefaultLocale holds the default value on creation for the "locale" field.
 	DefaultLocale string
+	// DefaultInvoiceEmailSubjectTemplate holds the default value on creation for the "invoice_email_subject_template" field.
+	DefaultInvoiceEmailSubjectTemplate string
+	// DefaultInvoiceEmailBodyTemplate holds the default value on creation for the "invoice_email_body_template" field.
+	DefaultInvoiceEmailBodyTemplate string
+	// DefaultInvoiceReplyTo holds the default value on creation for the "invoice_reply_to" field.
+	DefaultInvoiceReplyTo string
 	// DefaultMoneyCentsMigrated holds the default value on creation for the "money_cents_migrated" field.
 	DefaultMoneyCentsMigrated bool
 )
@@ -122,6 +137,21 @@ func ByCurrency(opts ...sql.OrderTermOption) OrderOption {
 // ByLocale orders the results by the locale field.
 func ByLocale(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLocale, opts...).ToFunc()
+}
+
+// ByInvoiceEmailSubjectTemplate orders the results by the invoice_email_subject_template field.
+func ByInvoiceEmailSubjectTemplate(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldInvoiceEmailSubjectTemplate, opts...).ToFunc()
+}
+
+// ByInvoiceEmailBodyTemplate orders the results by the invoice_email_body_template field.
+func ByInvoiceEmailBodyTemplate(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldInvoiceEmailBodyTemplate, opts...).ToFunc()
+}
+
+// ByInvoiceReplyTo orders the results by the invoice_reply_to field.
+func ByInvoiceReplyTo(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldInvoiceReplyTo, opts...).ToFunc()
 }
 
 // ByMoneyCentsMigrated orders the results by the money_cents_migrated field.

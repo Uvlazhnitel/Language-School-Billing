@@ -15,6 +15,7 @@ export type {
   EnsurePdfResult,
   InvoiceEmailPreviewResult,
   InvoiceEmailSendResult,
+  InvoiceEmailSettingsDTO,
   GenerateResult,
   InvoiceDTO,
   InvoiceListItem,

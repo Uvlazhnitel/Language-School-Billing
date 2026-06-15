@@ -1,4 +1,4 @@
-import type { UserDTO } from "../lib/api";
+import type { InvoiceEmailSettingsDTO, UserDTO } from "../lib/api";
 import type { TranslateFn, UiLocale } from "../lib/i18n";
 import type { AppTabId } from "../lib/appUi";
 
@@ -7,8 +7,15 @@ type UserDraft = { username: string; role: string; isActive: boolean };
 type SettingsScreenProps = {
   uiLocale: UiLocale;
   canCreateBackups: boolean;
+  canManageSettings: boolean;
   creatingBackup: boolean;
   canManageUsers: boolean;
+  invoiceEmailSettingsLoading: boolean;
+  savingInvoiceEmailSettings: boolean;
+  invoiceEmailSettings: InvoiceEmailSettingsDTO | null;
+  invoiceEmailSubjectTemplate: string;
+  invoiceEmailBodyTemplate: string;
+  invoiceEmailReplyTo: string;
   usersLoading: boolean;
   users: UserDTO[];
   creatingUser: boolean;
@@ -21,6 +28,11 @@ type SettingsScreenProps = {
   onLocaleChange: (value: UiLocale) => void | Promise<void>;
   onCreateBackup: () => void | Promise<void>;
   onSetTab: (tab: AppTabId) => void;
+  onInvoiceEmailSubjectTemplateChange: (value: string) => void;
+  onInvoiceEmailBodyTemplateChange: (value: string) => void;
+  onInvoiceEmailReplyToChange: (value: string) => void;
+  onSaveInvoiceEmailSettings: () => void | Promise<void>;
+  onResetInvoiceEmailSettings: () => void | Promise<void>;
   onNewUserUsernameChange: (value: string) => void;
   onNewUserPasswordChange: (value: string) => void;
   onNewUserRoleChange: (value: string) => void;
@@ -37,8 +49,15 @@ type SettingsScreenProps = {
 export function SettingsScreen({
   uiLocale,
   canCreateBackups,
+  canManageSettings,
   creatingBackup,
   canManageUsers,
+  invoiceEmailSettingsLoading,
+  savingInvoiceEmailSettings,
+  invoiceEmailSettings,
+  invoiceEmailSubjectTemplate,
+  invoiceEmailBodyTemplate,
+  invoiceEmailReplyTo,
   usersLoading,
   users,
   creatingUser,
@@ -51,6 +70,11 @@ export function SettingsScreen({
   onLocaleChange,
   onCreateBackup,
   onSetTab,
+  onInvoiceEmailSubjectTemplateChange,
+  onInvoiceEmailBodyTemplateChange,
+  onInvoiceEmailReplyToChange,
+  onSaveInvoiceEmailSettings,
+  onResetInvoiceEmailSettings,
   onNewUserUsernameChange,
   onNewUserPasswordChange,
   onNewUserRoleChange,
@@ -111,6 +135,73 @@ export function SettingsScreen({
           </button>
         </div>
       </section>
+
+      {canManageSettings && (
+        <section className="detailCard detailCard--wide">
+          <div className="detailCardHeader">
+            <h3>{t("settings.invoiceEmailTitle")}</h3>
+          </div>
+          <p className="mutedInline">{t("settings.invoiceEmailDesc")}</p>
+          {invoiceEmailSettingsLoading && !invoiceEmailSettings ? (
+            <div className="empty">{t("label.loading")}</div>
+          ) : (
+            <>
+              <div className="formRow">
+                <label>{t("settings.invoiceEmailSubject")}</label>
+                <input
+                  value={invoiceEmailSubjectTemplate}
+                  onChange={(e) => onInvoiceEmailSubjectTemplateChange(e.target.value)}
+                />
+              </div>
+              <div className="formRow formRowTopAligned">
+                <label>{t("settings.invoiceEmailBody")}</label>
+                <textarea
+                  className="modalTextarea"
+                  rows={9}
+                  value={invoiceEmailBodyTemplate}
+                  onChange={(e) => onInvoiceEmailBodyTemplateChange(e.target.value)}
+                />
+              </div>
+              <div className="formRow">
+                <label>{t("settings.invoiceEmailReplyTo")}</label>
+                <input
+                  value={invoiceEmailReplyTo}
+                  onChange={(e) => onInvoiceEmailReplyToChange(e.target.value)}
+                  placeholder={t("settings.invoiceEmailReplyToPlaceholder")}
+                />
+              </div>
+              <div className="formRow formRowTopAligned">
+                <label>{t("settings.invoiceEmailPlaceholders")}</label>
+                <div className="templatePlaceholderList">
+                  {(invoiceEmailSettings?.availablePlaceholders ?? []).map((placeholder) => (
+                    <code key={placeholder} className="templatePlaceholderTag">
+                      {placeholder}
+                    </code>
+                  ))}
+                </div>
+              </div>
+              <div className="settingsActions">
+                <button
+                  type="button"
+                  className="workspaceActionButton workspaceActionButtonPrimary"
+                  onClick={() => void onSaveInvoiceEmailSettings()}
+                  disabled={savingInvoiceEmailSettings}
+                >
+                  {savingInvoiceEmailSettings ? `${t("button.save")}...` : t("button.save")}
+                </button>
+                <button
+                  type="button"
+                  className="workspaceActionButton"
+                  onClick={() => void onResetInvoiceEmailSettings()}
+                  disabled={savingInvoiceEmailSettings}
+                >
+                  {t("settings.invoiceEmailReset")}
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       {canManageUsers && (
         <section className="detailCard detailCard--wide">

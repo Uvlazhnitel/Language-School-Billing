@@ -219,8 +219,20 @@ func init() {
 	settingsDescLocale := settingsFields[7].Descriptor()
 	// settings.DefaultLocale holds the default value on creation for the locale field.
 	settings.DefaultLocale = settingsDescLocale.Default.(string)
+	// settingsDescInvoiceEmailSubjectTemplate is the schema descriptor for invoice_email_subject_template field.
+	settingsDescInvoiceEmailSubjectTemplate := settingsFields[8].Descriptor()
+	// settings.DefaultInvoiceEmailSubjectTemplate holds the default value on creation for the invoice_email_subject_template field.
+	settings.DefaultInvoiceEmailSubjectTemplate = settingsDescInvoiceEmailSubjectTemplate.Default.(string)
+	// settingsDescInvoiceEmailBodyTemplate is the schema descriptor for invoice_email_body_template field.
+	settingsDescInvoiceEmailBodyTemplate := settingsFields[9].Descriptor()
+	// settings.DefaultInvoiceEmailBodyTemplate holds the default value on creation for the invoice_email_body_template field.
+	settings.DefaultInvoiceEmailBodyTemplate = settingsDescInvoiceEmailBodyTemplate.Default.(string)
+	// settingsDescInvoiceReplyTo is the schema descriptor for invoice_reply_to field.
+	settingsDescInvoiceReplyTo := settingsFields[10].Descriptor()
+	// settings.DefaultInvoiceReplyTo holds the default value on creation for the invoice_reply_to field.
+	settings.DefaultInvoiceReplyTo = settingsDescInvoiceReplyTo.Default.(string)
 	// settingsDescMoneyCentsMigrated is the schema descriptor for money_cents_migrated field.
-	settingsDescMoneyCentsMigrated := settingsFields[8].Descriptor()
+	settingsDescMoneyCentsMigrated := settingsFields[11].Descriptor()
 	// settings.DefaultMoneyCentsMigrated holds the default value on creation for the money_cents_migrated field.
 	settings.DefaultMoneyCentsMigrated = settingsDescMoneyCentsMigrated.Default.(bool)
 	studentMixin := schema.Student{}.Mixin()

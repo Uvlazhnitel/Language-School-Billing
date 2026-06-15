@@ -142,6 +142,13 @@ type SessionDTO struct {
 
 type UserDTO = auth.UserRecord
 
+type InvoiceEmailSettingsDTO struct {
+	SubjectTemplate       string   `json:"subjectTemplate"`
+	BodyTemplate          string   `json:"bodyTemplate"`
+	ReplyTo               string   `json:"replyTo"`
+	AvailablePlaceholders []string `json:"availablePlaceholders"`
+}
+
 type Service struct {
 	rt          *appruntime.Runtime
 	emailSender email.Sender

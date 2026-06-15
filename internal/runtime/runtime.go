@@ -20,9 +20,11 @@ import (
 )
 
 const (
-	DefaultSchoolDisplayName = "ArtLab"
-	DefaultSchoolAddress     = "Latgales iela 260, Rīga, Latvija"
-	PreMigrationBackupLimit  = 30
+	DefaultSchoolDisplayName           = "ArtLab"
+	DefaultSchoolAddress               = "Latgales iela 260, Rīga, Latvija"
+	PreMigrationBackupLimit            = 30
+	DefaultInvoiceEmailSubjectTemplate = "Rēķins {invoice_number} par {month_name} {year}"
+	DefaultInvoiceEmailBodyTemplate    = "Labdien!\n\nPielikumā nosūtām rēķinu {invoice_number} par {month_name} {year} summā {amount} EUR.\n\nJa ir jautājumi, lūdzu, sazinieties ar mums.\n\nAr cieņu,\n{org_name}"
 )
 
 type Runtime struct {
@@ -120,6 +122,9 @@ func ensureSettings(ctx context.Context, client *ent.Client) error {
 			SetInvoiceDayOfMonth(1).
 			SetCurrency("EUR").
 			SetLocale("lv-LV").
+			SetInvoiceEmailSubjectTemplate(DefaultInvoiceEmailSubjectTemplate).
+			SetInvoiceEmailBodyTemplate(DefaultInvoiceEmailBodyTemplate).
+			SetInvoiceReplyTo("").
 			Save(ctx)
 		return err
 	}
@@ -145,6 +150,12 @@ func ensureSettings(ctx context.Context, client *ent.Client) error {
 	address := strings.TrimSpace(st.Address)
 	if address == "" || strings.EqualFold(address, "Brivibas iela 88, Riga, Latvia") {
 		upd.SetAddress(DefaultSchoolAddress)
+	}
+	if strings.TrimSpace(st.InvoiceEmailSubjectTemplate) == "" {
+		upd.SetInvoiceEmailSubjectTemplate(DefaultInvoiceEmailSubjectTemplate)
+	}
+	if strings.TrimSpace(st.InvoiceEmailBodyTemplate) == "" {
+		upd.SetInvoiceEmailBodyTemplate(DefaultInvoiceEmailBodyTemplate)
 	}
 
 	_, err = upd.Save(ctx)

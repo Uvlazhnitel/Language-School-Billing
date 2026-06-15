@@ -13,6 +13,7 @@ import type {
   InvoiceDTO,
   InvoiceEmailPreviewResult,
   InvoiceEmailSendResult,
+  InvoiceEmailSettingsDTO,
   InvoiceListItem,
   InvoiceSummaryDTO,
   IssueResult,
@@ -367,6 +368,15 @@ export const httpTransport: AppTransport = {
   },
   async sendInvoiceEmail(invoiceId, payload) {
     return request<InvoiceEmailSendResult>(`/invoices/${invoiceId}/send-email`, {
+      method: "POST",
+      ...body(payload),
+    });
+  },
+  async getInvoiceEmailSettings() {
+    return request<InvoiceEmailSettingsDTO>("/settings/invoice-email");
+  },
+  async saveInvoiceEmailSettings(payload) {
+    return request<InvoiceEmailSettingsDTO>("/settings/invoice-email", {
       method: "POST",
       ...body(payload),
     });

@@ -123,6 +123,48 @@ func (_c *SettingsCreate) SetNillableLocale(v *string) *SettingsCreate {
 	return _c
 }
 
+// SetInvoiceEmailSubjectTemplate sets the "invoice_email_subject_template" field.
+func (_c *SettingsCreate) SetInvoiceEmailSubjectTemplate(v string) *SettingsCreate {
+	_c.mutation.SetInvoiceEmailSubjectTemplate(v)
+	return _c
+}
+
+// SetNillableInvoiceEmailSubjectTemplate sets the "invoice_email_subject_template" field if the given value is not nil.
+func (_c *SettingsCreate) SetNillableInvoiceEmailSubjectTemplate(v *string) *SettingsCreate {
+	if v != nil {
+		_c.SetInvoiceEmailSubjectTemplate(*v)
+	}
+	return _c
+}
+
+// SetInvoiceEmailBodyTemplate sets the "invoice_email_body_template" field.
+func (_c *SettingsCreate) SetInvoiceEmailBodyTemplate(v string) *SettingsCreate {
+	_c.mutation.SetInvoiceEmailBodyTemplate(v)
+	return _c
+}
+
+// SetNillableInvoiceEmailBodyTemplate sets the "invoice_email_body_template" field if the given value is not nil.
+func (_c *SettingsCreate) SetNillableInvoiceEmailBodyTemplate(v *string) *SettingsCreate {
+	if v != nil {
+		_c.SetInvoiceEmailBodyTemplate(*v)
+	}
+	return _c
+}
+
+// SetInvoiceReplyTo sets the "invoice_reply_to" field.
+func (_c *SettingsCreate) SetInvoiceReplyTo(v string) *SettingsCreate {
+	_c.mutation.SetInvoiceReplyTo(v)
+	return _c
+}
+
+// SetNillableInvoiceReplyTo sets the "invoice_reply_to" field if the given value is not nil.
+func (_c *SettingsCreate) SetNillableInvoiceReplyTo(v *string) *SettingsCreate {
+	if v != nil {
+		_c.SetInvoiceReplyTo(*v)
+	}
+	return _c
+}
+
 // SetMoneyCentsMigrated sets the "money_cents_migrated" field.
 func (_c *SettingsCreate) SetMoneyCentsMigrated(v bool) *SettingsCreate {
 	_c.mutation.SetMoneyCentsMigrated(v)
@@ -200,6 +242,18 @@ func (_c *SettingsCreate) defaults() {
 		v := settings.DefaultLocale
 		_c.mutation.SetLocale(v)
 	}
+	if _, ok := _c.mutation.InvoiceEmailSubjectTemplate(); !ok {
+		v := settings.DefaultInvoiceEmailSubjectTemplate
+		_c.mutation.SetInvoiceEmailSubjectTemplate(v)
+	}
+	if _, ok := _c.mutation.InvoiceEmailBodyTemplate(); !ok {
+		v := settings.DefaultInvoiceEmailBodyTemplate
+		_c.mutation.SetInvoiceEmailBodyTemplate(v)
+	}
+	if _, ok := _c.mutation.InvoiceReplyTo(); !ok {
+		v := settings.DefaultInvoiceReplyTo
+		_c.mutation.SetInvoiceReplyTo(v)
+	}
 	if _, ok := _c.mutation.MoneyCentsMigrated(); !ok {
 		v := settings.DefaultMoneyCentsMigrated
 		_c.mutation.SetMoneyCentsMigrated(v)
@@ -231,6 +285,15 @@ func (_c *SettingsCreate) check() error {
 	}
 	if _, ok := _c.mutation.Locale(); !ok {
 		return &ValidationError{Name: "locale", err: errors.New(`ent: missing required field "Settings.locale"`)}
+	}
+	if _, ok := _c.mutation.InvoiceEmailSubjectTemplate(); !ok {
+		return &ValidationError{Name: "invoice_email_subject_template", err: errors.New(`ent: missing required field "Settings.invoice_email_subject_template"`)}
+	}
+	if _, ok := _c.mutation.InvoiceEmailBodyTemplate(); !ok {
+		return &ValidationError{Name: "invoice_email_body_template", err: errors.New(`ent: missing required field "Settings.invoice_email_body_template"`)}
+	}
+	if _, ok := _c.mutation.InvoiceReplyTo(); !ok {
+		return &ValidationError{Name: "invoice_reply_to", err: errors.New(`ent: missing required field "Settings.invoice_reply_to"`)}
 	}
 	if _, ok := _c.mutation.MoneyCentsMigrated(); !ok {
 		return &ValidationError{Name: "money_cents_migrated", err: errors.New(`ent: missing required field "Settings.money_cents_migrated"`)}
@@ -292,6 +355,18 @@ func (_c *SettingsCreate) createSpec() (*Settings, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Locale(); ok {
 		_spec.SetField(settings.FieldLocale, field.TypeString, value)
 		_node.Locale = value
+	}
+	if value, ok := _c.mutation.InvoiceEmailSubjectTemplate(); ok {
+		_spec.SetField(settings.FieldInvoiceEmailSubjectTemplate, field.TypeString, value)
+		_node.InvoiceEmailSubjectTemplate = value
+	}
+	if value, ok := _c.mutation.InvoiceEmailBodyTemplate(); ok {
+		_spec.SetField(settings.FieldInvoiceEmailBodyTemplate, field.TypeString, value)
+		_node.InvoiceEmailBodyTemplate = value
+	}
+	if value, ok := _c.mutation.InvoiceReplyTo(); ok {
+		_spec.SetField(settings.FieldInvoiceReplyTo, field.TypeString, value)
+		_node.InvoiceReplyTo = value
 	}
 	if value, ok := _c.mutation.MoneyCentsMigrated(); ok {
 		_spec.SetField(settings.FieldMoneyCentsMigrated, field.TypeBool, value)

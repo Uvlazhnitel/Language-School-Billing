@@ -520,6 +520,26 @@ func TestInvoiceEmailPreviewAndSend(t *testing.T) {
 		t.Fatalf("preview subject = %q, want issue number %q", preview.Subject, issue.Number)
 	}
 
+	savedSettings := postJSON[backend.InvoiceEmailSettingsDTO](t, env.Client, env.Server.URL, "/api/settings/invoice-email", map[string]any{
+		"subjectTemplate": "Custom {invoice_number} {month_name}",
+		"bodyTemplate":    "Sveiki, {recipient_name}! {amount} EUR / {foo}",
+		"replyTo":         "reply@example.com",
+	})
+	if savedSettings.ReplyTo != "reply@example.com" {
+		t.Fatalf("replyTo = %q, want reply@example.com", savedSettings.ReplyTo)
+	}
+
+	preview = postJSON[backend.InvoiceEmailPreviewResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/email-preview", map[string]any{})
+	if preview.Subject != fmt.Sprintf("Custom %s jūniju", issue.Number) {
+		t.Fatalf("custom preview subject = %q", preview.Subject)
+	}
+	if !strings.Contains(preview.Body, "Sveiki, Email Student!") {
+		t.Fatalf("custom preview body = %q, want rendered recipient", preview.Body)
+	}
+	if !strings.Contains(preview.Body, "{foo}") {
+		t.Fatalf("custom preview body = %q, want unknown placeholder preserved", preview.Body)
+	}
+
 	sent := postJSON[backend.InvoiceSendEmailResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/send-email", map[string]any{
 		"to":      preview.To,
 		"subject": preview.Subject,
@@ -537,10 +557,59 @@ func TestInvoiceEmailPreviewAndSend(t *testing.T) {
 	if len(sender.lastMessage.AttachmentData) == 0 {
 		t.Fatal("expected attachment data to be sent")
 	}
+	if sender.lastMessage.ReplyTo != "reply@example.com" {
+		t.Fatalf("sender replyTo = %q, want reply@example.com", sender.lastMessage.ReplyTo)
+	}
 
 	resp := getJSON[backend.AuditLogListResult](t, env.Client, env.Server.URL, "/api/audit-logs?action=invoice.send_email&page=1&pageSize=20")
 	if resp.Total < 1 {
 		t.Fatal("expected invoice.send_email audit entry")
+	}
+}
+
+func TestInvoiceEmailSettingsDefaultsAndReset(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	settings := getJSON[backend.InvoiceEmailSettingsDTO](t, env.Client, env.Server.URL, "/api/settings/invoice-email")
+	if settings.SubjectTemplate != appruntime.DefaultInvoiceEmailSubjectTemplate {
+		t.Fatalf("default subject = %q", settings.SubjectTemplate)
+	}
+	if settings.BodyTemplate != appruntime.DefaultInvoiceEmailBodyTemplate {
+		t.Fatalf("default body = %q", settings.BodyTemplate)
+	}
+	if settings.ReplyTo != "" {
+		t.Fatalf("default replyTo = %q, want empty", settings.ReplyTo)
+	}
+	if len(settings.AvailablePlaceholders) == 0 {
+		t.Fatal("expected available placeholders")
+	}
+
+	updated := postJSON[backend.InvoiceEmailSettingsDTO](t, env.Client, env.Server.URL, "/api/settings/invoice-email", map[string]any{
+		"subjectTemplate": "Subject {invoice_number}",
+		"bodyTemplate":    "Body {amount}",
+		"replyTo":         "billing@example.com",
+	})
+	if updated.SubjectTemplate != "Subject {invoice_number}" {
+		t.Fatalf("updated subject = %q", updated.SubjectTemplate)
+	}
+	if updated.ReplyTo != "billing@example.com" {
+		t.Fatalf("updated replyTo = %q", updated.ReplyTo)
+	}
+
+	reset := postJSON[backend.InvoiceEmailSettingsDTO](t, env.Client, env.Server.URL, "/api/settings/invoice-email", map[string]any{
+		"subjectTemplate": "",
+		"bodyTemplate":    "",
+		"replyTo":         "",
+	})
+	if reset.SubjectTemplate != appruntime.DefaultInvoiceEmailSubjectTemplate {
+		t.Fatalf("reset subject = %q", reset.SubjectTemplate)
+	}
+	if reset.BodyTemplate != appruntime.DefaultInvoiceEmailBodyTemplate {
+		t.Fatalf("reset body = %q", reset.BodyTemplate)
+	}
+	if reset.ReplyTo != "" {
+		t.Fatalf("reset replyTo = %q, want empty", reset.ReplyTo)
 	}
 }
 
@@ -845,6 +914,22 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 	resp, _ = rawRequest(t, staffClient, http.MethodPost, env.Server.URL+"/api/backups", bytes.NewReader([]byte(`{}`)))
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("staff backups status = %d, want 403", resp.StatusCode)
+	}
+
+	resp, _ = rawRequest(t, staffClient, http.MethodGet, env.Server.URL+"/api/settings/invoice-email", nil)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("staff invoice email settings get status = %d, want 403", resp.StatusCode)
+	}
+
+	resp, _ = rawRequest(
+		t,
+		staffClient,
+		http.MethodPost,
+		env.Server.URL+"/api/settings/invoice-email",
+		bytes.NewReader([]byte(`{"subjectTemplate":"x","bodyTemplate":"y","replyTo":""}`)),
+	)
+	if resp.StatusCode != http.StatusForbidden {
+		t.Fatalf("staff invoice email settings post status = %d, want 403", resp.StatusCode)
 	}
 
 	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/students/"+strconv.Itoa(staffStudent.ID)+"?version="+strconv.Itoa(staffStudent.Version), nil)

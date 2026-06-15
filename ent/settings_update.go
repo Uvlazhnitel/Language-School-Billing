@@ -160,6 +160,48 @@ func (_u *SettingsUpdate) SetNillableLocale(v *string) *SettingsUpdate {
 	return _u
 }
 
+// SetInvoiceEmailSubjectTemplate sets the "invoice_email_subject_template" field.
+func (_u *SettingsUpdate) SetInvoiceEmailSubjectTemplate(v string) *SettingsUpdate {
+	_u.mutation.SetInvoiceEmailSubjectTemplate(v)
+	return _u
+}
+
+// SetNillableInvoiceEmailSubjectTemplate sets the "invoice_email_subject_template" field if the given value is not nil.
+func (_u *SettingsUpdate) SetNillableInvoiceEmailSubjectTemplate(v *string) *SettingsUpdate {
+	if v != nil {
+		_u.SetInvoiceEmailSubjectTemplate(*v)
+	}
+	return _u
+}
+
+// SetInvoiceEmailBodyTemplate sets the "invoice_email_body_template" field.
+func (_u *SettingsUpdate) SetInvoiceEmailBodyTemplate(v string) *SettingsUpdate {
+	_u.mutation.SetInvoiceEmailBodyTemplate(v)
+	return _u
+}
+
+// SetNillableInvoiceEmailBodyTemplate sets the "invoice_email_body_template" field if the given value is not nil.
+func (_u *SettingsUpdate) SetNillableInvoiceEmailBodyTemplate(v *string) *SettingsUpdate {
+	if v != nil {
+		_u.SetInvoiceEmailBodyTemplate(*v)
+	}
+	return _u
+}
+
+// SetInvoiceReplyTo sets the "invoice_reply_to" field.
+func (_u *SettingsUpdate) SetInvoiceReplyTo(v string) *SettingsUpdate {
+	_u.mutation.SetInvoiceReplyTo(v)
+	return _u
+}
+
+// SetNillableInvoiceReplyTo sets the "invoice_reply_to" field if the given value is not nil.
+func (_u *SettingsUpdate) SetNillableInvoiceReplyTo(v *string) *SettingsUpdate {
+	if v != nil {
+		_u.SetInvoiceReplyTo(*v)
+	}
+	return _u
+}
+
 // SetMoneyCentsMigrated sets the "money_cents_migrated" field.
 func (_u *SettingsUpdate) SetMoneyCentsMigrated(v bool) *SettingsUpdate {
 	_u.mutation.SetMoneyCentsMigrated(v)
@@ -247,6 +289,15 @@ func (_u *SettingsUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Locale(); ok {
 		_spec.SetField(settings.FieldLocale, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.InvoiceEmailSubjectTemplate(); ok {
+		_spec.SetField(settings.FieldInvoiceEmailSubjectTemplate, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.InvoiceEmailBodyTemplate(); ok {
+		_spec.SetField(settings.FieldInvoiceEmailBodyTemplate, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.InvoiceReplyTo(); ok {
+		_spec.SetField(settings.FieldInvoiceReplyTo, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.MoneyCentsMigrated(); ok {
 		_spec.SetField(settings.FieldMoneyCentsMigrated, field.TypeBool, value)
@@ -404,6 +455,48 @@ func (_u *SettingsUpdateOne) SetNillableLocale(v *string) *SettingsUpdateOne {
 	return _u
 }
 
+// SetInvoiceEmailSubjectTemplate sets the "invoice_email_subject_template" field.
+func (_u *SettingsUpdateOne) SetInvoiceEmailSubjectTemplate(v string) *SettingsUpdateOne {
+	_u.mutation.SetInvoiceEmailSubjectTemplate(v)
+	return _u
+}
+
+// SetNillableInvoiceEmailSubjectTemplate sets the "invoice_email_subject_template" field if the given value is not nil.
+func (_u *SettingsUpdateOne) SetNillableInvoiceEmailSubjectTemplate(v *string) *SettingsUpdateOne {
+	if v != nil {
+		_u.SetInvoiceEmailSubjectTemplate(*v)
+	}
+	return _u
+}
+
+// SetInvoiceEmailBodyTemplate sets the "invoice_email_body_template" field.
+func (_u *SettingsUpdateOne) SetInvoiceEmailBodyTemplate(v string) *SettingsUpdateOne {
+	_u.mutation.SetInvoiceEmailBodyTemplate(v)
+	return _u
+}
+
+// SetNillableInvoiceEmailBodyTemplate sets the "invoice_email_body_template" field if the given value is not nil.
+func (_u *SettingsUpdateOne) SetNillableInvoiceEmailBodyTemplate(v *string) *SettingsUpdateOne {
+	if v != nil {
+		_u.SetInvoiceEmailBodyTemplate(*v)
+	}
+	return _u
+}
+
+// SetInvoiceReplyTo sets the "invoice_reply_to" field.
+func (_u *SettingsUpdateOne) SetInvoiceReplyTo(v string) *SettingsUpdateOne {
+	_u.mutation.SetInvoiceReplyTo(v)
+	return _u
+}
+
+// SetNillableInvoiceReplyTo sets the "invoice_reply_to" field if the given value is not nil.
+func (_u *SettingsUpdateOne) SetNillableInvoiceReplyTo(v *string) *SettingsUpdateOne {
+	if v != nil {
+		_u.SetInvoiceReplyTo(*v)
+	}
+	return _u
+}
+
 // SetMoneyCentsMigrated sets the "money_cents_migrated" field.
 func (_u *SettingsUpdateOne) SetMoneyCentsMigrated(v bool) *SettingsUpdateOne {
 	_u.mutation.SetMoneyCentsMigrated(v)
@@ -521,6 +614,15 @@ func (_u *SettingsUpdateOne) sqlSave(ctx context.Context) (_node *Settings, err 
 	}
 	if value, ok := _u.mutation.Locale(); ok {
 		_spec.SetField(settings.FieldLocale, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.InvoiceEmailSubjectTemplate(); ok {
+		_spec.SetField(settings.FieldInvoiceEmailSubjectTemplate, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.InvoiceEmailBodyTemplate(); ok {
+		_spec.SetField(settings.FieldInvoiceEmailBodyTemplate, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.InvoiceReplyTo(); ok {
+		_spec.SetField(settings.FieldInvoiceReplyTo, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.MoneyCentsMigrated(); ok {
 		_spec.SetField(settings.FieldMoneyCentsMigrated, field.TypeBool, value)
