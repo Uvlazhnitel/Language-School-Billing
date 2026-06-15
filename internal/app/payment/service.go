@@ -1037,6 +1037,12 @@ func (s *Service) QuickCash(ctx context.Context, studentID int, amount float64, 
 	return toDTO(p), nil
 }
 
+// RecomputeInvoiceStatus recalculates the invoice status against its linked
+// payments after external changes such as invoice total rebuilds.
+func (s *Service) RecomputeInvoiceStatus(ctx context.Context, invoiceID int) error {
+	return s.recomputeInvoiceStatus(ctx, invoiceID)
+}
+
 // recomputeInvoiceStatus updates an invoice's status based on payment amounts.
 // If the invoice is fully paid (within epsilon), status is set to "paid".
 // If it was previously "paid" but is no longer fully paid, status reverts to "issued".

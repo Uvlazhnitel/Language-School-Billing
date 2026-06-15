@@ -41,6 +41,8 @@ const (
 	materialsLineAmountCents = int64(500)
 )
 
+var currentTime = time.Now
+
 // Service provides invoice generation, management, and PDF creation functionality.
 type Service struct{ db *ent.Client }
 
@@ -293,11 +295,21 @@ func mergeGenerateResult(dst *GenerateResult, src GenerateResult) {
 	dst.SkippedNoLines += src.SkippedNoLines
 }
 
+type rebuildInvoiceResult struct {
+	stats GenerateResult
+}
+
+func isCurrentEditableMonth(y, m int) bool {
+	now := currentTime()
+	return now.Year() == y && int(now.Month()) == m
+}
+
 func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m int) (GenerateResult, error) {
 	tx, err := s.db.Tx(ctx)
 	if err != nil {
 		if err == ent.ErrTxStarted {
-			return s.rebuildDraftForStudentInStore(ctx, studentID, y, m)
+			result, err := s.rebuildDraftForStudentInStore(ctx, studentID, y, m)
+			return result.stats, err
 		}
 		return GenerateResult{}, err
 	}
@@ -317,11 +329,11 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 		return GenerateResult{}, err
 	}
 	committed = true
-	return res, nil
+	return res.stats, nil
 }
 
-func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, y, m int) (GenerateResult, error) {
-	res := GenerateResult{}
+func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, y, m int) (rebuildInvoiceResult, error) {
+	res := rebuildInvoiceResult{}
 
 	ens, err := s.db.Enrollment.Query().
 		Where(enrollment.StudentIDEQ(studentID)).
@@ -383,8 +395,21 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 			if err := s.db.Invoice.DeleteOneID(existing.ID).Exec(ctx); err != nil {
 				return res, err
 			}
+		} else if err == nil && isCurrentEditableMonth(y, m) && existing.Status != StatusCanceled {
+			if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx); err != nil {
+				return res, err
+			}
+			if _, err := existing.Update().SetTotalAmountCents(0).Save(ctx); err != nil {
+				return res, err
+			}
+			if existing.Status != StatusDraft {
+				if err := paysvc.New(s.db).RecomputeInvoiceStatus(ctx, existing.ID); err != nil {
+					return res, err
+				}
+			}
+			res.stats.Updated++
 		}
-		res.SkippedNoLines++
+		res.stats.SkippedNoLines++
 		return res, nil
 	}
 
@@ -405,9 +430,10 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 				return res, saveErr
 			}
 		}
-		res.Created++
+		res.stats.Created++
 
-	case existing.Status == StatusDraft:
+	case existing.Status == StatusDraft || (isCurrentEditableMonth(y, m) &&
+		(existing.Status == StatusIssued || existing.Status == StatusPaid)):
 		if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx); err != nil {
 			return res, err
 		}
@@ -419,10 +445,15 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 		if _, err := existing.Update().SetTotalAmountCents(totalCents).Save(ctx); err != nil {
 			return res, err
 		}
-		res.Updated++
+		if existing.Status != StatusDraft {
+			if err := paysvc.New(s.db).RecomputeInvoiceStatus(ctx, existing.ID); err != nil {
+				return res, err
+			}
+		}
+		res.stats.Updated++
 
 	default:
-		res.SkippedHasInvoice++
+		res.stats.SkippedHasInvoice++
 	}
 
 	return res, nil

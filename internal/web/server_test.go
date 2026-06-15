@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"langschool/ent/user"
 	invsvc "langschool/internal/app/invoice"
@@ -262,6 +263,103 @@ func TestIssuedInvoiceCanReopenAfterEnsuringPDF(t *testing.T) {
 	reopened := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID))
 	if reopened.Status != "draft" {
 		t.Fatalf("invoice status = %q, want draft", reopened.Status)
+	}
+}
+
+func TestCurrentMonthInvoiceStaysLiveAfterFullPayment(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	now := time.Now()
+	year, month := now.Year(), int(now.Month())
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "Live Month Student"})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Live Month Course",
+		"type":              "group",
+		"lessonPrice":       25,
+		"subscriptionPrice": 80,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
+	})
+
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      year,
+		"month":     month,
+		"hours":     1.0,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  year,
+		"month": month,
+	})
+
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year="+strconv.Itoa(year)+"&month="+strconv.Itoa(month)+"&status=all")
+	if len(invoices) != 1 {
+		t.Fatalf("invoice count = %d, want 1", len(invoices))
+	}
+
+	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
+	if issue.Number == "" {
+		t.Fatal("missing issue number")
+	}
+
+	postJSON[backend.PaymentDTO](t, env.Client, env.Server.URL, "/api/payments", map[string]any{
+		"studentId": st.ID,
+		"invoiceId": invoices[0].ID,
+		"amount":    30,
+		"method":    "cash",
+		"paidAt":    now.Format("2006-01-02"),
+		"note":      "full payment before extra lesson",
+	})
+
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      year,
+		"month":     month,
+		"hours":     2.0,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/rebuild-student-draft", map[string]any{
+		"studentId": st.ID,
+		"year":      year,
+		"month":     month,
+	})
+
+	invoiceDetails := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID))
+	if invoiceDetails.Number == nil || *invoiceDetails.Number != issue.Number {
+		t.Fatalf("invoice number = %v, want %q", invoiceDetails.Number, issue.Number)
+	}
+	if invoiceDetails.Total != 55 {
+		t.Fatalf("invoice total = %v, want 55", invoiceDetails.Total)
+	}
+	if invoiceDetails.Status != "issued" {
+		t.Fatalf("invoice status = %q, want issued", invoiceDetails.Status)
+	}
+
+	summary := getJSON[backend.InvoiceSummaryDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/payment-summary")
+	if summary.Paid != 30 {
+		t.Fatalf("paid = %v, want 30", summary.Paid)
+	}
+	if summary.Remaining != 25 {
+		t.Fatalf("remaining = %v, want 25", summary.Remaining)
+	}
+	if summary.Status != "issued" {
+		t.Fatalf("summary status = %q, want issued", summary.Status)
+	}
+
+	pdfMeta := postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf", map[string]any{})
+	if pdfMeta["downloadUrl"] == "" {
+		t.Fatal("missing pdf downloadUrl")
 	}
 }
 

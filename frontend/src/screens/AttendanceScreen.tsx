@@ -322,7 +322,7 @@ export function AttendanceScreen({
                         +
                       </button>
                     </div>
-                  ) : row.billingMode === BillingModeSubscription ? (
+                  ) : row.billingMode === BillingModeSubscription && !row.attendanceLocked ? (
                     subscriptionLeadEnrollmentIds.has(row.enrollmentId) ? (
                       <div className="attendanceStepper">
                         <button

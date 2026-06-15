@@ -585,12 +585,6 @@ func (s *Service) InvoiceEnsurePDF(ctx context.Context, id int) (string, error) 
 	if dto.Number == nil || *dto.Number == "" {
 		return "", fmt.Errorf("счёт ещё не выставлен")
 	}
-	paths := s.invoicePDFPaths(dto)
-	for _, path := range paths {
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
-		}
-	}
 	fonts, err := appruntime.ResolveFontsDir(s.rt.Config, s.rt.Dirs)
 	if err != nil {
 		return "", err

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
@@ -13,6 +14,7 @@ import (
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
+	"langschool/ent/student"
 	"langschool/internal/app"
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/app/utils"
@@ -24,6 +26,8 @@ import (
 // Service provides attendance tracking functionality.
 // It manages monthly attendance records for students enrolled in courses.
 type Service struct{ db *ent.Client }
+
+var currentTime = time.Now
 
 // New creates a new attendance service with the given database client.
 func New(db *ent.Client) *Service { return &Service{db: db} }
@@ -46,7 +50,7 @@ type Row struct {
 	Hours                   float64 `json:"hours"`                   // Hours attended in the month
 	HasRecord               bool    `json:"hasRecord"`               // Whether an AttendanceMonth record exists for this month
 	CanDelete               bool    `json:"canDelete"`               // Whether enrollment can be safely deleted
-	AttendanceLocked        bool    `json:"attendanceLocked"`        // Whether attendance is locked by a non-draft invoice
+	AttendanceLocked        bool    `json:"attendanceLocked"`        // Whether attendance is locked for this month/invoice state
 	InvoiceStatus           string  `json:"invoiceStatus"`           // Invoice status for the student/month, if any
 }
 
@@ -74,8 +78,22 @@ func (s *Service) getMonthInvoiceStatus(ctx context.Context, studentID, y, m int
 	return string(iv.Status), true, nil
 }
 
-func lockReason(invoiceStatus string) bool {
-	return invoiceStatus != "" && invoiceStatus != app.InvoiceStatusDraft
+func isCurrentEditableMonth(y, m int) bool {
+	now := currentTime()
+	return now.Year() == y && int(now.Month()) == m
+}
+
+func lockReason(y, m int, invoiceStatus string) bool {
+	switch invoiceStatus {
+	case "", app.InvoiceStatusDraft:
+		return false
+	case app.InvoiceStatusCanceled:
+		return true
+	case app.InvoiceStatusIssued, app.InvoiceStatusPaid:
+		return !isCurrentEditableMonth(y, m)
+	default:
+		return invoiceStatus != ""
+	}
 }
 
 func canDeleteEnrollmentWithInvoiceHistory(ctx context.Context, db *ent.Client, enrollmentID int) (bool, error) {
@@ -157,7 +175,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			Hours:                   hours,
 			HasRecord:               hasRecord,
 			CanDelete:               canDelete,
-			AttendanceLocked:        lockReason(invoiceStatus),
+			AttendanceLocked:        lockReason(y, m, invoiceStatus),
 			InvoiceStatus:           invoiceStatus,
 		})
 	}
@@ -174,8 +192,8 @@ func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m int, hou
 	if err := validation.ValidateQuarterHours(hours); err != nil {
 		return err
 	}
-	if lockReason(invoiceStatus) {
-		return fmt.Errorf("посещаемость заблокирована, потому что счёт за %04d-%02d имеет статус %s; сначала верните его в черновик", y, m, invoiceStatus)
+	if lockReason(y, m, invoiceStatus) {
+		return fmt.Errorf("посещаемость за %04d-%02d заблокирована, потому что счёт имеет статус %s", y, m, invoiceStatus)
 	}
 
 	am, err := s.db.AttendanceMonth.
@@ -255,6 +273,26 @@ func (s *Service) UpsertCourseMonthSubscription(ctx context.Context, courseID, y
 	}
 	if lessonsHeld < 0 {
 		return nil, errors.New("lessonsHeld must be >= 0")
+	}
+	if !isCurrentEditableMonth(y, m) {
+		locked, err := s.db.Invoice.Query().
+			Where(
+				invoice.PeriodYearEQ(y),
+				invoice.PeriodMonthEQ(m),
+				invoice.StatusNEQ(app.InvoiceStatusDraft),
+				invoice.StatusNEQ(app.InvoiceStatusCanceled),
+				invoice.HasStudentWith(student.HasEnrollmentsWith(
+					enrollment.CourseIDEQ(courseID),
+					enrollment.BillingModeEQ(enrollment.BillingModeSubscription),
+				)),
+			).
+			Exist(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if locked {
+			return nil, fmt.Errorf("занятия по абонементу за %04d-%02d заблокированы выставленным или оплаченным счётом", y, m)
+		}
 	}
 	lessonsHeld = utils.Round2(lessonsHeld)
 	if _, err := s.db.Course.Get(ctx, courseID); err != nil {

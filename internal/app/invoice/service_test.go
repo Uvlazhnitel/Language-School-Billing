@@ -18,10 +18,20 @@ import (
 	"langschool/ent/enttest"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
+	"langschool/ent/payment"
 	"langschool/ent/settings"
 	"langschool/internal/app"
 	"langschool/internal/money"
 )
+
+func setInvoiceCurrentTime(t *testing.T, ts time.Time) {
+	t.Helper()
+	previous := currentTime
+	currentTime = func() time.Time { return ts }
+	t.Cleanup(func() {
+		currentTime = previous
+	})
+}
 
 func TestGenerateDraftsSubscriptionWithoutLessonsDoesNotAddMaterials(t *testing.T) {
 	ctx := context.Background()
@@ -1038,6 +1048,8 @@ func TestRebuildStudentDraftUpdateRollsBackOnInvoiceLineError(t *testing.T) {
 }
 
 func TestRebuildStudentDraftSkipsIssuedInvoice(t *testing.T) {
+	setInvoiceCurrentTime(t, time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC))
+
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:invoice-rebuild-student-issued?mode=memory&_fk=1")
 	defer client.Close()
@@ -1121,6 +1133,121 @@ func TestRebuildStudentDraftSkipsIssuedInvoice(t *testing.T) {
 	}
 	if got.TotalAmountCents != money.EurosToCents(30) || got.Status != StatusIssued {
 		t.Fatalf("issued invoice changed unexpectedly: total=%v status=%q", money.CentsToEuros(got.TotalAmountCents), got.Status)
+	}
+}
+
+func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T) {
+	setInvoiceCurrentTime(t, time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC))
+
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-rebuild-current-paid?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Current Paid Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Keramika Live").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(30)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetChargeMaterials(false).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(9).
+		SetStatus(StatusPaid).
+		SetNumber("LS-202609-001").
+		SetTotalAmountCents(money.EurosToCents(30)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	if _, err := client.InvoiceLine.Create().
+		SetInvoiceID(iv.ID).
+		SetEnrollmentID(enr.ID).
+		SetDescription("Dalības maksa par Keramika Live").
+		SetQty(1).
+		SetUnitPriceCents(money.EurosToCents(30)).
+		SetAmountCents(money.EurosToCents(30)).
+		Save(ctx); err != nil {
+		t.Fatalf("InvoiceLine.Create: %v", err)
+	}
+
+	if _, err := client.Payment.Create().
+		SetStudentID(st.ID).
+		SetInvoiceID(iv.ID).
+		SetAmountCents(money.EurosToCents(30)).
+		SetMethod(payment.Method(app.PaymentMethodCash)).
+		SetPaidAt(time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC)).
+		SetCreatedAt(time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC)).
+		Save(ctx); err != nil {
+		t.Fatalf("Payment.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(9).
+		SetHours(4).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	res, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 9)
+	if err != nil {
+		t.Fatalf("RebuildStudentDraft: %v", err)
+	}
+	if res.Created != 0 || res.Updated != 1 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
+		t.Fatalf("unexpected rebuild result: %+v", res)
+	}
+
+	got, err := client.Invoice.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Invoice.Get: %v", err)
+	}
+	if got.Number == nil || *got.Number != "LS-202609-001" {
+		t.Fatalf("number = %v, want LS-202609-001", got.Number)
+	}
+	if got.TotalAmountCents != money.EurosToCents(120) {
+		t.Fatalf("total = %v, want 120", money.CentsToEuros(got.TotalAmountCents))
+	}
+	if got.Status != StatusIssued {
+		t.Fatalf("status = %q, want %q", got.Status, StatusIssued)
+	}
+
+	paymentCount, err := client.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).Count(ctx)
+	if err != nil {
+		t.Fatalf("Payment.Count: %v", err)
+	}
+	if paymentCount != 1 {
+		t.Fatalf("payment count = %d, want 1", paymentCount)
 	}
 }
 
