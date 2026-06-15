@@ -88,6 +88,8 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/invoices/{id}/pdf-status", s.handleInvoicesPDFStatus)
 	s.mux.HandleFunc("POST /api/invoices/{id}/pdf", s.handleInvoicesEnsurePDF)
 	s.mux.HandleFunc("GET /api/invoices/{id}/pdf", s.handleInvoicesDownloadPDF)
+	s.mux.HandleFunc("POST /api/invoices/{id}/email-preview", s.handleInvoicesEmailPreview)
+	s.mux.HandleFunc("POST /api/invoices/{id}/send-email", s.handleInvoicesSendEmail)
 	s.mux.HandleFunc("GET /api/invoices/{id}/payment-summary", s.handleInvoicePaymentSummary)
 
 	s.mux.HandleFunc("GET /api/settings/locale", s.handleSettingsGetLocale)
@@ -796,6 +798,36 @@ func (s *Server) handleInvoicesDownloadPDF(w http.ResponseWriter, r *http.Reques
 	http.ServeFile(w, r, path)
 }
 
+func (s *Server) handleInvoicesEmailPreview(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt(w, r, "id")
+	if !ok {
+		return
+	}
+	item, err := s.svc.InvoiceEmailPreview(r.Context(), id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (s *Server) handleInvoicesSendEmail(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt(w, r, "id")
+	if !ok {
+		return
+	}
+	var req backend.InvoiceEmailRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	item, err := s.svc.InvoiceSendEmail(r.Context(), id, req.To, req.Subject, req.Body)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
 func (s *Server) handleSettingsGetLocale(w http.ResponseWriter, r *http.Request) {
 	locale, err := s.svc.SettingsGetLocale(r.Context())
 	if err != nil {
@@ -1198,6 +1230,7 @@ func isBadRequestError(err error) bool {
 	return strings.Contains(msg, "required") ||
 		strings.Contains(msg, "must be") ||
 		strings.Contains(msg, "invalid") ||
+		strings.Contains(msg, "not configured") ||
 		strings.Contains(msg, "некоррект") ||
 		strings.Contains(msg, "долж")
 }

@@ -30,6 +30,7 @@ import (
 	paysvc "langschool/internal/app/payment"
 	"langschool/internal/apperrors"
 	"langschool/internal/auth"
+	"langschool/internal/email"
 	"langschool/internal/money"
 	appruntime "langschool/internal/runtime"
 )
@@ -119,6 +120,12 @@ type IssueAllResult struct {
 	PdfPaths []string `json:"pdfPaths"`
 }
 
+type InvoiceEmailRequest struct {
+	To      string `json:"to"`
+	Subject string `json:"subject"`
+	Body    string `json:"body"`
+}
+
 type Meta struct {
 	Ready        bool            `json:"ready"`
 	Locale       string          `json:"locale"`
@@ -136,11 +143,26 @@ type SessionDTO struct {
 type UserDTO = auth.UserRecord
 
 type Service struct {
-	rt *appruntime.Runtime
+	rt          *appruntime.Runtime
+	emailSender email.Sender
 }
 
 func New(rt *appruntime.Runtime) *Service {
-	return &Service{rt: rt}
+	return NewWithEmailSender(rt, email.NewService(email.Config{
+		Host:      rt.Config.SMTPHost,
+		Port:      rt.Config.SMTPPort,
+		Username:  rt.Config.SMTPUsername,
+		Password:  rt.Config.SMTPPassword,
+		FromEmail: rt.Config.SMTPFromEmail,
+		FromName:  rt.Config.SMTPFromName,
+	}))
+}
+
+func NewWithEmailSender(rt *appruntime.Runtime, sender email.Sender) *Service {
+	return &Service{
+		rt:          rt,
+		emailSender: sender,
+	}
 }
 
 func (s *Service) Ready() bool {
@@ -1703,6 +1725,7 @@ func capabilitiesForRole(role string) map[string]bool {
 	isAdmin := role == auth.RoleAdmin
 	return map[string]bool{
 		"backups":        isAdmin,
+		"emailSend":      true,
 		"pdfDownload":    true,
 		"pdfGenerate":    true,
 		"manageUsers":    isAdmin,

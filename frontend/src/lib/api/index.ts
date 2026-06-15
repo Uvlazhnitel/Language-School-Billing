@@ -13,6 +13,8 @@ export type {
   DebtorDTO,
   EnrollmentDTO,
   EnsurePdfResult,
+  InvoiceEmailPreviewResult,
+  InvoiceEmailSendResult,
   GenerateResult,
   InvoiceDTO,
   InvoiceListItem,

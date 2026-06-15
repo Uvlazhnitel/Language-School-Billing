@@ -27,6 +27,9 @@ import {
   rebuildStudentDraft,
   ensurePdf,
   hasPdf,
+  previewInvoiceEmail,
+  sendInvoiceEmail,
+  InvoiceEmailPreviewResult,
   InvoiceListItemView,
   InvoiceDTO,
 } from "./lib/invoices";
@@ -82,6 +85,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { NotificationToast } from "./components/NotificationToast";
 import { DebtDetailsModal } from "./components/modals/DebtDetailsModal";
 import { InvoiceDetailsModal } from "./components/modals/InvoiceDetailsModal";
+import { InvoiceEmailModal } from "./components/modals/InvoiceEmailModal";
 import { PaymentModal } from "./components/modals/PaymentModal";
 import { StudentCardModal } from "./components/modals/StudentCardModal";
 import { useConfirmDialog } from "./hooks/useConfirmDialog";
@@ -1539,6 +1543,9 @@ export default function App() {
   const invoiceMenuRef = useRef<HTMLDivElement | null>(null);
   const activeInvoiceMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [invoiceMenuPosition, setInvoiceMenuPosition] = useState<InvoiceMenuPosition | null>(null);
+  const [invoiceEmailDraft, setInvoiceEmailDraft] = useState<InvoiceEmailPreviewResult | null>(null);
+  const [invoiceEmailInvoiceID, setInvoiceEmailInvoiceID] = useState<number | null>(null);
+  const [invoiceEmailSending, setInvoiceEmailSending] = useState(false);
 
   // Payment modal state
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -2003,6 +2010,47 @@ export default function App() {
     },
     [closeInvoiceMenu, invoiceDetailsOpen, loadInvoiceDetails, loadInvoices, selectedInv, showMessage, t]
   );
+
+  const closeInvoiceEmailModal = useCallback(() => {
+    setInvoiceEmailDraft(null);
+    setInvoiceEmailInvoiceID(null);
+    setInvoiceEmailSending(false);
+  }, []);
+
+  const onPreviewInvoiceEmail = useCallback(
+    async (id: number) => {
+      try {
+        closeInvoiceMenu();
+        const preview = await previewInvoiceEmail(id);
+        setInvoiceEmailDraft(preview);
+        setInvoiceEmailInvoiceID(id);
+      } catch (e: any) {
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+      }
+    },
+    [closeInvoiceMenu, showMessage, t]
+  );
+
+  const onSendInvoiceEmail = useCallback(async () => {
+    if (!invoiceEmailDraft || invoiceEmailInvoiceID == null) return;
+    if (invoiceEmailDraft.to.trim() === "") {
+      showMessage(t("msg.invoiceEmailRecipientRequired"), "error");
+      return;
+    }
+    try {
+      setInvoiceEmailSending(true);
+      const result = await sendInvoiceEmail(invoiceEmailInvoiceID, {
+        to: invoiceEmailDraft.to,
+        subject: invoiceEmailDraft.subject,
+        body: invoiceEmailDraft.body,
+      });
+      closeInvoiceEmailModal();
+      showMessage(t("msg.invoiceEmailSent", { email: result.to }));
+    } catch (e: any) {
+      setInvoiceEmailSending(false);
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    }
+  }, [closeInvoiceEmailModal, invoiceEmailDraft, invoiceEmailInvoiceID, showMessage, t]);
 
   const buildInvoiceMenuItems = useCallback(
     (invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean }) => {
@@ -2839,12 +2887,35 @@ export default function App() {
               onOpenStudent={(studentId) => void openStudentCardById(studentId)}
               onIssue={(invoiceId) => void onIssueOne(invoiceId)}
               onDownloadPdf={(invoiceId) => void onDownloadPdf(invoiceId)}
+              onSendEmail={(invoiceId) => void onPreviewInvoiceEmail(invoiceId)}
               onAddPayment={() => openPaymentModal(selectedInv, invSummary)}
               onReopenToDraft={(invoiceId) => void onReopenToDraft(invoiceId)}
               onClose={() => setInvoiceDetailsOpen(false)}
+              canSendEmail={Boolean(sessionCapabilities.emailSend)}
               t={t}
             />
           )}
+
+          <InvoiceEmailModal
+            isOpen={invoiceEmailDraft !== null}
+            to={invoiceEmailDraft?.to ?? ""}
+            subject={invoiceEmailDraft?.subject ?? ""}
+            body={invoiceEmailDraft?.body ?? ""}
+            attachmentFilename={invoiceEmailDraft?.attachmentFilename ?? ""}
+            sending={invoiceEmailSending}
+            onToChange={(value) =>
+              setInvoiceEmailDraft((current) => (current ? { ...current, to: value } : current))
+            }
+            onSubjectChange={(value) =>
+              setInvoiceEmailDraft((current) => (current ? { ...current, subject: value } : current))
+            }
+            onBodyChange={(value) =>
+              setInvoiceEmailDraft((current) => (current ? { ...current, body: value } : current))
+            }
+            onCancel={closeInvoiceEmailModal}
+            onSubmit={() => void onSendInvoiceEmail()}
+            t={t}
+          />
 
           {debtDetailsOpen && selectedDebtor && (
             <DebtDetailsModal

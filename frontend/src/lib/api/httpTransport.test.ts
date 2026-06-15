@@ -27,7 +27,7 @@ describe("httpTransport", () => {
           authenticated: false,
           ready: true,
           locale: "en-US",
-          capabilities: { pdfDownload: true },
+          capabilities: { pdfDownload: true, emailSend: true },
         });
       }
       throw new Error(`unexpected url ${url}`);
@@ -38,6 +38,7 @@ describe("httpTransport", () => {
 
     expect(result.ready).toBe(true);
     expect(result.capabilities.canDownloadPdf).toBe(true);
+    expect(result.capabilities.canSendEmail).toBe(true);
     expect(result.authRequired).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -51,7 +52,7 @@ describe("httpTransport", () => {
           authenticated: true,
           ready: true,
           locale: "lv-LV",
-          capabilities: { pdfDownload: true },
+          capabilities: { pdfDownload: true, emailSend: true },
           user: { id: 1, username: "tester", role: "staff" },
         });
       }
@@ -77,7 +78,7 @@ describe("httpTransport", () => {
           authenticated: true,
           ready: true,
           locale: "lv-LV",
-          capabilities: { pdfDownload: true },
+          capabilities: { pdfDownload: true, emailSend: true },
           user: { id: 1, username: "tester", role: "staff" },
         });
       }
@@ -121,6 +122,49 @@ describe("httpTransport", () => {
     await expect(httpTransport.ensurePdf(12)).resolves.toEqual({
       filename: "invoice-12.pdf",
       downloadUrl: "/api/invoices/12/pdf",
+    });
+  });
+
+  it("maps invoice email endpoints", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/invoices/12/email-preview")) {
+        return jsonResponse({
+          to: "alice@example.com",
+          subject: "Rēķins LS-202606-001",
+          body: "Labdien!",
+          attachmentFilename: "LS-202606-001.pdf",
+        });
+      }
+      if (url.endsWith("/api/invoices/12/send-email")) {
+        return jsonResponse({
+          to: "alice@example.com",
+          subject: "Rēķins LS-202606-001",
+          attachmentFilename: "LS-202606-001.pdf",
+          sentAt: "2026-06-15T12:00:00Z",
+        });
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(httpTransport.previewInvoiceEmail(12)).resolves.toEqual({
+      to: "alice@example.com",
+      subject: "Rēķins LS-202606-001",
+      body: "Labdien!",
+      attachmentFilename: "LS-202606-001.pdf",
+    });
+    await expect(
+      httpTransport.sendInvoiceEmail(12, {
+        to: "alice@example.com",
+        subject: "Rēķins LS-202606-001",
+        body: "Labdien!",
+      })
+    ).resolves.toEqual({
+      to: "alice@example.com",
+      subject: "Rēķins LS-202606-001",
+      attachmentFilename: "LS-202606-001.pdf",
+      sentAt: "2026-06-15T12:00:00Z",
     });
   });
 

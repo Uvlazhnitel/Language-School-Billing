@@ -19,6 +19,7 @@ import (
 	"langschool/ent/user"
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/backend"
+	"langschool/internal/email"
 	appruntime "langschool/internal/runtime"
 )
 
@@ -454,6 +455,208 @@ func TestAuditLogCapturesFinanceActions(t *testing.T) {
 	}
 	if !foundDelete {
 		t.Fatal("expected payment.delete entry with deletedPayment snapshot")
+	}
+}
+
+func TestInvoiceEmailPreviewAndSend(t *testing.T) {
+	sender := &stubEmailSender{}
+	env := newTestServerWithEmailSender(t, sender)
+	defer env.Close()
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "Email Student",
+		"email":    "alice@example.com",
+	})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Email Course",
+		"type":              "group",
+		"lessonPrice":       25,
+		"subscriptionPrice": 80,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
+	})
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      2026,
+		"month":     6,
+		"hours":     1.5,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  2026,
+		"month": 6,
+	})
+
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=6&status=all")
+	if len(invoices) != 1 {
+		t.Fatalf("invoice count = %d, want 1", len(invoices))
+	}
+
+	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
+	pdfPath := invsvc.PDFPathByNumberAndName(env.Runtime.Dirs.Invoices, 2026, 6, issue.Number, st.FullName)
+	if err := os.MkdirAll(filepath.Dir(pdfPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pdfPath, []byte("%PDF-1.4\nemail test\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	preview := postJSON[backend.InvoiceEmailPreviewResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/email-preview", map[string]any{})
+	if preview.To != "alice@example.com" {
+		t.Fatalf("preview to = %q, want alice@example.com", preview.To)
+	}
+	if preview.AttachmentFilename == "" {
+		t.Fatal("preview attachment filename is empty")
+	}
+	if !strings.Contains(preview.Subject, issue.Number) {
+		t.Fatalf("preview subject = %q, want issue number %q", preview.Subject, issue.Number)
+	}
+
+	sent := postJSON[backend.InvoiceSendEmailResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/send-email", map[string]any{
+		"to":      preview.To,
+		"subject": preview.Subject,
+		"body":    preview.Body,
+	})
+	if sent.To != preview.To {
+		t.Fatalf("sent to = %q, want %q", sent.To, preview.To)
+	}
+	if sender.lastMessage.To != preview.To {
+		t.Fatalf("sender to = %q, want %q", sender.lastMessage.To, preview.To)
+	}
+	if sender.lastMessage.AttachmentFilename != preview.AttachmentFilename {
+		t.Fatalf("sender attachment = %q, want %q", sender.lastMessage.AttachmentFilename, preview.AttachmentFilename)
+	}
+	if len(sender.lastMessage.AttachmentData) == 0 {
+		t.Fatal("expected attachment data to be sent")
+	}
+
+	resp := getJSON[backend.AuditLogListResult](t, env.Client, env.Server.URL, "/api/audit-logs?action=invoice.send_email&page=1&pageSize=20")
+	if resp.Total < 1 {
+		t.Fatal("expected invoice.send_email audit entry")
+	}
+}
+
+func TestInvoiceEmailSendRequiresRecipient(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "Missing Email Student",
+	})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Missing Email Course",
+		"type":              "group",
+		"lessonPrice":       20,
+		"subscriptionPrice": 60,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
+	})
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      2026,
+		"month":     7,
+		"hours":     1,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  2026,
+		"month": 7,
+	})
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=7&status=all")
+	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
+	pdfPath := invsvc.PDFPathByNumberAndName(env.Runtime.Dirs.Invoices, 2026, 7, issue.Number, st.FullName)
+	if err := os.MkdirAll(filepath.Dir(pdfPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pdfPath, []byte("%PDF-1.4\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	resp, body := rawRequest(
+		t,
+		env.Client,
+		http.MethodPost,
+		env.Server.URL+"/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/send-email",
+		bytes.NewReader([]byte(`{"to":"","subject":"Test","body":"Body"}`)),
+	)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("send-email status = %d body=%s, want 400", resp.StatusCode, body)
+	}
+}
+
+func TestInvoiceEmailSendRequiresSMTPConfiguration(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "No SMTP Student",
+		"email":    "nosmtp@example.com",
+	})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "No SMTP Course",
+		"type":              "group",
+		"lessonPrice":       20,
+		"subscriptionPrice": 60,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
+	})
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      2026,
+		"month":     8,
+		"hours":     1,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  2026,
+		"month": 8,
+	})
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=8&status=all")
+	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
+	pdfPath := invsvc.PDFPathByNumberAndName(env.Runtime.Dirs.Invoices, 2026, 8, issue.Number, st.FullName)
+	if err := os.MkdirAll(filepath.Dir(pdfPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pdfPath, []byte("%PDF-1.4\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	resp, body := rawRequest(
+		t,
+		env.Client,
+		http.MethodPost,
+		env.Server.URL+"/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/send-email",
+		bytes.NewReader([]byte(`{"to":"nosmtp@example.com","subject":"Test","body":"Body"}`)),
+	)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("send-email status = %d body=%s, want 400", resp.StatusCode, body)
+	}
+	if !strings.Contains(string(body), "email sending is not configured") {
+		t.Fatalf("send-email body = %s, want configuration error", body)
 	}
 }
 
@@ -961,24 +1164,36 @@ func (e *testServerEnv) Close() {
 
 func newTestServer(t *testing.T) *testServerEnv {
 	t.Helper()
-	env := newAnonymousTestServerWithDist(t, "")
+	env := newAnonymousTestServerWithEmailSenderAndDist(t, nil, "")
 	env.login(t)
 	return env
 }
 
 func newAnonymousTestServer(t *testing.T) *testServerEnv {
 	t.Helper()
-	return newAnonymousTestServerWithDist(t, "")
+	return newAnonymousTestServerWithEmailSenderAndDist(t, nil, "")
 }
 
 func newTestServerWithDist(t *testing.T, distDir string) *testServerEnv {
 	t.Helper()
-	env := newAnonymousTestServerWithDist(t, distDir)
+	env := newAnonymousTestServerWithEmailSenderAndDist(t, nil, distDir)
 	env.login(t)
 	return env
 }
 
 func newAnonymousTestServerWithDist(t *testing.T, distDir string) *testServerEnv {
+	t.Helper()
+	return newAnonymousTestServerWithEmailSenderAndDist(t, nil, distDir)
+}
+
+func newTestServerWithEmailSender(t *testing.T, sender email.Sender) *testServerEnv {
+	t.Helper()
+	env := newAnonymousTestServerWithEmailSenderAndDist(t, sender, "")
+	env.login(t)
+	return env
+}
+
+func newAnonymousTestServerWithEmailSenderAndDist(t *testing.T, sender email.Sender, distDir string) *testServerEnv {
 	t.Helper()
 	root := t.TempDir()
 	fontsDir, err := makeTestFontsDir(t)
@@ -1009,12 +1224,21 @@ func newAnonymousTestServerWithDist(t *testing.T, distDir string) *testServerEnv
 		_ = rt.Close()
 	})
 	return &testServerEnv{
-		Server:        httptest.NewServer(NewHandler(backend.New(rt), HandlerOptions{DistDir: distDir})),
+		Server:        httptest.NewServer(NewHandler(backend.NewWithEmailSender(rt, sender), HandlerOptions{DistDir: distDir})),
 		Runtime:       rt,
 		Client:        &http.Client{Jar: jar},
 		AdminUsername: adminUsername,
 		AdminPassword: adminPassword,
 	}
+}
+
+type stubEmailSender struct {
+	lastMessage email.Message
+}
+
+func (s *stubEmailSender) Send(_ context.Context, msg email.Message) error {
+	s.lastMessage = msg
+	return nil
 }
 
 func (e *testServerEnv) login(t *testing.T) {

@@ -1,5 +1,6 @@
 export type TransportCapabilities = {
   canDownloadPdf: boolean;
+  canSendEmail: boolean;
 };
 
 export type BootstrapResult = {
@@ -40,6 +41,20 @@ export type EnsurePdfResult = {
   filename: string;
   localPath?: string;
   downloadUrl?: string;
+};
+
+export type InvoiceEmailPreviewResult = {
+  to: string;
+  subject: string;
+  body: string;
+  attachmentFilename: string;
+};
+
+export type InvoiceEmailSendResult = {
+  to: string;
+  subject: string;
+  attachmentFilename: string;
+  sentAt: string;
 };
 
 export type Row = {
@@ -408,6 +423,11 @@ export interface AppTransport {
   rebuildStudentDraft(studentId: number, year: number, month: number): Promise<GenerateResult>;
   ensurePdf(invoiceId: number): Promise<EnsurePdfResult>;
   hasPdf(invoiceId: number): Promise<boolean>;
+  previewInvoiceEmail(invoiceId: number): Promise<InvoiceEmailPreviewResult>;
+  sendInvoiceEmail(
+    invoiceId: number,
+    payload: Pick<InvoiceEmailPreviewResult, "to" | "subject" | "body">
+  ): Promise<InvoiceEmailSendResult>;
 
   createPayment(
     studentId: number,

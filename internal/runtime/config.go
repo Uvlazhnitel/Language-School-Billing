@@ -22,6 +22,12 @@ type Config struct {
 	InvoicesDir   string
 	ExportsDir    string
 	FontsDir      string
+	SMTPHost      string
+	SMTPPort      string
+	SMTPUsername  string
+	SMTPPassword  string
+	SMTPFromEmail string
+	SMTPFromName  string
 	BaseURL       string
 	AdminUsername string
 	AdminPassword string
@@ -37,6 +43,12 @@ func LoadConfig(_ string) Config {
 		InvoicesDir:   envOrDefault("INVOICES_DIR", filepath.Join(base, "invoices")),
 		ExportsDir:    filepath.Join(base, "exports"),
 		FontsDir:      strings.TrimSpace(os.Getenv("LS_FONTS_DIR")),
+		SMTPHost:      strings.TrimSpace(os.Getenv("SMTP_HOST")),
+		SMTPPort:      strings.TrimSpace(os.Getenv("SMTP_PORT")),
+		SMTPUsername:  strings.TrimSpace(os.Getenv("SMTP_USERNAME")),
+		SMTPPassword:  strings.TrimSpace(os.Getenv("SMTP_PASSWORD")),
+		SMTPFromEmail: strings.TrimSpace(os.Getenv("SMTP_FROM_EMAIL")),
+		SMTPFromName:  strings.TrimSpace(os.Getenv("SMTP_FROM_NAME")),
 		BaseURL:       strings.TrimSpace(os.Getenv("APP_BASE_URL")),
 		AdminUsername: firstNonEmpty(os.Getenv("ADMIN_USERNAME"), os.Getenv("ADMIN_EMAIL")),
 		AdminPassword: strings.TrimSpace(os.Getenv("ADMIN_PASSWORD")),

@@ -15,6 +15,12 @@ func TestLoadConfigUsesEnvironmentOverrides(t *testing.T) {
 	t.Setenv("BACKUPS_DIR", backupsDir)
 	t.Setenv("INVOICES_DIR", invoicesDir)
 	t.Setenv("LS_FONTS_DIR", "/fonts")
+	t.Setenv("SMTP_HOST", "smtp.example.com")
+	t.Setenv("SMTP_PORT", "587")
+	t.Setenv("SMTP_USERNAME", "mailer")
+	t.Setenv("SMTP_PASSWORD", "smtp-secret")
+	t.Setenv("SMTP_FROM_EMAIL", "billing@example.com")
+	t.Setenv("SMTP_FROM_NAME", "ArtLab")
 	t.Setenv("APP_BASE_URL", "https://example.test")
 	t.Setenv("ADMIN_USERNAME", "admin")
 	t.Setenv("ADMIN_PASSWORD", "secret")
@@ -33,6 +39,24 @@ func TestLoadConfigUsesEnvironmentOverrides(t *testing.T) {
 	}
 	if cfg.FontsDir != "/fonts" {
 		t.Fatalf("FontsDir = %q, want %q", cfg.FontsDir, "/fonts")
+	}
+	if cfg.SMTPHost != "smtp.example.com" {
+		t.Fatalf("SMTPHost = %q, want %q", cfg.SMTPHost, "smtp.example.com")
+	}
+	if cfg.SMTPPort != "587" {
+		t.Fatalf("SMTPPort = %q, want %q", cfg.SMTPPort, "587")
+	}
+	if cfg.SMTPUsername != "mailer" {
+		t.Fatalf("SMTPUsername = %q, want %q", cfg.SMTPUsername, "mailer")
+	}
+	if cfg.SMTPPassword != "smtp-secret" {
+		t.Fatalf("SMTPPassword = %q, want %q", cfg.SMTPPassword, "smtp-secret")
+	}
+	if cfg.SMTPFromEmail != "billing@example.com" {
+		t.Fatalf("SMTPFromEmail = %q, want %q", cfg.SMTPFromEmail, "billing@example.com")
+	}
+	if cfg.SMTPFromName != "ArtLab" {
+		t.Fatalf("SMTPFromName = %q, want %q", cfg.SMTPFromName, "ArtLab")
 	}
 	if cfg.BaseURL != "https://example.test" {
 		t.Fatalf("BaseURL = %q, want %q", cfg.BaseURL, "https://example.test")

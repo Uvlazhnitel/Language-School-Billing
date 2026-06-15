@@ -41,13 +41,16 @@ describe("InvoiceDetailsModal", () => {
         onOpenStudent={vi.fn()}
         onIssue={vi.fn()}
         onDownloadPdf={vi.fn()}
+        onSendEmail={vi.fn()}
         onAddPayment={vi.fn()}
         onReopenToDraft={vi.fn()}
         onClose={vi.fn()}
+        canSendEmail
         t={createTranslator("en-US")}
       />
     );
 
     expect(markup).toContain("Return to draft");
+    expect(markup).toContain("Send Email");
   });
 });

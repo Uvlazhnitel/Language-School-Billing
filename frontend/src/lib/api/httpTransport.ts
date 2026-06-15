@@ -11,6 +11,8 @@ import type {
   EnsurePdfResult,
   GenerateResult,
   InvoiceDTO,
+  InvoiceEmailPreviewResult,
+  InvoiceEmailSendResult,
   InvoiceListItem,
   InvoiceSummaryDTO,
   IssueResult,
@@ -137,6 +139,7 @@ export const httpTransport: AppTransport = {
       locale,
       capabilities: {
         canDownloadPdf: Boolean(session.capabilities?.pdfDownload),
+        canSendEmail: Boolean(session.capabilities?.emailSend),
       },
       authRequired: true,
       session,
@@ -355,6 +358,18 @@ export const httpTransport: AppTransport = {
   async hasPdf(invoiceId) {
     const res = await request<{ ready: boolean }>(`/invoices/${invoiceId}/pdf-status`);
     return res.ready;
+  },
+  async previewInvoiceEmail(invoiceId) {
+    return request<InvoiceEmailPreviewResult>(`/invoices/${invoiceId}/email-preview`, {
+      method: "POST",
+      ...body({}),
+    });
+  },
+  async sendInvoiceEmail(invoiceId, payload) {
+    return request<InvoiceEmailSendResult>(`/invoices/${invoiceId}/send-email`, {
+      method: "POST",
+      ...body(payload),
+    });
   },
 
   async createPayment(studentId, invoiceId, amount, method, paidAt, note) {

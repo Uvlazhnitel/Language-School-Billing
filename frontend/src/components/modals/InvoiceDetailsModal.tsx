@@ -12,9 +12,11 @@ type InvoiceDetailsModalProps = {
   onOpenStudent: (studentId: number) => void | Promise<void>;
   onIssue: (invoiceId: number) => void | Promise<void>;
   onDownloadPdf: (invoiceId: number) => void | Promise<void>;
+  onSendEmail: (invoiceId: number) => void | Promise<void>;
   onAddPayment: () => void;
   onReopenToDraft: (invoiceId: number) => void | Promise<void>;
   onClose: () => void;
+  canSendEmail: boolean;
   t: TranslateFn;
 };
 
@@ -28,9 +30,11 @@ export function InvoiceDetailsModal({
   onOpenStudent,
   onIssue,
   onDownloadPdf,
+  onSendEmail,
   onAddPayment,
   onReopenToDraft,
   onClose,
+  canSendEmail,
   t,
 }: InvoiceDetailsModalProps) {
   return (
@@ -126,6 +130,9 @@ export function InvoiceDetailsModal({
           )}
           {invoice.status !== "draft" && (
             <button onClick={() => void onDownloadPdf(invoice.id)}>{t("button.downloadPdf")}</button>
+          )}
+          {invoice.status !== "draft" && canSendEmail && (
+            <button onClick={() => void onSendEmail(invoice.id)}>{t("button.sendEmail")}</button>
           )}
           {invoice.status !== "draft" && <button onClick={onAddPayment}>{t("button.recordPayment")}</button>}
           {invoice.status === "issued" && (

@@ -2,6 +2,8 @@ import { getTransport } from "./api";
 export type {
   EnsurePdfResult,
   GenerateResult,
+  InvoiceEmailPreviewResult,
+  InvoiceEmailSendResult,
   InvoiceDTO,
   InvoiceListItem,
   InvoiceListItemView,
@@ -52,4 +54,17 @@ export async function ensurePdf(invoiceId: number) {
 export async function hasPdf(invoiceId: number) {
   const transport = await getTransport();
   return transport.hasPdf(invoiceId);
+}
+
+export async function previewInvoiceEmail(invoiceId: number) {
+  const transport = await getTransport();
+  return transport.previewInvoiceEmail(invoiceId);
+}
+
+export async function sendInvoiceEmail(
+  invoiceId: number,
+  payload: { to: string; subject: string; body: string }
+) {
+  const transport = await getTransport();
+  return transport.sendInvoiceEmail(invoiceId, payload);
 }
