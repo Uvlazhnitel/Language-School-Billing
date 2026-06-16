@@ -580,9 +580,19 @@ a {
 
 .invoiceArchiveYear summary,
 .invoiceArchiveMonth summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   cursor: pointer;
   font-weight: 800;
   color: var(--ink);
+}
+
+.invoiceArchiveCount {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .invoiceArchiveMonths,
@@ -593,7 +603,7 @@ a {
 .invoiceArchiveFileRow {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   padding: 12px 14px;
@@ -606,6 +616,55 @@ a {
   word-break: break-word;
   font-weight: 700;
   color: var(--ink);
+}
+
+.invoiceArchiveInvoiceInfo {
+  display: grid;
+  gap: 10px;
+  min-width: 280px;
+  flex: 1 1 420px;
+}
+
+.invoiceArchiveInvoiceHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.invoiceArchiveBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: rgba(214, 182, 143, 0.16);
+  color: var(--ink);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.invoiceArchiveBadgeReady {
+  background: rgba(65, 132, 89, 0.14);
+  color: #2f6d46;
+}
+
+.invoiceArchiveBadgeWarning {
+  background: rgba(189, 115, 42, 0.14);
+  color: #9b5a1a;
+}
+
+.invoiceArchiveMetaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px 16px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.invoiceArchiveHint {
+  align-self: center;
+  color: #9b5a1a;
+  font-weight: 700;
 }
 
 .dashboardCardEyebrow {

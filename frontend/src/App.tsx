@@ -2939,6 +2939,8 @@ export default function App() {
                 canManageUsers={canManageUsers}
                 invoiceArchiveLoading={invoiceArchiveLoading}
                 invoiceArchive={invoiceArchive}
+                formatEUR={formatEUR}
+                invoiceStatusLabel={(status) => invoiceStatusLabel(status, t)}
                 invoiceEmailSettingsLoading={invoiceEmailSettingsLoading}
                 savingInvoiceEmailSettings={savingInvoiceEmailSettings}
                 invoiceEmailSettings={invoiceEmailSettings}

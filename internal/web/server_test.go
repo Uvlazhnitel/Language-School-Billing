@@ -280,19 +280,66 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
 
-	if err := os.MkdirAll(filepath.Join(env.Runtime.Dirs.Invoices, "2026", "06"), 0o755); err != nil {
+	now := time.Now()
+	currentYear := now.Year()
+	currentMonth := int(now.Month())
+	olderYear := currentYear - 1
+	olderMonth := 12
+
+	student := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName":  "Archive Student",
+		"isMinor":   true,
+		"payerName": "Archive Parent",
+		"payerRole": "mother",
+	})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Archive Course",
+		"type":              "group",
+		"lessonPrice":       20,
+		"subscriptionPrice": 40,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":               student.ID,
+		"courseId":                course.ID,
+		"billingMode":             "subscription",
+		"chargeMaterials":         false,
+		"discountPct":             0,
+		"subscriptionLessonPrice": 30,
+		"note":                    "",
+	})
+
+	createIssuedInvoice := func(year, month int, ensurePDF bool) backend.InvoiceListItem {
+		putJSON[backend.CourseMonthSubscriptionDTO](t, env.Client, env.Server.URL, "/api/attendance/subscription-month", map[string]any{
+			"courseId":    course.ID,
+			"year":        year,
+			"month":       month,
+			"lessonsHeld": 2,
+		})
+		postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+			"year":  year,
+			"month": month,
+		})
+		invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year="+strconv.Itoa(year)+"&month="+strconv.Itoa(month)+"&status=all")
+		if len(invoices) != 1 {
+			t.Fatalf("invoice count for %04d-%02d = %d, want 1", year, month, len(invoices))
+		}
+		postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+			"version": invoices[0].Version,
+		})
+		if ensurePDF {
+			postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf", map[string]any{})
+		}
+		return invoices[0]
+	}
+
+	currentInvoice := createIssuedInvoice(currentYear, currentMonth, true)
+	olderInvoice := createIssuedInvoice(olderYear, olderMonth, false)
+
+	orphanDir := filepath.Join(env.Runtime.Dirs.Invoices, strconv.Itoa(currentYear), fmt.Sprintf("%02d", currentMonth))
+	if err := os.MkdirAll(orphanDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.MkdirAll(filepath.Join(env.Runtime.Dirs.Invoices, "2025", "12"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(env.Runtime.Dirs.Invoices, "2026", "06", "LS-202606-001 - Archive Student.pdf"), []byte("%PDF-1.4\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(env.Runtime.Dirs.Invoices, "2026", "06", "ignore.txt"), []byte("nope"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(env.Runtime.Dirs.Invoices, "2025", "12", "LS-202512-009.pdf"), []byte("%PDF-1.4\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(orphanDir, "orphan.pdf"), []byte("%PDF-1.4\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -300,21 +347,51 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 	if len(archive.Years) != 2 {
 		t.Fatalf("archive years = %d, want 2", len(archive.Years))
 	}
-	if archive.Years[0].Year != 2026 || archive.Years[1].Year != 2025 {
-		t.Fatalf("archive year order = %+v, want 2026 then 2025", archive.Years)
+	if archive.Years[0].Year != currentYear || archive.Years[1].Year != olderYear {
+		t.Fatalf("archive year order = %+v, want %d then %d", archive.Years, currentYear, olderYear)
 	}
-	if len(archive.Years[0].Months) != 1 || archive.Years[0].Months[0].Month != 6 {
-		t.Fatalf("archive months[0] = %+v, want only month 6", archive.Years[0].Months)
+	if !archive.Years[0].ExpandedByDefault {
+		t.Fatal("expected current year expanded by default")
 	}
-	if len(archive.Years[0].Months[0].Files) != 1 {
-		t.Fatalf("archive files = %d, want 1", len(archive.Years[0].Months[0].Files))
+	if len(archive.Years[0].Months) != 1 || archive.Years[0].Months[0].Month != currentMonth {
+		t.Fatalf("archive months[0] = %+v, want only current month %d", archive.Years[0].Months, currentMonth)
 	}
-	file := archive.Years[0].Months[0].Files[0]
-	if file.Filename != "LS-202606-001 - Archive Student.pdf" {
-		t.Fatalf("archive filename = %q", file.Filename)
+	if !archive.Years[0].Months[0].ExpandedByDefault {
+		t.Fatal("expected current month expanded by default")
+	}
+	if archive.Years[0].Count != 1 || archive.Years[1].Count != 1 {
+		t.Fatalf("archive year counts = %+v, want 1 per year", archive.Years)
 	}
 
-	openResp, err := env.Client.Get(env.Server.URL + file.OpenURL)
+	currentItem := archive.Years[0].Months[0].Invoices[0]
+	if currentItem.InvoiceID != currentInvoice.ID {
+		t.Fatalf("current archive invoice id = %d, want %d", currentItem.InvoiceID, currentInvoice.ID)
+	}
+	if currentItem.StudentName != "Archive Student" {
+		t.Fatalf("student name = %q", currentItem.StudentName)
+	}
+	if currentItem.RecipientName != "Archive Parent" {
+		t.Fatalf("recipient name = %q", currentItem.RecipientName)
+	}
+	if currentItem.PDFStatus != "ready" {
+		t.Fatalf("current pdf status = %q, want ready", currentItem.PDFStatus)
+	}
+	if currentItem.OpenURL == "" || currentItem.DownloadURL == "" || currentItem.PDFUpdatedAt == "" {
+		t.Fatalf("current item missing PDF metadata: %+v", currentItem)
+	}
+
+	olderItem := archive.Years[1].Months[0].Invoices[0]
+	if olderItem.InvoiceID != olderInvoice.ID {
+		t.Fatalf("older archive invoice id = %d, want %d", olderItem.InvoiceID, olderInvoice.ID)
+	}
+	if olderItem.PDFStatus != "needs_regeneration" {
+		t.Fatalf("older pdf status = %q, want needs_regeneration", olderItem.PDFStatus)
+	}
+	if olderItem.OpenURL != "" || olderItem.DownloadURL != "" || olderItem.PDFUpdatedAt != "" {
+		t.Fatalf("older item should not expose missing PDF links: %+v", olderItem)
+	}
+
+	openResp, err := env.Client.Get(env.Server.URL + currentItem.OpenURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +406,7 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 		t.Fatalf("open content disposition = %q, want inline", got)
 	}
 
-	downloadResp, err := env.Client.Get(env.Server.URL + file.DownloadURL)
+	downloadResp, err := env.Client.Get(env.Server.URL + currentItem.DownloadURL)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -345,7 +422,7 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 		t,
 		env.Client,
 		http.MethodGet,
-		env.Server.URL+"/api/invoice-archive/2026/06/not-a-pdf.txt/open",
+		env.Server.URL+"/api/invoice-archive/"+strconv.Itoa(currentYear)+"/"+fmt.Sprintf("%02d", currentMonth)+"/not-a-pdf.txt/open",
 		nil,
 	)
 	if resp.StatusCode != http.StatusBadRequest {
@@ -356,7 +433,7 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 		t,
 		env.Client,
 		http.MethodGet,
-		env.Server.URL+"/api/invoice-archive/2026/06/missing.pdf/download",
+		env.Server.URL+"/api/invoice-archive/"+strconv.Itoa(currentYear)+"/"+fmt.Sprintf("%02d", currentMonth)+"/missing.pdf/download",
 		nil,
 	)
 	if resp.StatusCode != http.StatusNotFound {

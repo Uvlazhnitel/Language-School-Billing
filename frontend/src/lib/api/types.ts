@@ -65,21 +65,32 @@ export type InvoiceEmailSettingsDTO = {
   availablePlaceholders: string[];
 };
 
-export type InvoiceArchiveFileDTO = {
-  filename: string;
+export type InvoiceArchiveInvoiceDTO = {
+  invoiceId: number;
   year: number;
   month: number;
-  openUrl: string;
-  downloadUrl: string;
+  number: string;
+  studentName: string;
+  recipientName: string;
+  total: number;
+  status: string;
+  pdfStatus: "ready" | "needs_regeneration";
+  pdfUpdatedAt?: string;
+  openUrl?: string;
+  downloadUrl?: string;
 };
 
 export type InvoiceArchiveMonthDTO = {
   month: number;
-  files: InvoiceArchiveFileDTO[];
+  count: number;
+  expandedByDefault: boolean;
+  invoices: InvoiceArchiveInvoiceDTO[];
 };
 
 export type InvoiceArchiveYearDTO = {
   year: number;
+  count: number;
+  expandedByDefault: boolean;
   months: InvoiceArchiveMonthDTO[];
 };
 

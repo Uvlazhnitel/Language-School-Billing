@@ -212,14 +212,25 @@ describe("httpTransport", () => {
           years: [
             {
               year: 2026,
+              count: 2,
+              expandedByDefault: true,
               months: [
                 {
                   month: 6,
-                  files: [
+                  count: 2,
+                  expandedByDefault: true,
+                  invoices: [
                     {
-                      filename: "LS-202606-001.pdf",
+                      invoiceId: 1001,
                       year: 2026,
                       month: 6,
+                      number: "LS-202606-001",
+                      studentName: "Archive Student",
+                      recipientName: "Archive Parent",
+                      total: 30,
+                      status: "issued",
+                      pdfStatus: "ready",
+                      pdfUpdatedAt: "2026-06-15T12:00:00Z",
                       openUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/open",
                       downloadUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/download",
                     },
@@ -238,14 +249,25 @@ describe("httpTransport", () => {
       years: [
         {
           year: 2026,
+          count: 2,
+          expandedByDefault: true,
           months: [
             {
               month: 6,
-              files: [
+              count: 2,
+              expandedByDefault: true,
+              invoices: [
                 {
-                  filename: "LS-202606-001.pdf",
+                  invoiceId: 1001,
                   year: 2026,
                   month: 6,
+                  number: "LS-202606-001",
+                  studentName: "Archive Student",
+                  recipientName: "Archive Parent",
+                  total: 30,
+                  status: "issued",
+                  pdfStatus: "ready",
+                  pdfUpdatedAt: "2026-06-15T12:00:00Z",
                   openUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/open",
                   downloadUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/download",
                 },

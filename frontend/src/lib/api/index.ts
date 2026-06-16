@@ -13,7 +13,7 @@ export type {
   DebtorDTO,
   EnrollmentDTO,
   EnsurePdfResult,
-  InvoiceArchiveFileDTO,
+  InvoiceArchiveInvoiceDTO,
   InvoiceArchiveMonthDTO,
   InvoiceArchiveResult,
   InvoiceArchiveYearDTO,

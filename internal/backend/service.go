@@ -151,22 +151,33 @@ type InvoiceEmailSettingsDTO struct {
 	AvailablePlaceholders []string `json:"availablePlaceholders"`
 }
 
-type InvoiceArchiveFileDTO struct {
-	Filename    string `json:"filename"`
-	Year        int    `json:"year"`
-	Month       int    `json:"month"`
-	OpenURL     string `json:"openUrl"`
-	DownloadURL string `json:"downloadUrl"`
+type InvoiceArchiveInvoiceDTO struct {
+	InvoiceID     int     `json:"invoiceId"`
+	Year          int     `json:"year"`
+	Month         int     `json:"month"`
+	Number        string  `json:"number"`
+	StudentName   string  `json:"studentName"`
+	RecipientName string  `json:"recipientName"`
+	Total         float64 `json:"total"`
+	Status        string  `json:"status"`
+	PDFStatus     string  `json:"pdfStatus"`
+	PDFUpdatedAt  string  `json:"pdfUpdatedAt,omitempty"`
+	OpenURL       string  `json:"openUrl,omitempty"`
+	DownloadURL   string  `json:"downloadUrl,omitempty"`
 }
 
 type InvoiceArchiveMonthDTO struct {
-	Month int                     `json:"month"`
-	Files []InvoiceArchiveFileDTO `json:"files"`
+	Month             int                        `json:"month"`
+	Count             int                        `json:"count"`
+	ExpandedByDefault bool                       `json:"expandedByDefault"`
+	Invoices          []InvoiceArchiveInvoiceDTO `json:"invoices"`
 }
 
 type InvoiceArchiveYearDTO struct {
-	Year   int                      `json:"year"`
-	Months []InvoiceArchiveMonthDTO `json:"months"`
+	Year              int                      `json:"year"`
+	Count             int                      `json:"count"`
+	ExpandedByDefault bool                     `json:"expandedByDefault"`
+	Months            []InvoiceArchiveMonthDTO `json:"months"`
 }
 
 type InvoiceArchiveResult struct {
@@ -668,80 +679,91 @@ func (s *Service) InvoiceHasPDF(ctx context.Context, id int) (bool, error) {
 }
 
 func (s *Service) InvoiceArchiveList(ctx context.Context) (*InvoiceArchiveResult, error) {
-	_ = ctx
-	yearEntries, err := os.ReadDir(s.rt.Dirs.Invoices)
+	items, err := s.rt.DB.Ent.Invoice.Query().
+		Where(invoice.StatusNEQ(invoice.StatusDraft)).
+		All(ctx)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return &InvoiceArchiveResult{Years: []InvoiceArchiveYearDTO{}}, nil
-		}
 		return nil, err
 	}
+	if len(items) == 0 {
+		return &InvoiceArchiveResult{Years: []InvoiceArchiveYearDTO{}}, nil
+	}
 
-	years := make([]InvoiceArchiveYearDTO, 0, len(yearEntries))
-	for _, yearEntry := range yearEntries {
-		if !yearEntry.IsDir() {
-			continue
-		}
-		year, ok := parseArchiveYear(yearEntry.Name())
-		if !ok {
-			continue
-		}
-
-		monthDir := filepath.Join(s.rt.Dirs.Invoices, yearEntry.Name())
-		monthEntries, err := os.ReadDir(monthDir)
+	archiveItems := make([]InvoiceArchiveInvoiceDTO, 0, len(items))
+	for _, item := range items {
+		dto, err := s.rt.Invoice.Get(ctx, item.ID)
 		if err != nil {
 			return nil, err
 		}
+		archiveItem, err := s.invoiceArchiveInvoice(dto)
+		if err != nil {
+			return nil, err
+		}
+		archiveItems = append(archiveItems, archiveItem)
+	}
 
-		months := make([]InvoiceArchiveMonthDTO, 0, len(monthEntries))
-		for _, monthEntry := range monthEntries {
-			if !monthEntry.IsDir() {
-				continue
-			}
-			month, ok := parseArchiveMonth(monthEntry.Name())
-			if !ok {
-				continue
-			}
+	sort.Slice(archiveItems, func(i, j int) bool {
+		if archiveItems[i].Year != archiveItems[j].Year {
+			return archiveItems[i].Year > archiveItems[j].Year
+		}
+		if archiveItems[i].Month != archiveItems[j].Month {
+			return archiveItems[i].Month > archiveItems[j].Month
+		}
+		return archiveItems[i].InvoiceID > archiveItems[j].InvoiceID
+	})
 
-			fileEntries, err := os.ReadDir(filepath.Join(monthDir, monthEntry.Name()))
-			if err != nil {
-				return nil, err
-			}
+	now := time.Now()
+	currentYear := now.Year()
+	currentMonth := int(now.Month())
 
-			files := make([]InvoiceArchiveFileDTO, 0, len(fileEntries))
-			for _, fileEntry := range fileEntries {
-				if fileEntry.IsDir() || !isArchivePDFName(fileEntry.Name()) {
-					continue
+	yearMap := make(map[int][]InvoiceArchiveInvoiceDTO)
+	for _, item := range archiveItems {
+		yearMap[item.Year] = append(yearMap[item.Year], item)
+	}
+
+	years := make([]InvoiceArchiveYearDTO, 0, len(yearMap))
+	for year, yearItems := range yearMap {
+		monthMap := make(map[int][]InvoiceArchiveInvoiceDTO)
+		for _, item := range yearItems {
+			monthMap[item.Month] = append(monthMap[item.Month], item)
+		}
+
+		monthKeys := make([]int, 0, len(monthMap))
+		for month := range monthMap {
+			monthKeys = append(monthKeys, month)
+		}
+		sort.Slice(monthKeys, func(i, j int) bool {
+			left, right := monthKeys[i], monthKeys[j]
+			if year == currentYear {
+				if left == currentMonth && right != currentMonth {
+					return true
 				}
-				files = append(files, InvoiceArchiveFileDTO{
-					Filename:    fileEntry.Name(),
-					Year:        year,
-					Month:       month,
-					OpenURL:     invoiceArchiveFileURL(year, month, fileEntry.Name(), "open"),
-					DownloadURL: invoiceArchiveFileURL(year, month, fileEntry.Name(), "download"),
-				})
+				if right == currentMonth && left != currentMonth {
+					return false
+				}
 			}
-			if len(files) == 0 {
-				continue
-			}
-			sort.Slice(files, func(i, j int) bool {
-				return files[i].Filename < files[j].Filename
+			return left > right
+		})
+
+		months := make([]InvoiceArchiveMonthDTO, 0, len(monthKeys))
+		for _, month := range monthKeys {
+			invoices := monthMap[month]
+			sort.Slice(invoices, func(i, j int) bool {
+				return invoices[i].InvoiceID > invoices[j].InvoiceID
 			})
 			months = append(months, InvoiceArchiveMonthDTO{
-				Month: month,
-				Files: files,
+				Month:             month,
+				Count:             len(invoices),
+				ExpandedByDefault: year == currentYear && month == currentMonth,
+				Invoices:          invoices,
 			})
 		}
 
-		if len(months) == 0 {
-			continue
-		}
-		sort.Slice(months, func(i, j int) bool {
-			return months[i].Month > months[j].Month
-		})
 		years = append(years, InvoiceArchiveYearDTO{
-			Year:   year,
-			Months: months,
+			Year:              year,
+			Count:             len(yearItems),
+			ExpandedByDefault: year == currentYear,
+			Months:            months,
 		})
 	}
 
@@ -1670,6 +1692,60 @@ func (s *Service) invoicePDFPaths(dto *invsvc.InvoiceDTO) []string {
 		invsvc.PDFPathByNumberAndName(s.rt.Dirs.Invoices, dto.Year, dto.Month, *dto.Number, subjectName),
 		invsvc.PDFPathByNumber(s.rt.Dirs.Invoices, dto.Year, dto.Month, *dto.Number),
 	}
+}
+
+func (s *Service) invoiceArchiveInvoice(dto *invsvc.InvoiceDTO) (InvoiceArchiveInvoiceDTO, error) {
+	item := InvoiceArchiveInvoiceDTO{
+		InvoiceID:     dto.ID,
+		Year:          dto.Year,
+		Month:         dto.Month,
+		Number:        strings.TrimSpace(derefString(dto.Number)),
+		StudentName:   dto.StudentName,
+		RecipientName: dto.RecipientName,
+		Total:         dto.Total,
+		Status:        dto.Status,
+		PDFStatus:     "needs_regeneration",
+	}
+
+	if item.RecipientName == "" {
+		item.RecipientName = dto.StudentName
+	}
+
+	filename, modTime, ok, err := s.invoiceArchivePDFInfo(dto)
+	if err != nil {
+		return InvoiceArchiveInvoiceDTO{}, err
+	}
+	if ok {
+		item.PDFStatus = "ready"
+		item.PDFUpdatedAt = modTime.UTC().Format(time.RFC3339)
+		item.OpenURL = invoiceArchiveFileURL(dto.Year, dto.Month, filename, "open")
+		item.DownloadURL = invoiceArchiveFileURL(dto.Year, dto.Month, filename, "download")
+	}
+
+	return item, nil
+}
+
+func (s *Service) invoiceArchivePDFInfo(dto *invsvc.InvoiceDTO) (string, time.Time, bool, error) {
+	if dto == nil || dto.Number == nil || strings.TrimSpace(*dto.Number) == "" {
+		return "", time.Time{}, false, nil
+	}
+	for _, path := range s.invoicePDFPaths(dto) {
+		info, err := os.Stat(path)
+		if err == nil {
+			return filepath.Base(path), info.ModTime(), true, nil
+		}
+		if !os.IsNotExist(err) {
+			return "", time.Time{}, false, err
+		}
+	}
+	return "", time.Time{}, false, nil
+}
+
+func derefString(value *string) string {
+	if value == nil {
+		return ""
+	}
+	return *value
 }
 
 func toStudentDTO(s *ent.Student, summary studentBalanceSummary) StudentDTO {

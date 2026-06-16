@@ -13,6 +13,8 @@ type SettingsScreenProps = {
   canManageUsers: boolean;
   invoiceArchiveLoading: boolean;
   invoiceArchive: InvoiceArchiveResult | null;
+  formatEUR: (value: number) => string;
+  invoiceStatusLabel: (status: string) => string;
   invoiceEmailSettingsLoading: boolean;
   savingInvoiceEmailSettings: boolean;
   invoiceEmailSettings: InvoiceEmailSettingsDTO | null;
@@ -59,6 +61,8 @@ export function SettingsScreen({
   canManageUsers,
   invoiceArchiveLoading,
   invoiceArchive,
+  formatEUR,
+  invoiceStatusLabel,
   invoiceEmailSettingsLoading,
   savingInvoiceEmailSettings,
   invoiceEmailSettings,
@@ -95,6 +99,19 @@ export function SettingsScreen({
   onDeleteUser,
   t,
 }: SettingsScreenProps) {
+  const archiveDateFormatter = new Intl.DateTimeFormat(uiLocale, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const pdfStatusLabel = (status: "ready" | "needs_regeneration") =>
+    status === "ready"
+      ? t("settings.invoiceArchivePdfReady")
+      : t("settings.invoiceArchivePdfNeedsRegeneration");
+
   return (
     <div className="settingsGrid">
       <section className="detailCard">
@@ -162,33 +179,92 @@ export function SettingsScreen({
           ) : (
             <div className="invoiceArchiveList">
               {invoiceArchive.years.map((yearGroup) => (
-                <details key={yearGroup.year} className="invoiceArchiveYear" open>
-                  <summary>{t("settings.invoiceArchiveYearLabel", { year: yearGroup.year })}</summary>
+                <details
+                  key={yearGroup.year}
+                  className="invoiceArchiveYear"
+                  open={yearGroup.expandedByDefault}
+                >
+                  <summary>
+                    <span>{t("settings.invoiceArchiveYearLabel", { year: yearGroup.year })}</span>
+                    <span className="invoiceArchiveCount">
+                      {t("settings.invoiceArchiveCount", { count: yearGroup.count })}
+                    </span>
+                  </summary>
                   <div className="invoiceArchiveMonths">
                     {yearGroup.months.map((monthGroup) => (
-                      <details key={`${yearGroup.year}-${monthGroup.month}`} className="invoiceArchiveMonth">
+                      <details
+                        key={`${yearGroup.year}-${monthGroup.month}`}
+                        className="invoiceArchiveMonth"
+                        open={monthGroup.expandedByDefault}
+                      >
                         <summary>
-                          {t("settings.invoiceArchiveMonthLabel", { month: monthGroup.month })}
+                          <span>
+                            {t("settings.invoiceArchiveMonthLabel", { month: monthGroup.month })}
+                          </span>
+                          <span className="invoiceArchiveCount">
+                            {t("settings.invoiceArchiveCount", { count: monthGroup.count })}
+                          </span>
                         </summary>
                         <div className="invoiceArchiveFiles">
-                          {monthGroup.files.map((file) => (
+                          {monthGroup.invoices.map((item) => (
                             <div
-                              key={`${file.year}-${file.month}-${file.filename}`}
+                              key={item.invoiceId}
                               className="invoiceArchiveFileRow"
                             >
-                              <span className="invoiceArchiveFileName">{file.filename}</span>
+                              <div className="invoiceArchiveInvoiceInfo">
+                                <div className="invoiceArchiveInvoiceHeader">
+                                  <span className="invoiceArchiveFileName">{item.number}</span>
+                                  <span className="invoiceArchiveBadge">
+                                    {invoiceStatusLabel(item.status)}
+                                  </span>
+                                  <span
+                                    className={`invoiceArchiveBadge ${
+                                      item.pdfStatus === "ready"
+                                        ? "invoiceArchiveBadgeReady"
+                                        : "invoiceArchiveBadgeWarning"
+                                    }`}
+                                  >
+                                    {pdfStatusLabel(item.pdfStatus)}
+                                  </span>
+                                </div>
+                                <div className="invoiceArchiveMetaGrid">
+                                  <span>
+                                    <strong>{t("field.student")}:</strong> {item.studentName}
+                                  </span>
+                                  <span>
+                                    <strong>{t("field.recipient")}:</strong> {item.recipientName}
+                                  </span>
+                                  <span>
+                                    <strong>{t("field.total")}:</strong> {formatEUR(item.total)}
+                                  </span>
+                                  <span>
+                                    <strong>{t("settings.invoiceArchivePdfDate")}:</strong>{" "}
+                                    {item.pdfUpdatedAt
+                                      ? archiveDateFormatter.format(new Date(item.pdfUpdatedAt))
+                                      : t("settings.invoiceArchivePdfDateMissing")}
+                                  </span>
+                                </div>
+                              </div>
                               <div className="settingsActions">
-                                <a
-                                  className="workspaceActionButton"
-                                  href={file.openUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                >
-                                  {t("button.open")}
-                                </a>
-                                <a className="workspaceActionButton" href={file.downloadUrl}>
-                                  {t("button.downloadPdf")}
-                                </a>
+                                {item.pdfStatus === "ready" && item.openUrl && item.downloadUrl ? (
+                                  <>
+                                    <a
+                                      className="workspaceActionButton"
+                                      href={item.openUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      {t("button.open")}
+                                    </a>
+                                    <a className="workspaceActionButton" href={item.downloadUrl}>
+                                      {t("button.downloadPdf")}
+                                    </a>
+                                  </>
+                                ) : (
+                                  <span className="invoiceArchiveHint">
+                                    {t("settings.invoiceArchivePdfNeedsRegeneration")}
+                                  </span>
+                                )}
                               </div>
                             </div>
                           ))}
