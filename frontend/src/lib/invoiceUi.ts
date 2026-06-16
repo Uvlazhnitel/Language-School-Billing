@@ -1,6 +1,6 @@
 import type { InvoiceStatus } from "./api";
 
-export type InvoiceMenuAction = "reopenDraft" | "createPdf";
+export type InvoiceMenuAction = "reopenDraft";
 
 export function getInvoiceMenuActions(
   invoice: Pick<{ status: InvoiceStatus; pdfReady?: boolean }, "status" | "pdfReady">
@@ -9,9 +9,6 @@ export function getInvoiceMenuActions(
 
   if (invoice.status === "issued") {
     actions.push("reopenDraft");
-  }
-  if (invoice.status !== "draft" && !invoice.pdfReady) {
-    actions.push("createPdf");
   }
 
   return actions;
