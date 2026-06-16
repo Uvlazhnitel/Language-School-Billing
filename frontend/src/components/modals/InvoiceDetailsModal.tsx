@@ -9,8 +9,10 @@ type InvoiceDetailsModalProps = {
   invoiceStatusLabel: (status: string) => string;
   formatEUR: (value: number) => string;
   formatHoursValue: (value: number) => string;
+  pdfReady: boolean;
   onOpenStudent: (studentId: number) => void | Promise<void>;
   onIssue: (invoiceId: number) => void | Promise<void>;
+  onGeneratePdf: (invoiceId: number) => void | Promise<void>;
   onDownloadPdf: (invoiceId: number) => void | Promise<void>;
   onSendEmail: (invoiceId: number) => void | Promise<void>;
   onAddPayment: () => void;
@@ -27,8 +29,10 @@ export function InvoiceDetailsModal({
   invoiceStatusLabel,
   formatEUR,
   formatHoursValue,
+  pdfReady,
   onOpenStudent,
   onIssue,
+  onGeneratePdf,
   onDownloadPdf,
   onSendEmail,
   onAddPayment,
@@ -128,7 +132,10 @@ export function InvoiceDetailsModal({
           {invoice.status === "draft" && (
             <button onClick={() => void onIssue(invoice.id)}>{t("button.issue")}</button>
           )}
-          {invoice.status !== "draft" && (
+          {invoice.status !== "draft" && !pdfReady && (
+            <button onClick={() => void onGeneratePdf(invoice.id)}>{t("button.createPdf")}</button>
+          )}
+          {invoice.status !== "draft" && pdfReady && (
             <button onClick={() => void onDownloadPdf(invoice.id)}>{t("button.downloadPdf")}</button>
           )}
           {invoice.status !== "draft" && canSendEmail && (

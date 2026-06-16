@@ -38,8 +38,10 @@ describe("InvoiceDetailsModal", () => {
         invoiceStatusLabel={(value) => value}
         formatEUR={(value) => value.toFixed(2)}
         formatHoursValue={(value) => String(value)}
+        pdfReady={false}
         onOpenStudent={vi.fn()}
         onIssue={vi.fn()}
+        onGeneratePdf={vi.fn()}
         onDownloadPdf={vi.fn()}
         onSendEmail={vi.fn()}
         onAddPayment={vi.fn()}
@@ -51,6 +53,7 @@ describe("InvoiceDetailsModal", () => {
     );
 
     expect(markup).toContain("Return to draft");
+    expect(markup).toContain("Create PDF");
     expect(markup).toContain("Send Email");
   });
 });

@@ -1985,9 +1985,6 @@ export default function App() {
           await loadInvoiceDetails(id);
         }
         showMessage(t("msg.pdfReady", { path: pdf.localPath ?? pdf.filename }));
-        if (pdf.downloadUrl) {
-          window.open(pdf.downloadUrl, "_blank", "noopener,noreferrer");
-        }
       } catch (e: any) {
         showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
@@ -2866,6 +2863,7 @@ export default function App() {
                 onOpenStudent={(studentId) => void openStudentCardById(studentId)}
                 onOpenInvoice={(invoiceId) => void onOpenInvoice(invoiceId)}
                 onIssueOne={(invoiceId) => void onIssueOne(invoiceId)}
+                onGeneratePdf={(invoiceId) => void onGeneratePdf(invoiceId)}
                 onDownloadPdf={(invoiceId) => void onDownloadPdf(invoiceId)}
                 onOpenPaymentModal={(invoiceId) => void openPaymentModalForInvoice(invoiceId)}
                 t={t}
@@ -3003,8 +3001,10 @@ export default function App() {
               invoiceStatusLabel={localizedInvoiceStatusLabel}
               formatEUR={formatEUR}
               formatHoursValue={formatHoursValue}
+              pdfReady={selectedInvPdfReady}
               onOpenStudent={(studentId) => void openStudentCardById(studentId)}
               onIssue={(invoiceId) => void onIssueOne(invoiceId)}
+              onGeneratePdf={(invoiceId) => void onGeneratePdf(invoiceId)}
               onDownloadPdf={(invoiceId) => void onDownloadPdf(invoiceId)}
               onSendEmail={(invoiceId) => void onPreviewInvoiceEmail(invoiceId)}
               onAddPayment={() => openPaymentModal(selectedInv, invSummary)}

@@ -22,6 +22,7 @@ type InvoicesScreenProps = {
   onOpenStudent: (studentId: number) => void | Promise<void>;
   onOpenInvoice: (invoiceId: number) => void | Promise<void>;
   onIssueOne: (invoiceId: number) => void | Promise<void>;
+  onGeneratePdf: (invoiceId: number) => void | Promise<void>;
   onDownloadPdf: (invoiceId: number) => void | Promise<void>;
   onOpenPaymentModal: (invoiceId: number) => void | Promise<void>;
   t: TranslateFn;
@@ -45,6 +46,7 @@ export function InvoicesScreen({
   onOpenStudent,
   onOpenInvoice,
   onIssueOne,
+  onGeneratePdf,
   onDownloadPdf,
   onOpenPaymentModal,
   t,
@@ -162,36 +164,65 @@ export function InvoicesScreen({
                       </button>
                     )}
                     {item.status === "issued" && (
+                      !item.pdfReady ? (
+                        <button
+                          className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
+                          onClick={() => void onGeneratePdf(item.id)}
+                        >
+                          {t("button.createPdf")}
+                        </button>
+                      ) : (
                       <button
                         className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
                         onClick={() => void onOpenPaymentModal(item.id)}
                       >
                         {t("button.recordPayment")}
                       </button>
+                      )
                     )}
                     {item.status === "paid" && (
-                      <button
-                        className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
-                        onClick={() => void onDownloadPdf(item.id)}
-                      >
-                        {t("button.downloadPdf")}
-                      </button>
+                      !item.pdfReady ? (
+                        <button
+                          className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
+                          onClick={() => void onGeneratePdf(item.id)}
+                        >
+                          {t("button.createPdf")}
+                        </button>
+                      ) : (
+                        <button
+                          className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
+                          onClick={() => void onDownloadPdf(item.id)}
+                        >
+                          {t("button.downloadPdf")}
+                        </button>
+                      )
                     )}
                     {item.status === "issued" && (
-                      <button
-                        className="secondaryActionButton"
-                        onClick={() => void onDownloadPdf(item.id)}
-                      >
-                        {t("button.downloadPdf")}
-                      </button>
+                      item.pdfReady ? (
+                        <button
+                          className="secondaryActionButton"
+                          onClick={() => void onDownloadPdf(item.id)}
+                        >
+                          {t("button.downloadPdf")}
+                        </button>
+                      ) : (
+                        <button
+                          className="secondaryActionButton"
+                          onClick={() => void onOpenPaymentModal(item.id)}
+                        >
+                          {t("button.recordPayment")}
+                        </button>
+                      )
                     )}
                     {item.status === "paid" && (
-                      <button
-                        className="secondaryActionButton"
-                        onClick={() => void onOpenPaymentModal(item.id)}
-                      >
-                        {t("button.recordPayment")}
-                      </button>
+                      item.pdfReady ? (
+                        <button
+                          className="secondaryActionButton"
+                          onClick={() => void onOpenPaymentModal(item.id)}
+                        >
+                          {t("button.recordPayment")}
+                        </button>
+                      ) : null
                     )}
                     {renderInvoiceActionsMenu(item)}
                   </div>
