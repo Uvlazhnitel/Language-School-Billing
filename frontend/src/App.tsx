@@ -77,7 +77,12 @@ import {
   RecentPaymentDTO,
 } from "./lib/dashboard";
 import { AuditLogItem, listAuditLogs } from "./lib/audit";
-import { getTransport, type InvoiceEmailSettingsDTO, type UserDTO } from "./lib/api";
+import {
+  getTransport,
+  type InvoiceArchiveResult,
+  type InvoiceEmailSettingsDTO,
+  type UserDTO,
+} from "./lib/api";
 import { AUTH_REQUIRED_EVENT, isConflictError } from "./lib/api/shared";
 import { AppShell, type AppTab } from "./components/AppShell";
 import { ConfirmDialog } from "./components/ConfirmDialog";
@@ -169,6 +174,8 @@ export default function App() {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [uiLocale, setUiLocale] = useState<UiLocale>("lv-LV");
   const [creatingBackup, setCreatingBackup] = useState(false);
+  const [invoiceArchive, setInvoiceArchive] = useState<InvoiceArchiveResult | null>(null);
+  const [invoiceArchiveLoading, setInvoiceArchiveLoading] = useState(false);
   const [invoiceEmailSettings, setInvoiceEmailSettings] = useState<InvoiceEmailSettingsDTO | null>(null);
   const [invoiceEmailSettingsLoading, setInvoiceEmailSettingsLoading] = useState(false);
   const [savingInvoiceEmailSettings, setSavingInvoiceEmailSettings] = useState(false);
@@ -247,6 +254,7 @@ export default function App() {
   const canManageUsers = Boolean(sessionCapabilities.manageUsers);
   const canManageSettings = Boolean(sessionCapabilities.manageSettings);
   const canCreateBackups = Boolean(sessionCapabilities.backups);
+  const canViewInvoiceArchive = Boolean(sessionCapabilities.invoiceArchive);
   const canDeleteStudents = Boolean(sessionCapabilities.deleteStudents);
   const canDeleteCourses = Boolean(sessionCapabilities.deleteCourses);
   const canDeletePayments = Boolean(sessionCapabilities.deletePayments);
@@ -2214,6 +2222,20 @@ export default function App() {
     }
   };
 
+  const loadInvoiceArchive = useCallback(async () => {
+    if (!canViewInvoiceArchive) return;
+    try {
+      setInvoiceArchiveLoading(true);
+      const transport = await getTransport();
+      const archive = await transport.listInvoiceArchive();
+      setInvoiceArchive(archive);
+    } catch (e: any) {
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    } finally {
+      setInvoiceArchiveLoading(false);
+    }
+  }, [canViewInvoiceArchive, showMessage, t]);
+
   const loadUsers = useCallback(async () => {
     if (!canManageUsers) return;
     try {
@@ -2241,6 +2263,11 @@ export default function App() {
       void loadUsers();
     }
   }, [isAuthenticated, canManageUsers, loadUsers]);
+
+  useEffect(() => {
+    if (!appReady || tab !== "settings" || !canViewInvoiceArchive) return;
+    void loadInvoiceArchive();
+  }, [appReady, canViewInvoiceArchive, loadInvoiceArchive, tab]);
 
   const handleCreateUser = async () => {
     try {
@@ -2909,8 +2936,11 @@ export default function App() {
                 uiLocale={uiLocale}
                 canCreateBackups={canCreateBackups}
                 canManageSettings={canManageSettings}
+                canViewInvoiceArchive={canViewInvoiceArchive}
                 creatingBackup={creatingBackup}
                 canManageUsers={canManageUsers}
+                invoiceArchiveLoading={invoiceArchiveLoading}
+                invoiceArchive={invoiceArchive}
                 invoiceEmailSettingsLoading={invoiceEmailSettingsLoading}
                 savingInvoiceEmailSettings={savingInvoiceEmailSettings}
                 invoiceEmailSettings={invoiceEmailSettings}
@@ -2928,6 +2958,7 @@ export default function App() {
                 currentSessionUser={currentSessionUser}
                 onLocaleChange={handleLocaleChange}
                 onCreateBackup={createManualBackup}
+                onRefreshInvoiceArchive={loadInvoiceArchive}
                 onSetTab={setTab}
                 onInvoiceEmailSubjectTemplateChange={setInvoiceEmailSubjectTemplate}
                 onInvoiceEmailBodyTemplateChange={setInvoiceEmailBodyTemplate}

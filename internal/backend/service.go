@@ -8,8 +8,10 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -147,6 +149,28 @@ type InvoiceEmailSettingsDTO struct {
 	BodyTemplate          string   `json:"bodyTemplate"`
 	ReplyTo               string   `json:"replyTo"`
 	AvailablePlaceholders []string `json:"availablePlaceholders"`
+}
+
+type InvoiceArchiveFileDTO struct {
+	Filename    string `json:"filename"`
+	Year        int    `json:"year"`
+	Month       int    `json:"month"`
+	OpenURL     string `json:"openUrl"`
+	DownloadURL string `json:"downloadUrl"`
+}
+
+type InvoiceArchiveMonthDTO struct {
+	Month int                     `json:"month"`
+	Files []InvoiceArchiveFileDTO `json:"files"`
+}
+
+type InvoiceArchiveYearDTO struct {
+	Year   int                      `json:"year"`
+	Months []InvoiceArchiveMonthDTO `json:"months"`
+}
+
+type InvoiceArchiveResult struct {
+	Years []InvoiceArchiveYearDTO `json:"years"`
 }
 
 type Service struct {
@@ -641,6 +665,132 @@ func (s *Service) InvoiceHasPDF(ctx context.Context, id int) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+func (s *Service) InvoiceArchiveList(ctx context.Context) (*InvoiceArchiveResult, error) {
+	_ = ctx
+	yearEntries, err := os.ReadDir(s.rt.Dirs.Invoices)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return &InvoiceArchiveResult{Years: []InvoiceArchiveYearDTO{}}, nil
+		}
+		return nil, err
+	}
+
+	years := make([]InvoiceArchiveYearDTO, 0, len(yearEntries))
+	for _, yearEntry := range yearEntries {
+		if !yearEntry.IsDir() {
+			continue
+		}
+		year, ok := parseArchiveYear(yearEntry.Name())
+		if !ok {
+			continue
+		}
+
+		monthDir := filepath.Join(s.rt.Dirs.Invoices, yearEntry.Name())
+		monthEntries, err := os.ReadDir(monthDir)
+		if err != nil {
+			return nil, err
+		}
+
+		months := make([]InvoiceArchiveMonthDTO, 0, len(monthEntries))
+		for _, monthEntry := range monthEntries {
+			if !monthEntry.IsDir() {
+				continue
+			}
+			month, ok := parseArchiveMonth(monthEntry.Name())
+			if !ok {
+				continue
+			}
+
+			fileEntries, err := os.ReadDir(filepath.Join(monthDir, monthEntry.Name()))
+			if err != nil {
+				return nil, err
+			}
+
+			files := make([]InvoiceArchiveFileDTO, 0, len(fileEntries))
+			for _, fileEntry := range fileEntries {
+				if fileEntry.IsDir() || !isArchivePDFName(fileEntry.Name()) {
+					continue
+				}
+				files = append(files, InvoiceArchiveFileDTO{
+					Filename:    fileEntry.Name(),
+					Year:        year,
+					Month:       month,
+					OpenURL:     invoiceArchiveFileURL(year, month, fileEntry.Name(), "open"),
+					DownloadURL: invoiceArchiveFileURL(year, month, fileEntry.Name(), "download"),
+				})
+			}
+			if len(files) == 0 {
+				continue
+			}
+			sort.Slice(files, func(i, j int) bool {
+				return files[i].Filename < files[j].Filename
+			})
+			months = append(months, InvoiceArchiveMonthDTO{
+				Month: month,
+				Files: files,
+			})
+		}
+
+		if len(months) == 0 {
+			continue
+		}
+		sort.Slice(months, func(i, j int) bool {
+			return months[i].Month > months[j].Month
+		})
+		years = append(years, InvoiceArchiveYearDTO{
+			Year:   year,
+			Months: months,
+		})
+	}
+
+	sort.Slice(years, func(i, j int) bool {
+		return years[i].Year > years[j].Year
+	})
+	return &InvoiceArchiveResult{Years: years}, nil
+}
+
+func (s *Service) InvoiceArchiveFilePath(year, month int, filename string) (string, error) {
+	if year <= 0 {
+		return "", errors.New("invalid archive year")
+	}
+	if month < 1 || month > 12 {
+		return "", errors.New("invalid archive month")
+	}
+	filename = strings.TrimSpace(filename)
+	if !isArchivePDFName(filename) {
+		return "", errors.New("invalid archive filename")
+	}
+	if filename != filepath.Base(filename) || strings.Contains(filename, "/") || strings.Contains(filename, "\\") {
+		return "", errors.New("invalid archive filename")
+	}
+
+	fullPath := filepath.Join(
+		s.rt.Dirs.Invoices,
+		fmt.Sprintf("%04d", year),
+		fmt.Sprintf("%02d", month),
+		filename,
+	)
+	relPath, err := filepath.Rel(s.rt.Dirs.Invoices, fullPath)
+	if err != nil {
+		return "", err
+	}
+	if relPath == ".." || strings.HasPrefix(relPath, ".."+string(filepath.Separator)) {
+		return "", errors.New("invalid archive filename")
+	}
+
+	info, err := os.Lstat(fullPath)
+	if err != nil {
+		return "", err
+	}
+	if info.Mode()&os.ModeSymlink != 0 {
+		return "", errors.New("invalid archive filename")
+	}
+	if info.IsDir() {
+		return "", os.ErrNotExist
+	}
+	return fullPath, nil
 }
 
 func (s *Service) SettingsSetLocale(ctx context.Context, loc string) error {
@@ -1733,6 +1883,7 @@ func capabilitiesForRole(role string) map[string]bool {
 	return map[string]bool{
 		"backups":        isAdmin,
 		"emailSend":      true,
+		"invoiceArchive": true,
 		"pdfDownload":    true,
 		"pdfGenerate":    true,
 		"manageUsers":    isAdmin,
@@ -1754,4 +1905,50 @@ func (s *Service) PDFPathFilename(path string) string {
 
 func (s *Service) Logf(format string, args ...any) {
 	log.Printf(format, args...)
+}
+
+func parseArchiveYear(name string) (int, bool) {
+	if len(name) != 4 {
+		return 0, false
+	}
+	year := 0
+	for _, ch := range name {
+		if ch < '0' || ch > '9' {
+			return 0, false
+		}
+		year = year*10 + int(ch-'0')
+	}
+	return year, year > 0
+}
+
+func parseArchiveMonth(name string) (int, bool) {
+	if len(name) != 2 {
+		return 0, false
+	}
+	month := 0
+	for _, ch := range name {
+		if ch < '0' || ch > '9' {
+			return 0, false
+		}
+		month = month*10 + int(ch-'0')
+	}
+	return month, month >= 1 && month <= 12
+}
+
+func isArchivePDFName(name string) bool {
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return false
+	}
+	return strings.EqualFold(filepath.Ext(name), ".pdf")
+}
+
+func invoiceArchiveFileURL(year, month int, filename, action string) string {
+	return fmt.Sprintf(
+		"/api/invoice-archive/%04d/%02d/%s/%s",
+		year,
+		month,
+		url.PathEscape(filename),
+		action,
+	)
 }

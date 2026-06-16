@@ -11,8 +11,31 @@ describe("SettingsScreen", () => {
         uiLocale="lv-LV"
         canCreateBackups
         canManageSettings
+        canViewInvoiceArchive
         creatingBackup={false}
         canManageUsers={false}
+        invoiceArchiveLoading={false}
+        invoiceArchive={{
+          years: [
+            {
+              year: 2026,
+              months: [
+                {
+                  month: 6,
+                  files: [
+                    {
+                      filename: "LS-202606-001.pdf",
+                      year: 2026,
+                      month: 6,
+                      openUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/open",
+                      downloadUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/download",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        }}
         invoiceEmailSettingsLoading={false}
         savingInvoiceEmailSettings={false}
         invoiceEmailSettings={{
@@ -35,6 +58,7 @@ describe("SettingsScreen", () => {
         currentSessionUser={null}
         onLocaleChange={vi.fn()}
         onCreateBackup={vi.fn()}
+        onRefreshInvoiceArchive={vi.fn()}
         onSetTab={vi.fn()}
         onInvoiceEmailSubjectTemplateChange={vi.fn()}
         onInvoiceEmailBodyTemplateChange={vi.fn()}
@@ -56,6 +80,8 @@ describe("SettingsScreen", () => {
     );
 
     expect(markup).toContain("Invoice email templates");
+    expect(markup).toContain("Invoice archive");
+    expect(markup).toContain("LS-202606-001.pdf");
     expect(markup).toContain("{invoice_number}");
     expect(markup).toContain("Reset to default");
   });

@@ -276,6 +276,94 @@ func TestCurrentIssuedInvoiceLessonChangeInvalidatesPDFStatus(t *testing.T) {
 	}
 }
 
+func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	if err := os.MkdirAll(filepath.Join(env.Runtime.Dirs.Invoices, "2026", "06"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(env.Runtime.Dirs.Invoices, "2025", "12"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(env.Runtime.Dirs.Invoices, "2026", "06", "LS-202606-001 - Archive Student.pdf"), []byte("%PDF-1.4\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(env.Runtime.Dirs.Invoices, "2026", "06", "ignore.txt"), []byte("nope"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(env.Runtime.Dirs.Invoices, "2025", "12", "LS-202512-009.pdf"), []byte("%PDF-1.4\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	archive := getJSON[backend.InvoiceArchiveResult](t, env.Client, env.Server.URL, "/api/invoice-archive")
+	if len(archive.Years) != 2 {
+		t.Fatalf("archive years = %d, want 2", len(archive.Years))
+	}
+	if archive.Years[0].Year != 2026 || archive.Years[1].Year != 2025 {
+		t.Fatalf("archive year order = %+v, want 2026 then 2025", archive.Years)
+	}
+	if len(archive.Years[0].Months) != 1 || archive.Years[0].Months[0].Month != 6 {
+		t.Fatalf("archive months[0] = %+v, want only month 6", archive.Years[0].Months)
+	}
+	if len(archive.Years[0].Months[0].Files) != 1 {
+		t.Fatalf("archive files = %d, want 1", len(archive.Years[0].Months[0].Files))
+	}
+	file := archive.Years[0].Months[0].Files[0]
+	if file.Filename != "LS-202606-001 - Archive Student.pdf" {
+		t.Fatalf("archive filename = %q", file.Filename)
+	}
+
+	openResp, err := env.Client.Get(env.Server.URL + file.OpenURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer openResp.Body.Close()
+	if openResp.StatusCode != http.StatusOK {
+		t.Fatalf("open status = %d, want 200", openResp.StatusCode)
+	}
+	if got := openResp.Header.Get("Content-Type"); got != "application/pdf" {
+		t.Fatalf("open content type = %q, want application/pdf", got)
+	}
+	if got := openResp.Header.Get("Content-Disposition"); !strings.HasPrefix(got, "inline;") {
+		t.Fatalf("open content disposition = %q, want inline", got)
+	}
+
+	downloadResp, err := env.Client.Get(env.Server.URL + file.DownloadURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer downloadResp.Body.Close()
+	if downloadResp.StatusCode != http.StatusOK {
+		t.Fatalf("download status = %d, want 200", downloadResp.StatusCode)
+	}
+	if got := downloadResp.Header.Get("Content-Disposition"); !strings.HasPrefix(got, "attachment;") {
+		t.Fatalf("download content disposition = %q, want attachment", got)
+	}
+
+	resp, body := rawRequest(
+		t,
+		env.Client,
+		http.MethodGet,
+		env.Server.URL+"/api/invoice-archive/2026/06/not-a-pdf.txt/open",
+		nil,
+	)
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("invalid file status = %d body=%s, want 400", resp.StatusCode, body)
+	}
+
+	resp, body = rawRequest(
+		t,
+		env.Client,
+		http.MethodGet,
+		env.Server.URL+"/api/invoice-archive/2026/06/missing.pdf/download",
+		nil,
+	)
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("missing file status = %d body=%s, want 404", resp.StatusCode, body)
+	}
+}
+
 func TestIssuedInvoiceCanReopenAfterEnsuringPDF(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
@@ -973,6 +1061,9 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 	if !login.Authenticated || login.User == nil || login.User.Role != "staff" {
 		t.Fatalf("unexpected staff session: %+v", login)
 	}
+	if !login.Capabilities["invoiceArchive"] {
+		t.Fatalf("staff invoiceArchive capability = false, want true")
+	}
 
 	staffStudent := postJSON[backend.StudentDTO](t, staffClient, env.Server.URL, "/api/students", map[string]any{
 		"fullName": "Staff Created Student",
@@ -994,6 +1085,11 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 	resp, _ = rawRequest(t, staffClient, http.MethodGet, env.Server.URL+"/api/settings/invoice-email", nil)
 	if resp.StatusCode != http.StatusForbidden {
 		t.Fatalf("staff invoice email settings get status = %d, want 403", resp.StatusCode)
+	}
+
+	resp, _ = rawRequest(t, staffClient, http.MethodGet, env.Server.URL+"/api/invoice-archive", nil)
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("staff invoice archive status = %d, want 200", resp.StatusCode)
 	}
 
 	resp, _ = rawRequest(

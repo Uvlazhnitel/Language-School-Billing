@@ -10,6 +10,7 @@ import type {
   EnrollmentDTO,
   EnsurePdfResult,
   GenerateResult,
+  InvoiceArchiveResult,
   InvoiceDTO,
   InvoiceEmailPreviewResult,
   InvoiceEmailSendResult,
@@ -141,6 +142,7 @@ export const httpTransport: AppTransport = {
       capabilities: {
         canDownloadPdf: Boolean(session.capabilities?.pdfDownload),
         canSendEmail: Boolean(session.capabilities?.emailSend),
+        canViewInvoiceArchive: Boolean(session.capabilities?.invoiceArchive),
       },
       authRequired: true,
       session,
@@ -371,6 +373,9 @@ export const httpTransport: AppTransport = {
       method: "POST",
       ...body(payload),
     });
+  },
+  async listInvoiceArchive() {
+    return request<InvoiceArchiveResult>("/invoice-archive");
   },
   async getInvoiceEmailSettings() {
     return request<InvoiceEmailSettingsDTO>("/settings/invoice-email");

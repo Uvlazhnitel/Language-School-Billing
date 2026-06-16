@@ -1,4 +1,4 @@
-import type { InvoiceEmailSettingsDTO, UserDTO } from "../lib/api";
+import type { InvoiceArchiveResult, InvoiceEmailSettingsDTO, UserDTO } from "../lib/api";
 import type { TranslateFn, UiLocale } from "../lib/i18n";
 import type { AppTabId } from "../lib/appUi";
 
@@ -8,8 +8,11 @@ type SettingsScreenProps = {
   uiLocale: UiLocale;
   canCreateBackups: boolean;
   canManageSettings: boolean;
+  canViewInvoiceArchive: boolean;
   creatingBackup: boolean;
   canManageUsers: boolean;
+  invoiceArchiveLoading: boolean;
+  invoiceArchive: InvoiceArchiveResult | null;
   invoiceEmailSettingsLoading: boolean;
   savingInvoiceEmailSettings: boolean;
   invoiceEmailSettings: InvoiceEmailSettingsDTO | null;
@@ -27,6 +30,7 @@ type SettingsScreenProps = {
   currentSessionUser: { id: number; username: string; role: string } | null;
   onLocaleChange: (value: UiLocale) => void | Promise<void>;
   onCreateBackup: () => void | Promise<void>;
+  onRefreshInvoiceArchive: () => void | Promise<void>;
   onSetTab: (tab: AppTabId) => void;
   onInvoiceEmailSubjectTemplateChange: (value: string) => void;
   onInvoiceEmailBodyTemplateChange: (value: string) => void;
@@ -50,8 +54,11 @@ export function SettingsScreen({
   uiLocale,
   canCreateBackups,
   canManageSettings,
+  canViewInvoiceArchive,
   creatingBackup,
   canManageUsers,
+  invoiceArchiveLoading,
+  invoiceArchive,
   invoiceEmailSettingsLoading,
   savingInvoiceEmailSettings,
   invoiceEmailSettings,
@@ -69,6 +76,7 @@ export function SettingsScreen({
   currentSessionUser,
   onLocaleChange,
   onCreateBackup,
+  onRefreshInvoiceArchive,
   onSetTab,
   onInvoiceEmailSubjectTemplateChange,
   onInvoiceEmailBodyTemplateChange,
@@ -135,6 +143,65 @@ export function SettingsScreen({
           </button>
         </div>
       </section>
+
+      {canViewInvoiceArchive && (
+        <section className="detailCard detailCard--wide">
+          <div className="detailCardHeader">
+            <h3>{t("settings.invoiceArchiveTitle")}</h3>
+          </div>
+          <p className="mutedInline">{t("settings.invoiceArchiveDesc")}</p>
+          <div className="settingsActions">
+            <button type="button" className="workspaceActionButton" onClick={() => void onRefreshInvoiceArchive()}>
+              {t("button.refresh")}
+            </button>
+          </div>
+          {invoiceArchiveLoading ? (
+            <div className="empty">{t("label.loading")}</div>
+          ) : !invoiceArchive || invoiceArchive.years.length === 0 ? (
+            <div className="empty">{t("settings.invoiceArchiveEmpty")}</div>
+          ) : (
+            <div className="invoiceArchiveList">
+              {invoiceArchive.years.map((yearGroup) => (
+                <details key={yearGroup.year} className="invoiceArchiveYear" open>
+                  <summary>{t("settings.invoiceArchiveYearLabel", { year: yearGroup.year })}</summary>
+                  <div className="invoiceArchiveMonths">
+                    {yearGroup.months.map((monthGroup) => (
+                      <details key={`${yearGroup.year}-${monthGroup.month}`} className="invoiceArchiveMonth">
+                        <summary>
+                          {t("settings.invoiceArchiveMonthLabel", { month: monthGroup.month })}
+                        </summary>
+                        <div className="invoiceArchiveFiles">
+                          {monthGroup.files.map((file) => (
+                            <div
+                              key={`${file.year}-${file.month}-${file.filename}`}
+                              className="invoiceArchiveFileRow"
+                            >
+                              <span className="invoiceArchiveFileName">{file.filename}</span>
+                              <div className="settingsActions">
+                                <a
+                                  className="workspaceActionButton"
+                                  href={file.openUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                >
+                                  {t("button.open")}
+                                </a>
+                                <a className="workspaceActionButton" href={file.downloadUrl}>
+                                  {t("button.downloadPdf")}
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {canManageSettings && (
         <section className="detailCard detailCard--wide">

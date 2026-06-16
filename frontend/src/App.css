@@ -563,6 +563,51 @@ a {
   gap: 16px;
 }
 
+.invoiceArchiveList,
+.invoiceArchiveMonths,
+.invoiceArchiveFiles {
+  display: grid;
+  gap: 12px;
+}
+
+.invoiceArchiveYear,
+.invoiceArchiveMonth {
+  border-radius: 18px;
+  border: 1px solid rgba(133, 102, 69, 0.12);
+  background: rgba(255, 251, 245, 0.72);
+  padding: 12px 14px;
+}
+
+.invoiceArchiveYear summary,
+.invoiceArchiveMonth summary {
+  cursor: pointer;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.invoiceArchiveMonths,
+.invoiceArchiveFiles {
+  margin-top: 12px;
+}
+
+.invoiceArchiveFileRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(133, 102, 69, 0.1);
+}
+
+.invoiceArchiveFileName {
+  word-break: break-word;
+  font-weight: 700;
+  color: var(--ink);
+}
+
 .dashboardCardEyebrow {
   color: var(--accent-strong);
   font-size: 11px;
