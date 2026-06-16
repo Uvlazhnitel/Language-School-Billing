@@ -88,9 +88,9 @@ func Start(ctx context.Context, cfg Config) (*Runtime, error) {
 		Dirs:       dirs,
 		DB:         db,
 		AppDBPath:  dbPath,
-		Attendance: attendance.New(db.Ent),
+		Attendance: attendance.NewWithInvoicesDir(db.Ent, dirs.Invoices),
 		Audit:      audit.New(db.Ent),
-		Invoice:    invsvc.New(db.Ent),
+		Invoice:    invsvc.NewWithInvoicesDir(db.Ent, dirs.Invoices),
 		Payment:    paysvc.New(db.Ent),
 		Auth:       authService,
 	}, nil

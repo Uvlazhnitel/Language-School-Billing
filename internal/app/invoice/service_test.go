@@ -1143,7 +1143,8 @@ func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T
 	client := enttest.Open(t, "sqlite3", "file:invoice-rebuild-current-paid?mode=memory&_fk=1")
 	defer client.Close()
 
-	svc := New(client)
+	invoicesDir := t.TempDir()
+	svc := NewWithInvoicesDir(client, invoicesDir)
 
 	st, err := client.Student.Create().
 		SetFullName("Current Paid Student").
@@ -1220,6 +1221,14 @@ func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T
 		t.Fatalf("AttendanceMonth.Create: %v", err)
 	}
 
+	pdfPath := PDFPathByNumberAndName(invoicesDir, 2026, 9, "LS-202609-001", st.FullName)
+	if err := os.MkdirAll(filepath.Dir(pdfPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(pdfPath, []byte("%PDF-1.4\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
 	res, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 9)
 	if err != nil {
 		t.Fatalf("RebuildStudentDraft: %v", err)
@@ -1241,6 +1250,9 @@ func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T
 	if got.Status != StatusIssued {
 		t.Fatalf("status = %q, want %q", got.Status, StatusIssued)
 	}
+	if _, err := os.Stat(pdfPath); !os.IsNotExist(err) {
+		t.Fatalf("expected pdf to be invalidated, stat err=%v", err)
+	}
 
 	paymentCount, err := client.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).Count(ctx)
 	if err != nil {
@@ -1248,6 +1260,227 @@ func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T
 	}
 	if paymentCount != 1 {
 		t.Fatalf("payment count = %d, want 1", paymentCount)
+	}
+}
+
+func TestRebuildStudentDraftUpdatesCurrentIssuedInvoiceAndInvalidatesPDF(t *testing.T) {
+	setInvoiceCurrentTime(t, time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC))
+
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-rebuild-current-issued-pdf?mode=memory&_fk=1")
+	defer client.Close()
+
+	invoicesDir := t.TempDir()
+	svc := NewWithInvoicesDir(client, invoicesDir)
+
+	st, err := client.Student.Create().
+		SetFullName("Current Issued Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Keramika Basic").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(30)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetChargeMaterials(false).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(9).
+		SetStatus(StatusIssued).
+		SetNumber("LS-202609-002").
+		SetTotalAmountCents(money.EurosToCents(120)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	if _, err := client.InvoiceLine.Create().
+		SetInvoiceID(iv.ID).
+		SetEnrollmentID(enr.ID).
+		SetDescription("Dalības maksa par Keramika Basic").
+		SetQty(4).
+		SetUnitPriceCents(money.EurosToCents(30)).
+		SetAmountCents(money.EurosToCents(120)).
+		Save(ctx); err != nil {
+		t.Fatalf("InvoiceLine.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(9).
+		SetHours(2).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	pdfPath := PDFPathByNumberAndName(invoicesDir, 2026, 9, "LS-202609-002", st.FullName)
+	if err := os.MkdirAll(filepath.Dir(pdfPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(pdfPath, []byte("%PDF-1.4\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	res, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 9)
+	if err != nil {
+		t.Fatalf("RebuildStudentDraft: %v", err)
+	}
+	if res.Created != 0 || res.Updated != 1 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
+		t.Fatalf("unexpected rebuild result: %+v", res)
+	}
+
+	got, err := client.Invoice.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Invoice.Get: %v", err)
+	}
+	if got.TotalAmountCents != money.EurosToCents(60) {
+		t.Fatalf("total = %v, want 60", money.CentsToEuros(got.TotalAmountCents))
+	}
+	if got.Status != StatusIssued {
+		t.Fatalf("status = %q, want %q", got.Status, StatusIssued)
+	}
+	if _, err := os.Stat(pdfPath); !os.IsNotExist(err) {
+		t.Fatalf("expected pdf to be invalidated, stat err=%v", err)
+	}
+}
+
+func TestRebuildStudentDraftKeepsCurrentPaidInvoicePaidWhenAmountDropsBelowPayments(t *testing.T) {
+	setInvoiceCurrentTime(t, time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC))
+
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-rebuild-current-paid-overpaid?mode=memory&_fk=1")
+	defer client.Close()
+
+	invoicesDir := t.TempDir()
+	svc := NewWithInvoicesDir(client, invoicesDir)
+
+	st, err := client.Student.Create().
+		SetFullName("Overpaid Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Keramika Pro").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(30)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetChargeMaterials(false).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(9).
+		SetStatus(StatusPaid).
+		SetNumber("LS-202609-003").
+		SetTotalAmountCents(money.EurosToCents(120)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	if _, err := client.InvoiceLine.Create().
+		SetInvoiceID(iv.ID).
+		SetEnrollmentID(enr.ID).
+		SetDescription("Dalības maksa par Keramika Pro").
+		SetQty(4).
+		SetUnitPriceCents(money.EurosToCents(30)).
+		SetAmountCents(money.EurosToCents(120)).
+		Save(ctx); err != nil {
+		t.Fatalf("InvoiceLine.Create: %v", err)
+	}
+
+	if _, err := client.Payment.Create().
+		SetStudentID(st.ID).
+		SetInvoiceID(iv.ID).
+		SetAmountCents(money.EurosToCents(120)).
+		SetMethod(payment.Method(app.PaymentMethodCash)).
+		SetPaidAt(time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC)).
+		SetCreatedAt(time.Date(2026, 9, 5, 0, 0, 0, 0, time.UTC)).
+		Save(ctx); err != nil {
+		t.Fatalf("Payment.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(9).
+		SetHours(2).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	pdfPath := PDFPathByNumberAndName(invoicesDir, 2026, 9, "LS-202609-003", st.FullName)
+	if err := os.MkdirAll(filepath.Dir(pdfPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(pdfPath, []byte("%PDF-1.4\n"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	res, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 9)
+	if err != nil {
+		t.Fatalf("RebuildStudentDraft: %v", err)
+	}
+	if res.Created != 0 || res.Updated != 1 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
+		t.Fatalf("unexpected rebuild result: %+v", res)
+	}
+
+	got, err := client.Invoice.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Invoice.Get: %v", err)
+	}
+	if got.TotalAmountCents != money.EurosToCents(60) {
+		t.Fatalf("total = %v, want 60", money.CentsToEuros(got.TotalAmountCents))
+	}
+	if got.Status != StatusPaid {
+		t.Fatalf("status = %q, want %q", got.Status, StatusPaid)
+	}
+	if _, err := os.Stat(pdfPath); !os.IsNotExist(err) {
+		t.Fatalf("expected pdf to be invalidated, stat err=%v", err)
 	}
 }
 

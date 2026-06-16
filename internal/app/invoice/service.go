@@ -44,10 +44,19 @@ const (
 var currentTime = time.Now
 
 // Service provides invoice generation, management, and PDF creation functionality.
-type Service struct{ db *ent.Client }
+type Service struct {
+	db          *ent.Client
+	invoicesDir string
+}
 
 // New creates a new invoice service with the given database client.
 func New(db *ent.Client) *Service { return &Service{db: db} }
+
+// NewWithInvoicesDir creates a service that can invalidate generated invoice
+// PDFs after successful rebuilds of issued or paid invoices.
+func NewWithInvoicesDir(db *ent.Client, invoicesDir string) *Service {
+	return &Service{db: db, invoicesDir: invoicesDir}
+}
 
 // ----- DTO for UI -----
 
@@ -296,7 +305,15 @@ func mergeGenerateResult(dst *GenerateResult, src GenerateResult) {
 }
 
 type rebuildInvoiceResult struct {
-	stats GenerateResult
+	stats            GenerateResult
+	pdfsToInvalidate []invoicePDFRef
+}
+
+type invoicePDFRef struct {
+	number    string
+	studentID int
+	year      int
+	month     int
 }
 
 func isCurrentEditableMonth(y, m int) bool {
@@ -321,7 +338,7 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 		}
 	}()
 
-	res, err := (&Service{db: tx.Client()}).rebuildDraftForStudentInStore(ctx, studentID, y, m)
+	res, err := (&Service{db: tx.Client(), invoicesDir: s.invoicesDir}).rebuildDraftForStudentInStore(ctx, studentID, y, m)
 	if err != nil {
 		return GenerateResult{}, err
 	}
@@ -329,6 +346,9 @@ func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m in
 		return GenerateResult{}, err
 	}
 	committed = true
+	if err := s.invalidateInvoicePDFs(ctx, res.pdfsToInvalidate); err != nil {
+		return GenerateResult{}, err
+	}
 	return res.stats, nil
 }
 
@@ -434,6 +454,10 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 
 	case existing.Status == StatusDraft || (isCurrentEditableMonth(y, m) &&
 		(existing.Status == StatusIssued || existing.Status == StatusPaid)):
+		pdfRef, err := s.invoicePDFRef(existing)
+		if err != nil {
+			return res, err
+		}
 		if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx); err != nil {
 			return res, err
 		}
@@ -449,6 +473,9 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 			if err := paysvc.New(s.db).RecomputeInvoiceStatus(ctx, existing.ID); err != nil {
 				return res, err
 			}
+			if pdfRef != nil {
+				res.pdfsToInvalidate = append(res.pdfsToInvalidate, *pdfRef)
+			}
 		}
 		res.stats.Updated++
 
@@ -457,6 +484,40 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 	}
 
 	return res, nil
+}
+
+func (s *Service) invoicePDFRef(iv *ent.Invoice) (*invoicePDFRef, error) {
+	if strings.TrimSpace(s.invoicesDir) == "" || iv == nil || iv.Number == nil || strings.TrimSpace(*iv.Number) == "" {
+		return nil, nil
+	}
+	return &invoicePDFRef{
+		number:    *iv.Number,
+		studentID: iv.StudentID,
+		year:      iv.PeriodYear,
+		month:     iv.PeriodMonth,
+	}, nil
+}
+
+func (s *Service) invalidateInvoicePDFs(ctx context.Context, refs []invoicePDFRef) error {
+	if strings.TrimSpace(s.invoicesDir) == "" || len(refs) == 0 {
+		return nil
+	}
+	for _, ref := range refs {
+		recipientInfo, err := recipient.ResolveInvoiceRecipient(ctx, s.db, ref.studentID)
+		if err != nil {
+			return err
+		}
+		paths := []string{
+			PDFPathByNumberAndName(s.invoicesDir, ref.year, ref.month, ref.number, recipientInfo.InvoiceSubjectName()),
+			PDFPathByNumber(s.invoicesDir, ref.year, ref.month, ref.number),
+		}
+		for _, pdfPath := range paths {
+			if err := os.Remove(pdfPath); err != nil && !os.IsNotExist(err) {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // ----- Draft generation -----

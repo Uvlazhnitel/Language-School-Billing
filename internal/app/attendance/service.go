@@ -25,12 +25,21 @@ import (
 
 // Service provides attendance tracking functionality.
 // It manages monthly attendance records for students enrolled in courses.
-type Service struct{ db *ent.Client }
+type Service struct {
+	db          *ent.Client
+	invoicesDir string
+}
 
 var currentTime = time.Now
 
 // New creates a new attendance service with the given database client.
 func New(db *ent.Client) *Service { return &Service{db: db} }
+
+// NewWithInvoicesDir creates an attendance service that can propagate the
+// invoice PDF directory into rebuild flows triggered by lesson changes.
+func NewWithInvoicesDir(db *ent.Client, invoicesDir string) *Service {
+	return &Service{db: db, invoicesDir: invoicesDir}
+}
 
 // Row represents a single attendance record in the attendance sheet.
 // It combines enrollment, student, and course information with the
@@ -334,7 +343,7 @@ func (s *Service) UpsertCourseMonthSubscription(ctx context.Context, courseID, y
 	if err != nil {
 		return nil, err
 	}
-	invoiceService := invsvc.New(s.db)
+	invoiceService := invsvc.NewWithInvoicesDir(s.db, s.invoicesDir)
 	for _, en := range subscriptionEnrollments {
 		if _, err := invoiceService.RebuildStudentDraft(ctx, en.StudentID, y, m); err != nil {
 			return nil, err
@@ -442,7 +451,7 @@ func (s *Service) deleteEnrollment(ctx context.Context, enrollmentID int, expect
 		return err
 	}
 
-	invoiceService := invsvc.New(tx.Client())
+	invoiceService := invsvc.NewWithInvoicesDir(tx.Client(), s.invoicesDir)
 	for _, draft := range affectedDrafts {
 		if _, err := invoiceService.RebuildStudentDraft(ctx, draft.studentID, draft.year, draft.month); err != nil {
 			return err

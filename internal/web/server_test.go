@@ -201,6 +201,81 @@ func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 	}
 }
 
+func TestCurrentIssuedInvoiceLessonChangeInvalidatesPDFStatus(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	now := time.Now()
+	year := now.Year()
+	month := int(now.Month())
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "Subscription Student"})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Clay Club",
+		"type":              "group",
+		"lessonPrice":       25,
+		"subscriptionPrice": 90,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":               st.ID,
+		"courseId":                course.ID,
+		"billingMode":             "subscription",
+		"chargeMaterials":         false,
+		"discountPct":             0,
+		"subscriptionLessonPrice": 30,
+		"note":                    "",
+	})
+	putJSON[backend.CourseMonthSubscriptionDTO](t, env.Client, env.Server.URL, "/api/attendance/subscription-month", map[string]any{
+		"courseId":    course.ID,
+		"year":        year,
+		"month":       month,
+		"lessonsHeld": 4,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  year,
+		"month": month,
+	})
+
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year="+strconv.Itoa(year)+"&month="+strconv.Itoa(month)+"&status=all")
+	if len(invoices) != 1 {
+		t.Fatalf("invoice count = %d, want 1", len(invoices))
+	}
+
+	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
+	if issue.Number == "" {
+		t.Fatal("missing issue number")
+	}
+
+	pdfMeta := postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf", map[string]any{})
+	if pdfMeta["downloadUrl"] == "" {
+		t.Fatal("missing initial pdf downloadUrl")
+	}
+
+	status := getJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf-status")
+	if !status["ready"] {
+		t.Fatal("expected initial pdf-status ready=true")
+	}
+
+	putJSON[backend.CourseMonthSubscriptionDTO](t, env.Client, env.Server.URL, "/api/attendance/subscription-month", map[string]any{
+		"courseId":    course.ID,
+		"year":        year,
+		"month":       month,
+		"lessonsHeld": 2,
+	})
+
+	status = getJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf-status")
+	if status["ready"] {
+		t.Fatal("expected pdf-status ready=false after invoice rebuild")
+	}
+
+	pdfMeta = postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf", map[string]any{})
+	if pdfMeta["downloadUrl"] == "" {
+		t.Fatal("missing pdf downloadUrl after regeneration")
+	}
+}
+
 func TestIssuedInvoiceCanReopenAfterEnsuringPDF(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
