@@ -55,5 +55,57 @@ describe("InvoiceDetailsModal", () => {
     expect(markup).toContain("Return to draft");
     expect(markup).toContain("Create PDF");
     expect(markup).toContain("Send Email");
+    expect(markup).toContain("Record payment");
+  });
+
+  it("hides record payment for fully paid invoices", () => {
+    const markup = renderToStaticMarkup(
+      <InvoiceDetailsModal
+        invoice={{
+          id: 13,
+          version: 3,
+          studentId: 5,
+          studentName: "Paid Student",
+          recipientName: "Paid Student",
+          recipientPhone: "",
+          recipientEmail: "",
+          childName: "",
+          studentPersonalCode: "",
+          isMinor: false,
+          year: 2026,
+          month: 6,
+          total: 250,
+          status: "paid",
+          number: "LS-202606-008",
+          lines: [],
+        }}
+        summary={{
+          invoiceId: 13,
+          total: 250,
+          paid: 250,
+          remaining: 0,
+          status: "paid",
+          number: "LS-202606-008",
+        }}
+        months={getMonthNames("en-US")}
+        invoiceStatusLabel={(value) => value}
+        formatEUR={(value) => value.toFixed(2)}
+        formatHoursValue={(value) => String(value)}
+        pdfReady={true}
+        onOpenStudent={vi.fn()}
+        onIssue={vi.fn()}
+        onGeneratePdf={vi.fn()}
+        onDownloadPdf={vi.fn()}
+        onSendEmail={vi.fn()}
+        onAddPayment={vi.fn()}
+        onReopenToDraft={vi.fn()}
+        onClose={vi.fn()}
+        canSendEmail
+        t={createTranslator("en-US")}
+      />
+    );
+
+    expect(markup).toContain("Download PDF");
+    expect(markup).not.toContain("Record payment");
   });
 });

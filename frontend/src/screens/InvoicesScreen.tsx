@@ -214,16 +214,6 @@ export function InvoicesScreen({
                         </button>
                       )
                     )}
-                    {item.status === "paid" && (
-                      item.pdfReady ? (
-                        <button
-                          className="secondaryActionButton"
-                          onClick={() => void onOpenPaymentModal(item.id)}
-                        >
-                          {t("button.recordPayment")}
-                        </button>
-                      ) : null
-                    )}
                     {renderInvoiceActionsMenu(item)}
                   </div>
                 </td>

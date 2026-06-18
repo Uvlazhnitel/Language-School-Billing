@@ -41,6 +41,8 @@ export function InvoiceDetailsModal({
   canSendEmail,
   t,
 }: InvoiceDetailsModalProps) {
+  const isFullyPaid = summary ? summary.remaining <= 0 : invoice.status === "paid";
+
   return (
     <div className="modal" onClick={onClose}>
       <div className="modalBody modalBodyWide" onClick={(e) => e.stopPropagation()}>
@@ -141,7 +143,9 @@ export function InvoiceDetailsModal({
           {invoice.status !== "draft" && canSendEmail && (
             <button onClick={() => void onSendEmail(invoice.id)}>{t("button.sendEmail")}</button>
           )}
-          {invoice.status !== "draft" && <button onClick={onAddPayment}>{t("button.recordPayment")}</button>}
+          {invoice.status !== "draft" && !isFullyPaid && (
+            <button onClick={onAddPayment}>{t("button.recordPayment")}</button>
+          )}
           {invoice.status === "issued" && (
             <button onClick={() => void onReopenToDraft(invoice.id)}>{t("button.reopenDraft")}</button>
           )}
