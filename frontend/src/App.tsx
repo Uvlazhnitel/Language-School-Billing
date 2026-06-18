@@ -2960,6 +2960,7 @@ export default function App() {
                 onCreateBackup={createManualBackup}
                 onRefreshInvoiceArchive={loadInvoiceArchive}
                 onSetTab={setTab}
+                onOpenInvoice={onOpenInvoice}
                 onInvoiceEmailSubjectTemplateChange={setInvoiceEmailSubjectTemplate}
                 onInvoiceEmailBodyTemplateChange={setInvoiceEmailBodyTemplate}
                 onInvoiceEmailReplyToChange={setInvoiceEmailReplyTo}

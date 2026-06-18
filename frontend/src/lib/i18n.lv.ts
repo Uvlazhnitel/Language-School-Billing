@@ -31,6 +31,7 @@ export const lvTranslations: Record<string, string> = {
   "button.delete": "Dzēst",
   "button.edit": "Rediģēt",
   "button.open": "Atvērt",
+  "button.openInvoice": "Atvērt rēķinu",
   "button.openFolder": "Atvērt mapi",
   "button.recordPayment": "Reģistrēt maksājumu",
   "button.openInvoices": "Atvērt rēķinus",

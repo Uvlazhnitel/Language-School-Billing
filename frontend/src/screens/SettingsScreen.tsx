@@ -34,6 +34,7 @@ type SettingsScreenProps = {
   onCreateBackup: () => void | Promise<void>;
   onRefreshInvoiceArchive: () => void | Promise<void>;
   onSetTab: (tab: AppTabId) => void;
+  onOpenInvoice: (invoiceId: number) => void | Promise<void>;
   onInvoiceEmailSubjectTemplateChange: (value: string) => void;
   onInvoiceEmailBodyTemplateChange: (value: string) => void;
   onInvoiceEmailReplyToChange: (value: string) => void;
@@ -82,6 +83,7 @@ export function SettingsScreen({
   onCreateBackup,
   onRefreshInvoiceArchive,
   onSetTab,
+  onOpenInvoice,
   onInvoiceEmailSubjectTemplateChange,
   onInvoiceEmailBodyTemplateChange,
   onInvoiceEmailReplyToChange,
@@ -255,6 +257,16 @@ export function SettingsScreen({
                                 </div>
                               </div>
                               <div className="settingsActions">
+                                <button
+                                  type="button"
+                                  className="workspaceActionButton"
+                                  onClick={() => {
+                                    onSetTab("invoice");
+                                    void onOpenInvoice(item.invoiceId);
+                                  }}
+                                >
+                                  {t("button.openInvoice")}
+                                </button>
                                 {item.pdfStatus === "ready" && item.openUrl && item.downloadUrl ? (
                                   <>
                                     <a

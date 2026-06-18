@@ -107,6 +107,7 @@ describe("SettingsScreen", () => {
         onCreateBackup={vi.fn()}
         onRefreshInvoiceArchive={vi.fn()}
         onSetTab={vi.fn()}
+        onOpenInvoice={vi.fn()}
         onInvoiceEmailSubjectTemplateChange={vi.fn()}
         onInvoiceEmailBodyTemplateChange={vi.fn()}
         onInvoiceEmailReplyToChange={vi.fn()}
@@ -134,6 +135,7 @@ describe("SettingsScreen", () => {
     expect(markup).toContain("PDF not generated");
     expect(markup).toContain("PDF outdated");
     expect(markup).toContain("PDF access error");
+    expect(markup).toContain("Open invoice");
     expect(markup).toContain("/api/invoice-archive/2026/06/LS-202606-001.pdf/open");
     expect(markup).not.toContain("/api/invoice-archive/2026/06/LS-202606-003.pdf/open");
     expect(markup).toContain("{invoice_number}");
