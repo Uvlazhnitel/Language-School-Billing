@@ -107,6 +107,7 @@ describe("SettingsScreen", () => {
     expect(markup).toContain("Invoice archive");
     expect(markup).toContain("LS-202606-001");
     expect(markup).toContain("Archive Student");
+    expect(markup).toContain("Jūnijs");
     expect(markup).toContain("Needs regeneration");
     expect(markup).toContain("{invoice_number}");
     expect(markup).toContain("Reset to default");

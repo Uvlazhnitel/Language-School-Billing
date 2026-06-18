@@ -1,5 +1,5 @@
 import type { InvoiceArchiveResult, InvoiceEmailSettingsDTO, UserDTO } from "../lib/api";
-import type { TranslateFn, UiLocale } from "../lib/i18n";
+import { getMonthNames, type TranslateFn, type UiLocale } from "../lib/i18n";
 import type { AppTabId } from "../lib/appUi";
 
 type UserDraft = { username: string; role: string; isActive: boolean };
@@ -99,6 +99,7 @@ export function SettingsScreen({
   onDeleteUser,
   t,
 }: SettingsScreenProps) {
+  const monthNames = getMonthNames(uiLocale);
   const archiveDateFormatter = new Intl.DateTimeFormat(uiLocale, {
     year: "numeric",
     month: "2-digit",
@@ -198,9 +199,7 @@ export function SettingsScreen({
                         open={monthGroup.expandedByDefault}
                       >
                         <summary>
-                          <span>
-                            {t("settings.invoiceArchiveMonthLabel", { month: monthGroup.month })}
-                          </span>
+                          <span>{monthNames[monthGroup.month - 1] ?? String(monthGroup.month)}</span>
                           <span className="invoiceArchiveCount">
                             {t("settings.invoiceArchiveCount", { count: monthGroup.count })}
                           </span>
