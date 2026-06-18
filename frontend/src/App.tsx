@@ -26,7 +26,6 @@ import {
   reopenToDraft,
   rebuildStudentDraft,
   ensurePdf,
-  hasPdf,
   previewInvoiceEmail,
   sendInvoiceEmail,
   InvoiceEmailPreviewResult,
@@ -1603,24 +1602,7 @@ export default function App() {
           await syncDraftInvoices(options?.showSyncFeedback ?? true);
         }
         const li = await listInvoices(year, month, invStatus);
-        const pdfReadyById = new Map<number, boolean>();
-        await Promise.all(
-          li
-            .filter((item) => item.status !== "draft")
-            .map(async (item) => {
-              try {
-                pdfReadyById.set(item.id, await hasPdf(item.id));
-              } catch {
-                pdfReadyById.set(item.id, false);
-              }
-            })
-        );
-        setInvItems(
-          li.map((item) => ({
-            ...item,
-            pdfReady: item.status !== "draft" ? (pdfReadyById.get(item.id) ?? false) : false,
-          }))
-        );
+        setInvItems(li);
       } catch (e: any) {
         showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       } finally {
@@ -2459,9 +2441,7 @@ export default function App() {
 
   // ---------------- Render ----------------
   const showMonthPicker = tab === "dashboard" || tab === "attendance" || tab === "invoice";
-  const selectedInvPdfReady = selectedInv
-    ? (invItems.find((item) => item.id === selectedInv.id)?.pdfReady ?? false)
-    : false;
+  const selectedInvPdfReady = selectedInv?.pdfReady ?? false;
   const openInvoiceMenuItems = useMemo(() => {
     if (!openInvoiceMenu) return [];
 

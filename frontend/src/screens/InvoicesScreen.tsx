@@ -52,6 +52,11 @@ export function InvoicesScreen({
   t,
 }: InvoicesScreenProps) {
   const hasActiveFilters = Boolean(query.trim() || status !== "all");
+  const isDraft = (invoiceStatus: InvoiceListItemView["status"]) => invoiceStatus === "draft";
+  const isIssuedFamily = (invoiceStatus: InvoiceListItemView["status"]) =>
+    invoiceStatus === "issued" || invoiceStatus === "issued_pending_pdf";
+  const isPaidFamily = (invoiceStatus: InvoiceListItemView["status"]) =>
+    invoiceStatus === "paid" || invoiceStatus === "paid_pending_pdf";
 
   return (
     <>
@@ -75,7 +80,9 @@ export function InvoicesScreen({
         filters={
           <select value={status} onChange={(e) => onStatusChange(e.target.value)}>
             <option value="draft">{t("filter.selectStatusDraft")}</option>
+            <option value="issued_pending_pdf">{t("filter.selectStatusIssuedPendingPdf")}</option>
             <option value="issued">{t("filter.selectStatusIssued")}</option>
+            <option value="paid_pending_pdf">{t("filter.selectStatusPaidPendingPdf")}</option>
             <option value="paid">{t("filter.selectStatusPaid")}</option>
             <option value="all">{t("filter.selectStatusAll")}</option>
           </select>
@@ -155,7 +162,7 @@ export function InvoicesScreen({
                     >
                       {t("button.open")}
                     </button>
-                    {item.status === "draft" && (
+                    {isDraft(item.status) && (
                       <button
                         className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
                         onClick={() => void onIssueOne(item.id)}
@@ -163,7 +170,7 @@ export function InvoicesScreen({
                         {t("button.issue")}
                       </button>
                     )}
-                    {item.status === "issued" && (
+                    {isIssuedFamily(item.status) && (
                       !item.pdfReady ? (
                         <button
                           className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
@@ -180,7 +187,7 @@ export function InvoicesScreen({
                       </button>
                       )
                     )}
-                    {item.status === "paid" && (
+                    {isPaidFamily(item.status) && (
                       !item.pdfReady ? (
                         <button
                           className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
@@ -197,7 +204,7 @@ export function InvoicesScreen({
                         </button>
                       )
                     )}
-                    {item.status === "issued" && (
+                    {isIssuedFamily(item.status) && (
                       item.pdfReady ? (
                         <button
                           className="secondaryActionButton"

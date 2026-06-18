@@ -98,7 +98,7 @@ func lockReason(y, m int, invoiceStatus string) bool {
 		return false
 	case app.InvoiceStatusCanceled:
 		return true
-	case app.InvoiceStatusIssued, app.InvoiceStatusPaid:
+	case app.InvoiceStatusIssuedPendingPDF, app.InvoiceStatusIssued, app.InvoiceStatusPaidPendingPDF, app.InvoiceStatusPaid:
 		return !isCurrentEditableMonth(y, m)
 	default:
 		return invoiceStatus != ""

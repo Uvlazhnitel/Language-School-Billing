@@ -7,7 +7,7 @@ export function getInvoiceMenuActions(
 ): InvoiceMenuAction[] {
   const actions: InvoiceMenuAction[] = [];
 
-  if (invoice.status === "issued") {
+  if (invoice.status === "issued" || invoice.status === "issued_pending_pdf") {
     actions.push("reopenDraft");
   }
 

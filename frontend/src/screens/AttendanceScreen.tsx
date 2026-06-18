@@ -3,7 +3,9 @@ import {
   BillingModePerLesson,
   BillingModeSubscription,
   InvoiceStatusCanceled,
+  InvoiceStatusIssuedPendingPdf,
   InvoiceStatusIssued,
+  InvoiceStatusPaidPendingPdf,
   InvoiceStatusPaid,
 } from "../lib/constants";
 import type { Row } from "../lib/attendance";
@@ -396,9 +398,11 @@ export function AttendanceScreen({
                     <div className="attendanceReadOnly">
                       <span className="attBadge attBadge--subscription">{t("msg.readOnly")}</span>
                       <span className="mutedInline">
-                        {row.invoiceStatus === InvoiceStatusIssued
+                        {row.invoiceStatus === InvoiceStatusIssued ||
+                        row.invoiceStatus === InvoiceStatusIssuedPendingPdf
                           ? t("msg.lockedIssuedInvoice")
-                          : row.invoiceStatus === InvoiceStatusPaid
+                          : row.invoiceStatus === InvoiceStatusPaid ||
+                              row.invoiceStatus === InvoiceStatusPaidPendingPdf
                             ? t("msg.lockedPaidInvoice")
                             : row.invoiceStatus === InvoiceStatusCanceled
                               ? t("msg.lockedCanceledInvoice")

@@ -10,12 +10,16 @@ export type BillingMode = typeof BillingModeSubscription | typeof BillingModePer
 
 // Constants for invoice statuses
 export const InvoiceStatusDraft = "draft" as const;
+export const InvoiceStatusIssuedPendingPdf = "issued_pending_pdf" as const;
 export const InvoiceStatusIssued = "issued" as const;
+export const InvoiceStatusPaidPendingPdf = "paid_pending_pdf" as const;
 export const InvoiceStatusPaid = "paid" as const;
 export const InvoiceStatusCanceled = "canceled" as const;
 export type InvoiceStatus =
   | typeof InvoiceStatusDraft
+  | typeof InvoiceStatusIssuedPendingPdf
   | typeof InvoiceStatusIssued
+  | typeof InvoiceStatusPaidPendingPdf
   | typeof InvoiceStatusPaid
   | typeof InvoiceStatusCanceled;
 

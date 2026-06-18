@@ -564,6 +564,9 @@ func (s *Service) InvoiceIssue(ctx context.Context, id int) (IssueResult, error)
 	if err := s.rt.Payment.ApplyCreditToOldestInvoices(ctx, dto.StudentID); err != nil {
 		return IssueResult{}, err
 	}
+	if _, err := s.InvoiceEnsurePDF(ctx, id); err != nil {
+		log.Printf("InvoiceIssue ensure PDF fallback for invoice %d failed: %v", id, err)
+	}
 	after, _, err := s.auditStudentFinanceSnapshot(ctx, dto.StudentID)
 	if err == nil {
 		s.recordAudit(ctx, auditsvc.RecordEvent{
@@ -591,6 +594,9 @@ func (s *Service) InvoiceIssueWithVersion(ctx context.Context, id, version int) 
 	num, studentID, err := s.rt.Invoice.IssueAndApplyCreditWithVersion(ctx, id, version)
 	if err != nil {
 		return IssueResult{}, err
+	}
+	if _, err := s.InvoiceEnsurePDF(ctx, id); err != nil {
+		log.Printf("InvoiceIssueWithVersion ensure PDF fallback for invoice %d failed: %v", id, err)
 	}
 	dto, err := s.rt.Invoice.Get(ctx, id)
 	if err != nil {
@@ -622,12 +628,15 @@ func (s *Service) InvoiceIssueAll(ctx context.Context, year, month int) (IssueAl
 	if err != nil {
 		return IssueAllResult{}, err
 	}
-	items, err := s.rt.Invoice.List(ctx, year, month, sharedapp.InvoiceStatusIssued)
+	items, err := s.rt.Invoice.List(ctx, year, month, "all")
 	if err != nil {
 		return IssueAllResult{}, err
 	}
 	seen := make(map[int]struct{})
 	for _, item := range items {
+		if item.Status == sharedapp.InvoiceStatusDraft {
+			continue
+		}
 		if _, ok := seen[item.StudentID]; ok {
 			continue
 		}
@@ -1021,7 +1030,12 @@ func (s *Service) aggregateInvoiceTotalsByStudent(ctx context.Context, studentID
 	err := s.rt.DB.Ent.Invoice.Query().
 		Where(
 			invoice.StudentIDIn(studentIDs...),
-			invoice.StatusIn(invoice.StatusIssued, invoice.StatusPaid),
+			invoice.StatusIn(
+				invoice.Status(sharedapp.InvoiceStatusIssuedPendingPDF),
+				invoice.StatusIssued,
+				invoice.Status(sharedapp.InvoiceStatusPaidPendingPDF),
+				invoice.StatusPaid,
+			),
 		).
 		GroupBy(invoice.FieldStudentID).
 		Aggregate(ent.As(ent.Sum(invoice.FieldTotalAmountCents), "total")).

@@ -77,7 +77,7 @@ func TestResolveAppBaseDirMigratesLegacyDirectory(t *testing.T) {
 	}
 }
 
-func TestInvoiceIssueDoesNotGeneratePDFUntilRequested(t *testing.T) {
+func TestInvoiceIssueGeneratesPDFAndMarksInvoiceReady(t *testing.T) {
 	ctx := context.Background()
 	base := t.TempDir()
 	dirs, err := paths.Ensure(base)
@@ -185,18 +185,18 @@ func TestInvoiceIssueDoesNotGeneratePDFUntilRequested(t *testing.T) {
 
 	namedPath := invsvc.PDFPathByNumberAndName(dirs.Invoices, 2026, 5, res.Number, st.FullName)
 	legacyPath := invsvc.PDFPathByNumber(dirs.Invoices, 2026, 5, res.Number)
-	if _, err := os.Stat(namedPath); !os.IsNotExist(err) {
-		t.Fatalf("named PDF should not exist after Issue: %v", err)
+	if _, err := os.Stat(namedPath); err != nil {
+		t.Fatalf("named PDF should exist after Issue: %v", err)
 	}
 	if _, err := os.Stat(legacyPath); !os.IsNotExist(err) {
 		t.Fatalf("legacy PDF should not exist after Issue: %v", err)
 	}
 	hasPDF, err := app.InvoiceHasPDF(iv.ID)
 	if err != nil {
-		t.Fatalf("InvoiceHasPDF before generation: %v", err)
+		t.Fatalf("InvoiceHasPDF after issue: %v", err)
 	}
-	if hasPDF {
-		t.Fatalf("InvoiceHasPDF before generation = true, want false")
+	if !hasPDF {
+		t.Fatalf("InvoiceHasPDF after issue = false, want true")
 	}
 
 	pdfPath, err := app.InvoiceEnsurePDF(iv.ID)

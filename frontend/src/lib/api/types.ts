@@ -185,14 +185,13 @@ export type InvoiceListItem = {
   month: number;
   total: number;
   status: InvoiceStatus;
+  pdfReady: boolean;
   linesCount: number;
   number?: string;
   eventDate: string;
 };
 
-export type InvoiceListItemView = InvoiceListItem & {
-  pdfReady?: boolean;
-};
+export type InvoiceListItemView = InvoiceListItem;
 
 export type InvoiceLine = {
   enrollmentId: number;
@@ -217,6 +216,7 @@ export type InvoiceDTO = {
   month: number;
   total: number;
   status: InvoiceStatus;
+  pdfReady: boolean;
   number?: string;
   lines: InvoiceLine[];
 };
@@ -346,7 +346,13 @@ export type AuditLogListResult = {
 
 export type CourseType = "group" | "individual";
 export type BillingMode = "subscription" | "per_lesson";
-export type InvoiceStatus = "draft" | "issued" | "paid" | "canceled";
+export type InvoiceStatus =
+  | "draft"
+  | "issued_pending_pdf"
+  | "issued"
+  | "paid_pending_pdf"
+  | "paid"
+  | "canceled";
 export type PaymentMethod = "cash" | "bank";
 
 export interface AppTransport {

@@ -28,6 +28,22 @@ type Service struct{ db *ent.Client }
 // New creates a new payment service with the given database client.
 func New(db *ent.Client) *Service { return &Service{db: db} }
 
+func invoiceHasReadyPDF(iv *ent.Invoice) bool {
+	if iv == nil || iv.PdfFilename == nil || *iv.PdfFilename == "" || iv.PdfRevision == nil {
+		return false
+	}
+	return *iv.PdfRevision == iv.Version
+}
+
+func openInvoiceStatuses() []invoice.Status {
+	return []invoice.Status{
+		invoice.Status(app.InvoiceStatusIssuedPendingPDF),
+		invoice.Status(app.InvoiceStatusIssued),
+		invoice.Status(app.InvoiceStatusPaidPendingPDF),
+		invoice.Status(app.InvoiceStatusPaid),
+	}
+}
+
 // PaymentDTO represents a payment record in the frontend.
 type PaymentDTO struct {
 	ID        int     `json:"id"`                  // Payment ID
@@ -255,7 +271,7 @@ func (s *Service) allocateToOldestInvoices(ctx context.Context, studentID int, a
 	invoices, err := s.db.Invoice.Query().
 		Where(
 			invoice.StudentIDEQ(studentID),
-			invoice.StatusIn(app.InvoiceStatusIssued, app.InvoiceStatusPaid),
+			invoice.StatusIn(openInvoiceStatuses()...),
 		).
 		Order(
 			ent.Asc(invoice.FieldPeriodYear),
@@ -385,7 +401,7 @@ func (s *Service) applyCreditToOldestInvoicesInStore(ctx context.Context, studen
 	invoices, err := s.db.Invoice.Query().
 		Where(
 			invoice.StudentIDEQ(studentID),
-			invoice.StatusIn(app.InvoiceStatusIssued, app.InvoiceStatusPaid),
+			invoice.StatusIn(openInvoiceStatuses()...),
 		).
 		Order(
 			ent.Asc(invoice.FieldPeriodYear),
@@ -595,12 +611,12 @@ func (s *Service) InvoiceSummary(ctx context.Context, invoiceID int) (*InvoiceSu
 }
 
 // StudentDebtDetails returns open invoice balances for a student, oldest first.
-// It is read-only and includes only issued/paid invoices with remaining debt.
+// It is read-only and includes financially active invoices with remaining debt.
 func (s *Service) StudentDebtDetails(ctx context.Context, studentID int) ([]DebtInvoiceDTO, error) {
 	invs, err := s.db.Invoice.Query().
 		Where(
 			invoice.StudentIDEQ(studentID),
-			invoice.StatusIn(app.InvoiceStatusIssued, app.InvoiceStatusPaid),
+			invoice.StatusIn(openInvoiceStatuses()...),
 		).
 		Order(
 			ent.Asc(invoice.FieldPeriodYear),
@@ -794,7 +810,7 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		switch iv.Status {
 		case app.InvoiceStatusDraft:
 			draftInvoices++
-		case app.InvoiceStatusIssued:
+		case app.InvoiceStatusIssued, app.InvoiceStatusIssuedPendingPDF:
 			issuedInvoices++
 			totalIssuedCents += iv.TotalAmountCents
 			_, _, remaining, err := s.invoiceBalanceCents(ctx, iv)
@@ -805,7 +821,7 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 				monthDebtCents += remaining
 				debtStudentIDs[iv.StudentID] = struct{}{}
 			}
-		case app.InvoiceStatusPaid:
+		case app.InvoiceStatusPaid, app.InvoiceStatusPaidPendingPDF:
 			paidInvoices++
 			totalIssuedCents += iv.TotalAmountCents
 			_, _, remaining, err := s.invoiceBalanceCents(ctx, iv)
@@ -835,7 +851,7 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 	historicalInvoices, err := s.db.Invoice.Query().
 		Where(
 			invoice.HasStudentWith(student.IsActiveEQ(true)),
-			invoice.StatusIn(app.InvoiceStatusIssued, app.InvoiceStatusPaid),
+			invoice.StatusIn(openInvoiceStatuses()...),
 		).
 		All(ctx)
 	if err != nil {
@@ -1043,10 +1059,8 @@ func (s *Service) RecomputeInvoiceStatus(ctx context.Context, invoiceID int) err
 	return s.recomputeInvoiceStatus(ctx, invoiceID)
 }
 
-// recomputeInvoiceStatus updates an invoice's status based on payment amounts.
-// If the invoice is fully paid (within epsilon), status is set to "paid".
-// If it was previously "paid" but is no longer fully paid, status reverts to "issued".
-// Draft and canceled invoices are not modified.
+// recomputeInvoiceStatus updates an invoice's status based on payment amounts
+// and whether a canonical PDF is ready.
 func (s *Service) recomputeInvoiceStatus(ctx context.Context, invoiceID int) error {
 	iv, err := s.db.Invoice.Get(ctx, invoiceID)
 	if err != nil {
@@ -1064,20 +1078,21 @@ func (s *Service) recomputeInvoiceStatus(ctx context.Context, invoiceID int) err
 		return err
 	}
 
+	nextStatus := invoice.Status(app.InvoiceStatusIssuedPendingPDF)
+	if invoiceHasReadyPDF(iv) {
+		nextStatus = invoice.Status(app.InvoiceStatusIssued)
+	}
 	if paid >= total || remaining <= 0 {
-		if iv.Status != app.InvoiceStatusPaid {
-			_, err := iv.Update().SetStatus(app.InvoiceStatusPaid).Save(ctx)
-			return err
+		nextStatus = invoice.Status(app.InvoiceStatusPaidPendingPDF)
+		if invoiceHasReadyPDF(iv) {
+			nextStatus = invoice.Status(app.InvoiceStatusPaid)
 		}
+	}
+	if iv.Status == nextStatus {
 		return nil
 	}
-
-	// Not fully paid. If invoice was marked paid earlier, revert to issued.
-	if iv.Status == app.InvoiceStatusPaid {
-		_, err := iv.Update().SetStatus(app.InvoiceStatusIssued).Save(ctx)
-		return err
-	}
-	return nil
+	_, err = iv.Update().SetStatus(nextStatus).Save(ctx)
+	return err
 }
 
 func (s *Service) invoiceBalanceCents(ctx context.Context, iv *ent.Invoice) (total, paid, remaining int64, err error) {
@@ -1135,14 +1150,13 @@ func (s *Service) sumPaymentsForStudentCents(ctx context.Context, studentID int)
 	return sum, nil
 }
 
-// sumInvoicesForStudent calculates the total amount of all invoices
-// for a student that are in "issued" or "paid" status. Draft and canceled
-// invoices are not included in the calculation.
+// sumInvoicesForStudent calculates the total amount of all financially active
+// invoices for a student. Draft and canceled invoices are not included.
 func (s *Service) sumInvoicesForStudentCents(ctx context.Context, studentID int) (int64, error) {
 	invs, err := s.db.Invoice.Query().
 		Where(
 			invoice.StudentIDEQ(studentID),
-			invoice.StatusIn(app.InvoiceStatusIssued, app.InvoiceStatusPaid),
+			invoice.StatusIn(openInvoiceStatuses()...),
 		).
 		All(ctx)
 	if err != nil {

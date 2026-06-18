@@ -29,10 +29,12 @@ import (
 
 // Constants for invoice statuses and billing modes (aliased from shared package)
 const (
-	StatusDraft    = app.InvoiceStatusDraft    // Draft invoice status
-	StatusIssued   = app.InvoiceStatusIssued   // Issued invoice status
-	StatusPaid     = app.InvoiceStatusPaid     // Paid invoice status
-	StatusCanceled = app.InvoiceStatusCanceled // Canceled invoice status
+	StatusDraft            = app.InvoiceStatusDraft            // Draft invoice status
+	StatusIssuedPendingPDF = app.InvoiceStatusIssuedPendingPDF // Issued without a ready PDF
+	StatusIssued           = app.InvoiceStatusIssued           // Issued invoice status
+	StatusPaidPendingPDF   = app.InvoiceStatusPaidPendingPDF   // Paid without a ready PDF
+	StatusPaid             = app.InvoiceStatusPaid             // Paid invoice status
+	StatusCanceled         = app.InvoiceStatusCanceled         // Canceled invoice status
 
 	BillingPerLesson    = app.BillingModePerLesson    // Per-lesson billing mode
 	BillingSubscription = app.BillingModeSubscription // Subscription billing mode
@@ -70,6 +72,7 @@ type ListItem struct {
 	Month       int     `json:"month"`            // Invoice period month
 	Total       float64 `json:"total"`            // Total invoice amount
 	Status      string  `json:"status"`           // Invoice status
+	PDFReady    bool    `json:"pdfReady"`         // Whether canonical PDF is ready
 	LinesCount  int     `json:"linesCount"`       // Number of line items
 	Number      *string `json:"number,omitempty"` // Invoice number (nil for drafts)
 	EventDate   string  `json:"eventDate"`        // Real timeline event date for draft/update/issue/pay
@@ -100,6 +103,7 @@ type InvoiceDTO struct {
 	Month               int       `json:"month"`               // Invoice period month
 	Total               float64   `json:"total"`               // Total invoice amount
 	Status              string    `json:"status"`              // Invoice status
+	PDFReady            bool      `json:"pdfReady"`            // Whether canonical PDF is ready
 	Number              *string   `json:"number,omitempty"`    // Invoice number (nil for drafts)
 	Lines               []LineDTO `json:"lines"`               // All line items in the invoice
 }
@@ -458,7 +462,7 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 		res.stats.Created++
 
 	case existing.Status == StatusDraft || (isCurrentEditableMonth(y, m) &&
-		(existing.Status == StatusIssued || existing.Status == StatusPaid)):
+		(existing.Status == StatusIssuedPendingPDF || existing.Status == StatusIssued || existing.Status == StatusPaidPendingPDF || existing.Status == StatusPaid)):
 		pdfRef, err := s.invoicePDFRef(existing)
 		if err != nil {
 			return res, err
@@ -601,7 +605,7 @@ func (s *Service) ListDrafts(ctx context.Context, y, m int) ([]ListItem, error) 
 		items = append(items, ListItem{
 			ID: iv.ID, StudentID: iv.StudentID, StudentName: getStudentName(iv),
 			Year: iv.PeriodYear, Month: iv.PeriodMonth,
-			Total: money.CentsToEuros(iv.TotalAmountCents), Status: string(iv.Status), LinesCount: count, Number: iv.Number,
+			Total: money.CentsToEuros(iv.TotalAmountCents), Status: string(iv.Status), PDFReady: CanonicalPDFReady(iv), LinesCount: count, Number: iv.Number,
 			EventDate: invoiceEventDate(iv),
 		})
 	}
@@ -638,6 +642,7 @@ func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 		Month:               iv.PeriodMonth,
 		Total:               money.CentsToEuros(iv.TotalAmountCents),
 		Status:              string(iv.Status),
+		PDFReady:            CanonicalPDFReady(iv),
 		Number:              iv.Number,
 	}
 	for _, l := range ls {
@@ -730,8 +735,8 @@ func (s *Service) ReopenDraftWithVersion(ctx context.Context, id, version int, o
 	if iv.Version != version {
 		return apperrors.StaleRevision()
 	}
-	if iv.Status != StatusIssued {
-		return fmt.Errorf("вернуть в черновик можно только выставленные счета")
+	if iv.Status != StatusIssued && iv.Status != StatusIssuedPendingPDF {
+		return fmt.Errorf("вернуть в черновик можно только выставленные счета без оплат")
 	}
 
 	paymentCount, err := tx.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).Count(ctx)
@@ -865,12 +870,13 @@ func (s *Service) issueOneInStore(ctx context.Context, id, version int) (string,
 		}
 	}
 
-	// Save the number and status
+	// Save the number and provisional status. A successful PDF generation will
+	// promote the invoice to issued/paid, while a failed generation leaves it pending.
 	if _, err := s.db.Invoice.UpdateOneID(iv.ID).
 		Where(invoice.VersionEQ(version)).
 		SetVersion(version + 1).
 		SetNumber(number).
-		SetStatus(StatusIssued).
+		SetStatus(StatusIssuedPendingPDF).
 		Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return "", 0, apperrors.StaleRevision()
@@ -966,7 +972,7 @@ func (s *Service) IssueAll(ctx context.Context, y, m int, outBaseDir, fontsDir s
 			FontsDir:   fontsDir,
 		})
 		if err != nil {
-			return count, paths, err
+			continue
 		}
 		if err := s.persistPDFMetadata(ctx, iv.ID, p); err != nil {
 			return count, paths, err
@@ -1028,7 +1034,10 @@ func (s *Service) persistPDFMetadata(ctx context.Context, id int, pdfPath string
 		SetPdfGeneratedAt(generatedAt).
 		SetPdfRevision(iv.Version).
 		Save(ctx)
-	return err
+	if err != nil {
+		return err
+	}
+	return paysvc.New(s.db).RecomputeInvoiceStatus(ctx, id)
 }
 
 // List returns invoices for a given period with optional status filter.
@@ -1041,7 +1050,7 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 		).
 		WithStudent()
 	switch status {
-	case StatusDraft, StatusIssued, StatusPaid, StatusCanceled:
+	case StatusDraft, StatusIssuedPendingPDF, StatusIssued, StatusPaidPendingPDF, StatusPaid, StatusCanceled:
 		q = q.Where(invoice.StatusEQ(invoice.Status(status)))
 	case "all":
 		// no additional filter
@@ -1098,6 +1107,7 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 			Month:       iv.PeriodMonth,
 			Total:       money.CentsToEuros(iv.TotalAmountCents),
 			Status:      string(iv.Status),
+			PDFReady:    CanonicalPDFReady(iv),
 			LinesCount:  cnt,
 			Number:      iv.Number,
 			EventDate:   invoiceEventDate(iv),

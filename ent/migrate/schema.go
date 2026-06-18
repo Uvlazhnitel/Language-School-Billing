@@ -197,7 +197,7 @@ var (
 		{Name: "period_month", Type: field.TypeInt},
 		{Name: "total_amount", Type: field.TypeFloat64, Default: 0},
 		{Name: "total_amount_cents", Type: field.TypeInt64, Default: 0},
-		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "issued", "paid", "canceled"}, Default: "draft"},
+		{Name: "status", Type: field.TypeEnum, Enums: []string{"draft", "issued_pending_pdf", "issued", "paid_pending_pdf", "paid", "canceled"}, Default: "draft"},
 		{Name: "number", Type: field.TypeString, Nullable: true},
 		{Name: "pdf_filename", Type: field.TypeString, Nullable: true},
 		{Name: "pdf_generated_at", Type: field.TypeTime, Nullable: true},

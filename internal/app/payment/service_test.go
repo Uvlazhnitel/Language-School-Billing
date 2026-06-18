@@ -915,6 +915,18 @@ func createTestInvoiceWithNumber(t *testing.T, ctx context.Context, client *ent.
 	if err != nil {
 		t.Fatalf("create invoice: %v", err)
 	}
+	if app.InvoiceStatusIsIssuedFamily(status) || app.InvoiceStatusIsPaidFamily(status) {
+		filename := "test.pdf"
+		revision := inv.Version
+		inv, err = client.Invoice.UpdateOneID(inv.ID).
+			SetPdfFilename(filename).
+			SetPdfGeneratedAt(time.Date(2026, time.January, 1, 12, 0, 0, 0, time.UTC)).
+			SetPdfRevision(revision).
+			Save(ctx)
+		if err != nil {
+			t.Fatalf("update invoice pdf metadata: %v", err)
+		}
+	}
 	return inv
 }
 

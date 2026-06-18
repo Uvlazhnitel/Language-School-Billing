@@ -24,6 +24,7 @@ describe("InvoiceDetailsModal", () => {
           total: 42,
           status: "issued",
           number: "LS-202606-001",
+          pdfReady: false,
           lines: [],
         }}
         summary={{
@@ -77,6 +78,7 @@ describe("InvoiceDetailsModal", () => {
           total: 250,
           status: "paid",
           number: "LS-202606-008",
+          pdfReady: true,
           lines: [],
         }}
         summary={{

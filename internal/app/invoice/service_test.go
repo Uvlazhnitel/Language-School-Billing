@@ -1254,8 +1254,8 @@ func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T
 	if got.TotalAmountCents != money.EurosToCents(120) {
 		t.Fatalf("total = %v, want 120", money.CentsToEuros(got.TotalAmountCents))
 	}
-	if got.Status != StatusIssued {
-		t.Fatalf("status = %q, want %q", got.Status, StatusIssued)
+	if got.Status != StatusIssuedPendingPDF {
+		t.Fatalf("status = %q, want %q", got.Status, StatusIssuedPendingPDF)
 	}
 	if got.PdfRevision != nil || got.PdfGeneratedAt != nil {
 		t.Fatalf("expected PDF metadata cleared, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
@@ -1377,8 +1377,8 @@ func TestRebuildStudentDraftUpdatesCurrentIssuedInvoiceAndInvalidatesPDF(t *test
 	if got.TotalAmountCents != money.EurosToCents(60) {
 		t.Fatalf("total = %v, want 60", money.CentsToEuros(got.TotalAmountCents))
 	}
-	if got.Status != StatusIssued {
-		t.Fatalf("status = %q, want %q", got.Status, StatusIssued)
+	if got.Status != StatusIssuedPendingPDF {
+		t.Fatalf("status = %q, want %q", got.Status, StatusIssuedPendingPDF)
 	}
 	if got.PdfRevision != nil || got.PdfGeneratedAt != nil {
 		t.Fatalf("expected PDF metadata cleared, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
@@ -1503,8 +1503,8 @@ func TestRebuildStudentDraftKeepsCurrentPaidInvoicePaidWhenAmountDropsBelowPayme
 	if got.TotalAmountCents != money.EurosToCents(60) {
 		t.Fatalf("total = %v, want 60", money.CentsToEuros(got.TotalAmountCents))
 	}
-	if got.Status != StatusPaid {
-		t.Fatalf("status = %q, want %q", got.Status, StatusPaid)
+	if got.Status != StatusPaidPendingPDF {
+		t.Fatalf("status = %q, want %q", got.Status, StatusPaidPendingPDF)
 	}
 	if got.PdfRevision != nil || got.PdfGeneratedAt != nil {
 		t.Fatalf("expected PDF metadata cleared, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
@@ -1791,8 +1791,8 @@ func TestIssueOneUsesTransactionalSettingsSequence(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Invoice.Get: %v", err)
 	}
-	if issued.Status != StatusIssued {
-		t.Fatalf("Status = %q, want %q", issued.Status, StatusIssued)
+	if issued.Status != StatusIssuedPendingPDF {
+		t.Fatalf("Status = %q, want %q", issued.Status, StatusIssuedPendingPDF)
 	}
 	if issued.Number == nil || *issued.Number != number {
 		t.Fatalf("Number = %v, want %q", issued.Number, number)

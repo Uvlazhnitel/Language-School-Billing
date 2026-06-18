@@ -126,6 +126,19 @@ func (l PDFLocator) Evaluate(iv *ent.Invoice, subjectName string) PDFInfo {
 	return PDFInfo{Status: PDFStatusMissing}
 }
 
+func CanonicalPDFReady(iv *ent.Invoice) bool {
+	if iv == nil || iv.Number == nil || strings.TrimSpace(*iv.Number) == "" {
+		return false
+	}
+	if strings.TrimSpace(stringValue(iv.PdfFilename)) == "" {
+		return false
+	}
+	if iv.PdfRevision == nil {
+		return false
+	}
+	return *iv.PdfRevision == iv.Version
+}
+
 func yearMonthDir(y, m int) string {
 	return filepath.Join(
 		fmt.Sprintf("%04d", y),

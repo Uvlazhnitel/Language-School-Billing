@@ -40,6 +40,7 @@ describe("studentActivity", () => {
           total: 17.5,
           status: "draft",
           linesCount: 1,
+          pdfReady: false,
           eventDate: "2026-06-02T09:30:00Z",
         },
       ],

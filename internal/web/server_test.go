@@ -162,8 +162,8 @@ func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 	}
 
 	status := getJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/pdf-status")
-	if status["ready"] {
-		t.Fatal("expected pdf-status ready=false before metadata backfill")
+	if !status["ready"] {
+		t.Fatal("expected pdf-status ready=true immediately after issue")
 	}
 
 	pdfMeta := postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/pdf", map[string]any{})
@@ -320,7 +320,7 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 		Month  int
 	}
 
-	createIssuedInvoice := func(year, month int, ensurePDF bool) issuedInvoice {
+	createIssuedInvoice := func(year, month int) issuedInvoice {
 		putJSON[backend.CourseMonthSubscriptionDTO](t, env.Client, env.Server.URL, "/api/attendance/subscription-month", map[string]any{
 			"courseId":    course.ID,
 			"year":        year,
@@ -338,17 +338,19 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 		issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
 			"version": invoices[0].Version,
 		})
-		if ensurePDF {
-			postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf", map[string]any{})
-		}
 		return issuedInvoice{ID: invoices[0].ID, Number: issue.Number, Year: year, Month: month}
 	}
 
-	currentInvoice := createIssuedInvoice(currentYear, currentMonth, true)
-	missingInvoice := createIssuedInvoice(olderYear, olderMonth, false)
-	outdatedInvoice := createIssuedInvoice(olderYear, olderMonth-1, true)
-	errorInvoice := createIssuedInvoice(olderYear, olderMonth-2, true)
-	legacyInvoice := createIssuedInvoice(olderYear, olderMonth-3, false)
+	currentInvoice := createIssuedInvoice(currentYear, currentMonth)
+	missingInvoice := createIssuedInvoice(olderYear, olderMonth)
+	outdatedInvoice := createIssuedInvoice(olderYear, olderMonth-1)
+	errorInvoice := createIssuedInvoice(olderYear, olderMonth-2)
+	legacyInvoice := createIssuedInvoice(olderYear, olderMonth-3)
+
+	missingPath := invsvc.PDFPathByNumberAndName(env.Runtime.Dirs.Invoices, missingInvoice.Year, missingInvoice.Month, missingInvoice.Number, student.FullName)
+	if err := os.Remove(missingPath); err != nil {
+		t.Fatal(err)
+	}
 
 	outdatedRow, err := env.Runtime.DB.Ent.Invoice.Get(context.Background(), outdatedInvoice.ID)
 	if err != nil {
@@ -374,6 +376,18 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(orphanDir, "orphan.pdf"), []byte("%PDF-1.4\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	legacyCanonicalPath := invsvc.PDFPathByNumberAndName(env.Runtime.Dirs.Invoices, legacyInvoice.Year, legacyInvoice.Month, legacyInvoice.Number, student.FullName)
+	if err := os.Remove(legacyCanonicalPath); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.Runtime.DB.Ent.Invoice.UpdateOneID(legacyInvoice.ID).
+		ClearPdfFilename().
+		ClearPdfGeneratedAt().
+		ClearPdfRevision().
+		Save(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -665,8 +679,8 @@ func TestCurrentMonthInvoiceStaysLiveAfterFullPayment(t *testing.T) {
 	if invoiceDetails.Total != 55 {
 		t.Fatalf("invoice total = %v, want 55", invoiceDetails.Total)
 	}
-	if invoiceDetails.Status != "issued" {
-		t.Fatalf("invoice status = %q, want issued", invoiceDetails.Status)
+	if invoiceDetails.Status != "issued_pending_pdf" {
+		t.Fatalf("invoice status = %q, want issued_pending_pdf", invoiceDetails.Status)
 	}
 
 	summary := getJSON[backend.InvoiceSummaryDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/payment-summary")
@@ -676,8 +690,8 @@ func TestCurrentMonthInvoiceStaysLiveAfterFullPayment(t *testing.T) {
 	if summary.Remaining != 25 {
 		t.Fatalf("remaining = %v, want 25", summary.Remaining)
 	}
-	if summary.Status != "issued" {
-		t.Fatalf("summary status = %q, want issued", summary.Status)
+	if summary.Status != "issued_pending_pdf" {
+		t.Fatalf("summary status = %q, want issued_pending_pdf", summary.Status)
 	}
 
 	pdfMeta := postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf", map[string]any{})

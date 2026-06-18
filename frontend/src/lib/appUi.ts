@@ -106,8 +106,12 @@ export function invoiceStatusLabel(status: string, t: TranslateFn): string {
   switch (status) {
     case "draft":
       return t("status.draft");
+    case "issued_pending_pdf":
+      return t("status.issuedPendingPdf");
     case "issued":
       return t("status.issued");
+    case "paid_pending_pdf":
+      return t("status.paidPendingPdf");
     case "paid":
       return t("status.paid");
     case "canceled":

@@ -123,10 +123,12 @@ const DefaultStatus = StatusDraft
 
 // Status values.
 const (
-	StatusDraft    Status = "draft"
-	StatusIssued   Status = "issued"
-	StatusPaid     Status = "paid"
-	StatusCanceled Status = "canceled"
+	StatusDraft            Status = "draft"
+	StatusIssuedPendingPdf Status = "issued_pending_pdf"
+	StatusIssued           Status = "issued"
+	StatusPaidPendingPdf   Status = "paid_pending_pdf"
+	StatusPaid             Status = "paid"
+	StatusCanceled         Status = "canceled"
 )
 
 func (s Status) String() string {
@@ -136,7 +138,7 @@ func (s Status) String() string {
 // StatusValidator is a validator for the "status" field enum values. It is called by the builders before save.
 func StatusValidator(s Status) error {
 	switch s {
-	case StatusDraft, StatusIssued, StatusPaid, StatusCanceled:
+	case StatusDraft, StatusIssuedPendingPdf, StatusIssued, StatusPaidPendingPdf, StatusPaid, StatusCanceled:
 		return nil
 	default:
 		return fmt.Errorf("invoice: invalid enum value for status field: %q", s)

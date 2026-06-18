@@ -51,11 +51,6 @@ export async function ensurePdf(invoiceId: number) {
   return transport.ensurePdf(invoiceId);
 }
 
-export async function hasPdf(invoiceId: number) {
-  const transport = await getTransport();
-  return transport.hasPdf(invoiceId);
-}
-
 export async function previewInvoiceEmail(invoiceId: number) {
   const transport = await getTransport();
   return transport.previewInvoiceEmail(invoiceId);

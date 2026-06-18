@@ -1110,9 +1110,15 @@ a {
 
 .statusPill.warning,
 .statusPill--draft,
+.statusPill--issued_pending_pdf,
 .statusPill--issued {
   background: var(--accent-soft);
   color: var(--accent-strong);
+}
+
+.statusPill--paid_pending_pdf {
+  background: rgba(231, 157, 60, 0.12);
+  color: #9a5d12;
 }
 
 .statusPill.danger,

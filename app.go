@@ -252,9 +252,9 @@ func (a *App) InvoiceList(year, month int, status string) ([]invsvc.ListItem, er
 	return a.inv.List(a.ctx, year, month, status)
 }
 
-// InvoiceIssue issues a single draft invoice by assigning it a number
-// and changing its status to "issued". PDF generation is handled separately
-// by InvoiceEnsurePDF when the user explicitly requests a document.
+// InvoiceIssue issues a single invoice, applies credit, and attempts to
+// generate its canonical PDF immediately. If PDF generation fails after
+// numbering, the invoice remains in a pending-PDF status.
 func (a *App) InvoiceIssue(id int) (IssueResult, error) {
 	if a.svc != nil {
 		return a.svc.InvoiceIssue(a.ctx, id)
@@ -267,12 +267,15 @@ func (a *App) InvoiceIssue(id int) (IssueResult, error) {
 	if err != nil {
 		return IssueResult{}, err
 	}
+	if _, err := a.InvoiceEnsurePDF(id); err != nil {
+		log.Printf("InvoiceIssue ensure PDF fallback for invoice %d failed: %v", id, err)
+	}
 	return IssueResult{Number: num}, nil
 }
 
 // InvoiceIssueAll issues all draft invoices for the specified year and month.
-// Each invoice is assigned a number, marked as issued, and a PDF is generated.
-// Returns the count of issued invoices and paths to all generated PDFs.
+// Each invoice is assigned a number and then attempts PDF generation.
+// Returns the count of PDFs generated and paths to the generated files.
 func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 	if a.svc != nil {
 		return a.svc.InvoiceIssueAll(a.ctx, year, month)
@@ -286,12 +289,15 @@ func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 		return IssueAllResult{}, err
 	}
 	// Apply credit for all students whose invoices were issued in this period.
-	items, err := a.inv.List(a.ctx, year, month, app.InvoiceStatusIssued)
+	items, err := a.inv.List(a.ctx, year, month, "all")
 	if err != nil {
 		return IssueAllResult{}, err
 	}
 	seen := make(map[int]struct{})
 	for _, item := range items {
+		if item.Status == app.InvoiceStatusDraft {
+			continue
+		}
 		if _, ok := seen[item.StudentID]; ok {
 			continue
 		}
@@ -303,9 +309,9 @@ func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 	return IssueAllResult{Count: cnt, PdfPaths: paths}, nil
 }
 
-// InvoiceEnsurePDF ensures that a PDF exists for an issued invoice.
-// If the PDF already exists, returns its path. Otherwise, regenerates it.
-// Only works for invoices that have been issued (have a number).
+// InvoiceEnsurePDF ensures that a canonical PDF exists for a numbered invoice.
+// If a ready canonical PDF already exists, returns its path. Otherwise,
+// regenerates it and upgrades pending statuses to ready statuses.
 func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 	if a.svc != nil {
 		return a.svc.InvoiceEnsurePDF(a.ctx, id)
@@ -341,8 +347,7 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 	return p, nil
 }
 
-// InvoiceHasPDF reports whether an issued invoice already has a PDF file on disk.
-// It checks both the current named file convention and the legacy number-only path.
+// InvoiceHasPDF reports whether an invoice has a ready canonical PDF.
 func (a *App) InvoiceHasPDF(id int) (bool, error) {
 	if a.svc != nil {
 		return a.svc.InvoiceHasPDF(a.ctx, id)

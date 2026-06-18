@@ -15,11 +15,33 @@ const (
 
 // Invoice statuses represent the lifecycle state of an invoice.
 const (
-	InvoiceStatusDraft    = "draft"    // Draft: not yet issued, can be modified or deleted
-	InvoiceStatusIssued   = "issued"   // Issued: has been assigned a number and sent to student
-	InvoiceStatusPaid     = "paid"     // Paid: fully paid by the student
-	InvoiceStatusCanceled = "canceled" // Canceled: voided invoice, cannot be paid
+	InvoiceStatusDraft            = "draft"              // Draft: not yet issued, can be modified or deleted
+	InvoiceStatusIssuedPendingPDF = "issued_pending_pdf" // Issued with a number, but PDF is not ready yet
+	InvoiceStatusIssued           = "issued"             // Issued with an актуальный PDF
+	InvoiceStatusPaidPendingPDF   = "paid_pending_pdf"   // Fully paid, but PDF is not ready yet
+	InvoiceStatusPaid             = "paid"               // Fully paid with an актуальный PDF
+	InvoiceStatusCanceled         = "canceled"           // Canceled: voided invoice, cannot be paid
 )
+
+func InvoiceStatusIsPendingPDF(status string) bool {
+	return status == InvoiceStatusIssuedPendingPDF || status == InvoiceStatusPaidPendingPDF
+}
+
+func InvoiceStatusIsIssuedFamily(status string) bool {
+	return status == InvoiceStatusIssued || status == InvoiceStatusIssuedPendingPDF
+}
+
+func InvoiceStatusIsPaidFamily(status string) bool {
+	return status == InvoiceStatusPaid || status == InvoiceStatusPaidPendingPDF
+}
+
+func InvoiceStatusIsProtected(status string) bool {
+	return status != "" && status != InvoiceStatusDraft
+}
+
+func InvoiceStatusAllowsPayments(status string) bool {
+	return InvoiceStatusIsIssuedFamily(status) || InvoiceStatusIsPaidFamily(status)
+}
 
 // Payment methods define how payments are made.
 const (
