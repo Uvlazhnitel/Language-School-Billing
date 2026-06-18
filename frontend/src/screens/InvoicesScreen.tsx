@@ -13,6 +13,7 @@ type InvoicesScreenProps = {
   months: string[];
   invoiceStatusLabel: (status: string) => string;
   formatEUR: (value: number) => string;
+  formatDateTime: (value: string) => string;
   renderInvoiceActionsMenu: (invoice: InvoiceListItemView) => ReactNode;
   onStatusChange: (value: string) => void;
   onQueryChange: (value: string) => void;
@@ -38,6 +39,7 @@ export function InvoicesScreen({
   months,
   invoiceStatusLabel,
   formatEUR,
+  formatDateTime,
   renderInvoiceActionsMenu,
   onStatusChange,
   onQueryChange,
@@ -158,6 +160,12 @@ export function InvoicesScreen({
                   {item.pdfReady && (
                     <div className="badgeRow">
                       <span className="attBadge attBadge--pdfReady">PDF</span>
+                    </div>
+                  )}
+                  {item.lastEmailedAt && item.lastEmailedTo && (
+                    <div className="mutedInline" style={{ marginTop: "0.35rem" }}>
+                      {t("msg.invoiceEmailLastSentTo", { email: item.lastEmailedTo })} ·{" "}
+                      {formatDateTime(item.lastEmailedAt)}
                     </div>
                   )}
                 </td>

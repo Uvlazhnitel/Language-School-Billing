@@ -140,11 +140,11 @@ func init() {
 	// invoice.DefaultTotalAmountCents holds the default value on creation for the total_amount_cents field.
 	invoice.DefaultTotalAmountCents = invoiceDescTotalAmountCents.Default.(int64)
 	// invoiceDescCreatedAt is the schema descriptor for created_at field.
-	invoiceDescCreatedAt := invoiceFields[10].Descriptor()
+	invoiceDescCreatedAt := invoiceFields[12].Descriptor()
 	// invoice.DefaultCreatedAt holds the default value on creation for the created_at field.
 	invoice.DefaultCreatedAt = invoiceDescCreatedAt.Default.(func() time.Time)
 	// invoiceDescUpdatedAt is the schema descriptor for updated_at field.
-	invoiceDescUpdatedAt := invoiceFields[11].Descriptor()
+	invoiceDescUpdatedAt := invoiceFields[13].Descriptor()
 	// invoice.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	invoice.DefaultUpdatedAt = invoiceDescUpdatedAt.Default.(func() time.Time)
 	// invoice.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

@@ -9,6 +9,7 @@ type InvoiceDetailsModalProps = {
   invoiceStatusLabel: (status: string) => string;
   formatEUR: (value: number) => string;
   formatHoursValue: (value: number) => string;
+  formatDateTime: (value: string) => string;
   pdfReady: boolean;
   onOpenStudent: (studentId: number) => void | Promise<void>;
   onIssue: (invoiceId: number) => void | Promise<void>;
@@ -29,6 +30,7 @@ export function InvoiceDetailsModal({
   invoiceStatusLabel,
   formatEUR,
   formatHoursValue,
+  formatDateTime,
   pdfReady,
   onOpenStudent,
   onIssue,
@@ -99,6 +101,15 @@ export function InvoiceDetailsModal({
               <span>{t("field.status")}:</span>
               <span className="money">{invoiceStatusLabel(summary.status)}</span>
             </div>
+            {invoice.lastEmailedAt && invoice.lastEmailedTo && (
+              <div className="invSummaryRow">
+                <span>{t("field.emailSent")}:</span>
+                <span>
+                  {t("msg.invoiceEmailLastSentTo", { email: invoice.lastEmailedTo })} ·{" "}
+                  {formatDateTime(invoice.lastEmailedAt)}
+                </span>
+              </div>
+            )}
           </div>
         )}
 

@@ -25,6 +25,8 @@ describe("InvoiceDetailsModal", () => {
           status: "issued",
           number: "LS-202606-001",
           pdfReady: false,
+          lastEmailedAt: "2026-06-18T10:30:00Z",
+          lastEmailedTo: "family@example.com",
           lines: [],
         }}
         summary={{
@@ -39,6 +41,7 @@ describe("InvoiceDetailsModal", () => {
         invoiceStatusLabel={(value) => value}
         formatEUR={(value) => value.toFixed(2)}
         formatHoursValue={(value) => String(value)}
+        formatDateTime={() => "6/18/2026, 10:30:00 AM"}
         pdfReady={false}
         onOpenStudent={vi.fn()}
         onIssue={vi.fn()}
@@ -57,6 +60,8 @@ describe("InvoiceDetailsModal", () => {
     expect(markup).toContain("Create PDF");
     expect(markup).toContain("Send Email");
     expect(markup).toContain("Record payment");
+    expect(markup).toContain("Email sent");
+    expect(markup).toContain("Sent to family@example.com");
   });
 
   it("hides record payment for fully paid invoices", () => {
@@ -79,6 +84,8 @@ describe("InvoiceDetailsModal", () => {
           status: "paid",
           number: "LS-202606-008",
           pdfReady: true,
+          lastEmailedAt: "",
+          lastEmailedTo: "",
           lines: [],
         }}
         summary={{
@@ -93,6 +100,7 @@ describe("InvoiceDetailsModal", () => {
         invoiceStatusLabel={(value) => value}
         formatEUR={(value) => value.toFixed(2)}
         formatHoursValue={(value) => String(value)}
+        formatDateTime={() => "6/18/2026, 10:30:00 AM"}
         pdfReady={true}
         onOpenStudent={vi.fn()}
         onIssue={vi.fn()}

@@ -104,7 +104,14 @@ func (s *Service) InvoiceSendEmail(ctx context.Context, id int, to, subject, bod
 		return nil, err
 	}
 
-	sentAt := time.Now().UTC().Format(time.RFC3339)
+	sentAt := time.Now().UTC()
+	if _, err := s.rt.DB.Ent.Invoice.UpdateOneID(id).
+		SetLastEmailedAt(sentAt).
+		SetLastEmailedTo(to).
+		Save(ctx); err != nil {
+		return nil, fmt.Errorf("save invoice email metadata: %w", err)
+	}
+	sentAtValue := sentAt.Format(time.RFC3339)
 	s.recordAudit(ctx, auditsvc.RecordEvent{
 		EntityType: "invoice",
 		EntityID:   intPtr(id),
@@ -116,7 +123,7 @@ func (s *Service) InvoiceSendEmail(ctx context.Context, id int, to, subject, bod
 			"to":                 to,
 			"subject":            subject,
 			"attachmentFilename": filename,
-			"sentAt":             sentAt,
+			"sentAt":             sentAtValue,
 		},
 	})
 
@@ -124,7 +131,7 @@ func (s *Service) InvoiceSendEmail(ctx context.Context, id int, to, subject, bod
 		To:                 to,
 		Subject:            subject,
 		AttachmentFilename: filename,
-		SentAt:             sentAt,
+		SentAt:             sentAtValue,
 	}, nil
 }
 

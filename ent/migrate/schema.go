@@ -202,6 +202,8 @@ var (
 		{Name: "pdf_filename", Type: field.TypeString, Nullable: true},
 		{Name: "pdf_generated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "pdf_revision", Type: field.TypeInt, Nullable: true},
+		{Name: "last_emailed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "last_emailed_to", Type: field.TypeString, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime, Nullable: true},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "student_id", Type: field.TypeInt},
@@ -214,7 +216,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "invoices_students_invoices",
-				Columns:    []*schema.Column{InvoicesColumns[13]},
+				Columns:    []*schema.Column{InvoicesColumns[15]},
 				RefColumns: []*schema.Column{StudentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -223,7 +225,7 @@ var (
 			{
 				Name:    "invoice_student_id_period_year_period_month",
 				Unique:  true,
-				Columns: []*schema.Column{InvoicesColumns[13], InvoicesColumns[2], InvoicesColumns[3]},
+				Columns: []*schema.Column{InvoicesColumns[15], InvoicesColumns[2], InvoicesColumns[3]},
 			},
 		},
 	}

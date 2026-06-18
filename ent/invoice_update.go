@@ -251,6 +251,46 @@ func (_u *InvoiceUpdate) ClearPdfRevision() *InvoiceUpdate {
 	return _u
 }
 
+// SetLastEmailedAt sets the "last_emailed_at" field.
+func (_u *InvoiceUpdate) SetLastEmailedAt(v time.Time) *InvoiceUpdate {
+	_u.mutation.SetLastEmailedAt(v)
+	return _u
+}
+
+// SetNillableLastEmailedAt sets the "last_emailed_at" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillableLastEmailedAt(v *time.Time) *InvoiceUpdate {
+	if v != nil {
+		_u.SetLastEmailedAt(*v)
+	}
+	return _u
+}
+
+// ClearLastEmailedAt clears the value of the "last_emailed_at" field.
+func (_u *InvoiceUpdate) ClearLastEmailedAt() *InvoiceUpdate {
+	_u.mutation.ClearLastEmailedAt()
+	return _u
+}
+
+// SetLastEmailedTo sets the "last_emailed_to" field.
+func (_u *InvoiceUpdate) SetLastEmailedTo(v string) *InvoiceUpdate {
+	_u.mutation.SetLastEmailedTo(v)
+	return _u
+}
+
+// SetNillableLastEmailedTo sets the "last_emailed_to" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillableLastEmailedTo(v *string) *InvoiceUpdate {
+	if v != nil {
+		_u.SetLastEmailedTo(*v)
+	}
+	return _u
+}
+
+// ClearLastEmailedTo clears the value of the "last_emailed_to" field.
+func (_u *InvoiceUpdate) ClearLastEmailedTo() *InvoiceUpdate {
+	_u.mutation.ClearLastEmailedTo()
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *InvoiceUpdate) SetCreatedAt(v time.Time) *InvoiceUpdate {
 	_u.mutation.SetCreatedAt(v)
@@ -491,6 +531,18 @@ func (_u *InvoiceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.PdfRevisionCleared() {
 		_spec.ClearField(invoice.FieldPdfRevision, field.TypeInt)
+	}
+	if value, ok := _u.mutation.LastEmailedAt(); ok {
+		_spec.SetField(invoice.FieldLastEmailedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastEmailedAtCleared() {
+		_spec.ClearField(invoice.FieldLastEmailedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LastEmailedTo(); ok {
+		_spec.SetField(invoice.FieldLastEmailedTo, field.TypeString, value)
+	}
+	if _u.mutation.LastEmailedToCleared() {
+		_spec.ClearField(invoice.FieldLastEmailedTo, field.TypeString)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)
@@ -863,6 +915,46 @@ func (_u *InvoiceUpdateOne) ClearPdfRevision() *InvoiceUpdateOne {
 	return _u
 }
 
+// SetLastEmailedAt sets the "last_emailed_at" field.
+func (_u *InvoiceUpdateOne) SetLastEmailedAt(v time.Time) *InvoiceUpdateOne {
+	_u.mutation.SetLastEmailedAt(v)
+	return _u
+}
+
+// SetNillableLastEmailedAt sets the "last_emailed_at" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillableLastEmailedAt(v *time.Time) *InvoiceUpdateOne {
+	if v != nil {
+		_u.SetLastEmailedAt(*v)
+	}
+	return _u
+}
+
+// ClearLastEmailedAt clears the value of the "last_emailed_at" field.
+func (_u *InvoiceUpdateOne) ClearLastEmailedAt() *InvoiceUpdateOne {
+	_u.mutation.ClearLastEmailedAt()
+	return _u
+}
+
+// SetLastEmailedTo sets the "last_emailed_to" field.
+func (_u *InvoiceUpdateOne) SetLastEmailedTo(v string) *InvoiceUpdateOne {
+	_u.mutation.SetLastEmailedTo(v)
+	return _u
+}
+
+// SetNillableLastEmailedTo sets the "last_emailed_to" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillableLastEmailedTo(v *string) *InvoiceUpdateOne {
+	if v != nil {
+		_u.SetLastEmailedTo(*v)
+	}
+	return _u
+}
+
+// ClearLastEmailedTo clears the value of the "last_emailed_to" field.
+func (_u *InvoiceUpdateOne) ClearLastEmailedTo() *InvoiceUpdateOne {
+	_u.mutation.ClearLastEmailedTo()
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *InvoiceUpdateOne) SetCreatedAt(v time.Time) *InvoiceUpdateOne {
 	_u.mutation.SetCreatedAt(v)
@@ -1133,6 +1225,18 @@ func (_u *InvoiceUpdateOne) sqlSave(ctx context.Context) (_node *Invoice, err er
 	}
 	if _u.mutation.PdfRevisionCleared() {
 		_spec.ClearField(invoice.FieldPdfRevision, field.TypeInt)
+	}
+	if value, ok := _u.mutation.LastEmailedAt(); ok {
+		_spec.SetField(invoice.FieldLastEmailedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastEmailedAtCleared() {
+		_spec.ClearField(invoice.FieldLastEmailedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.LastEmailedTo(); ok {
+		_spec.SetField(invoice.FieldLastEmailedTo, field.TypeString, value)
+	}
+	if _u.mutation.LastEmailedToCleared() {
+		_spec.ClearField(invoice.FieldLastEmailedTo, field.TypeString)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)

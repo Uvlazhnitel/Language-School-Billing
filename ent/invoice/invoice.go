@@ -37,6 +37,10 @@ const (
 	FieldPdfGeneratedAt = "pdf_generated_at"
 	// FieldPdfRevision holds the string denoting the pdf_revision field in the database.
 	FieldPdfRevision = "pdf_revision"
+	// FieldLastEmailedAt holds the string denoting the last_emailed_at field in the database.
+	FieldLastEmailedAt = "last_emailed_at"
+	// FieldLastEmailedTo holds the string denoting the last_emailed_to field in the database.
+	FieldLastEmailedTo = "last_emailed_to"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -86,6 +90,8 @@ var Columns = []string{
 	FieldPdfFilename,
 	FieldPdfGeneratedAt,
 	FieldPdfRevision,
+	FieldLastEmailedAt,
+	FieldLastEmailedTo,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -206,6 +212,16 @@ func ByPdfGeneratedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByPdfRevision orders the results by the pdf_revision field.
 func ByPdfRevision(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPdfRevision, opts...).ToFunc()
+}
+
+// ByLastEmailedAt orders the results by the last_emailed_at field.
+func ByLastEmailedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastEmailedAt, opts...).ToFunc()
+}
+
+// ByLastEmailedTo orders the results by the last_emailed_to field.
+func ByLastEmailedTo(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastEmailedTo, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

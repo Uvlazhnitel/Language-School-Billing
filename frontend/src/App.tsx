@@ -276,6 +276,10 @@ export default function App() {
     (status: string) => invoiceStatusLabel(status, t),
     [t]
   );
+  const formatDateTime = useCallback(
+    (value: string) => new Date(value).toLocaleString(uiLocale),
+    [uiLocale]
+  );
 
   // Shared month/year for Attendance + Invoices
   const [year, setYear] = useState(now.getFullYear());
@@ -2055,13 +2059,27 @@ export default function App() {
         subject: invoiceEmailDraft.subject,
         body: invoiceEmailDraft.body,
       });
+      await loadInvoices({ syncDrafts: false });
+      if (invoiceDetailsOpen && selectedInv?.id === invoiceEmailInvoiceID) {
+        await loadInvoiceDetails(invoiceEmailInvoiceID);
+      }
       closeInvoiceEmailModal();
       showMessage(t("msg.invoiceEmailSent", { email: result.to }));
     } catch (e: any) {
       setInvoiceEmailSending(false);
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
-  }, [closeInvoiceEmailModal, invoiceEmailDraft, invoiceEmailInvoiceID, showMessage, t]);
+  }, [
+    closeInvoiceEmailModal,
+    invoiceDetailsOpen,
+    invoiceEmailDraft,
+    invoiceEmailInvoiceID,
+    loadInvoiceDetails,
+    loadInvoices,
+    selectedInv,
+    showMessage,
+    t,
+  ]);
 
   const buildInvoiceMenuItems = useCallback(
     (invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean }) => {
@@ -2861,6 +2879,7 @@ export default function App() {
                 months={uiMonths}
                 invoiceStatusLabel={localizedInvoiceStatusLabel}
                 formatEUR={formatEUR}
+                formatDateTime={formatDateTime}
                 renderInvoiceActionsMenu={(invoice) => renderInvoiceActionsMenu(invoice)}
                 onStatusChange={setInvStatus}
                 onQueryChange={setInvQ}
@@ -3016,6 +3035,7 @@ export default function App() {
               invoiceStatusLabel={localizedInvoiceStatusLabel}
               formatEUR={formatEUR}
               formatHoursValue={formatHoursValue}
+              formatDateTime={formatDateTime}
               pdfReady={selectedInvPdfReady}
               onOpenStudent={(studentId) => void openStudentCardById(studentId)}
               onIssue={(invoiceId) => void onIssueOne(invoiceId)}

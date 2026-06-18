@@ -4895,6 +4895,8 @@ type InvoiceMutation struct {
 	pdf_generated_at       *time.Time
 	pdf_revision           *int
 	addpdf_revision        *int
+	last_emailed_at        *time.Time
+	last_emailed_to        *string
 	created_at             *time.Time
 	updated_at             *time.Time
 	clearedFields          map[string]struct{}
@@ -5578,6 +5580,104 @@ func (m *InvoiceMutation) ResetPdfRevision() {
 	delete(m.clearedFields, invoice.FieldPdfRevision)
 }
 
+// SetLastEmailedAt sets the "last_emailed_at" field.
+func (m *InvoiceMutation) SetLastEmailedAt(t time.Time) {
+	m.last_emailed_at = &t
+}
+
+// LastEmailedAt returns the value of the "last_emailed_at" field in the mutation.
+func (m *InvoiceMutation) LastEmailedAt() (r time.Time, exists bool) {
+	v := m.last_emailed_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastEmailedAt returns the old "last_emailed_at" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldLastEmailedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastEmailedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastEmailedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastEmailedAt: %w", err)
+	}
+	return oldValue.LastEmailedAt, nil
+}
+
+// ClearLastEmailedAt clears the value of the "last_emailed_at" field.
+func (m *InvoiceMutation) ClearLastEmailedAt() {
+	m.last_emailed_at = nil
+	m.clearedFields[invoice.FieldLastEmailedAt] = struct{}{}
+}
+
+// LastEmailedAtCleared returns if the "last_emailed_at" field was cleared in this mutation.
+func (m *InvoiceMutation) LastEmailedAtCleared() bool {
+	_, ok := m.clearedFields[invoice.FieldLastEmailedAt]
+	return ok
+}
+
+// ResetLastEmailedAt resets all changes to the "last_emailed_at" field.
+func (m *InvoiceMutation) ResetLastEmailedAt() {
+	m.last_emailed_at = nil
+	delete(m.clearedFields, invoice.FieldLastEmailedAt)
+}
+
+// SetLastEmailedTo sets the "last_emailed_to" field.
+func (m *InvoiceMutation) SetLastEmailedTo(s string) {
+	m.last_emailed_to = &s
+}
+
+// LastEmailedTo returns the value of the "last_emailed_to" field in the mutation.
+func (m *InvoiceMutation) LastEmailedTo() (r string, exists bool) {
+	v := m.last_emailed_to
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLastEmailedTo returns the old "last_emailed_to" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldLastEmailedTo(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLastEmailedTo is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLastEmailedTo requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLastEmailedTo: %w", err)
+	}
+	return oldValue.LastEmailedTo, nil
+}
+
+// ClearLastEmailedTo clears the value of the "last_emailed_to" field.
+func (m *InvoiceMutation) ClearLastEmailedTo() {
+	m.last_emailed_to = nil
+	m.clearedFields[invoice.FieldLastEmailedTo] = struct{}{}
+}
+
+// LastEmailedToCleared returns if the "last_emailed_to" field was cleared in this mutation.
+func (m *InvoiceMutation) LastEmailedToCleared() bool {
+	_, ok := m.clearedFields[invoice.FieldLastEmailedTo]
+	return ok
+}
+
+// ResetLastEmailedTo resets all changes to the "last_emailed_to" field.
+func (m *InvoiceMutation) ResetLastEmailedTo() {
+	m.last_emailed_to = nil
+	delete(m.clearedFields, invoice.FieldLastEmailedTo)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *InvoiceMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -5845,7 +5945,7 @@ func (m *InvoiceMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InvoiceMutation) Fields() []string {
-	fields := make([]string, 0, 13)
+	fields := make([]string, 0, 15)
 	if m.version != nil {
 		fields = append(fields, invoice.FieldVersion)
 	}
@@ -5878,6 +5978,12 @@ func (m *InvoiceMutation) Fields() []string {
 	}
 	if m.pdf_revision != nil {
 		fields = append(fields, invoice.FieldPdfRevision)
+	}
+	if m.last_emailed_at != nil {
+		fields = append(fields, invoice.FieldLastEmailedAt)
+	}
+	if m.last_emailed_to != nil {
+		fields = append(fields, invoice.FieldLastEmailedTo)
 	}
 	if m.created_at != nil {
 		fields = append(fields, invoice.FieldCreatedAt)
@@ -5915,6 +6021,10 @@ func (m *InvoiceMutation) Field(name string) (ent.Value, bool) {
 		return m.PdfGeneratedAt()
 	case invoice.FieldPdfRevision:
 		return m.PdfRevision()
+	case invoice.FieldLastEmailedAt:
+		return m.LastEmailedAt()
+	case invoice.FieldLastEmailedTo:
+		return m.LastEmailedTo()
 	case invoice.FieldCreatedAt:
 		return m.CreatedAt()
 	case invoice.FieldUpdatedAt:
@@ -5950,6 +6060,10 @@ func (m *InvoiceMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldPdfGeneratedAt(ctx)
 	case invoice.FieldPdfRevision:
 		return m.OldPdfRevision(ctx)
+	case invoice.FieldLastEmailedAt:
+		return m.OldLastEmailedAt(ctx)
+	case invoice.FieldLastEmailedTo:
+		return m.OldLastEmailedTo(ctx)
 	case invoice.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case invoice.FieldUpdatedAt:
@@ -6039,6 +6153,20 @@ func (m *InvoiceMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetPdfRevision(v)
+		return nil
+	case invoice.FieldLastEmailedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastEmailedAt(v)
+		return nil
+	case invoice.FieldLastEmailedTo:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLastEmailedTo(v)
 		return nil
 	case invoice.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -6171,6 +6299,12 @@ func (m *InvoiceMutation) ClearedFields() []string {
 	if m.FieldCleared(invoice.FieldPdfRevision) {
 		fields = append(fields, invoice.FieldPdfRevision)
 	}
+	if m.FieldCleared(invoice.FieldLastEmailedAt) {
+		fields = append(fields, invoice.FieldLastEmailedAt)
+	}
+	if m.FieldCleared(invoice.FieldLastEmailedTo) {
+		fields = append(fields, invoice.FieldLastEmailedTo)
+	}
 	if m.FieldCleared(invoice.FieldCreatedAt) {
 		fields = append(fields, invoice.FieldCreatedAt)
 	}
@@ -6202,6 +6336,12 @@ func (m *InvoiceMutation) ClearField(name string) error {
 		return nil
 	case invoice.FieldPdfRevision:
 		m.ClearPdfRevision()
+		return nil
+	case invoice.FieldLastEmailedAt:
+		m.ClearLastEmailedAt()
+		return nil
+	case invoice.FieldLastEmailedTo:
+		m.ClearLastEmailedTo()
 		return nil
 	case invoice.FieldCreatedAt:
 		m.ClearCreatedAt()
@@ -6249,6 +6389,12 @@ func (m *InvoiceMutation) ResetField(name string) error {
 		return nil
 	case invoice.FieldPdfRevision:
 		m.ResetPdfRevision()
+		return nil
+	case invoice.FieldLastEmailedAt:
+		m.ResetLastEmailedAt()
+		return nil
+	case invoice.FieldLastEmailedTo:
+		m.ResetLastEmailedTo()
 		return nil
 	case invoice.FieldCreatedAt:
 		m.ResetCreatedAt()

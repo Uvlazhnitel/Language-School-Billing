@@ -1064,6 +1064,20 @@ func TestInvoiceEmailPreviewAndSend(t *testing.T) {
 	if sender.lastMessage.ReplyTo != "reply@example.com" {
 		t.Fatalf("sender replyTo = %q, want reply@example.com", sender.lastMessage.ReplyTo)
 	}
+	updatedList := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=6&status=all")
+	if updatedList[0].LastEmailedTo != preview.To {
+		t.Fatalf("list lastEmailedTo = %q, want %q", updatedList[0].LastEmailedTo, preview.To)
+	}
+	if updatedList[0].LastEmailedAt == "" {
+		t.Fatal("list lastEmailedAt is empty")
+	}
+	updatedInvoice := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID))
+	if updatedInvoice.LastEmailedTo != preview.To {
+		t.Fatalf("invoice lastEmailedTo = %q, want %q", updatedInvoice.LastEmailedTo, preview.To)
+	}
+	if updatedInvoice.LastEmailedAt == "" {
+		t.Fatal("invoice lastEmailedAt is empty")
+	}
 
 	resp := getJSON[backend.AuditLogListResult](t, env.Client, env.Server.URL, "/api/audit-logs?action=invoice.send_email&page=1&pageSize=20")
 	if resp.Total < 1 {
@@ -1230,6 +1244,13 @@ func TestInvoiceEmailSendRequiresSMTPConfiguration(t *testing.T) {
 	}
 	if !strings.Contains(string(body), "email sending is not configured") {
 		t.Fatalf("send-email body = %s, want configuration error", body)
+	}
+	invoiceAfterFailure := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID))
+	if invoiceAfterFailure.LastEmailedAt != "" {
+		t.Fatalf("lastEmailedAt = %q, want empty", invoiceAfterFailure.LastEmailedAt)
+	}
+	if invoiceAfterFailure.LastEmailedTo != "" {
+		t.Fatalf("lastEmailedTo = %q, want empty", invoiceAfterFailure.LastEmailedTo)
 	}
 }
 

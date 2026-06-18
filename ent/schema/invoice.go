@@ -29,6 +29,8 @@ func (Invoice) Fields() []ent.Field {
 		field.String("pdf_filename").Nillable().Optional(),
 		field.Time("pdf_generated_at").Optional().Nillable(),
 		field.Int("pdf_revision").Optional().Nillable(),
+		field.Time("last_emailed_at").Optional().Nillable(),
+		field.String("last_emailed_to").Optional().Nillable(),
 		field.Time("created_at").Optional().Nillable().Default(time.Now),
 		field.Time("updated_at").Optional().Nillable().Default(time.Now).UpdateDefault(time.Now),
 	}

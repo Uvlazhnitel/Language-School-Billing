@@ -208,6 +208,8 @@ export type InvoiceListItem = {
   linesCount: number;
   number?: string;
   eventDate: string;
+  lastEmailedAt?: string;
+  lastEmailedTo?: string;
 };
 
 export type InvoiceListItemView = InvoiceListItem;
@@ -237,6 +239,8 @@ export type InvoiceDTO = {
   status: InvoiceStatus;
   pdfReady: boolean;
   number?: string;
+  lastEmailedAt?: string;
+  lastEmailedTo?: string;
   lines: InvoiceLine[];
 };
 

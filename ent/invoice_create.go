@@ -153,6 +153,34 @@ func (_c *InvoiceCreate) SetNillablePdfRevision(v *int) *InvoiceCreate {
 	return _c
 }
 
+// SetLastEmailedAt sets the "last_emailed_at" field.
+func (_c *InvoiceCreate) SetLastEmailedAt(v time.Time) *InvoiceCreate {
+	_c.mutation.SetLastEmailedAt(v)
+	return _c
+}
+
+// SetNillableLastEmailedAt sets the "last_emailed_at" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillableLastEmailedAt(v *time.Time) *InvoiceCreate {
+	if v != nil {
+		_c.SetLastEmailedAt(*v)
+	}
+	return _c
+}
+
+// SetLastEmailedTo sets the "last_emailed_to" field.
+func (_c *InvoiceCreate) SetLastEmailedTo(v string) *InvoiceCreate {
+	_c.mutation.SetLastEmailedTo(v)
+	return _c
+}
+
+// SetNillableLastEmailedTo sets the "last_emailed_to" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillableLastEmailedTo(v *string) *InvoiceCreate {
+	if v != nil {
+		_c.SetLastEmailedTo(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *InvoiceCreate) SetCreatedAt(v time.Time) *InvoiceCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -373,6 +401,14 @@ func (_c *InvoiceCreate) createSpec() (*Invoice, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.PdfRevision(); ok {
 		_spec.SetField(invoice.FieldPdfRevision, field.TypeInt, value)
 		_node.PdfRevision = &value
+	}
+	if value, ok := _c.mutation.LastEmailedAt(); ok {
+		_spec.SetField(invoice.FieldLastEmailedAt, field.TypeTime, value)
+		_node.LastEmailedAt = &value
+	}
+	if value, ok := _c.mutation.LastEmailedTo(); ok {
+		_spec.SetField(invoice.FieldLastEmailedTo, field.TypeString, value)
+		_node.LastEmailedTo = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)

@@ -26,6 +26,8 @@ describe("InvoicesScreen", () => {
             number: "LS-202606-008",
             eventDate: "2026-06-15T00:00:00Z",
             pdfReady: true,
+            lastEmailedAt: "2026-06-18T10:30:00Z",
+            lastEmailedTo: "payer@example.com",
           },
           {
             id: 7,
@@ -59,6 +61,7 @@ describe("InvoicesScreen", () => {
         months={getMonthNames("en-US")}
         invoiceStatusLabel={(value) => value}
         formatEUR={(value) => `€${value.toFixed(2)}`}
+        formatDateTime={() => "6/18/2026, 10:30:00 AM"}
         renderInvoiceActionsMenu={() => null}
         onStatusChange={vi.fn()}
         onQueryChange={vi.fn()}
@@ -83,6 +86,8 @@ describe("InvoicesScreen", () => {
     expect(markup).toContain("Issued Student");
     expect(markup).toContain("Marharyta Karnafel");
     expect(markup).toContain("Paid Missing PDF");
+    expect(markup).toContain("Sent to payer@example.com");
+    expect(markup).toContain("6/18/2026, 10:30:00 AM");
     expect(markup.match(/Record payment/g)?.length ?? 0).toBe(1);
   });
 });
