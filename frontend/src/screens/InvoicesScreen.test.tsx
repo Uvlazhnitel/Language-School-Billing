@@ -63,6 +63,7 @@ describe("InvoicesScreen", () => {
         onStatusChange={vi.fn()}
         onQueryChange={vi.fn()}
         onRefresh={vi.fn()}
+        onEnsureAllPdfs={vi.fn()}
         onResetFilters={vi.fn()}
         onOpenAttendance={vi.fn()}
         onOpenStudent={vi.fn()}
@@ -77,6 +78,7 @@ describe("InvoicesScreen", () => {
 
     expect(markup).toContain("Download PDF");
     expect(markup).toContain("Create PDF");
+    expect(markup).toContain("Create PDFs for month");
     expect(markup).toContain("Record payment");
     expect(markup).toContain("Issued Student");
     expect(markup).toContain("Marharyta Karnafel");

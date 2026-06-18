@@ -1,5 +1,6 @@
 import { getTransport } from "./api";
 export type {
+  EnsureAllPDFsResult,
   EnsurePdfResult,
   GenerateResult,
   InvoiceEmailPreviewResult,
@@ -49,6 +50,11 @@ export async function rebuildStudentDraft(studentId: number, year: number, month
 export async function ensurePdf(invoiceId: number) {
   const transport = await getTransport();
   return transport.ensurePdf(invoiceId);
+}
+
+export async function ensureAllPdfs(year: number, month: number) {
+  const transport = await getTransport();
+  return transport.ensureAllPdfs(year, month);
 }
 
 export async function previewInvoiceEmail(invoiceId: number) {

@@ -8,6 +8,7 @@ import type {
   DebtInvoiceDTO,
   DebtorDTO,
   EnrollmentDTO,
+  EnsureAllPDFsResult,
   EnsurePdfResult,
   GenerateResult,
   InvoiceArchiveResult,
@@ -357,6 +358,12 @@ export const httpTransport: AppTransport = {
       filename: res.filename,
       downloadUrl: res.downloadUrl,
     } satisfies EnsurePdfResult;
+  },
+  async ensureAllPdfs(year, month) {
+    return request<EnsureAllPDFsResult>("/invoices/ensure-pdf-all", {
+      method: "POST",
+      ...body({ year, month }),
+    });
   },
   async hasPdf(invoiceId) {
     const res = await request<{ ready: boolean }>(`/invoices/${invoiceId}/pdf-status`);

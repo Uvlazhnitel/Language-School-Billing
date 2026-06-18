@@ -126,6 +126,65 @@ describe("httpTransport", () => {
     });
   });
 
+  it("maps ensure-all-pdfs endpoint", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/invoices/ensure-pdf-all")) {
+        return jsonResponse({
+          year: 2026,
+          month: 6,
+          processed: 2,
+          generatedCount: 1,
+          alreadyReadyCount: 1,
+          failedCount: 0,
+          items: [
+            {
+              invoiceId: 1,
+              number: "LS-202606-001",
+              studentName: "Alice",
+              status: "issued",
+              result: "generated",
+            },
+            {
+              invoiceId: 2,
+              number: "LS-202606-002",
+              studentName: "Bob",
+              status: "paid",
+              result: "already_ready",
+            },
+          ],
+        });
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(httpTransport.ensureAllPdfs(2026, 6)).resolves.toEqual({
+      year: 2026,
+      month: 6,
+      processed: 2,
+      generatedCount: 1,
+      alreadyReadyCount: 1,
+      failedCount: 0,
+      items: [
+        {
+          invoiceId: 1,
+          number: "LS-202606-001",
+          studentName: "Alice",
+          status: "issued",
+          result: "generated",
+        },
+        {
+          invoiceId: 2,
+          number: "LS-202606-002",
+          studentName: "Bob",
+          status: "paid",
+          result: "already_ready",
+        },
+      ],
+    });
+  });
+
   it("maps invoice email endpoints", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

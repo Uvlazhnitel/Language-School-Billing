@@ -26,8 +26,10 @@ import {
   reopenToDraft,
   rebuildStudentDraft,
   ensurePdf,
+  ensureAllPdfs,
   previewInvoiceEmail,
   sendInvoiceEmail,
+  EnsureAllPDFsResult,
   InvoiceEmailPreviewResult,
   InvoiceListItemView,
   InvoiceDTO,
@@ -89,6 +91,7 @@ import { LoginScreen } from "./components/LoginScreen";
 import { NotificationToast } from "./components/NotificationToast";
 import { DebtDetailsModal } from "./components/modals/DebtDetailsModal";
 import { InvoiceDetailsModal } from "./components/modals/InvoiceDetailsModal";
+import { InvoiceEnsureAllPDFsModal } from "./components/modals/InvoiceEnsureAllPDFsModal";
 import { InvoiceEmailModal } from "./components/modals/InvoiceEmailModal";
 import { PaymentModal } from "./components/modals/PaymentModal";
 import { StudentCardModal } from "./components/modals/StudentCardModal";
@@ -1572,6 +1575,7 @@ export default function App() {
   const [paymentInvoiceId, setPaymentInvoiceId] = useState<number | undefined>(undefined);
   const [returnToDebtDetailsAfterPayment, setReturnToDebtDetailsAfterPayment] = useState(false);
   const [returnToStudentCardAfterPayment, setReturnToStudentCardAfterPayment] = useState(false);
+  const [ensureAllPDFsResult, setEnsureAllPDFsResult] = useState<EnsureAllPDFsResult | null>(null);
 
   const syncDraftInvoices = useCallback(
     async (showFeedback = true) => {
@@ -1973,6 +1977,19 @@ export default function App() {
     },
     [closeInvoiceMenu, invoiceDetailsOpen, loadInvoiceDetails, loadInvoices, selectedInv, showMessage, t]
   );
+
+  const onEnsureAllPDFs = useCallback(async () => {
+    try {
+      const result = await ensureAllPdfs(year, month);
+      await loadInvoices({ syncDrafts: false });
+      if (invoiceDetailsOpen && selectedInv) {
+        await loadInvoiceDetails(selectedInv.id);
+      }
+      setEnsureAllPDFsResult(result);
+    } catch (e: any) {
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    }
+  }, [invoiceDetailsOpen, loadInvoiceDetails, loadInvoices, month, selectedInv, showMessage, t, year]);
 
   const onDownloadPdf = useCallback(
     async (id: number) => {
@@ -2848,6 +2865,7 @@ export default function App() {
                 onStatusChange={setInvStatus}
                 onQueryChange={setInvQ}
                 onRefresh={() => void loadInvoices({ syncDrafts: true, showSyncFeedback: true })}
+                onEnsureAllPdfs={() => void onEnsureAllPDFs()}
                 onResetFilters={() => {
                   setInvStatus("all");
                   setInvQ("");
@@ -3008,6 +3026,16 @@ export default function App() {
               onReopenToDraft={(invoiceId) => void onReopenToDraft(invoiceId)}
               onClose={() => setInvoiceDetailsOpen(false)}
               canSendEmail={Boolean(sessionCapabilities.emailSend)}
+              t={t}
+            />
+          )}
+
+          {ensureAllPDFsResult && (
+            <InvoiceEnsureAllPDFsModal
+              result={ensureAllPDFsResult}
+              months={uiMonths}
+              invoiceStatusLabel={localizedInvoiceStatusLabel}
+              onClose={() => setEnsureAllPDFsResult(null)}
               t={t}
             />
           )}

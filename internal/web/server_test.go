@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"langschool/ent/invoice"
 	"langschool/ent/user"
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/backend"
@@ -534,6 +535,173 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 	)
 	if resp.StatusCode != http.StatusNotFound {
 		t.Fatalf("missing file status = %d body=%s, want 404", resp.StatusCode, body)
+	}
+}
+
+func TestEnsureAllPDFsBatchEndpoint(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	year, month := 2026, 6
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Batch PDF Course",
+		"type":              "group",
+		"lessonPrice":       20,
+		"subscriptionPrice": 50,
+	})
+
+	type issuedInvoice struct {
+		ID int
+	}
+
+	createIssuedInvoice := func(studentName string, y, m int) issuedInvoice {
+		student := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+			"fullName": studentName,
+		})
+		postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+			"studentId":       student.ID,
+			"courseId":        course.ID,
+			"billingMode":     "per_lesson",
+			"chargeMaterials": false,
+			"discountPct":     0,
+			"note":            "",
+		})
+		putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+			"studentId": student.ID,
+			"courseId":  course.ID,
+			"year":      y,
+			"month":     m,
+			"hours":     1.0,
+		})
+		postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+			"year":  y,
+			"month": m,
+		})
+		invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year="+strconv.Itoa(y)+"&month="+strconv.Itoa(m)+"&status=all")
+		var item backend.InvoiceListItem
+		found := false
+		for _, candidate := range invoices {
+			if candidate.StudentName == studentName {
+				item = candidate
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Fatalf("invoice for %s not found", studentName)
+		}
+		postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(item.ID)+"/issue", map[string]any{
+			"version": item.Version,
+		})
+		return issuedInvoice{ID: item.ID}
+	}
+
+	generatedInvoice := createIssuedInvoice("Generated Student", year, month)
+	readyInvoice := createIssuedInvoice("Already Ready Student", year, month)
+	failedInvoice := createIssuedInvoice("Failed Student", year, month)
+	readyIssuedInvoice := createIssuedInvoice("Ready Issued Student", year, month)
+	otherMonthInvoice := createIssuedInvoice("Other Month Student", year, month-1)
+
+	postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(readyInvoice.ID)+"/pdf", map[string]any{})
+	postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(readyIssuedInvoice.ID)+"/pdf", map[string]any{})
+
+	if _, err := env.Runtime.DB.Ent.Invoice.UpdateOneID(generatedInvoice.ID).
+		SetStatus(invoice.Status("issued_pending_pdf")).
+		ClearPdfGeneratedAt().
+		ClearPdfRevision().
+		Save(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.Runtime.DB.Ent.Invoice.UpdateOneID(readyInvoice.ID).
+		SetStatus(invoice.Status("issued_pending_pdf")).
+		Save(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.Runtime.DB.Ent.Invoice.UpdateOneID(failedInvoice.ID).
+		SetStatus(invoice.Status("issued_pending_pdf")).
+		ClearNumber().
+		ClearPdfFilename().
+		ClearPdfGeneratedAt().
+		ClearPdfRevision().
+		Save(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.Runtime.DB.Ent.Invoice.UpdateOneID(otherMonthInvoice.ID).
+		SetStatus(invoice.Status("issued_pending_pdf")).
+		ClearPdfGeneratedAt().
+		ClearPdfRevision().
+		Save(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	result := postJSON[backend.EnsureAllPDFsResult](t, env.Client, env.Server.URL, "/api/invoices/ensure-pdf-all", map[string]any{
+		"year":  year,
+		"month": month,
+	})
+
+	if result.Year != year || result.Month != month {
+		t.Fatalf("batch period = %d-%d, want %d-%d", result.Year, result.Month, year, month)
+	}
+	if result.Processed != 3 || result.GeneratedCount != 1 || result.AlreadyReadyCount != 1 || result.FailedCount != 1 {
+		t.Fatalf("unexpected ensure-all result: %+v", result)
+	}
+
+	itemsByInvoiceID := make(map[int]backend.EnsureAllPDFsItemResult, len(result.Items))
+	for _, item := range result.Items {
+		itemsByInvoiceID[item.InvoiceID] = item
+	}
+
+	if itemsByInvoiceID[generatedInvoice.ID].Result != "generated" {
+		t.Fatalf("generated invoice result = %q, want generated", itemsByInvoiceID[generatedInvoice.ID].Result)
+	}
+	if itemsByInvoiceID[generatedInvoice.ID].Status != "issued" {
+		t.Fatalf("generated invoice status = %q, want issued", itemsByInvoiceID[generatedInvoice.ID].Status)
+	}
+	if itemsByInvoiceID[readyInvoice.ID].Result != "already_ready" {
+		t.Fatalf("ready invoice result = %q, want already_ready", itemsByInvoiceID[readyInvoice.ID].Result)
+	}
+	if itemsByInvoiceID[readyInvoice.ID].Status != "issued" {
+		t.Fatalf("ready invoice status = %q, want issued", itemsByInvoiceID[readyInvoice.ID].Status)
+	}
+	if itemsByInvoiceID[failedInvoice.ID].Result != "failed" {
+		t.Fatalf("failed invoice result = %q, want failed", itemsByInvoiceID[failedInvoice.ID].Result)
+	}
+	if itemsByInvoiceID[failedInvoice.ID].Message == "" {
+		t.Fatal("expected failed invoice message")
+	}
+	if _, ok := itemsByInvoiceID[readyIssuedInvoice.ID]; ok {
+		t.Fatal("ready issued invoice should not be included in batch result")
+	}
+	if _, ok := itemsByInvoiceID[otherMonthInvoice.ID]; ok {
+		t.Fatal("other-month invoice should not be included in batch result")
+	}
+
+	generatedRow := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(generatedInvoice.ID))
+	if generatedRow.Status != "issued" || !generatedRow.PDFReady {
+		t.Fatalf("generated invoice after batch = %+v", generatedRow)
+	}
+	readyRow := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(readyInvoice.ID))
+	if readyRow.Status != "issued" || !readyRow.PDFReady {
+		t.Fatalf("ready invoice after batch = %+v", readyRow)
+	}
+	otherMonthRow := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(otherMonthInvoice.ID))
+	if otherMonthRow.Status != "issued_pending_pdf" {
+		t.Fatalf("other month invoice status = %q, want issued_pending_pdf", otherMonthRow.Status)
+	}
+
+	audit := getJSON[backend.AuditLogListResult](t, env.Client, env.Server.URL, "/api/audit-logs?action=invoice.ensure_pdf_all&page=1&pageSize=10")
+	if audit.Total < 1 {
+		t.Fatal("expected invoice.ensure_pdf_all audit entry")
+	}
+	foundAudit := false
+	for _, item := range audit.Items {
+		if item.Action == "invoice.ensure_pdf_all" && strings.Contains(item.Summary, "generated 1") {
+			foundAudit = true
+			break
+		}
+	}
+	if !foundAudit {
+		t.Fatal("expected invoice.ensure_pdf_all audit summary with counts")
 	}
 }
 

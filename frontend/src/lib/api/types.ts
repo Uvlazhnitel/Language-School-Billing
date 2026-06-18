@@ -44,6 +44,25 @@ export type EnsurePdfResult = {
   downloadUrl?: string;
 };
 
+export type EnsureAllPDFsItemResult = {
+  invoiceId: number;
+  number: string;
+  studentName: string;
+  status: InvoiceStatus;
+  result: "generated" | "already_ready" | "failed";
+  message?: string;
+};
+
+export type EnsureAllPDFsResult = {
+  year: number;
+  month: number;
+  processed: number;
+  generatedCount: number;
+  alreadyReadyCount: number;
+  failedCount: number;
+  items: EnsureAllPDFsItemResult[];
+};
+
 export type InvoiceEmailPreviewResult = {
   to: string;
   subject: string;
@@ -470,6 +489,7 @@ export interface AppTransport {
   issueInvoice(id: number, version: number): Promise<IssueResult>;
   rebuildStudentDraft(studentId: number, year: number, month: number): Promise<GenerateResult>;
   ensurePdf(invoiceId: number): Promise<EnsurePdfResult>;
+  ensureAllPdfs(year: number, month: number): Promise<EnsureAllPDFsResult>;
   hasPdf(invoiceId: number): Promise<boolean>;
   previewInvoiceEmail(invoiceId: number): Promise<InvoiceEmailPreviewResult>;
   sendInvoiceEmail(

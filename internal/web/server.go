@@ -88,6 +88,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/invoices/{id}/reopen-draft", s.handleInvoicesReopenDraft)
 	s.mux.HandleFunc("POST /api/invoices/{id}/issue", s.handleInvoicesIssue)
 	s.mux.HandleFunc("POST /api/invoices/issue-all", s.handleInvoicesIssueAll)
+	s.mux.HandleFunc("POST /api/invoices/ensure-pdf-all", s.handleInvoicesEnsurePDFAll)
 	s.mux.HandleFunc("GET /api/invoices/{id}/pdf-status", s.handleInvoicesPDFStatus)
 	s.mux.HandleFunc("POST /api/invoices/{id}/pdf", s.handleInvoicesEnsurePDF)
 	s.mux.HandleFunc("GET /api/invoices/{id}/pdf", s.handleInvoicesDownloadPDF)
@@ -752,6 +753,19 @@ func (s *Server) handleInvoicesIssueAll(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	item, err := s.svc.InvoiceIssueAll(r.Context(), req.Year, req.Month)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (s *Server) handleInvoicesEnsurePDFAll(w http.ResponseWriter, r *http.Request) {
+	var req periodRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	item, err := s.svc.InvoiceEnsurePDFAll(r.Context(), req.Year, req.Month)
 	if err != nil {
 		writeError(w, err)
 		return

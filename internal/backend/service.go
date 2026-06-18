@@ -127,6 +127,25 @@ type IssueAllResult struct {
 	PdfPaths []string `json:"pdfPaths"`
 }
 
+type EnsureAllPDFsItemResult struct {
+	InvoiceID   int    `json:"invoiceId"`
+	Number      string `json:"number"`
+	StudentName string `json:"studentName"`
+	Status      string `json:"status"`
+	Result      string `json:"result"`
+	Message     string `json:"message,omitempty"`
+}
+
+type EnsureAllPDFsResult struct {
+	Year              int                       `json:"year"`
+	Month             int                       `json:"month"`
+	Processed         int                       `json:"processed"`
+	GeneratedCount    int                       `json:"generatedCount"`
+	AlreadyReadyCount int                       `json:"alreadyReadyCount"`
+	FailedCount       int                       `json:"failedCount"`
+	Items             []EnsureAllPDFsItemResult `json:"items"`
+}
+
 type InvoiceEmailRequest struct {
 	To      string `json:"to"`
 	Subject string `json:"subject"`
@@ -657,6 +676,26 @@ func (s *Service) InvoiceIssueAll(ctx context.Context, year, month int) (IssueAl
 }
 
 func (s *Service) InvoiceEnsurePDF(ctx context.Context, id int) (string, error) {
+	iv, err := s.rt.DB.Ent.Invoice.Query().
+		Where(invoice.IDEQ(id)).
+		WithStudent().
+		Only(ctx)
+	if err != nil {
+		return "", err
+	}
+	if iv.Number == nil || strings.TrimSpace(*iv.Number) == "" {
+		return "", fmt.Errorf("счёт ещё не выставлен")
+	}
+	_, _, subjectName := archiveInvoiceNames(iv)
+	info := s.invoicePDFInfo(iv, subjectName)
+	if info.Status == invsvc.PDFStatusReady && info.Path != "" {
+		if sharedapp.InvoiceStatusIsPendingPDF(string(iv.Status)) {
+			if err := s.rt.Payment.RecomputeInvoiceStatus(ctx, iv.ID); err != nil {
+				return "", err
+			}
+		}
+		return info.Path, nil
+	}
 	dto, err := s.rt.Invoice.Get(ctx, id)
 	if err != nil {
 		return "", err
@@ -673,6 +712,125 @@ func (s *Service) InvoiceEnsurePDF(ctx context.Context, id int) (string, error) 
 		return "", err
 	}
 	return path, nil
+}
+
+func (s *Service) InvoiceEnsurePDFAll(ctx context.Context, year, month int) (EnsureAllPDFsResult, error) {
+	result := EnsureAllPDFsResult{
+		Year:  year,
+		Month: month,
+		Items: make([]EnsureAllPDFsItemResult, 0),
+	}
+	before, _ := s.auditSnapshotForPeriod(ctx, year, month)
+
+	candidates, err := s.rt.DB.Ent.Invoice.Query().
+		Where(
+			invoice.PeriodYearEQ(year),
+			invoice.PeriodMonthEQ(month),
+			invoice.StatusIn(
+				invoice.Status(sharedapp.InvoiceStatusIssuedPendingPDF),
+				invoice.Status(sharedapp.InvoiceStatusPaidPendingPDF),
+			),
+		).
+		WithStudent().
+		Order(ent.Asc(invoice.FieldID)).
+		All(ctx)
+	if err != nil {
+		return EnsureAllPDFsResult{}, err
+	}
+
+	result.Items = make([]EnsureAllPDFsItemResult, 0, len(candidates))
+	for _, candidate := range candidates {
+		fresh, err := s.rt.DB.Ent.Invoice.Query().
+			Where(invoice.IDEQ(candidate.ID)).
+			WithStudent().
+			Only(ctx)
+		if err != nil {
+			result.Items = append(result.Items, EnsureAllPDFsItemResult{
+				InvoiceID:   candidate.ID,
+				Number:      strings.TrimSpace(derefString(candidate.Number)),
+				StudentName: strings.TrimSpace(candidate.Edges.Student.FullName),
+				Status:      string(candidate.Status),
+				Result:      "failed",
+				Message:     err.Error(),
+			})
+			result.FailedCount++
+			continue
+		}
+
+		studentName, _, subjectName := archiveInvoiceNames(fresh)
+		info := s.invoicePDFInfo(fresh, subjectName)
+		item := EnsureAllPDFsItemResult{
+			InvoiceID:   fresh.ID,
+			Number:      strings.TrimSpace(derefString(fresh.Number)),
+			StudentName: studentName,
+			Status:      string(fresh.Status),
+		}
+
+		if info.Status == invsvc.PDFStatusReady {
+			if sharedapp.InvoiceStatusIsPendingPDF(string(fresh.Status)) {
+				if err := s.rt.Payment.RecomputeInvoiceStatus(ctx, fresh.ID); err != nil {
+					item.Result = "failed"
+					item.Message = err.Error()
+					result.FailedCount++
+					result.Items = append(result.Items, item)
+					continue
+				}
+				refreshed, err := s.rt.DB.Ent.Invoice.Query().
+					Where(invoice.IDEQ(fresh.ID)).
+					WithStudent().
+					Only(ctx)
+				if err == nil {
+					item.Status = string(refreshed.Status)
+				}
+			}
+			item.Result = "already_ready"
+			result.AlreadyReadyCount++
+			result.Items = append(result.Items, item)
+			continue
+		}
+
+		if _, err := s.InvoiceEnsurePDF(ctx, fresh.ID); err != nil {
+			item.Result = "failed"
+			item.Message = err.Error()
+			result.FailedCount++
+			result.Items = append(result.Items, item)
+			continue
+		}
+
+		updated, err := s.rt.DB.Ent.Invoice.Query().
+			Where(invoice.IDEQ(fresh.ID)).
+			WithStudent().
+			Only(ctx)
+		if err != nil {
+			item.Result = "failed"
+			item.Message = err.Error()
+			result.FailedCount++
+			result.Items = append(result.Items, item)
+			continue
+		}
+		item.Status = string(updated.Status)
+		item.Result = "generated"
+		result.GeneratedCount++
+		result.Items = append(result.Items, item)
+	}
+
+	result.Processed = len(result.Items)
+	after, _ := s.auditSnapshotForPeriod(ctx, year, month)
+	s.recordAudit(ctx, auditsvc.RecordEvent{
+		EntityType: "invoice_batch",
+		Action:     "invoice.ensure_pdf_all",
+		Summary: fmt.Sprintf(
+			"Ensured PDFs for %04d-%02d: generated %d, already ready %d, failed %d",
+			year,
+			month,
+			result.GeneratedCount,
+			result.AlreadyReadyCount,
+			result.FailedCount,
+		),
+		Before: before,
+		After:  after,
+	})
+	return result, nil
 }
 
 func (s *Service) InvoiceHasPDF(ctx context.Context, id int) (bool, error) {

@@ -17,6 +17,7 @@ type InvoicesScreenProps = {
   onStatusChange: (value: string) => void;
   onQueryChange: (value: string) => void;
   onRefresh: () => void;
+  onEnsureAllPdfs: () => void;
   onResetFilters: () => void;
   onOpenAttendance: () => void;
   onOpenStudent: (studentId: number) => void | Promise<void>;
@@ -41,6 +42,7 @@ export function InvoicesScreen({
   onStatusChange,
   onQueryChange,
   onRefresh,
+  onEnsureAllPdfs,
   onResetFilters,
   onOpenAttendance,
   onOpenStudent,
@@ -91,9 +93,14 @@ export function InvoicesScreen({
         onClearFilters={onResetFilters}
         clearLabel={t("button.clearFilters")}
         secondaryActions={
-          <button className="workspaceActionButton" onClick={onRefresh}>
-            {t("button.sync")}
-          </button>
+          <>
+            <button className="workspaceActionButton" onClick={onEnsureAllPdfs}>
+              {t("button.ensureAllPdfs")}
+            </button>
+            <button className="workspaceActionButton" onClick={onRefresh}>
+              {t("button.sync")}
+            </button>
+          </>
         }
       />
 
