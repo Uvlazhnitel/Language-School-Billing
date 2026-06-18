@@ -44,6 +44,14 @@ func openInvoiceStatuses() []invoice.Status {
 	}
 }
 
+const (
+	monthClosingStageCollectingData     = "collecting_data"
+	monthClosingStageReadyToIssue       = "ready_to_issue"
+	monthClosingStageReadyToGeneratePDF = "ready_to_generate_pdf"
+	monthClosingStageReadyToSend        = "ready_to_send"
+	monthClosingStageReadyToClose       = "ready_to_close"
+)
+
 // PaymentDTO represents a payment record in the frontend.
 type PaymentDTO struct {
 	ID        int     `json:"id"`                  // Payment ID
@@ -116,10 +124,21 @@ type MonthOverviewDTO struct {
 	MonthControlFilled         int `json:"monthControlFilled"`
 	MonthControlMissing        int `json:"monthControlMissing"`
 
-	DraftInvoices   int `json:"draftInvoices"`
-	IssuedInvoices  int `json:"issuedInvoices"`
-	PaidInvoices    int `json:"paidInvoices"`
-	OverdueInvoices int `json:"overdueInvoicesCount"`
+	DraftInvoices      int `json:"draftInvoices"`
+	IssuedInvoices     int `json:"issuedInvoices"`
+	PaidInvoices       int `json:"paidInvoices"`
+	PendingPdfInvoices int `json:"pendingPdfInvoices"`
+	ReadyPdfInvoices   int `json:"readyPdfInvoices"`
+	MonthInvoicesTotal int `json:"monthInvoicesTotal"`
+	EmailedInvoices    int `json:"emailedInvoices"`
+	NotEmailedInvoices int `json:"notEmailedInvoices"`
+	OverdueInvoices    int `json:"overdueInvoicesCount"`
+
+	RequiredStepsTotal      int    `json:"requiredStepsTotal"`
+	RequiredStepsDone       int    `json:"requiredStepsDone"`
+	MonthClosingProgressPct int    `json:"monthClosingProgressPct"`
+	MonthClosingStage       string `json:"monthClosingStage"`
+	MonthReadyToClose       bool   `json:"monthReadyToClose"`
 
 	TotalIssued            float64 `json:"totalIssued"`
 	TotalPaid              float64 `json:"totalPaid"`
@@ -801,12 +820,29 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 	draftInvoices := 0
 	issuedInvoices := 0
 	paidInvoices := 0
+	pendingPdfInvoices := 0
+	readyPdfInvoices := 0
+	emailedInvoices := 0
 	var totalIssuedCents int64
 	var monthDebtCents int64
 	debtStudentIDs := make(map[int]struct{})
 
 	for _, iv := range monthInvoices {
 		monthInvoiceIDs = append(monthInvoiceIDs, iv.ID)
+		isInvoiceFlowStatus := iv.Status == app.InvoiceStatusIssuedPendingPDF ||
+			iv.Status == app.InvoiceStatusIssued ||
+			iv.Status == app.InvoiceStatusPaidPendingPDF ||
+			iv.Status == app.InvoiceStatusPaid
+		if isInvoiceFlowStatus {
+			if invoiceHasReadyPDF(iv) {
+				readyPdfInvoices++
+			} else {
+				pendingPdfInvoices++
+			}
+			if iv.LastEmailedAt != nil && !iv.LastEmailedAt.IsZero() {
+				emailedInvoices++
+			}
+		}
 		switch iv.Status {
 		case app.InvoiceStatusDraft:
 			draftInvoices++
@@ -833,6 +869,10 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 				debtStudentIDs[iv.StudentID] = struct{}{}
 			}
 		}
+	}
+	notEmailedInvoices := readyPdfInvoices + pendingPdfInvoices - emailedInvoices
+	if notEmailedInvoices < 0 {
+		notEmailedInvoices = 0
 	}
 
 	var totalPaidCents int64
@@ -919,6 +959,32 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 	debtorsCount := len(debtStudentIDs)
 	totalDebtCents := monthDebtCents + historicalDebtCents
 	actionQueueCount := debtorsCount + draftInvoices + monthControlMissing
+	requiredStepsTotal := 3
+	requiredStepsDone := 0
+	if monthControlMissing == 0 {
+		requiredStepsDone++
+	}
+	if draftInvoices == 0 {
+		requiredStepsDone++
+	}
+	if pendingPdfInvoices == 0 {
+		requiredStepsDone++
+	}
+	monthClosingProgressPct := int(float64(requiredStepsDone) / float64(requiredStepsTotal) * 100)
+	monthClosingStage := monthClosingStageReadyToClose
+	switch {
+	case monthControlMissing > 0:
+		monthClosingStage = monthClosingStageCollectingData
+	case draftInvoices > 0:
+		monthClosingStage = monthClosingStageReadyToIssue
+	case pendingPdfInvoices > 0:
+		monthClosingStage = monthClosingStageReadyToGeneratePDF
+	case notEmailedInvoices > 0:
+		monthClosingStage = monthClosingStageReadyToSend
+	default:
+		monthClosingStage = monthClosingStageReadyToClose
+	}
+	monthReadyToClose := monthControlMissing == 0 && draftInvoices == 0 && pendingPdfInvoices == 0
 
 	return &MonthOverviewDTO{
 		Year:  year,
@@ -938,10 +1004,20 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		MonthControlFilled:         monthControlFilled,
 		MonthControlMissing:        monthControlMissing,
 
-		DraftInvoices:   draftInvoices,
-		IssuedInvoices:  issuedInvoices,
-		PaidInvoices:    paidInvoices,
-		OverdueInvoices: overdueInvoices,
+		DraftInvoices:           draftInvoices,
+		IssuedInvoices:          issuedInvoices,
+		PaidInvoices:            paidInvoices,
+		PendingPdfInvoices:      pendingPdfInvoices,
+		ReadyPdfInvoices:        readyPdfInvoices,
+		MonthInvoicesTotal:      len(monthInvoices),
+		EmailedInvoices:         emailedInvoices,
+		NotEmailedInvoices:      notEmailedInvoices,
+		OverdueInvoices:         overdueInvoices,
+		RequiredStepsTotal:      requiredStepsTotal,
+		RequiredStepsDone:       requiredStepsDone,
+		MonthClosingProgressPct: monthClosingProgressPct,
+		MonthClosingStage:       monthClosingStage,
+		MonthReadyToClose:       monthReadyToClose,
 
 		TotalIssued:            money.CentsToEuros(totalIssuedCents),
 		TotalPaid:              money.CentsToEuros(totalPaidCents),

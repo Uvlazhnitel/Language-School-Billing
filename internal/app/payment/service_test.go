@@ -746,6 +746,24 @@ func TestMonthOverview(t *testing.T) {
 	paidInvoice := createTestInvoice(t, ctx, client, st2.ID, 2026, 4, 30, app.InvoiceStatusPaid)
 	createTestInvoice(t, ctx, client, inactiveStudent.ID, 2026, 4, 25, app.InvoiceStatusCanceled)
 	olderIssuedInvoice := createTestInvoice(t, ctx, client, st2.ID, 2026, 3, 40, app.InvoiceStatusIssued)
+	now := time.Date(2026, 4, 12, 10, 0, 0, 0, time.UTC)
+	if _, err := client.Invoice.UpdateOneID(issuedInvoice.ID).
+		ClearPdfFilename().
+		ClearPdfGeneratedAt().
+		ClearPdfRevision().
+		Save(ctx); err != nil {
+		t.Fatalf("clear issued invoice pdf metadata: %v", err)
+	}
+	pdfRevision := paidInvoice.Version
+	pdfFilename := "paid.pdf"
+	if _, err := client.Invoice.UpdateOneID(paidInvoice.ID).
+		SetPdfRevision(pdfRevision).
+		SetPdfFilename(pdfFilename).
+		SetLastEmailedAt(now).
+		SetLastEmailedTo("billing@example.com").
+		Save(ctx); err != nil {
+		t.Fatalf("update paid invoice metadata: %v", err)
+	}
 
 	createLinkedPaymentWithMethod(t, ctx, client, st1.ID, issuedInvoice.ID, 20, app.PaymentMethodCash, time.Date(2026, 4, 10, 0, 0, 0, 0, time.UTC))
 	createLinkedPaymentWithMethod(t, ctx, client, st2.ID, paidInvoice.ID, 30, app.PaymentMethodBank, time.Date(2026, 4, 11, 0, 0, 0, 0, time.UTC))
@@ -775,7 +793,17 @@ func TestMonthOverview(t *testing.T) {
 	assertEqual(t, got.DraftInvoices, 1)
 	assertEqual(t, got.IssuedInvoices, 1)
 	assertEqual(t, got.PaidInvoices, 1)
+	assertEqual(t, got.PendingPdfInvoices, 1)
+	assertEqual(t, got.ReadyPdfInvoices, 1)
+	assertEqual(t, got.MonthInvoicesTotal, 3)
+	assertEqual(t, got.EmailedInvoices, 1)
+	assertEqual(t, got.NotEmailedInvoices, 1)
 	assertEqual(t, got.OverdueInvoices, 1)
+	assertEqual(t, got.RequiredStepsTotal, 3)
+	assertEqual(t, got.RequiredStepsDone, 0)
+	assertEqual(t, got.MonthClosingProgressPct, 0)
+	assertEqual(t, got.MonthClosingStage, "collecting_data")
+	assertEqual(t, got.MonthReadyToClose, false)
 	assertFloatEqual(t, got.TotalIssued, 100)
 	assertFloatEqual(t, got.TotalPaid, 50)
 	assertFloatEqual(t, got.PaymentsMonthTotal, 60)
@@ -822,6 +850,43 @@ func TestMonthOverviewCountsSubscriptionCourseOnce(t *testing.T) {
 	assertEqual(t, got.MonthControlFilled, 0)
 	assertEqual(t, got.MonthControlMissing, 1)
 	assertEqual(t, got.ActionQueueCount, 1)
+}
+
+func TestMonthOverviewEmailProgressDoesNotBlockReadyToClose(t *testing.T) {
+	ctx := context.Background()
+	client := newTestClient(t)
+	defer client.Close()
+
+	svc := New(client)
+
+	st := createTestStudent(t, ctx, client, "Closing Ready")
+	course := createTestCourse(t, ctx, client, "Closing Course", "group", true)
+	createTestEnrollment(t, ctx, client, st.ID, course.ID, "per_lesson")
+	createTestAttendanceMonth(t, ctx, client, st.ID, course.ID, 2026, 5, 2)
+
+	readyInvoice := createTestInvoice(t, ctx, client, st.ID, 2026, 5, 40, app.InvoiceStatusIssued)
+	pdfRevision := readyInvoice.Version
+	pdfFilename := "closing.pdf"
+	if _, err := client.Invoice.UpdateOneID(readyInvoice.ID).
+		SetPdfRevision(pdfRevision).
+		SetPdfFilename(pdfFilename).
+		Save(ctx); err != nil {
+		t.Fatalf("update ready invoice metadata: %v", err)
+	}
+
+	got, err := svc.MonthOverview(ctx, 2026, 5)
+	if err != nil {
+		t.Fatalf("MonthOverview returned error: %v", err)
+	}
+
+	assertEqual(t, got.PendingPdfInvoices, 0)
+	assertEqual(t, got.ReadyPdfInvoices, 1)
+	assertEqual(t, got.EmailedInvoices, 0)
+	assertEqual(t, got.NotEmailedInvoices, 1)
+	assertEqual(t, got.RequiredStepsDone, 3)
+	assertEqual(t, got.MonthClosingProgressPct, 100)
+	assertEqual(t, got.MonthClosingStage, "ready_to_send")
+	assertEqual(t, got.MonthReadyToClose, true)
 }
 
 func newTestClient(t *testing.T) *ent.Client {

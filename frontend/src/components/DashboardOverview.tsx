@@ -32,6 +32,17 @@ type ActionBlocker = {
   onPrimaryAction: () => void;
 };
 
+type ClosingStep = {
+  id: string;
+  title: string;
+  subtitle: string;
+  amount: string;
+  tone: "success" | "warning" | "info";
+  statusLabel: string;
+  primaryLabel: string;
+  onPrimaryAction: () => void;
+};
+
 function formatFeedDate(value: string): string {
   return value.slice(0, 10);
 }
@@ -48,6 +59,10 @@ function actionReasonLabels(item: DebtorActionQueueItem, index: number, t: Trans
     labels.push(t("msg.recentPaymentButDebt"));
   }
   return labels;
+}
+
+function monthClosingStageLabel(stage: MonthOverviewDTO["monthClosingStage"], t: TranslateFn): string {
+  return t(`msg.monthClosingStage.${stage}`);
 }
 
 export function DashboardOverview({
@@ -77,6 +92,89 @@ export function DashboardOverview({
   }
 
   const monthControlReady = overview.monthControlTotal === 0 || overview.monthControlMissing === 0;
+  const stageLabel = monthClosingStageLabel(overview.monthClosingStage, t);
+  const closingSummary = overview.monthReadyToClose
+    ? t("msg.monthReadyToClose")
+    : overview.monthControlMissing > 0
+      ? t("msg.monthClosingRemainingData", { count: overview.monthControlMissing })
+      : overview.draftInvoices > 0
+        ? t("msg.monthClosingRemainingDrafts", { count: overview.draftInvoices })
+        : overview.pendingPdfInvoices > 0
+          ? t("msg.monthClosingRemainingPdfs", { count: overview.pendingPdfInvoices })
+          : overview.notEmailedInvoices > 0
+            ? t("msg.monthClosingRemainingEmails", { count: overview.notEmailedInvoices })
+            : t("msg.ready");
+
+  const closingSteps: ClosingStep[] = [
+    {
+      id: "data",
+      title: t("msg.monthClosingStep.data"),
+      subtitle: t("field.filledMonthControl", {
+        filled: overview.monthControlFilled,
+        total: overview.monthControlTotal,
+      }),
+      amount: `${overview.monthControlFilled}/${overview.monthControlTotal}`,
+      tone: overview.monthControlMissing === 0 ? "success" : "warning",
+      statusLabel:
+        overview.monthControlMissing === 0 ? t("label.stepDone") : t("label.stepNeedsAction"),
+      primaryLabel: t("button.openAttendance"),
+      onPrimaryAction: onOpenAttendance,
+    },
+    {
+      id: "invoices",
+      title: t("msg.monthClosingStep.invoices"),
+      subtitle:
+        overview.draftInvoices > 0
+          ? t("msg.draftInvoicesNeedReview", { count: overview.draftInvoices })
+          : t("msg.ready"),
+      amount: String(overview.draftInvoices),
+      tone: overview.draftInvoices === 0 ? "success" : "warning",
+      statusLabel:
+        overview.draftInvoices === 0 ? t("label.stepDone") : t("label.stepNeedsAction"),
+      primaryLabel: t("button.openInvoices"),
+      onPrimaryAction: onOpenInvoices,
+    },
+    {
+      id: "pdf",
+      title: t("msg.monthClosingStep.pdf"),
+      subtitle: t("msg.monthClosingInvoicesReady", {
+        ready: overview.readyPdfInvoices,
+        total: overview.monthInvoicesTotal,
+      }),
+      amount: String(overview.pendingPdfInvoices),
+      tone: overview.pendingPdfInvoices === 0 ? "success" : "warning",
+      statusLabel:
+        overview.pendingPdfInvoices === 0 ? t("label.stepDone") : t("label.stepNeedsAction"),
+      primaryLabel: t("button.openInvoices"),
+      onPrimaryAction: onOpenInvoices,
+    },
+    {
+      id: "email",
+      title: t("msg.monthClosingStep.email"),
+      subtitle: t("msg.monthClosingEmailsSent", {
+        sent: overview.emailedInvoices,
+        total: overview.readyPdfInvoices + overview.pendingPdfInvoices,
+      }),
+      amount: String(overview.notEmailedInvoices),
+      tone: "info",
+      statusLabel: t("label.optionalStep"),
+      primaryLabel: t("button.openInvoices"),
+      onPrimaryAction: onOpenInvoices,
+    },
+    {
+      id: "debt",
+      title: t("msg.monthClosingStep.debt"),
+      subtitle:
+        overview.historicalDebtTotal > 0
+          ? t("msg.monthClosingHistoricalDebt", { count: overview.overdueInvoicesCount })
+          : t("msg.noActionQueue"),
+      amount: formatEUR(overview.historicalDebtTotal),
+      tone: "info",
+      statusLabel: t("label.followUp"),
+      primaryLabel: t("button.openDebts"),
+      onPrimaryAction: onOpenDebtors,
+    },
+  ];
 
   const blockers: ActionBlocker[] = [];
   if (overview.monthControlMissing > 0) {
@@ -120,6 +218,62 @@ export function DashboardOverview({
 
   return (
     <div className="dashboard">
+      <section className="dashboardCard dashboardCard--closing">
+        <div className="dashboardCardHeader">
+          <div>
+            <div className="dashboardCardEyebrow">{t("label.monthClosing")}</div>
+            <h3>{monthLabel}</h3>
+          </div>
+          <span className={`statusPill ${overview.monthReadyToClose ? "success" : "warning"}`}>
+            {stageLabel}
+          </span>
+        </div>
+        <p className="dashboardCardLead">{closingSummary}</p>
+        <p className="dashboardCardCaption">{t("msg.monthClosingIntro")}</p>
+        <div className="dashboardClosingSummary">
+          <div className="dashboardClosingSummaryCard">
+            <span>{t("label.closingProgress")}</span>
+            <strong>{overview.monthClosingProgressPct}%</strong>
+            <small>{t("msg.monthClosingMetric", {
+              done: overview.requiredStepsDone,
+              total: overview.requiredStepsTotal,
+            })}</small>
+          </div>
+          <div className="dashboardClosingSummaryCard">
+            <span>{t("label.currentStage")}</span>
+            <strong>{stageLabel}</strong>
+            <small>{overview.monthReadyToClose ? t("msg.ready") : closingSummary}</small>
+          </div>
+        </div>
+        <div className="dashboardProgress">
+          <div
+            className="dashboardProgressValue"
+            style={{ width: `${overview.monthClosingProgressPct}%` }}
+          />
+        </div>
+        <div className="dashboardClosingSteps">
+          {closingSteps.map((step) => (
+            <div key={step.id} className={`dashboardStep dashboardStep--${step.tone}`}>
+              <div className="dashboardStepMain">
+                <div className="dashboardStepHeader">
+                  <strong>{step.title}</strong>
+                  <span className={`statusPill ${step.tone === "success" ? "success" : step.tone === "warning" ? "warning" : ""}`}>
+                    {step.statusLabel}
+                  </span>
+                </div>
+                <span>{step.subtitle}</span>
+              </div>
+              <div className="dashboardStepMeta">
+                <strong>{step.amount}</strong>
+                <button className="secondaryActionButton" onClick={step.onPrimaryAction}>
+                  {step.primaryLabel}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <div className="dashboardHero dashboardHero--monthly">
         <div>
           <div className="dashboardHeroEyebrow">{t("label.monthlyOverview")}</div>

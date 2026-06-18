@@ -532,6 +532,11 @@ a {
   grid-column: span 12;
 }
 
+.dashboardCard--closing {
+  grid-column: span 12;
+  background: linear-gradient(135deg, rgba(255, 247, 236, 0.98), rgba(255, 255, 255, 0.94));
+}
+
 .dashboardCard--queue {
   grid-column: span 7;
 }
@@ -705,6 +710,89 @@ a {
 
 .dashboardMetrics--snapshot {
   margin-bottom: 0;
+}
+
+.dashboardClosingSummary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.dashboardClosingSummaryCard {
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(133, 102, 69, 0.1);
+}
+
+.dashboardClosingSummaryCard span,
+.dashboardClosingSummaryCard small,
+.dashboardStepMain span {
+  display: block;
+  color: var(--muted);
+}
+
+.dashboardClosingSummaryCard strong {
+  display: block;
+  margin-top: 6px;
+  font-size: 1.35rem;
+}
+
+.dashboardClosingSummaryCard small {
+  margin-top: 8px;
+  font-size: 0.88rem;
+}
+
+.dashboardClosingSteps {
+  display: grid;
+  gap: 12px;
+}
+
+.dashboardStep {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 16px 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(133, 102, 69, 0.1);
+  background: rgba(255, 255, 255, 0.84);
+}
+
+.dashboardStep--success {
+  border-color: rgba(33, 131, 95, 0.18);
+  background: rgba(240, 251, 246, 0.92);
+}
+
+.dashboardStep--warning {
+  border-color: rgba(212, 109, 53, 0.16);
+  background: rgba(255, 247, 239, 0.92);
+}
+
+.dashboardStepMain {
+  min-width: 0;
+  flex: 1 1 360px;
+}
+
+.dashboardStepHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.dashboardStepMeta {
+  min-width: 180px;
+  text-align: right;
+}
+
+.dashboardStepMeta strong {
+  display: block;
+  margin-bottom: 10px;
+  font-size: 1.15rem;
 }
 
 .dashboardCard--compact .dashboardMetrics {
@@ -1177,6 +1265,7 @@ a {
   }
 
   .dashboardHeroStats--monthly,
+  .dashboardClosingSummary,
   .dashboardMetrics--expanded {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1196,6 +1285,12 @@ a {
   .actionQueueActions {
     justify-content: flex-start;
   }
+
+  .dashboardStepMeta {
+    width: 100%;
+    text-align: left;
+    min-width: 0;
+  }
 }
 
 @media (max-width: 760px) {
@@ -1205,6 +1300,7 @@ a {
 
   .dashboardHeroStats,
   .dashboardHeroStats--monthly,
+  .dashboardClosingSummary,
   .studentSummaryGrid,
   .dashboardMetrics,
   .dashboardMetrics--expanded,
