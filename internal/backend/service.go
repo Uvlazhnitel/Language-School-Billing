@@ -42,6 +42,11 @@ const (
 	CourseTypeIndividual    = sharedapp.CourseTypeIndividual
 	BillingModeSubscription = sharedapp.BillingModeSubscription
 	BillingModePerLesson    = sharedapp.BillingModePerLesson
+
+	invoiceArchivePDFStatusReady    = "ready"
+	invoiceArchivePDFStatusMissing  = "missing"
+	invoiceArchivePDFStatusOutdated = "outdated"
+	invoiceArchivePDFStatusError    = "error"
 )
 
 type StudentDTO struct {
@@ -681,6 +686,7 @@ func (s *Service) InvoiceHasPDF(ctx context.Context, id int) (bool, error) {
 func (s *Service) InvoiceArchiveList(ctx context.Context) (*InvoiceArchiveResult, error) {
 	items, err := s.rt.DB.Ent.Invoice.Query().
 		Where(invoice.StatusNEQ(invoice.StatusDraft)).
+		WithStudent().
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -691,15 +697,7 @@ func (s *Service) InvoiceArchiveList(ctx context.Context) (*InvoiceArchiveResult
 
 	archiveItems := make([]InvoiceArchiveInvoiceDTO, 0, len(items))
 	for _, item := range items {
-		dto, err := s.rt.Invoice.Get(ctx, item.ID)
-		if err != nil {
-			return nil, err
-		}
-		archiveItem, err := s.invoiceArchiveInvoice(dto)
-		if err != nil {
-			return nil, err
-		}
-		archiveItems = append(archiveItems, archiveItem)
+		archiveItems = append(archiveItems, s.invoiceArchiveInvoice(item))
 	}
 
 	sort.Slice(archiveItems, func(i, j int) bool {
@@ -1694,51 +1692,87 @@ func (s *Service) invoicePDFPaths(dto *invsvc.InvoiceDTO) []string {
 	}
 }
 
-func (s *Service) invoiceArchiveInvoice(dto *invsvc.InvoiceDTO) (InvoiceArchiveInvoiceDTO, error) {
+func (s *Service) invoiceArchiveInvoice(iv *ent.Invoice) InvoiceArchiveInvoiceDTO {
+	studentName, recipientName, subjectName := archiveInvoiceNames(iv)
 	item := InvoiceArchiveInvoiceDTO{
-		InvoiceID:     dto.ID,
-		Year:          dto.Year,
-		Month:         dto.Month,
-		Number:        strings.TrimSpace(derefString(dto.Number)),
-		StudentName:   dto.StudentName,
-		RecipientName: dto.RecipientName,
-		Total:         dto.Total,
-		Status:        dto.Status,
-		PDFStatus:     "needs_regeneration",
+		InvoiceID:     iv.ID,
+		Year:          iv.PeriodYear,
+		Month:         iv.PeriodMonth,
+		Number:        strings.TrimSpace(derefString(iv.Number)),
+		StudentName:   studentName,
+		RecipientName: recipientName,
+		Total:         money.CentsToEuros(iv.TotalAmountCents),
+		Status:        string(iv.Status),
+		PDFStatus:     invoiceArchivePDFStatusMissing,
 	}
 
-	if item.RecipientName == "" {
-		item.RecipientName = dto.StudentName
-	}
-
-	filename, modTime, ok, err := s.invoiceArchivePDFInfo(dto)
-	if err != nil {
-		return InvoiceArchiveInvoiceDTO{}, err
-	}
-	if ok {
-		item.PDFStatus = "ready"
+	status, filename, modTime := s.invoiceArchivePDFInfo(iv, subjectName)
+	item.PDFStatus = status
+	if status == invoiceArchivePDFStatusReady || status == invoiceArchivePDFStatusOutdated {
 		item.PDFUpdatedAt = modTime.UTC().Format(time.RFC3339)
-		item.OpenURL = invoiceArchiveFileURL(dto.Year, dto.Month, filename, "open")
-		item.DownloadURL = invoiceArchiveFileURL(dto.Year, dto.Month, filename, "download")
+	}
+	if status == invoiceArchivePDFStatusReady {
+		item.OpenURL = invoiceArchiveFileURL(iv.PeriodYear, iv.PeriodMonth, filename, "open")
+		item.DownloadURL = invoiceArchiveFileURL(iv.PeriodYear, iv.PeriodMonth, filename, "download")
 	}
 
-	return item, nil
+	return item
 }
 
-func (s *Service) invoiceArchivePDFInfo(dto *invsvc.InvoiceDTO) (string, time.Time, bool, error) {
-	if dto == nil || dto.Number == nil || strings.TrimSpace(*dto.Number) == "" {
-		return "", time.Time{}, false, nil
+func archiveInvoiceNames(iv *ent.Invoice) (studentName, recipientName, subjectName string) {
+	if iv == nil {
+		return "", "", ""
 	}
-	for _, path := range s.invoicePDFPaths(dto) {
+	if iv.Edges.Student != nil {
+		studentName = strings.TrimSpace(iv.Edges.Student.FullName)
+		recipientName = studentName
+		subjectName = studentName
+		if iv.Edges.Student.IsMinor {
+			if childName := strings.TrimSpace(iv.Edges.Student.FullName); childName != "" {
+				subjectName = childName
+			}
+			if payerName := strings.TrimSpace(iv.Edges.Student.PayerName); payerName != "" {
+				recipientName = payerName
+			}
+		}
+	}
+	if recipientName == "" {
+		recipientName = studentName
+	}
+	if subjectName == "" {
+		subjectName = recipientName
+	}
+	return studentName, recipientName, subjectName
+}
+
+func (s *Service) archiveInvoicePDFPaths(iv *ent.Invoice, subjectName string) []string {
+	if iv == nil || iv.Number == nil || strings.TrimSpace(*iv.Number) == "" {
+		return nil
+	}
+	return []string{
+		invsvc.PDFPathByNumberAndName(s.rt.Dirs.Invoices, iv.PeriodYear, iv.PeriodMonth, *iv.Number, subjectName),
+		invsvc.PDFPathByNumber(s.rt.Dirs.Invoices, iv.PeriodYear, iv.PeriodMonth, *iv.Number),
+	}
+}
+
+func (s *Service) invoiceArchivePDFInfo(iv *ent.Invoice, subjectName string) (string, string, time.Time) {
+	if iv == nil || iv.Number == nil || strings.TrimSpace(*iv.Number) == "" {
+		return invoiceArchivePDFStatusMissing, "", time.Time{}
+	}
+	for _, path := range s.archiveInvoicePDFPaths(iv, subjectName) {
 		info, err := os.Stat(path)
 		if err == nil {
-			return filepath.Base(path), info.ModTime(), true, nil
+			modTime := info.ModTime()
+			if iv.UpdatedAt != nil && !iv.UpdatedAt.IsZero() && modTime.Before(*iv.UpdatedAt) {
+				return invoiceArchivePDFStatusOutdated, filepath.Base(path), modTime
+			}
+			return invoiceArchivePDFStatusReady, filepath.Base(path), modTime
 		}
 		if !os.IsNotExist(err) {
-			return "", time.Time{}, false, err
+			return invoiceArchivePDFStatusError, "", time.Time{}
 		}
 	}
-	return "", time.Time{}, false, nil
+	return invoiceArchivePDFStatusMissing, "", time.Time{}
 }
 
 func derefString(value *string) string {

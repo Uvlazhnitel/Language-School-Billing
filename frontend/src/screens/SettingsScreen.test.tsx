@@ -19,12 +19,12 @@ describe("SettingsScreen", () => {
           years: [
             {
               year: 2026,
-              count: 2,
+              count: 4,
               expandedByDefault: true,
               months: [
                 {
                   month: 6,
-                  count: 2,
+                  count: 4,
                   expandedByDefault: true,
                   invoices: [
                     {
@@ -48,7 +48,30 @@ describe("SettingsScreen", () => {
                       recipientName: "Missing PDF Parent",
                       total: 45,
                       status: "paid",
-                      pdfStatus: "needs_regeneration",
+                      pdfStatus: "missing",
+                      year: 2026,
+                      month: 6,
+                    },
+                    {
+                      invoiceId: 103,
+                      number: "LS-202606-003",
+                      studentName: "Outdated PDF Student",
+                      recipientName: "Outdated PDF Parent",
+                      total: 55,
+                      status: "issued",
+                      pdfStatus: "outdated",
+                      pdfUpdatedAt: "2026-06-14T12:00:00Z",
+                      year: 2026,
+                      month: 6,
+                    },
+                    {
+                      invoiceId: 104,
+                      number: "LS-202606-004",
+                      studentName: "Error PDF Student",
+                      recipientName: "Error PDF Parent",
+                      total: 65,
+                      status: "issued",
+                      pdfStatus: "error",
                       year: 2026,
                       month: 6,
                     },
@@ -108,7 +131,11 @@ describe("SettingsScreen", () => {
     expect(markup).toContain("LS-202606-001");
     expect(markup).toContain("Archive Student");
     expect(markup).toContain("Jūnijs");
-    expect(markup).toContain("Needs regeneration");
+    expect(markup).toContain("PDF not generated");
+    expect(markup).toContain("PDF outdated");
+    expect(markup).toContain("PDF access error");
+    expect(markup).toContain("/api/invoice-archive/2026/06/LS-202606-001.pdf/open");
+    expect(markup).not.toContain("/api/invoice-archive/2026/06/LS-202606-003.pdf/open");
     expect(markup).toContain("{invoice_number}");
     expect(markup).toContain("Reset to default");
   });

@@ -212,12 +212,12 @@ describe("httpTransport", () => {
           years: [
             {
               year: 2026,
-              count: 2,
+              count: 4,
               expandedByDefault: true,
               months: [
                 {
                   month: 6,
-                  count: 2,
+                  count: 4,
                   expandedByDefault: true,
                   invoices: [
                     {
@@ -234,6 +234,40 @@ describe("httpTransport", () => {
                       openUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/open",
                       downloadUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/download",
                     },
+                    {
+                      invoiceId: 1002,
+                      year: 2026,
+                      month: 6,
+                      number: "LS-202606-002",
+                      studentName: "Missing Student",
+                      recipientName: "Missing Parent",
+                      total: 40,
+                      status: "issued",
+                      pdfStatus: "missing",
+                    },
+                    {
+                      invoiceId: 1003,
+                      year: 2026,
+                      month: 6,
+                      number: "LS-202606-003",
+                      studentName: "Outdated Student",
+                      recipientName: "Outdated Parent",
+                      total: 50,
+                      status: "paid",
+                      pdfStatus: "outdated",
+                      pdfUpdatedAt: "2026-06-14T12:00:00Z",
+                    },
+                    {
+                      invoiceId: 1004,
+                      year: 2026,
+                      month: 6,
+                      number: "LS-202606-004",
+                      studentName: "Error Student",
+                      recipientName: "Error Parent",
+                      total: 60,
+                      status: "issued",
+                      pdfStatus: "error",
+                    },
                   ],
                 },
               ],
@@ -249,12 +283,12 @@ describe("httpTransport", () => {
       years: [
         {
           year: 2026,
-          count: 2,
+          count: 4,
           expandedByDefault: true,
           months: [
             {
               month: 6,
-              count: 2,
+              count: 4,
               expandedByDefault: true,
               invoices: [
                 {
@@ -270,6 +304,40 @@ describe("httpTransport", () => {
                   pdfUpdatedAt: "2026-06-15T12:00:00Z",
                   openUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/open",
                   downloadUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/download",
+                },
+                {
+                  invoiceId: 1002,
+                  year: 2026,
+                  month: 6,
+                  number: "LS-202606-002",
+                  studentName: "Missing Student",
+                  recipientName: "Missing Parent",
+                  total: 40,
+                  status: "issued",
+                  pdfStatus: "missing",
+                },
+                {
+                  invoiceId: 1003,
+                  year: 2026,
+                  month: 6,
+                  number: "LS-202606-003",
+                  studentName: "Outdated Student",
+                  recipientName: "Outdated Parent",
+                  total: 50,
+                  status: "paid",
+                  pdfStatus: "outdated",
+                  pdfUpdatedAt: "2026-06-14T12:00:00Z",
+                },
+                {
+                  invoiceId: 1004,
+                  year: 2026,
+                  month: 6,
+                  number: "LS-202606-004",
+                  studentName: "Error Student",
+                  recipientName: "Error Parent",
+                  total: 60,
+                  status: "issued",
+                  pdfStatus: "error",
                 },
               ],
             },

@@ -308,7 +308,14 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 		"note":                    "",
 	})
 
-	createIssuedInvoice := func(year, month int, ensurePDF bool) backend.InvoiceListItem {
+	type issuedInvoice struct {
+		ID     int
+		Number string
+		Year   int
+		Month  int
+	}
+
+	createIssuedInvoice := func(year, month int, ensurePDF bool) issuedInvoice {
 		putJSON[backend.CourseMonthSubscriptionDTO](t, env.Client, env.Server.URL, "/api/attendance/subscription-month", map[string]any{
 			"courseId":    course.ID,
 			"year":        year,
@@ -323,17 +330,39 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 		if len(invoices) != 1 {
 			t.Fatalf("invoice count for %04d-%02d = %d, want 1", year, month, len(invoices))
 		}
-		postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+		issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
 			"version": invoices[0].Version,
 		})
 		if ensurePDF {
 			postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf", map[string]any{})
 		}
-		return invoices[0]
+		return issuedInvoice{ID: invoices[0].ID, Number: issue.Number, Year: year, Month: month}
 	}
 
 	currentInvoice := createIssuedInvoice(currentYear, currentMonth, true)
-	olderInvoice := createIssuedInvoice(olderYear, olderMonth, false)
+	missingInvoice := createIssuedInvoice(olderYear, olderMonth, false)
+	outdatedInvoice := createIssuedInvoice(olderYear, olderMonth-1, true)
+	errorInvoice := createIssuedInvoice(olderYear, olderMonth-2, true)
+
+	outdatedPath := invsvc.PDFPathByNumberAndName(env.Runtime.Dirs.Invoices, outdatedInvoice.Year, outdatedInvoice.Month, outdatedInvoice.Number, student.FullName)
+	outdatedModTime := time.Now().Add(-2 * time.Hour).UTC()
+	if err := os.Chtimes(outdatedPath, outdatedModTime, outdatedModTime); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := env.Runtime.DB.Ent.Invoice.UpdateOneID(outdatedInvoice.ID).
+		SetUpdatedAt(outdatedModTime.Add(time.Hour)).
+		Save(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+
+	errorPath := invsvc.PDFPathByNumberAndName(env.Runtime.Dirs.Invoices, errorInvoice.Year, errorInvoice.Month, errorInvoice.Number, student.FullName)
+	errorDir := filepath.Dir(errorPath)
+	if err := os.Chmod(errorDir, 0o000); err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		_ = os.Chmod(errorDir, 0o755)
+	}()
 
 	orphanDir := filepath.Join(env.Runtime.Dirs.Invoices, strconv.Itoa(currentYear), fmt.Sprintf("%02d", currentMonth))
 	if err := os.MkdirAll(orphanDir, 0o755); err != nil {
@@ -359,8 +388,8 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 	if !archive.Years[0].Months[0].ExpandedByDefault {
 		t.Fatal("expected current month expanded by default")
 	}
-	if archive.Years[0].Count != 1 || archive.Years[1].Count != 1 {
-		t.Fatalf("archive year counts = %+v, want 1 per year", archive.Years)
+	if archive.Years[0].Count != 1 || archive.Years[1].Count != 3 {
+		t.Fatalf("archive year counts = %+v, want 1 current and 3 older", archive.Years)
 	}
 
 	currentItem := archive.Years[0].Months[0].Invoices[0]
@@ -380,15 +409,44 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 		t.Fatalf("current item missing PDF metadata: %+v", currentItem)
 	}
 
-	olderItem := archive.Years[1].Months[0].Invoices[0]
-	if olderItem.InvoiceID != olderInvoice.ID {
-		t.Fatalf("older archive invoice id = %d, want %d", olderItem.InvoiceID, olderInvoice.ID)
+	olderItems := map[int]backend.InvoiceArchiveInvoiceDTO{}
+	for _, monthGroup := range archive.Years[1].Months {
+		for _, item := range monthGroup.Invoices {
+			olderItems[item.InvoiceID] = item
+		}
 	}
-	if olderItem.PDFStatus != "needs_regeneration" {
-		t.Fatalf("older pdf status = %q, want needs_regeneration", olderItem.PDFStatus)
+
+	missingItem := olderItems[missingInvoice.ID]
+	if missingItem.InvoiceID != missingInvoice.ID {
+		t.Fatalf("missing archive invoice id = %d, want %d", missingItem.InvoiceID, missingInvoice.ID)
 	}
-	if olderItem.OpenURL != "" || olderItem.DownloadURL != "" || olderItem.PDFUpdatedAt != "" {
-		t.Fatalf("older item should not expose missing PDF links: %+v", olderItem)
+	if missingItem.PDFStatus != "missing" {
+		t.Fatalf("missing pdf status = %q, want missing", missingItem.PDFStatus)
+	}
+	if missingItem.OpenURL != "" || missingItem.DownloadURL != "" || missingItem.PDFUpdatedAt != "" {
+		t.Fatalf("missing item should not expose PDF links: %+v", missingItem)
+	}
+
+	outdatedItem := olderItems[outdatedInvoice.ID]
+	if outdatedItem.InvoiceID != outdatedInvoice.ID {
+		t.Fatalf("outdated archive invoice id = %d, want %d", outdatedItem.InvoiceID, outdatedInvoice.ID)
+	}
+	if outdatedItem.PDFStatus != "outdated" {
+		t.Fatalf("outdated pdf status = %q, want outdated", outdatedItem.PDFStatus)
+	}
+	if outdatedItem.OpenURL != "" || outdatedItem.DownloadURL != "" || outdatedItem.PDFUpdatedAt == "" {
+		t.Fatalf("outdated item should expose only pdfUpdatedAt: %+v", outdatedItem)
+	}
+
+	errorItem := olderItems[errorInvoice.ID]
+	if errorItem.InvoiceID != errorInvoice.ID {
+		t.Fatalf("error archive invoice id = %d, want %d", errorItem.InvoiceID, errorInvoice.ID)
+	}
+	if errorItem.PDFStatus != "error" {
+		t.Fatalf("error pdf status = %q, want error", errorItem.PDFStatus)
+	}
+	if errorItem.OpenURL != "" || errorItem.DownloadURL != "" || errorItem.PDFUpdatedAt != "" {
+		t.Fatalf("error item should not expose PDF links: %+v", errorItem)
 	}
 
 	openResp, err := env.Client.Get(env.Server.URL + currentItem.OpenURL)

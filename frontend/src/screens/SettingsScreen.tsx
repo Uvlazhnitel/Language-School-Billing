@@ -108,10 +108,20 @@ export function SettingsScreen({
     minute: "2-digit",
   });
 
-  const pdfStatusLabel = (status: "ready" | "needs_regeneration") =>
-    status === "ready"
-      ? t("settings.invoiceArchivePdfReady")
-      : t("settings.invoiceArchivePdfNeedsRegeneration");
+  const pdfStatusLabel = (status: "ready" | "missing" | "outdated" | "error") => {
+    switch (status) {
+      case "ready":
+        return t("settings.invoiceArchivePdfReady");
+      case "missing":
+        return t("settings.invoiceArchivePdfMissing");
+      case "outdated":
+        return t("settings.invoiceArchivePdfOutdated");
+      case "error":
+        return t("settings.invoiceArchivePdfError");
+      default:
+        return status;
+    }
+  };
 
   return (
     <div className="settingsGrid">
@@ -261,7 +271,7 @@ export function SettingsScreen({
                                   </>
                                 ) : (
                                   <span className="invoiceArchiveHint">
-                                    {t("settings.invoiceArchivePdfNeedsRegeneration")}
+                                    {pdfStatusLabel(item.pdfStatus)}
                                   </span>
                                 )}
                               </div>
