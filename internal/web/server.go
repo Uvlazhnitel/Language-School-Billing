@@ -48,6 +48,9 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("GET /api/me/locale", s.handleCurrentUserGetLocale)
 	s.mux.HandleFunc("POST /api/me/locale", s.handleCurrentUserSetLocale)
 	s.mux.HandleFunc("POST /api/backups", s.handleBackupsCreate)
+	s.mux.HandleFunc("GET /api/invoice-archive", s.handleInvoiceArchiveList)
+	s.mux.HandleFunc("GET /api/invoice-archive/{year}/{month}/{filename}/open", s.handleInvoiceArchiveOpen)
+	s.mux.HandleFunc("GET /api/invoice-archive/{year}/{month}/{filename}/download", s.handleInvoiceArchiveDownload)
 
 	s.mux.HandleFunc("GET /api/students", s.handleStudentsList)
 	s.mux.HandleFunc("POST /api/students", s.handleStudentsCreate)
@@ -800,6 +803,43 @@ func (s *Server) handleInvoicesDownloadPDF(w http.ResponseWriter, r *http.Reques
 	http.ServeFile(w, r, path)
 }
 
+func (s *Server) handleInvoiceArchiveList(w http.ResponseWriter, r *http.Request) {
+	item, err := s.svc.InvoiceArchiveList(r.Context())
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
+func (s *Server) handleInvoiceArchiveOpen(w http.ResponseWriter, r *http.Request) {
+	s.handleInvoiceArchiveFile(w, r, "inline")
+}
+
+func (s *Server) handleInvoiceArchiveDownload(w http.ResponseWriter, r *http.Request) {
+	s.handleInvoiceArchiveFile(w, r, "attachment")
+}
+
+func (s *Server) handleInvoiceArchiveFile(w http.ResponseWriter, r *http.Request, disposition string) {
+	year, ok := pathInt(w, r, "year")
+	if !ok {
+		return
+	}
+	month, ok := pathInt(w, r, "month")
+	if !ok {
+		return
+	}
+	filename := r.PathValue("filename")
+	path, err := s.svc.InvoiceArchiveFilePath(year, month, filename)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("%s; filename=%q", disposition, filepath.Base(path)))
+	http.ServeFile(w, r, path)
+}
+
 func (s *Server) handleInvoicesEmailPreview(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathInt(w, r, "id")
 	if !ok {
@@ -1227,6 +1267,8 @@ func writeError(w http.ResponseWriter, err error) {
 	status := http.StatusInternalServerError
 	switch {
 	case ent.IsNotFound(err):
+		status = http.StatusNotFound
+	case errors.Is(err, os.ErrNotExist):
 		status = http.StatusNotFound
 	case ent.IsConstraintError(err):
 		status = http.StatusConflict

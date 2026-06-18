@@ -27,7 +27,7 @@ describe("httpTransport", () => {
           authenticated: false,
           ready: true,
           locale: "en-US",
-          capabilities: { pdfDownload: true, emailSend: true },
+          capabilities: { pdfDownload: true, emailSend: true, invoiceArchive: true },
         });
       }
       throw new Error(`unexpected url ${url}`);
@@ -39,6 +39,7 @@ describe("httpTransport", () => {
     expect(result.ready).toBe(true);
     expect(result.capabilities.canDownloadPdf).toBe(true);
     expect(result.capabilities.canSendEmail).toBe(true);
+    expect(result.capabilities.canViewInvoiceArchive).toBe(true);
     expect(result.authRequired).toBe(true);
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -52,7 +53,7 @@ describe("httpTransport", () => {
           authenticated: true,
           ready: true,
           locale: "lv-LV",
-          capabilities: { pdfDownload: true, emailSend: true },
+          capabilities: { pdfDownload: true, emailSend: true, invoiceArchive: true },
           user: { id: 1, username: "tester", role: "staff" },
         });
       }
@@ -78,7 +79,7 @@ describe("httpTransport", () => {
           authenticated: true,
           ready: true,
           locale: "lv-LV",
-          capabilities: { pdfDownload: true, emailSend: true },
+          capabilities: { pdfDownload: true, emailSend: true, invoiceArchive: true },
           user: { id: 1, username: "tester", role: "staff" },
         });
       }
@@ -200,6 +201,81 @@ describe("httpTransport", () => {
       bodyTemplate: "Labdien!",
       replyTo: "hello@example.com",
       availablePlaceholders: ["{invoice_number}"],
+    });
+  });
+
+  it("maps invoice archive endpoint", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/invoice-archive")) {
+        return jsonResponse({
+          years: [
+            {
+              year: 2026,
+              count: 2,
+              expandedByDefault: true,
+              months: [
+                {
+                  month: 6,
+                  count: 2,
+                  expandedByDefault: true,
+                  invoices: [
+                    {
+                      invoiceId: 1001,
+                      year: 2026,
+                      month: 6,
+                      number: "LS-202606-001",
+                      studentName: "Archive Student",
+                      recipientName: "Archive Parent",
+                      total: 30,
+                      status: "issued",
+                      pdfStatus: "ready",
+                      pdfUpdatedAt: "2026-06-15T12:00:00Z",
+                      openUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/open",
+                      downloadUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/download",
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        });
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(httpTransport.listInvoiceArchive()).resolves.toEqual({
+      years: [
+        {
+          year: 2026,
+          count: 2,
+          expandedByDefault: true,
+          months: [
+            {
+              month: 6,
+              count: 2,
+              expandedByDefault: true,
+              invoices: [
+                {
+                  invoiceId: 1001,
+                  year: 2026,
+                  month: 6,
+                  number: "LS-202606-001",
+                  studentName: "Archive Student",
+                  recipientName: "Archive Parent",
+                  total: 30,
+                  status: "issued",
+                  pdfStatus: "ready",
+                  pdfUpdatedAt: "2026-06-15T12:00:00Z",
+                  openUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/open",
+                  downloadUrl: "/api/invoice-archive/2026/06/LS-202606-001.pdf/download",
+                },
+              ],
+            },
+          ],
+        },
+      ],
     });
   });
 

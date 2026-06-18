@@ -1,5 +1,5 @@
-import type { InvoiceEmailSettingsDTO, UserDTO } from "../lib/api";
-import type { TranslateFn, UiLocale } from "../lib/i18n";
+import type { InvoiceArchiveResult, InvoiceEmailSettingsDTO, UserDTO } from "../lib/api";
+import { getMonthNames, type TranslateFn, type UiLocale } from "../lib/i18n";
 import type { AppTabId } from "../lib/appUi";
 
 type UserDraft = { username: string; role: string; isActive: boolean };
@@ -8,8 +8,13 @@ type SettingsScreenProps = {
   uiLocale: UiLocale;
   canCreateBackups: boolean;
   canManageSettings: boolean;
+  canViewInvoiceArchive: boolean;
   creatingBackup: boolean;
   canManageUsers: boolean;
+  invoiceArchiveLoading: boolean;
+  invoiceArchive: InvoiceArchiveResult | null;
+  formatEUR: (value: number) => string;
+  invoiceStatusLabel: (status: string) => string;
   invoiceEmailSettingsLoading: boolean;
   savingInvoiceEmailSettings: boolean;
   invoiceEmailSettings: InvoiceEmailSettingsDTO | null;
@@ -27,6 +32,7 @@ type SettingsScreenProps = {
   currentSessionUser: { id: number; username: string; role: string } | null;
   onLocaleChange: (value: UiLocale) => void | Promise<void>;
   onCreateBackup: () => void | Promise<void>;
+  onRefreshInvoiceArchive: () => void | Promise<void>;
   onSetTab: (tab: AppTabId) => void;
   onInvoiceEmailSubjectTemplateChange: (value: string) => void;
   onInvoiceEmailBodyTemplateChange: (value: string) => void;
@@ -50,8 +56,13 @@ export function SettingsScreen({
   uiLocale,
   canCreateBackups,
   canManageSettings,
+  canViewInvoiceArchive,
   creatingBackup,
   canManageUsers,
+  invoiceArchiveLoading,
+  invoiceArchive,
+  formatEUR,
+  invoiceStatusLabel,
   invoiceEmailSettingsLoading,
   savingInvoiceEmailSettings,
   invoiceEmailSettings,
@@ -69,6 +80,7 @@ export function SettingsScreen({
   currentSessionUser,
   onLocaleChange,
   onCreateBackup,
+  onRefreshInvoiceArchive,
   onSetTab,
   onInvoiceEmailSubjectTemplateChange,
   onInvoiceEmailBodyTemplateChange,
@@ -87,6 +99,20 @@ export function SettingsScreen({
   onDeleteUser,
   t,
 }: SettingsScreenProps) {
+  const monthNames = getMonthNames(uiLocale);
+  const archiveDateFormatter = new Intl.DateTimeFormat(uiLocale, {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  const pdfStatusLabel = (status: "ready" | "needs_regeneration") =>
+    status === "ready"
+      ? t("settings.invoiceArchivePdfReady")
+      : t("settings.invoiceArchivePdfNeedsRegeneration");
+
   return (
     <div className="settingsGrid">
       <section className="detailCard">
@@ -135,6 +161,122 @@ export function SettingsScreen({
           </button>
         </div>
       </section>
+
+      {canViewInvoiceArchive && (
+        <section className="detailCard detailCard--wide">
+          <div className="detailCardHeader">
+            <h3>{t("settings.invoiceArchiveTitle")}</h3>
+          </div>
+          <p className="mutedInline">{t("settings.invoiceArchiveDesc")}</p>
+          <div className="settingsActions">
+            <button type="button" className="workspaceActionButton" onClick={() => void onRefreshInvoiceArchive()}>
+              {t("button.refresh")}
+            </button>
+          </div>
+          {invoiceArchiveLoading ? (
+            <div className="empty">{t("label.loading")}</div>
+          ) : !invoiceArchive || invoiceArchive.years.length === 0 ? (
+            <div className="empty">{t("settings.invoiceArchiveEmpty")}</div>
+          ) : (
+            <div className="invoiceArchiveList">
+              {invoiceArchive.years.map((yearGroup) => (
+                <details
+                  key={yearGroup.year}
+                  className="invoiceArchiveYear"
+                  open={yearGroup.expandedByDefault}
+                >
+                  <summary>
+                    <span>{t("settings.invoiceArchiveYearLabel", { year: yearGroup.year })}</span>
+                    <span className="invoiceArchiveCount">
+                      {t("settings.invoiceArchiveCount", { count: yearGroup.count })}
+                    </span>
+                  </summary>
+                  <div className="invoiceArchiveMonths">
+                    {yearGroup.months.map((monthGroup) => (
+                      <details
+                        key={`${yearGroup.year}-${monthGroup.month}`}
+                        className="invoiceArchiveMonth"
+                        open={monthGroup.expandedByDefault}
+                      >
+                        <summary>
+                          <span>{monthNames[monthGroup.month - 1] ?? String(monthGroup.month)}</span>
+                          <span className="invoiceArchiveCount">
+                            {t("settings.invoiceArchiveCount", { count: monthGroup.count })}
+                          </span>
+                        </summary>
+                        <div className="invoiceArchiveFiles">
+                          {monthGroup.invoices.map((item) => (
+                            <div
+                              key={item.invoiceId}
+                              className="invoiceArchiveFileRow"
+                            >
+                              <div className="invoiceArchiveInvoiceInfo">
+                                <div className="invoiceArchiveInvoiceHeader">
+                                  <span className="invoiceArchiveFileName">{item.number}</span>
+                                  <span className="invoiceArchiveBadge">
+                                    {invoiceStatusLabel(item.status)}
+                                  </span>
+                                  <span
+                                    className={`invoiceArchiveBadge ${
+                                      item.pdfStatus === "ready"
+                                        ? "invoiceArchiveBadgeReady"
+                                        : "invoiceArchiveBadgeWarning"
+                                    }`}
+                                  >
+                                    {pdfStatusLabel(item.pdfStatus)}
+                                  </span>
+                                </div>
+                                <div className="invoiceArchiveMetaGrid">
+                                  <span>
+                                    <strong>{t("field.student")}:</strong> {item.studentName}
+                                  </span>
+                                  <span>
+                                    <strong>{t("field.recipient")}:</strong> {item.recipientName}
+                                  </span>
+                                  <span>
+                                    <strong>{t("field.total")}:</strong> {formatEUR(item.total)}
+                                  </span>
+                                  <span>
+                                    <strong>{t("settings.invoiceArchivePdfDate")}:</strong>{" "}
+                                    {item.pdfUpdatedAt
+                                      ? archiveDateFormatter.format(new Date(item.pdfUpdatedAt))
+                                      : t("settings.invoiceArchivePdfDateMissing")}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="settingsActions">
+                                {item.pdfStatus === "ready" && item.openUrl && item.downloadUrl ? (
+                                  <>
+                                    <a
+                                      className="workspaceActionButton"
+                                      href={item.openUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                    >
+                                      {t("button.open")}
+                                    </a>
+                                    <a className="workspaceActionButton" href={item.downloadUrl}>
+                                      {t("button.downloadPdf")}
+                                    </a>
+                                  </>
+                                ) : (
+                                  <span className="invoiceArchiveHint">
+                                    {t("settings.invoiceArchivePdfNeedsRegeneration")}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
 
       {canManageSettings && (
         <section className="detailCard detailCard--wide">

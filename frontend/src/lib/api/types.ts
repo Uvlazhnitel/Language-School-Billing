@@ -1,6 +1,7 @@
 export type TransportCapabilities = {
   canDownloadPdf: boolean;
   canSendEmail: boolean;
+  canViewInvoiceArchive: boolean;
 };
 
 export type BootstrapResult = {
@@ -62,6 +63,39 @@ export type InvoiceEmailSettingsDTO = {
   bodyTemplate: string;
   replyTo: string;
   availablePlaceholders: string[];
+};
+
+export type InvoiceArchiveInvoiceDTO = {
+  invoiceId: number;
+  year: number;
+  month: number;
+  number: string;
+  studentName: string;
+  recipientName: string;
+  total: number;
+  status: string;
+  pdfStatus: "ready" | "needs_regeneration";
+  pdfUpdatedAt?: string;
+  openUrl?: string;
+  downloadUrl?: string;
+};
+
+export type InvoiceArchiveMonthDTO = {
+  month: number;
+  count: number;
+  expandedByDefault: boolean;
+  invoices: InvoiceArchiveInvoiceDTO[];
+};
+
+export type InvoiceArchiveYearDTO = {
+  year: number;
+  count: number;
+  expandedByDefault: boolean;
+  months: InvoiceArchiveMonthDTO[];
+};
+
+export type InvoiceArchiveResult = {
+  years: InvoiceArchiveYearDTO[];
 };
 
 export type Row = {
@@ -435,6 +469,7 @@ export interface AppTransport {
     invoiceId: number,
     payload: Pick<InvoiceEmailPreviewResult, "to" | "subject" | "body">
   ): Promise<InvoiceEmailSendResult>;
+  listInvoiceArchive(): Promise<InvoiceArchiveResult>;
   getInvoiceEmailSettings(): Promise<InvoiceEmailSettingsDTO>;
   saveInvoiceEmailSettings(
     payload: Pick<InvoiceEmailSettingsDTO, "subjectTemplate" | "bodyTemplate" | "replyTo">
