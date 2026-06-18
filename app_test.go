@@ -209,6 +209,19 @@ func TestInvoiceIssueDoesNotGeneratePDFUntilRequested(t *testing.T) {
 	if _, err := os.Stat(pdfPath); err != nil {
 		t.Fatalf("generated PDF missing: %v", err)
 	}
+	got, err = db.Ent.Invoice.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Invoice.Get after ensure: %v", err)
+	}
+	if got.PdfFilename == nil || *got.PdfFilename == "" {
+		t.Fatal("expected pdf_filename to be stored after generation")
+	}
+	if got.PdfGeneratedAt == nil || got.PdfGeneratedAt.IsZero() {
+		t.Fatal("expected pdf_generated_at to be stored after generation")
+	}
+	if got.PdfRevision == nil || *got.PdfRevision != got.Version {
+		t.Fatalf("expected pdf_revision=%d, got %v", got.Version, got.PdfRevision)
+	}
 	hasPDF, err = app.InvoiceHasPDF(iv.ID)
 	if err != nil {
 		t.Fatalf("InvoiceHasPDF after generation: %v", err)
@@ -218,7 +231,7 @@ func TestInvoiceIssueDoesNotGeneratePDFUntilRequested(t *testing.T) {
 	}
 }
 
-func TestInvoiceHasPDFRecognizesLegacyPath(t *testing.T) {
+func TestInvoiceHasPDFRejectsLegacyPathWithoutMetadata(t *testing.T) {
 	ctx := context.Background()
 	base := t.TempDir()
 	dirs, err := paths.Ensure(base)
@@ -285,7 +298,7 @@ func TestInvoiceHasPDFRecognizesLegacyPath(t *testing.T) {
 	if err != nil {
 		t.Fatalf("InvoiceHasPDF legacy path: %v", err)
 	}
-	if !hasPDF {
-		t.Fatalf("InvoiceHasPDF legacy path = false, want true")
+	if hasPDF {
+		t.Fatalf("InvoiceHasPDF legacy path = true, want false")
 	}
 }

@@ -1228,6 +1228,13 @@ func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T
 	if err := os.WriteFile(pdfPath, []byte("%PDF-1.4\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
+	if _, err := client.Invoice.UpdateOneID(iv.ID).
+		SetPdfFilename(filepath.Base(pdfPath)).
+		SetPdfGeneratedAt(time.Date(2026, 9, 6, 0, 0, 0, 0, time.UTC)).
+		SetPdfRevision(iv.Version).
+		Save(ctx); err != nil {
+		t.Fatalf("Invoice.Update metadata: %v", err)
+	}
 
 	res, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 9)
 	if err != nil {
@@ -1249,6 +1256,9 @@ func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T
 	}
 	if got.Status != StatusIssued {
 		t.Fatalf("status = %q, want %q", got.Status, StatusIssued)
+	}
+	if got.PdfRevision != nil || got.PdfGeneratedAt != nil {
+		t.Fatalf("expected PDF metadata cleared, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
 	}
 	if _, err := os.Stat(pdfPath); !os.IsNotExist(err) {
 		t.Fatalf("expected pdf to be invalidated, stat err=%v", err)
@@ -1344,6 +1354,13 @@ func TestRebuildStudentDraftUpdatesCurrentIssuedInvoiceAndInvalidatesPDF(t *test
 	if err := os.WriteFile(pdfPath, []byte("%PDF-1.4\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
+	if _, err := client.Invoice.UpdateOneID(iv.ID).
+		SetPdfFilename(filepath.Base(pdfPath)).
+		SetPdfGeneratedAt(time.Date(2026, 9, 7, 0, 0, 0, 0, time.UTC)).
+		SetPdfRevision(iv.Version).
+		Save(ctx); err != nil {
+		t.Fatalf("Invoice.Update metadata: %v", err)
+	}
 
 	res, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 9)
 	if err != nil {
@@ -1362,6 +1379,9 @@ func TestRebuildStudentDraftUpdatesCurrentIssuedInvoiceAndInvalidatesPDF(t *test
 	}
 	if got.Status != StatusIssued {
 		t.Fatalf("status = %q, want %q", got.Status, StatusIssued)
+	}
+	if got.PdfRevision != nil || got.PdfGeneratedAt != nil {
+		t.Fatalf("expected PDF metadata cleared, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
 	}
 	if _, err := os.Stat(pdfPath); !os.IsNotExist(err) {
 		t.Fatalf("expected pdf to be invalidated, stat err=%v", err)
@@ -1460,6 +1480,13 @@ func TestRebuildStudentDraftKeepsCurrentPaidInvoicePaidWhenAmountDropsBelowPayme
 	if err := os.WriteFile(pdfPath, []byte("%PDF-1.4\n"), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
+	if _, err := client.Invoice.UpdateOneID(iv.ID).
+		SetPdfFilename(filepath.Base(pdfPath)).
+		SetPdfGeneratedAt(time.Date(2026, 9, 8, 0, 0, 0, 0, time.UTC)).
+		SetPdfRevision(iv.Version).
+		Save(ctx); err != nil {
+		t.Fatalf("Invoice.Update metadata: %v", err)
+	}
 
 	res, err := svc.RebuildStudentDraft(ctx, st.ID, 2026, 9)
 	if err != nil {
@@ -1478,6 +1505,9 @@ func TestRebuildStudentDraftKeepsCurrentPaidInvoicePaidWhenAmountDropsBelowPayme
 	}
 	if got.Status != StatusPaid {
 		t.Fatalf("status = %q, want %q", got.Status, StatusPaid)
+	}
+	if got.PdfRevision != nil || got.PdfGeneratedAt != nil {
+		t.Fatalf("expected PDF metadata cleared, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
 	}
 	if _, err := os.Stat(pdfPath); !os.IsNotExist(err) {
 		t.Fatalf("expected pdf to be invalidated, stat err=%v", err)
@@ -1551,6 +1581,13 @@ func TestReopenDraft(t *testing.T) {
 		if err := os.WriteFile(pdfPath, []byte("demo"), 0o644); err != nil {
 			t.Fatalf("WriteFile: %v", err)
 		}
+		if _, err := client.Invoice.UpdateOneID(iv.ID).
+			SetPdfFilename(filepath.Base(pdfPath)).
+			SetPdfGeneratedAt(time.Date(2026, 4, 6, 0, 0, 0, 0, time.UTC)).
+			SetPdfRevision(iv.Version).
+			Save(ctx); err != nil {
+			t.Fatalf("Invoice.Update metadata: %v", err)
+		}
 
 		if err := svc.ReopenDraft(ctx, iv.ID, tmpDir); err != nil {
 			t.Fatalf("ReopenDraft: %v", err)
@@ -1565,6 +1602,9 @@ func TestReopenDraft(t *testing.T) {
 		}
 		if got.Number != nil {
 			t.Fatalf("Number = %v, want nil", got.Number)
+		}
+		if got.PdfRevision != nil || got.PdfGeneratedAt != nil {
+			t.Fatalf("expected PDF metadata cleared, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
 		}
 		if got.TotalAmountCents != money.EurosToCents(70) {
 			t.Fatalf("TotalAmount = %v, want 70", money.CentsToEuros(got.TotalAmountCents))

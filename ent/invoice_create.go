@@ -111,6 +111,48 @@ func (_c *InvoiceCreate) SetNillableNumber(v *string) *InvoiceCreate {
 	return _c
 }
 
+// SetPdfFilename sets the "pdf_filename" field.
+func (_c *InvoiceCreate) SetPdfFilename(v string) *InvoiceCreate {
+	_c.mutation.SetPdfFilename(v)
+	return _c
+}
+
+// SetNillablePdfFilename sets the "pdf_filename" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillablePdfFilename(v *string) *InvoiceCreate {
+	if v != nil {
+		_c.SetPdfFilename(*v)
+	}
+	return _c
+}
+
+// SetPdfGeneratedAt sets the "pdf_generated_at" field.
+func (_c *InvoiceCreate) SetPdfGeneratedAt(v time.Time) *InvoiceCreate {
+	_c.mutation.SetPdfGeneratedAt(v)
+	return _c
+}
+
+// SetNillablePdfGeneratedAt sets the "pdf_generated_at" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillablePdfGeneratedAt(v *time.Time) *InvoiceCreate {
+	if v != nil {
+		_c.SetPdfGeneratedAt(*v)
+	}
+	return _c
+}
+
+// SetPdfRevision sets the "pdf_revision" field.
+func (_c *InvoiceCreate) SetPdfRevision(v int) *InvoiceCreate {
+	_c.mutation.SetPdfRevision(v)
+	return _c
+}
+
+// SetNillablePdfRevision sets the "pdf_revision" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillablePdfRevision(v *int) *InvoiceCreate {
+	if v != nil {
+		_c.SetPdfRevision(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *InvoiceCreate) SetCreatedAt(v time.Time) *InvoiceCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -319,6 +361,18 @@ func (_c *InvoiceCreate) createSpec() (*Invoice, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Number(); ok {
 		_spec.SetField(invoice.FieldNumber, field.TypeString, value)
 		_node.Number = &value
+	}
+	if value, ok := _c.mutation.PdfFilename(); ok {
+		_spec.SetField(invoice.FieldPdfFilename, field.TypeString, value)
+		_node.PdfFilename = &value
+	}
+	if value, ok := _c.mutation.PdfGeneratedAt(); ok {
+		_spec.SetField(invoice.FieldPdfGeneratedAt, field.TypeTime, value)
+		_node.PdfGeneratedAt = &value
+	}
+	if value, ok := _c.mutation.PdfRevision(); ok {
+		_spec.SetField(invoice.FieldPdfRevision, field.TypeInt, value)
+		_node.PdfRevision = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)

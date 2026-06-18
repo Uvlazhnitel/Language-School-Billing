@@ -4891,6 +4891,10 @@ type InvoiceMutation struct {
 	addtotal_amount_cents  *int64
 	status                 *invoice.Status
 	number                 *string
+	pdf_filename           *string
+	pdf_generated_at       *time.Time
+	pdf_revision           *int
+	addpdf_revision        *int
 	created_at             *time.Time
 	updated_at             *time.Time
 	clearedFields          map[string]struct{}
@@ -5406,6 +5410,174 @@ func (m *InvoiceMutation) ResetNumber() {
 	delete(m.clearedFields, invoice.FieldNumber)
 }
 
+// SetPdfFilename sets the "pdf_filename" field.
+func (m *InvoiceMutation) SetPdfFilename(s string) {
+	m.pdf_filename = &s
+}
+
+// PdfFilename returns the value of the "pdf_filename" field in the mutation.
+func (m *InvoiceMutation) PdfFilename() (r string, exists bool) {
+	v := m.pdf_filename
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPdfFilename returns the old "pdf_filename" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldPdfFilename(ctx context.Context) (v *string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPdfFilename is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPdfFilename requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPdfFilename: %w", err)
+	}
+	return oldValue.PdfFilename, nil
+}
+
+// ClearPdfFilename clears the value of the "pdf_filename" field.
+func (m *InvoiceMutation) ClearPdfFilename() {
+	m.pdf_filename = nil
+	m.clearedFields[invoice.FieldPdfFilename] = struct{}{}
+}
+
+// PdfFilenameCleared returns if the "pdf_filename" field was cleared in this mutation.
+func (m *InvoiceMutation) PdfFilenameCleared() bool {
+	_, ok := m.clearedFields[invoice.FieldPdfFilename]
+	return ok
+}
+
+// ResetPdfFilename resets all changes to the "pdf_filename" field.
+func (m *InvoiceMutation) ResetPdfFilename() {
+	m.pdf_filename = nil
+	delete(m.clearedFields, invoice.FieldPdfFilename)
+}
+
+// SetPdfGeneratedAt sets the "pdf_generated_at" field.
+func (m *InvoiceMutation) SetPdfGeneratedAt(t time.Time) {
+	m.pdf_generated_at = &t
+}
+
+// PdfGeneratedAt returns the value of the "pdf_generated_at" field in the mutation.
+func (m *InvoiceMutation) PdfGeneratedAt() (r time.Time, exists bool) {
+	v := m.pdf_generated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPdfGeneratedAt returns the old "pdf_generated_at" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldPdfGeneratedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPdfGeneratedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPdfGeneratedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPdfGeneratedAt: %w", err)
+	}
+	return oldValue.PdfGeneratedAt, nil
+}
+
+// ClearPdfGeneratedAt clears the value of the "pdf_generated_at" field.
+func (m *InvoiceMutation) ClearPdfGeneratedAt() {
+	m.pdf_generated_at = nil
+	m.clearedFields[invoice.FieldPdfGeneratedAt] = struct{}{}
+}
+
+// PdfGeneratedAtCleared returns if the "pdf_generated_at" field was cleared in this mutation.
+func (m *InvoiceMutation) PdfGeneratedAtCleared() bool {
+	_, ok := m.clearedFields[invoice.FieldPdfGeneratedAt]
+	return ok
+}
+
+// ResetPdfGeneratedAt resets all changes to the "pdf_generated_at" field.
+func (m *InvoiceMutation) ResetPdfGeneratedAt() {
+	m.pdf_generated_at = nil
+	delete(m.clearedFields, invoice.FieldPdfGeneratedAt)
+}
+
+// SetPdfRevision sets the "pdf_revision" field.
+func (m *InvoiceMutation) SetPdfRevision(i int) {
+	m.pdf_revision = &i
+	m.addpdf_revision = nil
+}
+
+// PdfRevision returns the value of the "pdf_revision" field in the mutation.
+func (m *InvoiceMutation) PdfRevision() (r int, exists bool) {
+	v := m.pdf_revision
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPdfRevision returns the old "pdf_revision" field's value of the Invoice entity.
+// If the Invoice object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *InvoiceMutation) OldPdfRevision(ctx context.Context) (v *int, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPdfRevision is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPdfRevision requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPdfRevision: %w", err)
+	}
+	return oldValue.PdfRevision, nil
+}
+
+// AddPdfRevision adds i to the "pdf_revision" field.
+func (m *InvoiceMutation) AddPdfRevision(i int) {
+	if m.addpdf_revision != nil {
+		*m.addpdf_revision += i
+	} else {
+		m.addpdf_revision = &i
+	}
+}
+
+// AddedPdfRevision returns the value that was added to the "pdf_revision" field in this mutation.
+func (m *InvoiceMutation) AddedPdfRevision() (r int, exists bool) {
+	v := m.addpdf_revision
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ClearPdfRevision clears the value of the "pdf_revision" field.
+func (m *InvoiceMutation) ClearPdfRevision() {
+	m.pdf_revision = nil
+	m.addpdf_revision = nil
+	m.clearedFields[invoice.FieldPdfRevision] = struct{}{}
+}
+
+// PdfRevisionCleared returns if the "pdf_revision" field was cleared in this mutation.
+func (m *InvoiceMutation) PdfRevisionCleared() bool {
+	_, ok := m.clearedFields[invoice.FieldPdfRevision]
+	return ok
+}
+
+// ResetPdfRevision resets all changes to the "pdf_revision" field.
+func (m *InvoiceMutation) ResetPdfRevision() {
+	m.pdf_revision = nil
+	m.addpdf_revision = nil
+	delete(m.clearedFields, invoice.FieldPdfRevision)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *InvoiceMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -5673,7 +5845,7 @@ func (m *InvoiceMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *InvoiceMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 13)
 	if m.version != nil {
 		fields = append(fields, invoice.FieldVersion)
 	}
@@ -5697,6 +5869,15 @@ func (m *InvoiceMutation) Fields() []string {
 	}
 	if m.number != nil {
 		fields = append(fields, invoice.FieldNumber)
+	}
+	if m.pdf_filename != nil {
+		fields = append(fields, invoice.FieldPdfFilename)
+	}
+	if m.pdf_generated_at != nil {
+		fields = append(fields, invoice.FieldPdfGeneratedAt)
+	}
+	if m.pdf_revision != nil {
+		fields = append(fields, invoice.FieldPdfRevision)
 	}
 	if m.created_at != nil {
 		fields = append(fields, invoice.FieldCreatedAt)
@@ -5728,6 +5909,12 @@ func (m *InvoiceMutation) Field(name string) (ent.Value, bool) {
 		return m.Status()
 	case invoice.FieldNumber:
 		return m.Number()
+	case invoice.FieldPdfFilename:
+		return m.PdfFilename()
+	case invoice.FieldPdfGeneratedAt:
+		return m.PdfGeneratedAt()
+	case invoice.FieldPdfRevision:
+		return m.PdfRevision()
 	case invoice.FieldCreatedAt:
 		return m.CreatedAt()
 	case invoice.FieldUpdatedAt:
@@ -5757,6 +5944,12 @@ func (m *InvoiceMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldStatus(ctx)
 	case invoice.FieldNumber:
 		return m.OldNumber(ctx)
+	case invoice.FieldPdfFilename:
+		return m.OldPdfFilename(ctx)
+	case invoice.FieldPdfGeneratedAt:
+		return m.OldPdfGeneratedAt(ctx)
+	case invoice.FieldPdfRevision:
+		return m.OldPdfRevision(ctx)
 	case invoice.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case invoice.FieldUpdatedAt:
@@ -5826,6 +6019,27 @@ func (m *InvoiceMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetNumber(v)
 		return nil
+	case invoice.FieldPdfFilename:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPdfFilename(v)
+		return nil
+	case invoice.FieldPdfGeneratedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPdfGeneratedAt(v)
+		return nil
+	case invoice.FieldPdfRevision:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPdfRevision(v)
+		return nil
 	case invoice.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -5863,6 +6077,9 @@ func (m *InvoiceMutation) AddedFields() []string {
 	if m.addtotal_amount_cents != nil {
 		fields = append(fields, invoice.FieldTotalAmountCents)
 	}
+	if m.addpdf_revision != nil {
+		fields = append(fields, invoice.FieldPdfRevision)
+	}
 	return fields
 }
 
@@ -5881,6 +6098,8 @@ func (m *InvoiceMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedLegacyTotalAmount()
 	case invoice.FieldTotalAmountCents:
 		return m.AddedTotalAmountCents()
+	case invoice.FieldPdfRevision:
+		return m.AddedPdfRevision()
 	}
 	return nil, false
 }
@@ -5925,6 +6144,13 @@ func (m *InvoiceMutation) AddField(name string, value ent.Value) error {
 		}
 		m.AddTotalAmountCents(v)
 		return nil
+	case invoice.FieldPdfRevision:
+		v, ok := value.(int)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddPdfRevision(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Invoice numeric field %s", name)
 }
@@ -5935,6 +6161,15 @@ func (m *InvoiceMutation) ClearedFields() []string {
 	var fields []string
 	if m.FieldCleared(invoice.FieldNumber) {
 		fields = append(fields, invoice.FieldNumber)
+	}
+	if m.FieldCleared(invoice.FieldPdfFilename) {
+		fields = append(fields, invoice.FieldPdfFilename)
+	}
+	if m.FieldCleared(invoice.FieldPdfGeneratedAt) {
+		fields = append(fields, invoice.FieldPdfGeneratedAt)
+	}
+	if m.FieldCleared(invoice.FieldPdfRevision) {
+		fields = append(fields, invoice.FieldPdfRevision)
 	}
 	if m.FieldCleared(invoice.FieldCreatedAt) {
 		fields = append(fields, invoice.FieldCreatedAt)
@@ -5958,6 +6193,15 @@ func (m *InvoiceMutation) ClearField(name string) error {
 	switch name {
 	case invoice.FieldNumber:
 		m.ClearNumber()
+		return nil
+	case invoice.FieldPdfFilename:
+		m.ClearPdfFilename()
+		return nil
+	case invoice.FieldPdfGeneratedAt:
+		m.ClearPdfGeneratedAt()
+		return nil
+	case invoice.FieldPdfRevision:
+		m.ClearPdfRevision()
 		return nil
 	case invoice.FieldCreatedAt:
 		m.ClearCreatedAt()
@@ -5996,6 +6240,15 @@ func (m *InvoiceMutation) ResetField(name string) error {
 		return nil
 	case invoice.FieldNumber:
 		m.ResetNumber()
+		return nil
+	case invoice.FieldPdfFilename:
+		m.ResetPdfFilename()
+		return nil
+	case invoice.FieldPdfGeneratedAt:
+		m.ResetPdfGeneratedAt()
+		return nil
+	case invoice.FieldPdfRevision:
+		m.ResetPdfRevision()
 		return nil
 	case invoice.FieldCreatedAt:
 		m.ResetCreatedAt()

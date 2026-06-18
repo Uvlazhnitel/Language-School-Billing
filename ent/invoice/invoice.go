@@ -31,6 +31,12 @@ const (
 	FieldStatus = "status"
 	// FieldNumber holds the string denoting the number field in the database.
 	FieldNumber = "number"
+	// FieldPdfFilename holds the string denoting the pdf_filename field in the database.
+	FieldPdfFilename = "pdf_filename"
+	// FieldPdfGeneratedAt holds the string denoting the pdf_generated_at field in the database.
+	FieldPdfGeneratedAt = "pdf_generated_at"
+	// FieldPdfRevision holds the string denoting the pdf_revision field in the database.
+	FieldPdfRevision = "pdf_revision"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -77,6 +83,9 @@ var Columns = []string{
 	FieldTotalAmountCents,
 	FieldStatus,
 	FieldNumber,
+	FieldPdfFilename,
+	FieldPdfGeneratedAt,
+	FieldPdfRevision,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -180,6 +189,21 @@ func ByStatus(opts ...sql.OrderTermOption) OrderOption {
 // ByNumber orders the results by the number field.
 func ByNumber(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldNumber, opts...).ToFunc()
+}
+
+// ByPdfFilename orders the results by the pdf_filename field.
+func ByPdfFilename(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPdfFilename, opts...).ToFunc()
+}
+
+// ByPdfGeneratedAt orders the results by the pdf_generated_at field.
+func ByPdfGeneratedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPdfGeneratedAt, opts...).ToFunc()
+}
+
+// ByPdfRevision orders the results by the pdf_revision field.
+func ByPdfRevision(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldPdfRevision, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

@@ -10,9 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"langschool/ent/invoice"
 	"langschool/ent/settings"
 	sharedapp "langschool/internal/app"
 	auditsvc "langschool/internal/app/audit"
+	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/app/recipient"
 	"langschool/internal/email"
 	appruntime "langschool/internal/runtime"
@@ -194,9 +196,15 @@ func (s *Service) invoiceEmailDraft(ctx context.Context, id int) (*InvoiceDTO, s
 }
 
 func (s *Service) resolveInvoiceAttachmentFilename(ctx context.Context, dto *InvoiceDTO) (string, error) {
-	for _, path := range s.invoicePDFPaths(dto) {
-		if _, err := os.Stat(path); err == nil {
-			return filepath.Base(path), nil
+	iv, err := s.rt.DB.Ent.Invoice.Query().
+		Where(invoice.IDEQ(dto.ID)).
+		WithStudent().
+		Only(ctx)
+	if err == nil {
+		_, _, subjectName := archiveInvoiceNames(iv)
+		info := s.invoicePDFInfo(iv, subjectName)
+		if info.Status == invsvc.PDFStatusReady {
+			return info.Filename, nil
 		}
 	}
 	fonts, err := appruntime.ResolveFontsDir(s.rt.Config, s.rt.Dirs)

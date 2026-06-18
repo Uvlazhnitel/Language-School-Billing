@@ -184,6 +184,73 @@ func (_u *InvoiceUpdate) ClearNumber() *InvoiceUpdate {
 	return _u
 }
 
+// SetPdfFilename sets the "pdf_filename" field.
+func (_u *InvoiceUpdate) SetPdfFilename(v string) *InvoiceUpdate {
+	_u.mutation.SetPdfFilename(v)
+	return _u
+}
+
+// SetNillablePdfFilename sets the "pdf_filename" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillablePdfFilename(v *string) *InvoiceUpdate {
+	if v != nil {
+		_u.SetPdfFilename(*v)
+	}
+	return _u
+}
+
+// ClearPdfFilename clears the value of the "pdf_filename" field.
+func (_u *InvoiceUpdate) ClearPdfFilename() *InvoiceUpdate {
+	_u.mutation.ClearPdfFilename()
+	return _u
+}
+
+// SetPdfGeneratedAt sets the "pdf_generated_at" field.
+func (_u *InvoiceUpdate) SetPdfGeneratedAt(v time.Time) *InvoiceUpdate {
+	_u.mutation.SetPdfGeneratedAt(v)
+	return _u
+}
+
+// SetNillablePdfGeneratedAt sets the "pdf_generated_at" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillablePdfGeneratedAt(v *time.Time) *InvoiceUpdate {
+	if v != nil {
+		_u.SetPdfGeneratedAt(*v)
+	}
+	return _u
+}
+
+// ClearPdfGeneratedAt clears the value of the "pdf_generated_at" field.
+func (_u *InvoiceUpdate) ClearPdfGeneratedAt() *InvoiceUpdate {
+	_u.mutation.ClearPdfGeneratedAt()
+	return _u
+}
+
+// SetPdfRevision sets the "pdf_revision" field.
+func (_u *InvoiceUpdate) SetPdfRevision(v int) *InvoiceUpdate {
+	_u.mutation.ResetPdfRevision()
+	_u.mutation.SetPdfRevision(v)
+	return _u
+}
+
+// SetNillablePdfRevision sets the "pdf_revision" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillablePdfRevision(v *int) *InvoiceUpdate {
+	if v != nil {
+		_u.SetPdfRevision(*v)
+	}
+	return _u
+}
+
+// AddPdfRevision adds value to the "pdf_revision" field.
+func (_u *InvoiceUpdate) AddPdfRevision(v int) *InvoiceUpdate {
+	_u.mutation.AddPdfRevision(v)
+	return _u
+}
+
+// ClearPdfRevision clears the value of the "pdf_revision" field.
+func (_u *InvoiceUpdate) ClearPdfRevision() *InvoiceUpdate {
+	_u.mutation.ClearPdfRevision()
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *InvoiceUpdate) SetCreatedAt(v time.Time) *InvoiceUpdate {
 	_u.mutation.SetCreatedAt(v)
@@ -403,6 +470,27 @@ func (_u *InvoiceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.NumberCleared() {
 		_spec.ClearField(invoice.FieldNumber, field.TypeString)
+	}
+	if value, ok := _u.mutation.PdfFilename(); ok {
+		_spec.SetField(invoice.FieldPdfFilename, field.TypeString, value)
+	}
+	if _u.mutation.PdfFilenameCleared() {
+		_spec.ClearField(invoice.FieldPdfFilename, field.TypeString)
+	}
+	if value, ok := _u.mutation.PdfGeneratedAt(); ok {
+		_spec.SetField(invoice.FieldPdfGeneratedAt, field.TypeTime, value)
+	}
+	if _u.mutation.PdfGeneratedAtCleared() {
+		_spec.ClearField(invoice.FieldPdfGeneratedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.PdfRevision(); ok {
+		_spec.SetField(invoice.FieldPdfRevision, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedPdfRevision(); ok {
+		_spec.AddField(invoice.FieldPdfRevision, field.TypeInt, value)
+	}
+	if _u.mutation.PdfRevisionCleared() {
+		_spec.ClearField(invoice.FieldPdfRevision, field.TypeInt)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)
@@ -708,6 +796,73 @@ func (_u *InvoiceUpdateOne) ClearNumber() *InvoiceUpdateOne {
 	return _u
 }
 
+// SetPdfFilename sets the "pdf_filename" field.
+func (_u *InvoiceUpdateOne) SetPdfFilename(v string) *InvoiceUpdateOne {
+	_u.mutation.SetPdfFilename(v)
+	return _u
+}
+
+// SetNillablePdfFilename sets the "pdf_filename" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillablePdfFilename(v *string) *InvoiceUpdateOne {
+	if v != nil {
+		_u.SetPdfFilename(*v)
+	}
+	return _u
+}
+
+// ClearPdfFilename clears the value of the "pdf_filename" field.
+func (_u *InvoiceUpdateOne) ClearPdfFilename() *InvoiceUpdateOne {
+	_u.mutation.ClearPdfFilename()
+	return _u
+}
+
+// SetPdfGeneratedAt sets the "pdf_generated_at" field.
+func (_u *InvoiceUpdateOne) SetPdfGeneratedAt(v time.Time) *InvoiceUpdateOne {
+	_u.mutation.SetPdfGeneratedAt(v)
+	return _u
+}
+
+// SetNillablePdfGeneratedAt sets the "pdf_generated_at" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillablePdfGeneratedAt(v *time.Time) *InvoiceUpdateOne {
+	if v != nil {
+		_u.SetPdfGeneratedAt(*v)
+	}
+	return _u
+}
+
+// ClearPdfGeneratedAt clears the value of the "pdf_generated_at" field.
+func (_u *InvoiceUpdateOne) ClearPdfGeneratedAt() *InvoiceUpdateOne {
+	_u.mutation.ClearPdfGeneratedAt()
+	return _u
+}
+
+// SetPdfRevision sets the "pdf_revision" field.
+func (_u *InvoiceUpdateOne) SetPdfRevision(v int) *InvoiceUpdateOne {
+	_u.mutation.ResetPdfRevision()
+	_u.mutation.SetPdfRevision(v)
+	return _u
+}
+
+// SetNillablePdfRevision sets the "pdf_revision" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillablePdfRevision(v *int) *InvoiceUpdateOne {
+	if v != nil {
+		_u.SetPdfRevision(*v)
+	}
+	return _u
+}
+
+// AddPdfRevision adds value to the "pdf_revision" field.
+func (_u *InvoiceUpdateOne) AddPdfRevision(v int) *InvoiceUpdateOne {
+	_u.mutation.AddPdfRevision(v)
+	return _u
+}
+
+// ClearPdfRevision clears the value of the "pdf_revision" field.
+func (_u *InvoiceUpdateOne) ClearPdfRevision() *InvoiceUpdateOne {
+	_u.mutation.ClearPdfRevision()
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *InvoiceUpdateOne) SetCreatedAt(v time.Time) *InvoiceUpdateOne {
 	_u.mutation.SetCreatedAt(v)
@@ -957,6 +1112,27 @@ func (_u *InvoiceUpdateOne) sqlSave(ctx context.Context) (_node *Invoice, err er
 	}
 	if _u.mutation.NumberCleared() {
 		_spec.ClearField(invoice.FieldNumber, field.TypeString)
+	}
+	if value, ok := _u.mutation.PdfFilename(); ok {
+		_spec.SetField(invoice.FieldPdfFilename, field.TypeString, value)
+	}
+	if _u.mutation.PdfFilenameCleared() {
+		_spec.ClearField(invoice.FieldPdfFilename, field.TypeString)
+	}
+	if value, ok := _u.mutation.PdfGeneratedAt(); ok {
+		_spec.SetField(invoice.FieldPdfGeneratedAt, field.TypeTime, value)
+	}
+	if _u.mutation.PdfGeneratedAtCleared() {
+		_spec.ClearField(invoice.FieldPdfGeneratedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.PdfRevision(); ok {
+		_spec.SetField(invoice.FieldPdfRevision, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedPdfRevision(); ok {
+		_spec.AddField(invoice.FieldPdfRevision, field.TypeInt, value)
+	}
+	if _u.mutation.PdfRevisionCleared() {
+		_spec.ClearField(invoice.FieldPdfRevision, field.TypeInt)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)

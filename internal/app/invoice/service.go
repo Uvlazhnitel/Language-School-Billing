@@ -310,6 +310,7 @@ type rebuildInvoiceResult struct {
 }
 
 type invoicePDFRef struct {
+	invoiceID int
 	number    string
 	studentID int
 	year      int
@@ -419,7 +420,11 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 			if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx); err != nil {
 				return res, err
 			}
-			if _, err := existing.Update().SetTotalAmountCents(0).Save(ctx); err != nil {
+			update := existing.Update().SetTotalAmountCents(0)
+			if existing.Status != StatusDraft {
+				update = update.ClearPdfRevision().ClearPdfGeneratedAt()
+			}
+			if _, err := update.Save(ctx); err != nil {
 				return res, err
 			}
 			if existing.Status != StatusDraft {
@@ -466,7 +471,11 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 				return res, saveErr
 			}
 		}
-		if _, err := existing.Update().SetTotalAmountCents(totalCents).Save(ctx); err != nil {
+		update := existing.Update().SetTotalAmountCents(totalCents)
+		if existing.Status != StatusDraft {
+			update = update.ClearPdfRevision().ClearPdfGeneratedAt()
+		}
+		if _, err := update.Save(ctx); err != nil {
 			return res, err
 		}
 		if existing.Status != StatusDraft {
@@ -491,6 +500,7 @@ func (s *Service) invoicePDFRef(iv *ent.Invoice) (*invoicePDFRef, error) {
 		return nil, nil
 	}
 	return &invoicePDFRef{
+		invoiceID: iv.ID,
 		number:    *iv.Number,
 		studentID: iv.StudentID,
 		year:      iv.PeriodYear,
@@ -502,14 +512,15 @@ func (s *Service) invalidateInvoicePDFs(ctx context.Context, refs []invoicePDFRe
 	if strings.TrimSpace(s.invoicesDir) == "" || len(refs) == 0 {
 		return nil
 	}
+	locator := NewPDFLocator(s.invoicesDir)
 	for _, ref := range refs {
 		recipientInfo, err := recipient.ResolveInvoiceRecipient(ctx, s.db, ref.studentID)
 		if err != nil {
 			return err
 		}
 		paths := []string{
-			PDFPathByNumberAndName(s.invoicesDir, ref.year, ref.month, ref.number, recipientInfo.InvoiceSubjectName()),
-			PDFPathByNumber(s.invoicesDir, ref.year, ref.month, ref.number),
+			locator.PathByNumberAndName(ref.year, ref.month, ref.number, recipientInfo.InvoiceSubjectName()),
+			locator.PathByNumber(ref.year, ref.month, ref.number),
 		}
 		for _, pdfPath := range paths {
 			if err := os.Remove(pdfPath); err != nil && !os.IsNotExist(err) {
@@ -745,6 +756,8 @@ func (s *Service) ReopenDraftWithVersion(ctx context.Context, id, version int, o
 		SetVersion(version + 1).
 		SetStatus(StatusDraft).
 		ClearNumber().
+		ClearPdfRevision().
+		ClearPdfGeneratedAt().
 		Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return apperrors.StaleRevision()
@@ -757,9 +770,10 @@ func (s *Service) ReopenDraftWithVersion(ctx context.Context, id, version int, o
 	committed = true
 
 	if oldNumber != "" && outBaseDir != "" {
+		locator := NewPDFLocator(outBaseDir)
 		paths := []string{
-			PDFPathByNumberAndName(outBaseDir, iv.PeriodYear, iv.PeriodMonth, oldNumber, recipientInfo.InvoiceSubjectName()),
-			PDFPathByNumber(outBaseDir, iv.PeriodYear, iv.PeriodMonth, oldNumber),
+			locator.PathByNumberAndName(iv.PeriodYear, iv.PeriodMonth, oldNumber, recipientInfo.InvoiceSubjectName()),
+			locator.PathByNumber(iv.PeriodYear, iv.PeriodMonth, oldNumber),
 		}
 		for _, pdfPath := range paths {
 			if err := os.Remove(pdfPath); err != nil && !os.IsNotExist(err) {
@@ -920,6 +934,9 @@ func (s *Service) Issue(ctx context.Context, id int, outBaseDir, fontsDir string
 		fmt.Printf("PDF: failed for invoice %d: %v\n", id, err)
 		return "", "", err
 	}
+	if err := s.persistPDFMetadata(ctx, id, p); err != nil {
+		return "", "", err
+	}
 	fmt.Printf("PDF: done %s\n", p)
 	return number, p, nil
 }
@@ -951,6 +968,9 @@ func (s *Service) IssueAll(ctx context.Context, y, m int, outBaseDir, fontsDir s
 		if err != nil {
 			return count, paths, err
 		}
+		if err := s.persistPDFMetadata(ctx, iv.ID, p); err != nil {
+			return count, paths, err
+		}
 		paths = append(paths, p)
 		count++
 	}
@@ -960,18 +980,13 @@ func (s *Service) IssueAll(ctx context.Context, y, m int, outBaseDir, fontsDir s
 // PDFPathByNumber generates the file path for an invoice PDF based on its number.
 // The path structure is: outBaseDir/YYYY/MM/number.pdf
 func PDFPathByNumber(outBaseDir string, y, m int, number string) string {
-	return filepath.Join(outBaseDir, fmt.Sprintf("%04d", y), fmt.Sprintf("%02d", m), number+".pdf")
+	return NewPDFLocator(outBaseDir).PathByNumber(y, m, number)
 }
 
 // PDFPathByNumberAndName generates the file path for an invoice PDF based on
 // its number and student-facing subject name.
 func PDFPathByNumberAndName(outBaseDir string, y, m int, number, subjectName string) string {
-	return filepath.Join(
-		outBaseDir,
-		fmt.Sprintf("%04d", y),
-		fmt.Sprintf("%02d", m),
-		fmt.Sprintf("%s.pdf", invoiceFileStem(number, subjectName)),
-	)
+	return NewPDFLocator(outBaseDir).PathByNumberAndName(y, m, number, subjectName)
 }
 
 func invoiceFileStem(number, subjectName string) string {
@@ -996,6 +1011,24 @@ func sanitizeInvoiceFileName(name string) string {
 		"|", "-",
 	)
 	return replacer.Replace(name)
+}
+
+func (s *Service) persistPDFMetadata(ctx context.Context, id int, pdfPath string) error {
+	iv, err := s.db.Invoice.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	filename := strings.TrimSpace(filepath.Base(pdfPath))
+	if filename == "" || filename == "." {
+		return fmt.Errorf("invalid generated PDF path: %q", pdfPath)
+	}
+	generatedAt := currentTime().UTC()
+	_, err = s.db.Invoice.UpdateOneID(id).
+		SetPdfFilename(filename).
+		SetPdfGeneratedAt(generatedAt).
+		SetPdfRevision(iv.Version).
+		Save(ctx)
+	return err
 }
 
 // List returns invoices for a given period with optional status filter.

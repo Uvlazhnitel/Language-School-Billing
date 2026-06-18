@@ -5,9 +5,9 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
+	"langschool/ent/invoice"
 	"langschool/ent/settings"
 	"langschool/internal/app"
 	"langschool/internal/app/attendance"
@@ -310,19 +310,24 @@ func (a *App) InvoiceEnsurePDF(id int) (string, error) {
 	if a.svc != nil {
 		return a.svc.InvoiceEnsurePDF(a.ctx, id)
 	}
-	dto, err := a.inv.Get(a.ctx, id)
+	iv, err := a.db.Ent.Invoice.Query().
+		Where(invoice.IDEQ(id)).
+		WithStudent().
+		Only(a.ctx)
 	if err != nil {
 		return "", err
 	}
-	if dto.Number == nil || *dto.Number == "" {
+	if iv.Number == nil || *iv.Number == "" {
 		return "", fmt.Errorf("счёт ещё не выставлен")
 	}
-	paths := a.invoicePDFPaths(dto)
-	for _, path := range paths {
-		log.Printf("EnsurePDF: invoice=%d number=%s want=%s", id, *dto.Number, path)
-		if _, err := os.Stat(path); err == nil {
-			return path, nil
-		}
+	subjectName := ""
+	if iv.Edges.Student != nil {
+		subjectName = iv.Edges.Student.FullName
+	}
+	info := invsvc.NewPDFLocator(a.dirs.Invoices).Evaluate(iv, subjectName)
+	if info.Status == invsvc.PDFStatusReady {
+		log.Printf("EnsurePDF: invoice=%d number=%s existing=%s", id, *iv.Number, info.Path)
+		return info.Path, nil
 	}
 	fonts, err := a.resolveFontsDir()
 	if err != nil {
@@ -342,34 +347,19 @@ func (a *App) InvoiceHasPDF(id int) (bool, error) {
 	if a.svc != nil {
 		return a.svc.InvoiceHasPDF(a.ctx, id)
 	}
-	dto, err := a.inv.Get(a.ctx, id)
+	iv, err := a.db.Ent.Invoice.Query().
+		Where(invoice.IDEQ(id)).
+		WithStudent().
+		Only(a.ctx)
 	if err != nil {
 		return false, err
 	}
-	if dto.Number == nil || *dto.Number == "" {
-		return false, nil
+	subjectName := ""
+	if iv.Edges.Student != nil {
+		subjectName = iv.Edges.Student.FullName
 	}
-
-	for _, path := range a.invoicePDFPaths(dto) {
-		if _, err := os.Stat(path); err == nil {
-			return true, nil
-		} else if !os.IsNotExist(err) {
-			return false, err
-		}
-	}
-
-	return false, nil
-}
-
-func (a *App) invoicePDFPaths(dto *invsvc.InvoiceDTO) []string {
-	subjectName := dto.StudentName
-	if dto.IsMinor && strings.TrimSpace(dto.ChildName) != "" {
-		subjectName = dto.ChildName
-	}
-	return []string{
-		invsvc.PDFPathByNumberAndName(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number, subjectName),
-		invsvc.PDFPathByNumber(a.dirs.Invoices, dto.Year, dto.Month, *dto.Number),
-	}
+	info := invsvc.NewPDFLocator(a.dirs.Invoices).Evaluate(iv, subjectName)
+	return info.Status == invsvc.PDFStatusReady, nil
 }
 
 // SettingsSetLocale updates the application locale setting.

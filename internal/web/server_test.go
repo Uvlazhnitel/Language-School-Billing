@@ -162,13 +162,18 @@ func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 	}
 
 	status := getJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/pdf-status")
-	if !status["ready"] {
-		t.Fatal("expected pdf-status ready=true")
+	if status["ready"] {
+		t.Fatal("expected pdf-status ready=false before metadata backfill")
 	}
 
 	pdfMeta := postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/pdf", map[string]any{})
 	if pdfMeta["downloadUrl"] == "" {
 		t.Fatal("missing pdf downloadUrl")
+	}
+
+	status = getJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/pdf-status")
+	if !status["ready"] {
+		t.Fatal("expected pdf-status ready=true after ensure")
 	}
 
 	res, err := env.Client.Get(env.Server.URL + "/api/invoices/" + strconv.Itoa(invoiceID) + "/pdf")
@@ -343,14 +348,14 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 	missingInvoice := createIssuedInvoice(olderYear, olderMonth, false)
 	outdatedInvoice := createIssuedInvoice(olderYear, olderMonth-1, true)
 	errorInvoice := createIssuedInvoice(olderYear, olderMonth-2, true)
+	legacyInvoice := createIssuedInvoice(olderYear, olderMonth-3, false)
 
-	outdatedPath := invsvc.PDFPathByNumberAndName(env.Runtime.Dirs.Invoices, outdatedInvoice.Year, outdatedInvoice.Month, outdatedInvoice.Number, student.FullName)
-	outdatedModTime := time.Now().Add(-2 * time.Hour).UTC()
-	if err := os.Chtimes(outdatedPath, outdatedModTime, outdatedModTime); err != nil {
+	outdatedRow, err := env.Runtime.DB.Ent.Invoice.Get(context.Background(), outdatedInvoice.ID)
+	if err != nil {
 		t.Fatal(err)
 	}
 	if _, err := env.Runtime.DB.Ent.Invoice.UpdateOneID(outdatedInvoice.ID).
-		SetUpdatedAt(outdatedModTime.Add(time.Hour)).
+		SetPdfRevision(outdatedRow.Version - 1).
 		Save(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -372,6 +377,14 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	legacyPath := invsvc.PDFPathByNumber(env.Runtime.Dirs.Invoices, legacyInvoice.Year, legacyInvoice.Month, legacyInvoice.Number)
+	if err := os.MkdirAll(filepath.Dir(legacyPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(legacyPath, []byte("%PDF-1.4\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
 	archive := getJSON[backend.InvoiceArchiveResult](t, env.Client, env.Server.URL, "/api/invoice-archive")
 	if len(archive.Years) != 2 {
 		t.Fatalf("archive years = %d, want 2", len(archive.Years))
@@ -388,8 +401,8 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 	if !archive.Years[0].Months[0].ExpandedByDefault {
 		t.Fatal("expected current month expanded by default")
 	}
-	if archive.Years[0].Count != 1 || archive.Years[1].Count != 3 {
-		t.Fatalf("archive year counts = %+v, want 1 current and 3 older", archive.Years)
+	if archive.Years[0].Count != 1 || archive.Years[1].Count != 4 {
+		t.Fatalf("archive year counts = %+v, want 1 current and 4 older", archive.Years)
 	}
 
 	currentItem := archive.Years[0].Months[0].Invoices[0]
@@ -447,6 +460,17 @@ func TestInvoiceArchiveListAndFileAccess(t *testing.T) {
 	}
 	if errorItem.OpenURL != "" || errorItem.DownloadURL != "" || errorItem.PDFUpdatedAt != "" {
 		t.Fatalf("error item should not expose PDF links: %+v", errorItem)
+	}
+
+	legacyItem := olderItems[legacyInvoice.ID]
+	if legacyItem.InvoiceID != legacyInvoice.ID {
+		t.Fatalf("legacy archive invoice id = %d, want %d", legacyItem.InvoiceID, legacyInvoice.ID)
+	}
+	if legacyItem.PDFStatus != "outdated" {
+		t.Fatalf("legacy pdf status = %q, want outdated", legacyItem.PDFStatus)
+	}
+	if legacyItem.OpenURL != "" || legacyItem.DownloadURL != "" || legacyItem.PDFUpdatedAt != "" {
+		t.Fatalf("legacy item should not expose canonical PDF metadata: %+v", legacyItem)
 	}
 
 	openResp, err := env.Client.Get(env.Server.URL + currentItem.OpenURL)

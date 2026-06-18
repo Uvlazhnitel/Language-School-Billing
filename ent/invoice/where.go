@@ -90,6 +90,21 @@ func Number(v string) predicate.Invoice {
 	return predicate.Invoice(sql.FieldEQ(FieldNumber, v))
 }
 
+// PdfFilename applies equality check predicate on the "pdf_filename" field. It's identical to PdfFilenameEQ.
+func PdfFilename(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldPdfFilename, v))
+}
+
+// PdfGeneratedAt applies equality check predicate on the "pdf_generated_at" field. It's identical to PdfGeneratedAtEQ.
+func PdfGeneratedAt(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldPdfGeneratedAt, v))
+}
+
+// PdfRevision applies equality check predicate on the "pdf_revision" field. It's identical to PdfRevisionEQ.
+func PdfRevision(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldPdfRevision, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Invoice {
 	return predicate.Invoice(sql.FieldEQ(FieldCreatedAt, v))
@@ -413,6 +428,181 @@ func NumberEqualFold(v string) predicate.Invoice {
 // NumberContainsFold applies the ContainsFold predicate on the "number" field.
 func NumberContainsFold(v string) predicate.Invoice {
 	return predicate.Invoice(sql.FieldContainsFold(FieldNumber, v))
+}
+
+// PdfFilenameEQ applies the EQ predicate on the "pdf_filename" field.
+func PdfFilenameEQ(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldPdfFilename, v))
+}
+
+// PdfFilenameNEQ applies the NEQ predicate on the "pdf_filename" field.
+func PdfFilenameNEQ(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNEQ(FieldPdfFilename, v))
+}
+
+// PdfFilenameIn applies the In predicate on the "pdf_filename" field.
+func PdfFilenameIn(vs ...string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldIn(FieldPdfFilename, vs...))
+}
+
+// PdfFilenameNotIn applies the NotIn predicate on the "pdf_filename" field.
+func PdfFilenameNotIn(vs ...string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotIn(FieldPdfFilename, vs...))
+}
+
+// PdfFilenameGT applies the GT predicate on the "pdf_filename" field.
+func PdfFilenameGT(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGT(FieldPdfFilename, v))
+}
+
+// PdfFilenameGTE applies the GTE predicate on the "pdf_filename" field.
+func PdfFilenameGTE(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGTE(FieldPdfFilename, v))
+}
+
+// PdfFilenameLT applies the LT predicate on the "pdf_filename" field.
+func PdfFilenameLT(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLT(FieldPdfFilename, v))
+}
+
+// PdfFilenameLTE applies the LTE predicate on the "pdf_filename" field.
+func PdfFilenameLTE(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLTE(FieldPdfFilename, v))
+}
+
+// PdfFilenameContains applies the Contains predicate on the "pdf_filename" field.
+func PdfFilenameContains(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldContains(FieldPdfFilename, v))
+}
+
+// PdfFilenameHasPrefix applies the HasPrefix predicate on the "pdf_filename" field.
+func PdfFilenameHasPrefix(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldHasPrefix(FieldPdfFilename, v))
+}
+
+// PdfFilenameHasSuffix applies the HasSuffix predicate on the "pdf_filename" field.
+func PdfFilenameHasSuffix(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldHasSuffix(FieldPdfFilename, v))
+}
+
+// PdfFilenameIsNil applies the IsNil predicate on the "pdf_filename" field.
+func PdfFilenameIsNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldIsNull(FieldPdfFilename))
+}
+
+// PdfFilenameNotNil applies the NotNil predicate on the "pdf_filename" field.
+func PdfFilenameNotNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotNull(FieldPdfFilename))
+}
+
+// PdfFilenameEqualFold applies the EqualFold predicate on the "pdf_filename" field.
+func PdfFilenameEqualFold(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEqualFold(FieldPdfFilename, v))
+}
+
+// PdfFilenameContainsFold applies the ContainsFold predicate on the "pdf_filename" field.
+func PdfFilenameContainsFold(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldContainsFold(FieldPdfFilename, v))
+}
+
+// PdfGeneratedAtEQ applies the EQ predicate on the "pdf_generated_at" field.
+func PdfGeneratedAtEQ(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldPdfGeneratedAt, v))
+}
+
+// PdfGeneratedAtNEQ applies the NEQ predicate on the "pdf_generated_at" field.
+func PdfGeneratedAtNEQ(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNEQ(FieldPdfGeneratedAt, v))
+}
+
+// PdfGeneratedAtIn applies the In predicate on the "pdf_generated_at" field.
+func PdfGeneratedAtIn(vs ...time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldIn(FieldPdfGeneratedAt, vs...))
+}
+
+// PdfGeneratedAtNotIn applies the NotIn predicate on the "pdf_generated_at" field.
+func PdfGeneratedAtNotIn(vs ...time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotIn(FieldPdfGeneratedAt, vs...))
+}
+
+// PdfGeneratedAtGT applies the GT predicate on the "pdf_generated_at" field.
+func PdfGeneratedAtGT(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGT(FieldPdfGeneratedAt, v))
+}
+
+// PdfGeneratedAtGTE applies the GTE predicate on the "pdf_generated_at" field.
+func PdfGeneratedAtGTE(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGTE(FieldPdfGeneratedAt, v))
+}
+
+// PdfGeneratedAtLT applies the LT predicate on the "pdf_generated_at" field.
+func PdfGeneratedAtLT(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLT(FieldPdfGeneratedAt, v))
+}
+
+// PdfGeneratedAtLTE applies the LTE predicate on the "pdf_generated_at" field.
+func PdfGeneratedAtLTE(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLTE(FieldPdfGeneratedAt, v))
+}
+
+// PdfGeneratedAtIsNil applies the IsNil predicate on the "pdf_generated_at" field.
+func PdfGeneratedAtIsNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldIsNull(FieldPdfGeneratedAt))
+}
+
+// PdfGeneratedAtNotNil applies the NotNil predicate on the "pdf_generated_at" field.
+func PdfGeneratedAtNotNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotNull(FieldPdfGeneratedAt))
+}
+
+// PdfRevisionEQ applies the EQ predicate on the "pdf_revision" field.
+func PdfRevisionEQ(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldPdfRevision, v))
+}
+
+// PdfRevisionNEQ applies the NEQ predicate on the "pdf_revision" field.
+func PdfRevisionNEQ(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNEQ(FieldPdfRevision, v))
+}
+
+// PdfRevisionIn applies the In predicate on the "pdf_revision" field.
+func PdfRevisionIn(vs ...int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldIn(FieldPdfRevision, vs...))
+}
+
+// PdfRevisionNotIn applies the NotIn predicate on the "pdf_revision" field.
+func PdfRevisionNotIn(vs ...int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotIn(FieldPdfRevision, vs...))
+}
+
+// PdfRevisionGT applies the GT predicate on the "pdf_revision" field.
+func PdfRevisionGT(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGT(FieldPdfRevision, v))
+}
+
+// PdfRevisionGTE applies the GTE predicate on the "pdf_revision" field.
+func PdfRevisionGTE(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGTE(FieldPdfRevision, v))
+}
+
+// PdfRevisionLT applies the LT predicate on the "pdf_revision" field.
+func PdfRevisionLT(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLT(FieldPdfRevision, v))
+}
+
+// PdfRevisionLTE applies the LTE predicate on the "pdf_revision" field.
+func PdfRevisionLTE(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLTE(FieldPdfRevision, v))
+}
+
+// PdfRevisionIsNil applies the IsNil predicate on the "pdf_revision" field.
+func PdfRevisionIsNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldIsNull(FieldPdfRevision))
+}
+
+// PdfRevisionNotNil applies the NotNil predicate on the "pdf_revision" field.
+func PdfRevisionNotNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotNull(FieldPdfRevision))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

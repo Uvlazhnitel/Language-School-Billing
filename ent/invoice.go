@@ -34,6 +34,12 @@ type Invoice struct {
 	Status invoice.Status `json:"status,omitempty"`
 	// Number holds the value of the "number" field.
 	Number *string `json:"number,omitempty"`
+	// PdfFilename holds the value of the "pdf_filename" field.
+	PdfFilename *string `json:"pdf_filename,omitempty"`
+	// PdfGeneratedAt holds the value of the "pdf_generated_at" field.
+	PdfGeneratedAt *time.Time `json:"pdf_generated_at,omitempty"`
+	// PdfRevision holds the value of the "pdf_revision" field.
+	PdfRevision *int `json:"pdf_revision,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -93,11 +99,11 @@ func (*Invoice) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case invoice.FieldLegacyTotalAmount:
 			values[i] = new(sql.NullFloat64)
-		case invoice.FieldID, invoice.FieldVersion, invoice.FieldStudentID, invoice.FieldPeriodYear, invoice.FieldPeriodMonth, invoice.FieldTotalAmountCents:
+		case invoice.FieldID, invoice.FieldVersion, invoice.FieldStudentID, invoice.FieldPeriodYear, invoice.FieldPeriodMonth, invoice.FieldTotalAmountCents, invoice.FieldPdfRevision:
 			values[i] = new(sql.NullInt64)
-		case invoice.FieldStatus, invoice.FieldNumber:
+		case invoice.FieldStatus, invoice.FieldNumber, invoice.FieldPdfFilename:
 			values[i] = new(sql.NullString)
-		case invoice.FieldCreatedAt, invoice.FieldUpdatedAt:
+		case invoice.FieldPdfGeneratedAt, invoice.FieldCreatedAt, invoice.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -168,6 +174,27 @@ func (_m *Invoice) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.Number = new(string)
 				*_m.Number = value.String
+			}
+		case invoice.FieldPdfFilename:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field pdf_filename", values[i])
+			} else if value.Valid {
+				_m.PdfFilename = new(string)
+				*_m.PdfFilename = value.String
+			}
+		case invoice.FieldPdfGeneratedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field pdf_generated_at", values[i])
+			} else if value.Valid {
+				_m.PdfGeneratedAt = new(time.Time)
+				*_m.PdfGeneratedAt = value.Time
+			}
+		case invoice.FieldPdfRevision:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field pdf_revision", values[i])
+			} else if value.Valid {
+				_m.PdfRevision = new(int)
+				*_m.PdfRevision = int(value.Int64)
 			}
 		case invoice.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -258,6 +285,21 @@ func (_m *Invoice) String() string {
 	if v := _m.Number; v != nil {
 		builder.WriteString("number=")
 		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.PdfFilename; v != nil {
+		builder.WriteString("pdf_filename=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.PdfGeneratedAt; v != nil {
+		builder.WriteString("pdf_generated_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.PdfRevision; v != nil {
+		builder.WriteString("pdf_revision=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")
 	if v := _m.CreatedAt; v != nil {

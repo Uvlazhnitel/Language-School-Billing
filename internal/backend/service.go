@@ -43,10 +43,10 @@ const (
 	BillingModeSubscription = sharedapp.BillingModeSubscription
 	BillingModePerLesson    = sharedapp.BillingModePerLesson
 
-	invoiceArchivePDFStatusReady    = "ready"
-	invoiceArchivePDFStatusMissing  = "missing"
-	invoiceArchivePDFStatusOutdated = "outdated"
-	invoiceArchivePDFStatusError    = "error"
+	invoiceArchivePDFStatusReady    = invsvc.PDFStatusReady
+	invoiceArchivePDFStatusMissing  = invsvc.PDFStatusMissing
+	invoiceArchivePDFStatusOutdated = invsvc.PDFStatusOutdated
+	invoiceArchivePDFStatusError    = invsvc.PDFStatusError
 )
 
 type StudentDTO struct {
@@ -666,21 +666,16 @@ func (s *Service) InvoiceEnsurePDF(ctx context.Context, id int) (string, error) 
 }
 
 func (s *Service) InvoiceHasPDF(ctx context.Context, id int) (bool, error) {
-	dto, err := s.rt.Invoice.Get(ctx, id)
+	iv, err := s.rt.DB.Ent.Invoice.Query().
+		Where(invoice.IDEQ(id)).
+		WithStudent().
+		Only(ctx)
 	if err != nil {
 		return false, err
 	}
-	if dto.Number == nil || *dto.Number == "" {
-		return false, nil
-	}
-	for _, path := range s.invoicePDFPaths(dto) {
-		if _, err := os.Stat(path); err == nil {
-			return true, nil
-		} else if !os.IsNotExist(err) {
-			return false, err
-		}
-	}
-	return false, nil
+	_, _, subjectName := archiveInvoiceNames(iv)
+	info := s.invoicePDFInfo(iv, subjectName)
+	return info.Status == invsvc.PDFStatusReady, nil
 }
 
 func (s *Service) InvoiceArchiveList(ctx context.Context) (*InvoiceArchiveResult, error) {
@@ -1681,17 +1676,6 @@ func (s *Service) resolveTeacher(ctx context.Context, teacherID *int) (*ent.Teac
 	return s.rt.DB.Ent.Teacher.Get(ctx, *teacherID)
 }
 
-func (s *Service) invoicePDFPaths(dto *invsvc.InvoiceDTO) []string {
-	subjectName := dto.StudentName
-	if dto.IsMinor && strings.TrimSpace(dto.ChildName) != "" {
-		subjectName = dto.ChildName
-	}
-	return []string{
-		invsvc.PDFPathByNumberAndName(s.rt.Dirs.Invoices, dto.Year, dto.Month, *dto.Number, subjectName),
-		invsvc.PDFPathByNumber(s.rt.Dirs.Invoices, dto.Year, dto.Month, *dto.Number),
-	}
-}
-
 func (s *Service) invoiceArchiveInvoice(iv *ent.Invoice) InvoiceArchiveInvoiceDTO {
 	studentName, recipientName, subjectName := archiveInvoiceNames(iv)
 	item := InvoiceArchiveInvoiceDTO{
@@ -1706,14 +1690,14 @@ func (s *Service) invoiceArchiveInvoice(iv *ent.Invoice) InvoiceArchiveInvoiceDT
 		PDFStatus:     invoiceArchivePDFStatusMissing,
 	}
 
-	status, filename, modTime := s.invoiceArchivePDFInfo(iv, subjectName)
-	item.PDFStatus = status
-	if status == invoiceArchivePDFStatusReady || status == invoiceArchivePDFStatusOutdated {
-		item.PDFUpdatedAt = modTime.UTC().Format(time.RFC3339)
+	info := s.invoicePDFInfo(iv, subjectName)
+	item.PDFStatus = info.Status
+	if info.GeneratedAt != nil && (info.Status == invoiceArchivePDFStatusReady || info.Status == invoiceArchivePDFStatusOutdated) {
+		item.PDFUpdatedAt = info.GeneratedAt.UTC().Format(time.RFC3339)
 	}
-	if status == invoiceArchivePDFStatusReady {
-		item.OpenURL = invoiceArchiveFileURL(iv.PeriodYear, iv.PeriodMonth, filename, "open")
-		item.DownloadURL = invoiceArchiveFileURL(iv.PeriodYear, iv.PeriodMonth, filename, "download")
+	if info.Status == invoiceArchivePDFStatusReady {
+		item.OpenURL = invoiceArchiveFileURL(iv.PeriodYear, iv.PeriodMonth, info.Filename, "open")
+		item.DownloadURL = invoiceArchiveFileURL(iv.PeriodYear, iv.PeriodMonth, info.Filename, "download")
 	}
 
 	return item
@@ -1745,34 +1729,8 @@ func archiveInvoiceNames(iv *ent.Invoice) (studentName, recipientName, subjectNa
 	return studentName, recipientName, subjectName
 }
 
-func (s *Service) archiveInvoicePDFPaths(iv *ent.Invoice, subjectName string) []string {
-	if iv == nil || iv.Number == nil || strings.TrimSpace(*iv.Number) == "" {
-		return nil
-	}
-	return []string{
-		invsvc.PDFPathByNumberAndName(s.rt.Dirs.Invoices, iv.PeriodYear, iv.PeriodMonth, *iv.Number, subjectName),
-		invsvc.PDFPathByNumber(s.rt.Dirs.Invoices, iv.PeriodYear, iv.PeriodMonth, *iv.Number),
-	}
-}
-
-func (s *Service) invoiceArchivePDFInfo(iv *ent.Invoice, subjectName string) (string, string, time.Time) {
-	if iv == nil || iv.Number == nil || strings.TrimSpace(*iv.Number) == "" {
-		return invoiceArchivePDFStatusMissing, "", time.Time{}
-	}
-	for _, path := range s.archiveInvoicePDFPaths(iv, subjectName) {
-		info, err := os.Stat(path)
-		if err == nil {
-			modTime := info.ModTime()
-			if iv.UpdatedAt != nil && !iv.UpdatedAt.IsZero() && modTime.Before(*iv.UpdatedAt) {
-				return invoiceArchivePDFStatusOutdated, filepath.Base(path), modTime
-			}
-			return invoiceArchivePDFStatusReady, filepath.Base(path), modTime
-		}
-		if !os.IsNotExist(err) {
-			return invoiceArchivePDFStatusError, "", time.Time{}
-		}
-	}
-	return invoiceArchivePDFStatusMissing, "", time.Time{}
+func (s *Service) invoicePDFInfo(iv *ent.Invoice, subjectName string) invsvc.PDFInfo {
+	return invsvc.NewPDFLocator(s.rt.Dirs.Invoices).Evaluate(iv, subjectName)
 }
 
 func derefString(value *string) string {
