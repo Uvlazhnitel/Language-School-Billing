@@ -1632,7 +1632,7 @@ export default function App() {
 
   useEffect(() => {
     if (tab === "invoice") {
-      void loadInvoices();
+      void loadInvoices({ syncDrafts: false });
     }
   }, [tab, loadInvoices]);
 
@@ -2854,7 +2854,7 @@ export default function App() {
                 renderInvoiceActionsMenu={(invoice) => renderInvoiceActionsMenu(invoice)}
                 onStatusChange={setInvStatus}
                 onQueryChange={setInvQ}
-                onRefresh={() => void loadInvoices()}
+                onRefresh={() => void loadInvoices({ syncDrafts: true, showSyncFeedback: true })}
                 onResetFilters={() => {
                   setInvStatus("all");
                   setInvQ("");
