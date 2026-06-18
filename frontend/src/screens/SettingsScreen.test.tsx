@@ -35,6 +35,7 @@ describe("SettingsScreen", () => {
                       total: 30,
                       status: "issued",
                       pdfStatus: "ready",
+                      pdfFilename: "LS-202606-001 - Archive Student.pdf",
                       pdfUpdatedAt: "2026-06-15T12:00:00Z",
                       year: 2026,
                       month: 6,
@@ -60,6 +61,7 @@ describe("SettingsScreen", () => {
                       total: 55,
                       status: "issued",
                       pdfStatus: "outdated",
+                      pdfFilename: "LS-202606-003 - Outdated PDF Student.pdf",
                       pdfUpdatedAt: "2026-06-14T12:00:00Z",
                       year: 2026,
                       month: 6,
@@ -108,6 +110,7 @@ describe("SettingsScreen", () => {
         onRefreshInvoiceArchive={vi.fn()}
         onSetTab={vi.fn()}
         onOpenInvoice={vi.fn()}
+        onGenerateInvoiceArchivePdf={vi.fn()}
         onInvoiceEmailSubjectTemplateChange={vi.fn()}
         onInvoiceEmailBodyTemplateChange={vi.fn()}
         onInvoiceEmailReplyToChange={vi.fn()}
@@ -136,6 +139,9 @@ describe("SettingsScreen", () => {
     expect(markup).toContain("PDF outdated");
     expect(markup).toContain("PDF access error");
     expect(markup).toContain("Open invoice");
+    expect(markup).toContain("Create PDF");
+    expect(markup).toContain("PDF file");
+    expect(markup).toContain("LS-202606-001 - Archive Student.pdf");
     expect(markup).toContain("/api/invoice-archive/2026/06/LS-202606-001.pdf/open");
     expect(markup).not.toContain("/api/invoice-archive/2026/06/LS-202606-003.pdf/open");
     expect(markup).toContain("{invoice_number}");

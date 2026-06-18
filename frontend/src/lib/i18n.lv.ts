@@ -281,6 +281,7 @@ export const lvTranslations: Record<string, string> = {
   "settings.invoiceArchivePdfError": "PDF piekļuves kļūda",
   "settings.invoiceArchivePdfDate": "PDF datums",
   "settings.invoiceArchivePdfDateMissing": "Nav izveidots",
+  "settings.invoiceArchivePdfFile": "PDF fails",
   "settings.invoiceEmailTitle": "Rēķinu e-pasta veidnes",
   "settings.invoiceEmailDesc": "Iestatiet noklusējuma tematu, ziņas tekstu un izvēles Reply-To rēķinu e-pastiem.",
   "settings.invoiceEmailSubject": "Temata veidne",

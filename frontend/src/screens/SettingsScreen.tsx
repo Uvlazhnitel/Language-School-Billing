@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { InvoiceArchiveResult, InvoiceEmailSettingsDTO, UserDTO } from "../lib/api";
 import { getMonthNames, type TranslateFn, type UiLocale } from "../lib/i18n";
 import type { AppTabId } from "../lib/appUi";
@@ -35,6 +36,7 @@ type SettingsScreenProps = {
   onRefreshInvoiceArchive: () => void | Promise<void>;
   onSetTab: (tab: AppTabId) => void;
   onOpenInvoice: (invoiceId: number) => void | Promise<void>;
+  onGenerateInvoiceArchivePdf: (invoiceId: number) => void | Promise<void>;
   onInvoiceEmailSubjectTemplateChange: (value: string) => void;
   onInvoiceEmailBodyTemplateChange: (value: string) => void;
   onInvoiceEmailReplyToChange: (value: string) => void;
@@ -84,6 +86,7 @@ export function SettingsScreen({
   onRefreshInvoiceArchive,
   onSetTab,
   onOpenInvoice,
+  onGenerateInvoiceArchivePdf,
   onInvoiceEmailSubjectTemplateChange,
   onInvoiceEmailBodyTemplateChange,
   onInvoiceEmailReplyToChange,
@@ -101,6 +104,7 @@ export function SettingsScreen({
   onDeleteUser,
   t,
 }: SettingsScreenProps) {
+  const [generatingArchiveInvoiceIds, setGeneratingArchiveInvoiceIds] = useState<Record<number, boolean>>({});
   const monthNames = getMonthNames(uiLocale);
   const archiveDateFormatter = new Intl.DateTimeFormat(uiLocale, {
     year: "numeric",
@@ -122,6 +126,19 @@ export function SettingsScreen({
         return t("settings.invoiceArchivePdfError");
       default:
         return status;
+    }
+  };
+
+  const generateArchivePdf = async (invoiceId: number) => {
+    setGeneratingArchiveInvoiceIds((prev) => ({ ...prev, [invoiceId]: true }));
+    try {
+      await onGenerateInvoiceArchivePdf(invoiceId);
+    } finally {
+      setGeneratingArchiveInvoiceIds((prev) => {
+        const next = { ...prev };
+        delete next[invoiceId];
+        return next;
+      });
     }
   };
 
@@ -254,6 +271,11 @@ export function SettingsScreen({
                                       ? archiveDateFormatter.format(new Date(item.pdfUpdatedAt))
                                       : t("settings.invoiceArchivePdfDateMissing")}
                                   </span>
+                                  {item.pdfFilename ? (
+                                    <span>
+                                      <strong>{t("settings.invoiceArchivePdfFile")}:</strong> {item.pdfFilename}
+                                    </span>
+                                  ) : null}
                                 </div>
                               </div>
                               <div className="settingsActions">
@@ -274,17 +296,34 @@ export function SettingsScreen({
                                       href={item.openUrl}
                                       target="_blank"
                                       rel="noopener noreferrer"
+                                      title={item.pdfFilename ?? item.number}
                                     >
                                       {t("button.open")}
                                     </a>
-                                    <a className="workspaceActionButton" href={item.downloadUrl}>
+                                    <a
+                                      className="workspaceActionButton"
+                                      href={item.downloadUrl}
+                                      title={item.pdfFilename ?? item.number}
+                                    >
                                       {t("button.downloadPdf")}
                                     </a>
                                   </>
                                 ) : (
-                                  <span className="invoiceArchiveHint">
-                                    {pdfStatusLabel(item.pdfStatus)}
-                                  </span>
+                                  <>
+                                    <button
+                                      type="button"
+                                      className="workspaceActionButton workspaceActionButtonPrimary"
+                                      onClick={() => void generateArchivePdf(item.invoiceId)}
+                                      disabled={Boolean(generatingArchiveInvoiceIds[item.invoiceId])}
+                                    >
+                                      {generatingArchiveInvoiceIds[item.invoiceId]
+                                        ? `${t("button.createPdf")}...`
+                                        : t("button.createPdf")}
+                                    </button>
+                                    <span className="invoiceArchiveHint">
+                                      {pdfStatusLabel(item.pdfStatus)}
+                                    </span>
+                                  </>
                                 )}
                               </div>
                             </div>

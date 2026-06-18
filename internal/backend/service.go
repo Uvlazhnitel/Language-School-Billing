@@ -166,6 +166,7 @@ type InvoiceArchiveInvoiceDTO struct {
 	Total         float64 `json:"total"`
 	Status        string  `json:"status"`
 	PDFStatus     string  `json:"pdfStatus"`
+	PDFFilename   string  `json:"pdfFilename,omitempty"`
 	PDFUpdatedAt  string  `json:"pdfUpdatedAt,omitempty"`
 	OpenURL       string  `json:"openUrl,omitempty"`
 	DownloadURL   string  `json:"downloadUrl,omitempty"`
@@ -1692,6 +1693,9 @@ func (s *Service) invoiceArchiveInvoice(iv *ent.Invoice) InvoiceArchiveInvoiceDT
 
 	info := s.invoicePDFInfo(iv, subjectName)
 	item.PDFStatus = info.Status
+	if info.Filename != "" {
+		item.PDFFilename = info.Filename
+	}
 	if info.GeneratedAt != nil && (info.Status == invoiceArchivePDFStatusReady || info.Status == invoiceArchivePDFStatusOutdated) {
 		item.PDFUpdatedAt = info.GeneratedAt.UTC().Format(time.RFC3339)
 	}

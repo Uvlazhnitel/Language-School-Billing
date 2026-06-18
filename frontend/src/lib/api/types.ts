@@ -75,6 +75,7 @@ export type InvoiceArchiveInvoiceDTO = {
   total: number;
   status: string;
   pdfStatus: "ready" | "missing" | "outdated" | "error";
+  pdfFilename?: string;
   pdfUpdatedAt?: string;
   openUrl?: string;
   downloadUrl?: string;

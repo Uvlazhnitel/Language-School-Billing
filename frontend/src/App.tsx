@@ -2233,6 +2233,19 @@ export default function App() {
     }
   }, [canViewInvoiceArchive, showMessage, t]);
 
+  const onGenerateArchivePdf = useCallback(
+    async (id: number) => {
+      try {
+        const pdf = await ensurePdf(id);
+        await loadInvoiceArchive();
+        showMessage(t("msg.pdfReady", { path: pdf.localPath ?? pdf.filename }));
+      } catch (e: any) {
+        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+      }
+    },
+    [ensurePdf, loadInvoiceArchive, showMessage, t]
+  );
+
   const loadUsers = useCallback(async () => {
     if (!canManageUsers) return;
     try {
@@ -2961,6 +2974,7 @@ export default function App() {
                 onRefreshInvoiceArchive={loadInvoiceArchive}
                 onSetTab={setTab}
                 onOpenInvoice={onOpenInvoice}
+                onGenerateInvoiceArchivePdf={onGenerateArchivePdf}
                 onInvoiceEmailSubjectTemplateChange={setInvoiceEmailSubjectTemplate}
                 onInvoiceEmailBodyTemplateChange={setInvoiceEmailBodyTemplate}
                 onInvoiceEmailReplyToChange={setInvoiceEmailReplyTo}
