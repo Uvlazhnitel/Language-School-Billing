@@ -433,7 +433,9 @@ a {
 
 .dashboard {
   display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 20px;
+  align-items: start;
 }
 
 .dashboardHero {
@@ -520,6 +522,7 @@ a {
 .dashboardCard,
 .detailCard {
   grid-column: span 6;
+  min-width: 0;
   padding: 20px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.88);
@@ -538,11 +541,11 @@ a {
 }
 
 .dashboardCard--queue {
-  grid-column: span 7;
+  grid-column: span 4;
 }
 
 .dashboardCard--control {
-  grid-column: span 5;
+  grid-column: span 12;
 }
 
 .dashboardCard--compact {
@@ -550,13 +553,24 @@ a {
   align-self: start;
 }
 
-.dashboardCard--priority,
 .dashboardCard--money {
   grid-column: span 8;
 }
 
 .dashboardCard--activity {
   margin-top: -4px;
+}
+
+.dashboardCard--overview {
+  grid-column: span 8;
+}
+
+.dashboardSplitGrid {
+  grid-column: span 12;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 18px;
+  align-items: start;
 }
 
 .dashboardCardHeader,
@@ -803,17 +817,68 @@ a {
   margin-bottom: 20px;
 }
 
+.dashboardOverviewHeader {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.9fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.dashboardOverviewIntro h2 {
+  margin: 6px 0 10px;
+  font-size: clamp(1.7rem, 2.3vw, 2.2rem);
+}
+
+.dashboardOverviewIntro p {
+  margin: 0;
+  max-width: 46ch;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.dashboardOverviewStats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboardOverviewStat {
+  padding: 16px 18px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 249, 243, 0.9));
+  border: 1px solid rgba(133, 102, 69, 0.1);
+}
+
+.dashboardOverviewStat span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.dashboardOverviewStat strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 1.7rem;
+}
+
 @media (max-width: 1320px) {
   .dashboardHeroStats--monthly {
     grid-template-columns: repeat(2, minmax(160px, 1fr));
   }
 
-  .dashboardCard,
-  .dashboardCard--control,
+  .dashboardCard--overview,
   .dashboardCard--queue,
   .dashboardCard--money,
   .dashboardCard--compact {
-    grid-column: span 6;
+    grid-column: span 12;
+  }
+
+  .dashboardSplitGrid {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+  }
+
+  .dashboardOverviewHeader {
+    grid-template-columns: 1fr;
   }
 
   .dashboardCard--feed {
@@ -1113,8 +1178,8 @@ a {
 }
 
 .actionQueueItem {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 16px;
   align-items: flex-start;
   padding: 14px 16px;
@@ -1153,7 +1218,7 @@ a {
 }
 
 .actionQueueMeta {
-  min-width: 240px;
+  min-width: 180px;
   text-align: right;
 }
 
@@ -1266,8 +1331,13 @@ a {
 
   .dashboardHeroStats--monthly,
   .dashboardClosingSummary,
-  .dashboardMetrics--expanded {
+  .dashboardMetrics--expanded,
+  .dashboardOverviewStats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboardSplitGrid {
+    grid-template-columns: 1fr;
   }
 
   .crmTimelineItem,
@@ -1304,7 +1374,8 @@ a {
   .studentSummaryGrid,
   .dashboardMetrics,
   .dashboardMetrics--expanded,
-  .dashboardMetrics--snapshot {
+  .dashboardMetrics--snapshot,
+  .dashboardOverviewStats {
     grid-template-columns: 1fr;
   }
 }

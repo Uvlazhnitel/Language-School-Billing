@@ -274,164 +274,126 @@ export function DashboardOverview({
         </div>
       </section>
 
-      <div className="dashboardHero dashboardHero--monthly">
-        <div>
-          <div className="dashboardHeroEyebrow">{t("label.monthlyOverview")}</div>
-          <h2>{monthLabel}</h2>
-          <p>{t("msg.dashboardIntro")}</p>
-        </div>
-        <div className="dashboardHeroStats dashboardHeroStats--monthly">
-          <div className="dashboardHeroStat">
-            <span>{t("label.monthDataIncomplete")}</span>
-            <strong>{overview.monthControlMissing}</strong>
+      <section className="dashboardCard dashboardCard--overview">
+        <div className="dashboardOverviewHeader">
+          <div className="dashboardOverviewIntro">
+            <div className="dashboardCardEyebrow">{t("label.monthlyOverview")}</div>
+            <h2>{monthLabel}</h2>
+            <p>{t("msg.dashboardIntro")}</p>
           </div>
-          <div className="dashboardHeroStat">
-            <span>{t("label.needIssueInvoices")}</span>
-            <strong>{overview.draftInvoices}</strong>
-          </div>
-          <div className="dashboardHeroStat">
-            <span>{t("label.monthDebt")}</span>
-            <strong>{formatEUR(overview.monthDebtTotal)}</strong>
-          </div>
-          <div className="dashboardHeroStat">
-            <span>{t("label.monthPayments")}</span>
-            <strong>{formatEUR(overview.paymentsMonthTotal)}</strong>
-          </div>
-        </div>
-      </div>
-
-      <div className="dashboardGrid">
-        <section className="dashboardCard dashboardCard--queue dashboardCard--priority">
-          <div className="dashboardCardHeader">
-            <div>
-              <div className="dashboardCardEyebrow">{t("label.actionQueue")}</div>
-              <h3>{t("label.needsAction")}</h3>
+          <div className="dashboardOverviewStats">
+            <div className="dashboardOverviewStat">
+              <span>{t("label.monthDataIncomplete")}</span>
+              <strong>{overview.monthControlMissing}</strong>
             </div>
-            <span className={`statusPill ${overview.actionQueueCount > 0 ? "warning" : "success"}`}>
-              {overview.actionQueueCount > 0
-                ? t("msg.priorityCount", { count: overview.actionQueueCount })
-                : t("msg.ready")}
-            </span>
-          </div>
-
-          <div className="actionQueueList actionQueueList--dashboard">
-            {blockers.map((blocker) => (
-              <div
-                key={blocker.id}
-                className={`actionQueueItem actionQueueItem--${blocker.emphasis ?? "warning"}`}
-              >
-                <div className="actionQueueContent">
-                  <span className="dashboardCardEyebrow">{blocker.eyebrow}</span>
-                  <strong>{blocker.title}</strong>
-                  <span>{blocker.subtitle}</span>
-                </div>
-                <div className="actionQueueMeta">
-                  <strong>{blocker.amount ?? "—"}</strong>
-                  <div className="actionQueueActions">
-                    <button
-                      className="workspaceActionButton workspaceActionButtonPrimary actionQueuePrimary"
-                      onClick={blocker.onPrimaryAction}
-                    >
-                      {blocker.primaryLabel}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {actionQueue.slice(0, 3).map((item, index) => (
-              <div key={item.studentId} className="actionQueueItem">
-                <div className="actionQueueContent">
-                  <strong>{item.studentName}</strong>
-                  <span>{item.subtitle}</span>
-                  <div className="actionQueueReasonTags">
-                    {actionReasonLabels(item, index, t).map((label) => (
-                      <span key={label} className="statusPill warning">
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <div className="actionQueueMeta">
-                  <strong>{formatEUR(item.debt)}</strong>
-                  <div className="actionQueueActions">
-                    <button
-                      className="workspaceActionButton workspaceActionButtonPrimary actionQueuePrimary"
-                      onClick={() => onOpenPaymentQueueStudent(item.studentId)}
-                    >
-                      {t("button.payment")}
-                    </button>
-                    <button
-                      className="secondaryActionButton"
-                      onClick={() => onOpenStudent(item.studentId)}
-                    >
-                      {t("button.card")}
-                    </button>
-                    <div className="actionQueueSecondaryGroup">
-                      <button
-                        className="secondaryActionButton secondaryActionButton--mini"
-                        onClick={() => onCopyDebtQueueRu(item.studentId)}
-                      >
-                        RU
-                      </button>
-                      <button
-                        className="secondaryActionButton secondaryActionButton--mini"
-                        onClick={() => onCopyDebtQueueLv(item.studentId)}
-                      >
-                        LV
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {blockers.length === 0 && actionQueue.length === 0 && (
-              <div className="empty">{t("msg.noActionQueue")}</div>
-            )}
-          </div>
-        </section>
-
-        <section className="dashboardCard dashboardCard--control">
-          <div className="dashboardCardHeader">
-            <div>
-              <div className="dashboardCardEyebrow">{t("label.monthControl")}</div>
-              <h3>{t("label.monthDataIncomplete")}</h3>
+            <div className="dashboardOverviewStat">
+              <span>{t("label.needIssueInvoices")}</span>
+              <strong>{overview.draftInvoices}</strong>
             </div>
-            <span className={`statusPill ${monthControlReady ? "success" : "warning"}`}>
-              {monthControlReady
-                ? t("msg.canIssue")
-                : t("msg.leftCount", { count: overview.monthControlMissing })}
-            </span>
+            <div className="dashboardOverviewStat">
+              <span>{t("label.monthDebt")}</span>
+              <strong>{formatEUR(overview.monthDebtTotal)}</strong>
+            </div>
+            <div className="dashboardOverviewStat">
+              <span>{t("label.monthPayments")}</span>
+              <strong>{formatEUR(overview.paymentsMonthTotal)}</strong>
+            </div>
           </div>
-          <p className="dashboardCardLead">
-            {t("field.filledMonthControl", {
-              filled: overview.monthControlFilled,
-              total: overview.monthControlTotal,
-            })}
-          </p>
-          <p className="dashboardCardCaption">{t("msg.monthControlScopeHint")}</p>
-          <div className="dashboardProgress">
+        </div>
+      </section>
+
+      <section className="dashboardCard dashboardCard--queue">
+        <div className="dashboardCardHeader">
+          <div>
+            <div className="dashboardCardEyebrow">{t("label.actionQueue")}</div>
+            <h3>{t("label.needsAction")}</h3>
+          </div>
+          <span className={`statusPill ${overview.actionQueueCount > 0 ? "warning" : "success"}`}>
+            {overview.actionQueueCount > 0
+              ? t("msg.priorityCount", { count: overview.actionQueueCount })
+              : t("msg.ready")}
+          </span>
+        </div>
+
+        <div className="actionQueueList actionQueueList--dashboard">
+          {blockers.map((blocker) => (
             <div
-              className="dashboardProgressValue"
-              style={{
-                width:
-                  overview.monthControlTotal > 0
-                    ? `${(overview.monthControlFilled / overview.monthControlTotal) * 100}%`
-                    : "0%",
-              }}
-            />
-          </div>
-          <div className="dashboardActions">
-            <button
-              className="workspaceActionButton workspaceActionButtonPrimary"
-              onClick={onOpenAttendance}
+              key={blocker.id}
+              className={`actionQueueItem actionQueueItem--${blocker.emphasis ?? "warning"}`}
             >
-              {t("button.openAttendance")}
-            </button>
-          </div>
-        </section>
+              <div className="actionQueueContent">
+                <span className="dashboardCardEyebrow">{blocker.eyebrow}</span>
+                <strong>{blocker.title}</strong>
+                <span>{blocker.subtitle}</span>
+              </div>
+              <div className="actionQueueMeta">
+                <strong>{blocker.amount ?? "—"}</strong>
+                <div className="actionQueueActions">
+                  <button
+                    className="workspaceActionButton workspaceActionButtonPrimary actionQueuePrimary"
+                    onClick={blocker.onPrimaryAction}
+                  >
+                    {blocker.primaryLabel}
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
 
+          {actionQueue.slice(0, 3).map((item, index) => (
+            <div key={item.studentId} className="actionQueueItem">
+              <div className="actionQueueContent">
+                <strong>{item.studentName}</strong>
+                <span>{item.subtitle}</span>
+                <div className="actionQueueReasonTags">
+                  {actionReasonLabels(item, index, t).map((label) => (
+                    <span key={label} className="statusPill warning">
+                      {label}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <div className="actionQueueMeta">
+                <strong>{formatEUR(item.debt)}</strong>
+                <div className="actionQueueActions">
+                  <button
+                    className="workspaceActionButton workspaceActionButtonPrimary actionQueuePrimary"
+                    onClick={() => onOpenPaymentQueueStudent(item.studentId)}
+                  >
+                    {t("button.payment")}
+                  </button>
+                  <button
+                    className="secondaryActionButton"
+                    onClick={() => onOpenStudent(item.studentId)}
+                  >
+                    {t("button.card")}
+                  </button>
+                  <div className="actionQueueSecondaryGroup">
+                    <button
+                      className="secondaryActionButton secondaryActionButton--mini"
+                      onClick={() => onCopyDebtQueueRu(item.studentId)}
+                    >
+                      RU
+                    </button>
+                    <button
+                      className="secondaryActionButton secondaryActionButton--mini"
+                      onClick={() => onCopyDebtQueueLv(item.studentId)}
+                    >
+                      LV
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+
+          {blockers.length === 0 && actionQueue.length === 0 && (
+            <div className="empty">{t("msg.noActionQueue")}</div>
+          )}
+        </div>
+      </section>
+
+      <div className="dashboardSplitGrid">
         <section className="dashboardCard dashboardCard--money">
           <div className="dashboardCardHeader">
             <div>
@@ -515,54 +477,54 @@ export function DashboardOverview({
             </div>
           </div>
         </section>
-
-        <section className="dashboardCard dashboardCard--feed dashboardCard--activity">
-          <div className="dashboardCardHeader">
-            <div>
-              <div className="dashboardCardEyebrow">{t("label.monthReview")}</div>
-              <h3>{t("label.recentPayments")}</h3>
-            </div>
-            <button className="secondaryActionButton" onClick={onOpenStudents}>
-              {t("button.showStudents")}
-            </button>
-          </div>
-
-          {recentPayments.length === 0 ? (
-            <div className="empty">{t("msg.noRecentPayments")}</div>
-          ) : (
-            <div className="activityFeed activityFeed--compact">
-              {recentPayments.map((payment) => (
-                <button
-                  key={payment.id}
-                  type="button"
-                  className="activityFeedItem"
-                  onClick={() => onOpenStudent(payment.studentId)}
-                >
-                  <div>
-                    <strong>{payment.studentName}</strong>
-                    <span>
-                      {paymentMethodLabel(payment.method)} · {formatFeedDate(payment.paidAt)}
-                    </span>
-                    <div className="dashboardPaymentTagRow">
-                      <span className="statusPill success">
-                        {payment.invoiceId ? t("msg.linkedToInvoice") : t("msg.creditOnAccountTag")}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="activityFeedMeta">
-                    <strong>{formatEUR(payment.amount)}</strong>
-                    {payment.invoiceId ? (
-                      <span>{t("msg.invoiceRef", { id: payment.invoiceId })}</span>
-                    ) : (
-                      <span>{t("msg.noInvoice")}</span>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </section>
       </div>
+
+      <section className="dashboardCard dashboardCard--feed dashboardCard--activity">
+        <div className="dashboardCardHeader">
+          <div>
+            <div className="dashboardCardEyebrow">{t("label.monthReview")}</div>
+            <h3>{t("label.recentPayments")}</h3>
+          </div>
+          <button className="secondaryActionButton" onClick={onOpenStudents}>
+            {t("button.showStudents")}
+          </button>
+        </div>
+
+        {recentPayments.length === 0 ? (
+          <div className="empty">{t("msg.noRecentPayments")}</div>
+        ) : (
+          <div className="activityFeed activityFeed--compact">
+            {recentPayments.map((payment) => (
+              <button
+                key={payment.id}
+                type="button"
+                className="activityFeedItem"
+                onClick={() => onOpenStudent(payment.studentId)}
+              >
+                <div>
+                  <strong>{payment.studentName}</strong>
+                  <span>
+                    {paymentMethodLabel(payment.method)} · {formatFeedDate(payment.paidAt)}
+                  </span>
+                  <div className="dashboardPaymentTagRow">
+                    <span className="statusPill success">
+                      {payment.invoiceId ? t("msg.linkedToInvoice") : t("msg.creditOnAccountTag")}
+                    </span>
+                  </div>
+                </div>
+                <div className="activityFeedMeta">
+                  <strong>{formatEUR(payment.amount)}</strong>
+                  {payment.invoiceId ? (
+                    <span>{t("msg.invoiceRef", { id: payment.invoiceId })}</span>
+                  ) : (
+                    <span>{t("msg.noInvoice")}</span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
