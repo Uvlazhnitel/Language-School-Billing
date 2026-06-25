@@ -1109,7 +1109,7 @@ export default function App() {
     setEfMode("per_lesson");
     setEfChargeMaterials(true);
     setEfDiscount("0");
-    setEfSubscriptionLessonPrice(String(allCourses[0]?.lessonPrice ?? 0));
+    setEfSubscriptionLessonPrice(String(allCourses[0]?.subscriptionPrice ?? 0));
     setEfNote("");
     setEnrModalOpen(true);
   }
@@ -1131,15 +1131,15 @@ export default function App() {
   function handleEnrollmentCourseIdChange(value: number) {
     setEfCourseId(value);
     const course = allCourses.find((item) => item.id === value);
-    if (course) {
-      setEfSubscriptionLessonPrice(String(course.lessonPrice));
+    if (course && efMode === "subscription") {
+      setEfSubscriptionLessonPrice(String(course.subscriptionPrice ?? 0));
     }
   }
 
   function handleEnrollmentModeChange(value: "per_lesson" | "subscription") {
     setEfMode(value);
     if (value === "subscription" && (efSubscriptionLessonPrice.trim() === "" || Number(efSubscriptionLessonPrice) === 0)) {
-      setEfSubscriptionLessonPrice(String(selectedEnrollmentCourse?.lessonPrice ?? 0));
+      setEfSubscriptionLessonPrice(String(selectedEnrollmentCourse?.subscriptionPrice ?? 0));
     }
   }
 

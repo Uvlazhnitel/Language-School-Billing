@@ -245,7 +245,13 @@ export function AttendanceScreen({
                     </>
                   )}
                 </td>
-                <td style={{ textAlign: "right" }}>{formatEUR(row.lessonPrice)}</td>
+                <td style={{ textAlign: "right" }}>
+                  {formatEUR(
+                    row.billingMode === BillingModePerLesson
+                      ? row.lessonPrice
+                      : row.subscriptionLessonPrice
+                  )}
+                </td>
                 <td style={{ textAlign: "right" }}>
                   {row.billingMode === BillingModePerLesson && !row.hasRecord && (
                     <span className="attBadge attBadge--missing">{t("msg.attMissing")}</span>
