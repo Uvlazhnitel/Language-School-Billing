@@ -1207,7 +1207,16 @@ export default function App() {
       }
 
       setEnrModalOpen(false);
-      await loadEnrollments();
+      const shouldRefreshStudentCard =
+        selectedStudentCard?.id === result.studentId && (tab === "students" || studentCardOpen);
+      await Promise.all([
+        loadEnrollments(),
+        loadInvoices({ syncDrafts: false }),
+        loadStudents(),
+        loadAllStudents(),
+        loadDebtors(),
+        shouldRefreshStudentCard ? refreshStudentCardData(result.studentId) : Promise.resolve(),
+      ]);
     } catch (e: any) {
       if (isStaleRevisionError(e)) {
         showMessage(t("msg.recordConflict"), "error");

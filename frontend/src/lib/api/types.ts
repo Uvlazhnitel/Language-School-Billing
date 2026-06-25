@@ -320,7 +320,22 @@ export type MonthOverviewDTO = {
   draftInvoices: number;
   issuedInvoices: number;
   paidInvoices: number;
+  pendingPdfInvoices: number;
+  readyPdfInvoices: number;
+  monthInvoicesTotal: number;
+  emailedInvoices: number;
+  notEmailedInvoices: number;
   overdueInvoicesCount: number;
+  requiredStepsTotal: number;
+  requiredStepsDone: number;
+  monthClosingProgressPct: number;
+  monthClosingStage:
+    | "collecting_data"
+    | "ready_to_issue"
+    | "ready_to_generate_pdf"
+    | "ready_to_send"
+    | "ready_to_close";
+  monthReadyToClose: boolean;
   totalIssued: number;
   totalPaid: number;
   paymentsMonthTotal: number;

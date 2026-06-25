@@ -294,17 +294,24 @@ func (s *Service) subscriptionLessonsHeld(ctx context.Context, courseID, y, m in
 
 func (s *Service) hasAnyLessonsInMonth(ctx context.Context, ens []*ent.Enrollment, y, m int) bool {
 	for _, en := range ens {
-		count, err := s.db.AttendanceMonth.Query().
-			Where(
-				attendancemonth.StudentIDEQ(en.StudentID),
-				attendancemonth.CourseIDEQ(en.CourseID),
-				attendancemonth.YearEQ(y),
-				attendancemonth.MonthEQ(m),
-				attendancemonth.HoursGT(0),
-			).
-			Count(ctx)
-		if err == nil && count > 0 {
-			return true
+		switch en.BillingMode {
+		case BillingSubscription:
+			if s.subscriptionLessonsHeld(ctx, en.CourseID, y, m) > 0 {
+				return true
+			}
+		default:
+			count, err := s.db.AttendanceMonth.Query().
+				Where(
+					attendancemonth.StudentIDEQ(en.StudentID),
+					attendancemonth.CourseIDEQ(en.CourseID),
+					attendancemonth.YearEQ(y),
+					attendancemonth.MonthEQ(m),
+					attendancemonth.HoursGT(0),
+				).
+				Count(ctx)
+			if err == nil && count > 0 {
+				return true
+			}
 		}
 	}
 	return false
