@@ -541,7 +541,7 @@ a {
 }
 
 .dashboardCard--queue {
-  grid-column: span 4;
+  grid-column: span 5;
 }
 
 .dashboardCard--control {
@@ -562,7 +562,7 @@ a {
 }
 
 .dashboardCard--overview {
-  grid-column: span 8;
+  grid-column: span 7;
 }
 
 .dashboardSplitGrid {
@@ -1200,6 +1200,8 @@ a {
 .actionQueueContent {
   min-width: 0;
   flex: 1 1 auto;
+  display: grid;
+  gap: 8px;
 }
 
 .actionQueueReasonTags,
@@ -1208,6 +1210,42 @@ a {
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 8px;
+}
+
+.actionQueueItemTop,
+.actionQueueItemBottom {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.actionQueueItemBottom {
+  align-items: center;
+}
+
+.actionQueueItem--student {
+  grid-template-columns: 1fr;
+  gap: 14px;
+  padding: 18px 18px 16px;
+}
+
+.actionQueueItem--student .actionQueueMeta {
+  min-width: 96px;
+  margin-top: 0;
+}
+
+.actionQueueItem--student .actionQueueActions {
+  margin-top: 0;
+}
+
+.actionQueueItem--student .actionQueueReasonTags {
+  margin-top: 0;
+}
+
+.actionQueueReasonTags .statusPill {
+  white-space: nowrap;
 }
 
 .actionQueueItem span,
@@ -1344,6 +1382,12 @@ a {
   .actionQueueItem {
     grid-template-columns: 1fr;
     flex-direction: column;
+  }
+
+  .actionQueueItemTop,
+  .actionQueueItemBottom {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .actionQueueMeta {

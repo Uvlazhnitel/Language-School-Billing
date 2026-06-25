@@ -33,7 +33,7 @@ func setInvoiceCurrentTime(t *testing.T, ts time.Time) {
 	})
 }
 
-func TestGenerateDraftsSubscriptionWithoutLessonsDoesNotAddMaterials(t *testing.T) {
+func TestGenerateDraftsSubscriptionMaterialsUseCourseMonthStats(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:invoice-generate?mode=memory&_fk=1")
 	defer client.Close()
@@ -102,11 +102,14 @@ func TestGenerateDraftsSubscriptionWithoutLessonsDoesNotAddMaterials(t *testing.
 		if err != nil {
 			t.Fatalf("InvoiceLine.Query: %v", err)
 		}
-		if len(lines) != 1 {
-			t.Fatalf("invoice line count = %d, want 1", len(lines))
+		if len(lines) != 2 {
+			t.Fatalf("invoice line count = %d, want 2", len(lines))
 		}
 		if lines[0].Description != "Dalības maksa par Gleznošana" {
 			t.Fatalf("service description = %q, want %q", lines[0].Description, "Dalības maksa par Gleznošana")
+		}
+		if lines[1].Description != materialsLineDescription {
+			t.Fatalf("materials description = %q, want %q", lines[1].Description, materialsLineDescription)
 		}
 	}
 
@@ -120,7 +123,7 @@ func TestGenerateDraftsSubscriptionWithoutLessonsDoesNotAddMaterials(t *testing.
 	if enr.ID <= 0 {
 		t.Fatalf("unexpected enrollment id: %d", enr.ID)
 	}
-	assertDraft(string(StatusDraft), 60)
+	assertDraft(string(StatusDraft), 65)
 
 	res, err = svc.GenerateDrafts(ctx, 2026, 4)
 	if err != nil {
@@ -129,7 +132,7 @@ func TestGenerateDraftsSubscriptionWithoutLessonsDoesNotAddMaterials(t *testing.
 	if res.Created != 0 || res.Updated != 1 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
 		t.Fatalf("unexpected second GenerateDrafts result: %+v", res)
 	}
-	assertDraft(string(StatusDraft), 60)
+	assertDraft(string(StatusDraft), 65)
 }
 
 func TestGenerateDraftsPerLessonDescriptionIsLatvian(t *testing.T) {
@@ -514,6 +517,211 @@ func TestGenerateDraftsMixedEnrollmentsAddsOneMaterialsLineForEligibleEnrollment
 	}
 	if onlineEnrollment.ID == offlineEnrollment.ID {
 		t.Fatalf("expected distinct enrollments for mixed test")
+	}
+}
+
+func TestGenerateDraftsSubscriptionLessonsAddMaterialsWithoutAttendanceRows(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-generate-subscription-materials-from-course-month?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Subscription Materials Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Matemātika").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(12.5)).
+		SetSubscriptionPriceCents(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModeSubscription).
+		SetChargeMaterials(true).
+		SetDiscountPct(0).
+		SetSubscriptionLessonPriceCents(money.EurosToCents(12.5)).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if _, err := client.CourseMonthStat.Create().
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(6).
+		SetSubscriptionLessonsHeld(4).
+		Save(ctx); err != nil {
+		t.Fatalf("CourseMonthStat.Create: %v", err)
+	}
+
+	res, err := svc.GenerateDrafts(ctx, 2026, 6)
+	if err != nil {
+		t.Fatalf("GenerateDrafts: %v", err)
+	}
+	if res.Created != 1 {
+		t.Fatalf("Created = %d, want 1", res.Created)
+	}
+
+	iv, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(6)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Query: %v", err)
+	}
+	if iv.TotalAmountCents != money.EurosToCents(55) {
+		t.Fatalf("invoice total = %v, want 55", money.CentsToEuros(iv.TotalAmountCents))
+	}
+
+	lines, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(iv.ID)).
+		Order(ent.Asc(invoiceline.FieldID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query: %v", err)
+	}
+	if len(lines) != 2 {
+		t.Fatalf("invoice line count = %d, want 2", len(lines))
+	}
+	if lines[0].EnrollmentID != enr.ID {
+		t.Fatalf("subscription enrollment_id = %d, want %d", lines[0].EnrollmentID, enr.ID)
+	}
+	if lines[1].Description != materialsLineDescription {
+		t.Fatalf("materials description = %q, want %q", lines[1].Description, materialsLineDescription)
+	}
+}
+
+func TestGenerateDraftsMixedEnrollmentsAddMaterialsFromSubscriptionLessons(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-generate-mixed-subscription-materials?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Mixed Subscription Materials Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	perLessonCourse, err := client.Course.Create().
+		SetName("Online Speaking").
+		SetType(course.TypeIndividual).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create per lesson: %v", err)
+	}
+
+	subscriptionCourse, err := client.Course.Create().
+		SetName("Classroom Grammar").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(15)).
+		SetSubscriptionPriceCents(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create subscription: %v", err)
+	}
+
+	_, err = client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(perLessonCourse.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetChargeMaterials(false).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create per lesson: %v", err)
+	}
+
+	subscriptionEnrollment, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(subscriptionCourse.ID).
+		SetBillingMode(enrollment.BillingModeSubscription).
+		SetChargeMaterials(true).
+		SetDiscountPct(0).
+		SetSubscriptionLessonPriceCents(money.EurosToCents(15)).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create subscription: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(perLessonCourse.ID).
+		SetYear(2026).
+		SetMonth(6).
+		SetHours(1).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create per lesson: %v", err)
+	}
+
+	if _, err := client.CourseMonthStat.Create().
+		SetCourseID(subscriptionCourse.ID).
+		SetYear(2026).
+		SetMonth(6).
+		SetSubscriptionLessonsHeld(2).
+		Save(ctx); err != nil {
+		t.Fatalf("CourseMonthStat.Create subscription: %v", err)
+	}
+
+	res, err := svc.GenerateDrafts(ctx, 2026, 6)
+	if err != nil {
+		t.Fatalf("GenerateDrafts: %v", err)
+	}
+	if res.Created != 1 {
+		t.Fatalf("Created = %d, want 1", res.Created)
+	}
+
+	iv, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(6)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Query: %v", err)
+	}
+	if iv.TotalAmountCents != money.EurosToCents(55) {
+		t.Fatalf("invoice total = %v, want 55", money.CentsToEuros(iv.TotalAmountCents))
+	}
+
+	lines, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(iv.ID)).
+		Order(ent.Asc(invoiceline.FieldID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query: %v", err)
+	}
+
+	var materialsLines []*ent.InvoiceLine
+	for _, line := range lines {
+		if line.Description == materialsLineDescription {
+			materialsLines = append(materialsLines, line)
+		}
+	}
+	if len(materialsLines) != 1 {
+		t.Fatalf("materials line count = %d, want 1", len(materialsLines))
+	}
+	if materialsLines[0].EnrollmentID != subscriptionEnrollment.ID {
+		t.Fatalf("materials enrollment_id = %d, want %d", materialsLines[0].EnrollmentID, subscriptionEnrollment.ID)
 	}
 }
 

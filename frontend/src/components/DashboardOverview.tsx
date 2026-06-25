@@ -341,10 +341,17 @@ export function DashboardOverview({
           ))}
 
           {actionQueue.slice(0, 3).map((item, index) => (
-            <div key={item.studentId} className="actionQueueItem">
-              <div className="actionQueueContent">
-                <strong>{item.studentName}</strong>
-                <span>{item.subtitle}</span>
+            <div key={item.studentId} className="actionQueueItem actionQueueItem--student">
+              <div className="actionQueueItemTop">
+                <div className="actionQueueContent">
+                  <strong>{item.studentName}</strong>
+                  <span>{item.subtitle}</span>
+                </div>
+                <div className="actionQueueMeta">
+                  <strong>{formatEUR(item.debt)}</strong>
+                </div>
+              </div>
+              <div className="actionQueueItemBottom">
                 <div className="actionQueueReasonTags">
                   {actionReasonLabels(item, index, t).map((label) => (
                     <span key={label} className="statusPill warning">
@@ -352,9 +359,6 @@ export function DashboardOverview({
                     </span>
                   ))}
                 </div>
-              </div>
-              <div className="actionQueueMeta">
-                <strong>{formatEUR(item.debt)}</strong>
                 <div className="actionQueueActions">
                   <button
                     className="workspaceActionButton workspaceActionButtonPrimary actionQueuePrimary"

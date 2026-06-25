@@ -1777,6 +1777,10 @@ func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billin
 	if billingMode != BillingModeSubscription {
 		subscriptionLessonPrice = 0
 	}
+	before, err := s.rt.DB.Ent.Enrollment.Get(ctx, enrollmentID)
+	if err != nil {
+		return nil, err
+	}
 	if _, err := s.rt.DB.Ent.Enrollment.UpdateOneID(enrollmentID).
 		AddVersion(1).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
@@ -1793,6 +1797,9 @@ func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billin
 		WithCourse(func(cq *ent.CourseQuery) { cq.WithTeacher() }).
 		Only(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := s.rebuildCurrentMonthInvoiceForEnrollmentChange(ctx, before.StudentID, before.ChargeMaterials != chargeMaterials); err != nil {
 		return nil, err
 	}
 	dto := toEnrollmentDTO(item)
@@ -1816,6 +1823,10 @@ func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID,
 	if billingMode != BillingModeSubscription {
 		subscriptionLessonPrice = 0
 	}
+	before, err := s.rt.DB.Ent.Enrollment.Get(ctx, enrollmentID)
+	if err != nil {
+		return nil, err
+	}
 	if _, err := s.rt.DB.Ent.Enrollment.UpdateOneID(enrollmentID).
 		Where(enrollment.VersionEQ(version)).
 		SetVersion(version + 1).
@@ -1835,8 +1846,23 @@ func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID,
 	if err != nil {
 		return nil, err
 	}
+	if err := s.rebuildCurrentMonthInvoiceForEnrollmentChange(ctx, before.StudentID, before.ChargeMaterials != chargeMaterials); err != nil {
+		return nil, err
+	}
 	dto := toEnrollmentDTO(item)
 	return &dto, nil
+}
+
+func (s *Service) rebuildCurrentMonthInvoiceForEnrollmentChange(ctx context.Context, studentID int, materialsChanged bool) error {
+	if !materialsChanged {
+		return nil
+	}
+	if s.rt == nil || s.rt.Invoice == nil {
+		return nil
+	}
+	now := time.Now()
+	_, err := s.rt.Invoice.RebuildStudentDraft(ctx, studentID, now.Year(), int(now.Month()))
+	return err
 }
 
 func (s *Service) resolveTeacher(ctx context.Context, teacherID *int) (*ent.Teacher, error) {

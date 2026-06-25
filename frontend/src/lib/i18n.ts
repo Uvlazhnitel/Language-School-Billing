@@ -419,6 +419,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noInvoice": "No invoice",
     "msg.noTeachers": "No teachers yet.",
     "msg.noStudentsFound": "No students found.",
+    "msg.chargeMaterialsHint": "+5 EUR applies only when there are lessons in the month.",
     "msg.noCoursesYet": "No courses yet.",
     "msg.noCoursesTitle": "No courses yet",
     "msg.noCoursesDescription":
@@ -996,6 +997,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noInvoice": "Без счёта",
     "msg.noTeachers": "Учителей пока нет.",
     "msg.noStudentsFound": "Ученики не найдены.",
+    "msg.chargeMaterialsHint": "+5 EUR добавляется только если в этом месяце были занятия.",
     "msg.noCoursesYet": "Курсов пока нет.",
     "msg.noCoursesTitle": "Пока нет курсов",
     "msg.noCoursesDescription":

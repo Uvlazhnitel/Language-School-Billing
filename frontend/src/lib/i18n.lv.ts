@@ -413,6 +413,7 @@ export const lvTranslations: Record<string, string> = {
   "msg.noInvoice": "Bez rēķina",
   "msg.noTeachers": "Skolotāju vēl nav.",
   "msg.noStudentsFound": "Skolēni netika atrasti.",
+  "msg.chargeMaterialsHint": "+5 EUR tiek pievienoti tikai tad, ja šajā mēnesī ir notikušas nodarbības.",
   "msg.noCoursesYet": "Kursu vēl nav.",
   "msg.noCoursesTitle": "Kursu vēl nav",
   "msg.noCoursesDescription":
