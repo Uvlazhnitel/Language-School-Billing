@@ -47,6 +47,14 @@ export function InvoiceDetailsModal({
     invoice.status === "issued" || invoice.status === "issued_pending_pdf";
   const isFullyPaid =
     summary ? summary.remaining <= 0 : invoice.status === "paid" || invoice.status === "paid_pending_pdf";
+  const emailStatusLabel =
+    invoice.emailCommunicationStatus === "failed"
+      ? t("msg.invoiceEmailStatusFailed")
+      : invoice.emailCommunicationStatus === "stale"
+        ? t("msg.invoiceEmailStatusStale")
+        : invoice.emailCommunicationStatus === "sent"
+          ? t("msg.invoiceEmailStatusSent")
+          : t("msg.invoiceEmailStatusNotSent");
 
   return (
     <div className="modal" onClick={onClose}>
@@ -101,12 +109,17 @@ export function InvoiceDetailsModal({
               <span>{t("field.status")}:</span>
               <span className="money">{invoiceStatusLabel(summary.status)}</span>
             </div>
-            {invoice.lastEmailedAt && invoice.lastEmailedTo && (
+            {invoice.emailCommunicationStatus !== "not_sent" && (
               <div className="invSummaryRow">
-                <span>{t("field.emailSent")}:</span>
+                <span>{t("field.emailStatus")}:</span>
                 <span>
-                  {t("msg.invoiceEmailLastSentTo", { email: invoice.lastEmailedTo })} ·{" "}
-                  {formatDateTime(invoice.lastEmailedAt)}
+                  {emailStatusLabel}
+                  {invoice.lastEmailedAt && invoice.lastEmailedTo
+                    ? ` · ${t("msg.invoiceEmailLastSentTo", { email: invoice.lastEmailedTo })} · ${formatDateTime(invoice.lastEmailedAt)}`
+                    : ""}
+                  {invoice.emailCommunicationStatus === "failed" && invoice.lastEmailError
+                    ? ` · ${invoice.lastEmailError}`
+                    : ""}
                 </span>
               </div>
             )}

@@ -213,6 +213,8 @@ export type InvoiceListItem = {
   eventDate: string;
   lastEmailedAt?: string;
   lastEmailedTo?: string;
+  emailCommunicationStatus: "not_sent" | "sent" | "failed" | "stale";
+  lastEmailError?: string;
 };
 
 export type InvoiceListItemView = InvoiceListItem;
@@ -244,6 +246,8 @@ export type InvoiceDTO = {
   number?: string;
   lastEmailedAt?: string;
   lastEmailedTo?: string;
+  emailCommunicationStatus: "not_sent" | "sent" | "failed" | "stale";
+  lastEmailError?: string;
   lines: InvoiceLine[];
 };
 

@@ -61,6 +61,48 @@ export function InvoicesScreen({
     invoiceStatus === "issued" || invoiceStatus === "issued_pending_pdf";
   const isPaidFamily = (invoiceStatus: InvoiceListItemView["status"]) =>
     invoiceStatus === "paid" || invoiceStatus === "paid_pending_pdf";
+  const renderEmailStatus = (item: InvoiceListItemView) => {
+    if (isDraft(item.status)) {
+      return null;
+    }
+    if (item.emailCommunicationStatus === "failed") {
+      return (
+        <div className="mutedInline" style={{ marginTop: "0.35rem" }}>
+          {t("msg.invoiceEmailStatusFailed")}
+          {item.lastEmailError ? ` · ${item.lastEmailError}` : ""}
+        </div>
+      );
+    }
+    if (item.emailCommunicationStatus === "not_sent") {
+      return (
+        <div className="mutedInline" style={{ marginTop: "0.35rem" }}>
+          {t("msg.invoiceEmailStatusNotSent")}
+        </div>
+      );
+    }
+    if (item.lastEmailedAt && item.lastEmailedTo) {
+      return (
+        <div className="mutedInline" style={{ marginTop: "0.35rem" }}>
+          {t(
+            item.emailCommunicationStatus === "stale"
+              ? "msg.invoiceEmailStatusStale"
+              : "msg.invoiceEmailStatusSent",
+          )}{" "}
+          · {t("msg.invoiceEmailLastSentTo", { email: item.lastEmailedTo })} ·{" "}
+          {formatDateTime(item.lastEmailedAt)}
+        </div>
+      );
+    }
+    return (
+      <div className="mutedInline" style={{ marginTop: "0.35rem" }}>
+        {t(
+          item.emailCommunicationStatus === "stale"
+            ? "msg.invoiceEmailStatusStale"
+            : "msg.invoiceEmailStatusSent",
+        )}
+      </div>
+    );
+  };
 
   return (
     <>
@@ -162,12 +204,7 @@ export function InvoicesScreen({
                       <span className="attBadge attBadge--pdfReady">PDF</span>
                     </div>
                   )}
-                  {item.lastEmailedAt && item.lastEmailedTo && (
-                    <div className="mutedInline" style={{ marginTop: "0.35rem" }}>
-                      {t("msg.invoiceEmailLastSentTo", { email: item.lastEmailedTo })} ·{" "}
-                      {formatDateTime(item.lastEmailedAt)}
-                    </div>
-                  )}
+                  {renderEmailStatus(item)}
                 </td>
                 <td>
                   <div className="invoiceRowActions">

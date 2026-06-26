@@ -40,10 +40,18 @@ type Invoice struct {
 	PdfGeneratedAt *time.Time `json:"pdf_generated_at,omitempty"`
 	// PdfRevision holds the value of the "pdf_revision" field.
 	PdfRevision *int `json:"pdf_revision,omitempty"`
+	// EmailDeliveryStatus holds the value of the "email_delivery_status" field.
+	EmailDeliveryStatus invoice.EmailDeliveryStatus `json:"email_delivery_status,omitempty"`
 	// LastEmailedAt holds the value of the "last_emailed_at" field.
 	LastEmailedAt *time.Time `json:"last_emailed_at,omitempty"`
 	// LastEmailedTo holds the value of the "last_emailed_to" field.
 	LastEmailedTo *string `json:"last_emailed_to,omitempty"`
+	// LastEmailedRevision holds the value of the "last_emailed_revision" field.
+	LastEmailedRevision *int `json:"last_emailed_revision,omitempty"`
+	// LastEmailError holds the value of the "last_email_error" field.
+	LastEmailError *string `json:"last_email_error,omitempty"`
+	// LastEmailFailedAt holds the value of the "last_email_failed_at" field.
+	LastEmailFailedAt *time.Time `json:"last_email_failed_at,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -103,11 +111,11 @@ func (*Invoice) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case invoice.FieldLegacyTotalAmount:
 			values[i] = new(sql.NullFloat64)
-		case invoice.FieldID, invoice.FieldVersion, invoice.FieldStudentID, invoice.FieldPeriodYear, invoice.FieldPeriodMonth, invoice.FieldTotalAmountCents, invoice.FieldPdfRevision:
+		case invoice.FieldID, invoice.FieldVersion, invoice.FieldStudentID, invoice.FieldPeriodYear, invoice.FieldPeriodMonth, invoice.FieldTotalAmountCents, invoice.FieldPdfRevision, invoice.FieldLastEmailedRevision:
 			values[i] = new(sql.NullInt64)
-		case invoice.FieldStatus, invoice.FieldNumber, invoice.FieldPdfFilename, invoice.FieldLastEmailedTo:
+		case invoice.FieldStatus, invoice.FieldNumber, invoice.FieldPdfFilename, invoice.FieldEmailDeliveryStatus, invoice.FieldLastEmailedTo, invoice.FieldLastEmailError:
 			values[i] = new(sql.NullString)
-		case invoice.FieldPdfGeneratedAt, invoice.FieldLastEmailedAt, invoice.FieldCreatedAt, invoice.FieldUpdatedAt:
+		case invoice.FieldPdfGeneratedAt, invoice.FieldLastEmailedAt, invoice.FieldLastEmailFailedAt, invoice.FieldCreatedAt, invoice.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -200,6 +208,12 @@ func (_m *Invoice) assignValues(columns []string, values []any) error {
 				_m.PdfRevision = new(int)
 				*_m.PdfRevision = int(value.Int64)
 			}
+		case invoice.FieldEmailDeliveryStatus:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field email_delivery_status", values[i])
+			} else if value.Valid {
+				_m.EmailDeliveryStatus = invoice.EmailDeliveryStatus(value.String)
+			}
 		case invoice.FieldLastEmailedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field last_emailed_at", values[i])
@@ -213,6 +227,27 @@ func (_m *Invoice) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.LastEmailedTo = new(string)
 				*_m.LastEmailedTo = value.String
+			}
+		case invoice.FieldLastEmailedRevision:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field last_emailed_revision", values[i])
+			} else if value.Valid {
+				_m.LastEmailedRevision = new(int)
+				*_m.LastEmailedRevision = int(value.Int64)
+			}
+		case invoice.FieldLastEmailError:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field last_email_error", values[i])
+			} else if value.Valid {
+				_m.LastEmailError = new(string)
+				*_m.LastEmailError = value.String
+			}
+		case invoice.FieldLastEmailFailedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field last_email_failed_at", values[i])
+			} else if value.Valid {
+				_m.LastEmailFailedAt = new(time.Time)
+				*_m.LastEmailFailedAt = value.Time
 			}
 		case invoice.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -320,6 +355,9 @@ func (_m *Invoice) String() string {
 		builder.WriteString(fmt.Sprintf("%v", *v))
 	}
 	builder.WriteString(", ")
+	builder.WriteString("email_delivery_status=")
+	builder.WriteString(fmt.Sprintf("%v", _m.EmailDeliveryStatus))
+	builder.WriteString(", ")
 	if v := _m.LastEmailedAt; v != nil {
 		builder.WriteString("last_emailed_at=")
 		builder.WriteString(v.Format(time.ANSIC))
@@ -328,6 +366,21 @@ func (_m *Invoice) String() string {
 	if v := _m.LastEmailedTo; v != nil {
 		builder.WriteString("last_emailed_to=")
 		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.LastEmailedRevision; v != nil {
+		builder.WriteString("last_emailed_revision=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
+	builder.WriteString(", ")
+	if v := _m.LastEmailError; v != nil {
+		builder.WriteString("last_email_error=")
+		builder.WriteString(*v)
+	}
+	builder.WriteString(", ")
+	if v := _m.LastEmailFailedAt; v != nil {
+		builder.WriteString("last_email_failed_at=")
+		builder.WriteString(v.Format(time.ANSIC))
 	}
 	builder.WriteString(", ")
 	if v := _m.CreatedAt; v != nil {

@@ -37,10 +37,18 @@ const (
 	FieldPdfGeneratedAt = "pdf_generated_at"
 	// FieldPdfRevision holds the string denoting the pdf_revision field in the database.
 	FieldPdfRevision = "pdf_revision"
+	// FieldEmailDeliveryStatus holds the string denoting the email_delivery_status field in the database.
+	FieldEmailDeliveryStatus = "email_delivery_status"
 	// FieldLastEmailedAt holds the string denoting the last_emailed_at field in the database.
 	FieldLastEmailedAt = "last_emailed_at"
 	// FieldLastEmailedTo holds the string denoting the last_emailed_to field in the database.
 	FieldLastEmailedTo = "last_emailed_to"
+	// FieldLastEmailedRevision holds the string denoting the last_emailed_revision field in the database.
+	FieldLastEmailedRevision = "last_emailed_revision"
+	// FieldLastEmailError holds the string denoting the last_email_error field in the database.
+	FieldLastEmailError = "last_email_error"
+	// FieldLastEmailFailedAt holds the string denoting the last_email_failed_at field in the database.
+	FieldLastEmailFailedAt = "last_email_failed_at"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -90,8 +98,12 @@ var Columns = []string{
 	FieldPdfFilename,
 	FieldPdfGeneratedAt,
 	FieldPdfRevision,
+	FieldEmailDeliveryStatus,
 	FieldLastEmailedAt,
 	FieldLastEmailedTo,
+	FieldLastEmailedRevision,
+	FieldLastEmailError,
+	FieldLastEmailFailedAt,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -148,6 +160,33 @@ func StatusValidator(s Status) error {
 		return nil
 	default:
 		return fmt.Errorf("invoice: invalid enum value for status field: %q", s)
+	}
+}
+
+// EmailDeliveryStatus defines the type for the "email_delivery_status" enum field.
+type EmailDeliveryStatus string
+
+// EmailDeliveryStatusNotSent is the default value of the EmailDeliveryStatus enum.
+const DefaultEmailDeliveryStatus = EmailDeliveryStatusNotSent
+
+// EmailDeliveryStatus values.
+const (
+	EmailDeliveryStatusNotSent EmailDeliveryStatus = "not_sent"
+	EmailDeliveryStatusSent    EmailDeliveryStatus = "sent"
+	EmailDeliveryStatusFailed  EmailDeliveryStatus = "failed"
+)
+
+func (eds EmailDeliveryStatus) String() string {
+	return string(eds)
+}
+
+// EmailDeliveryStatusValidator is a validator for the "email_delivery_status" field enum values. It is called by the builders before save.
+func EmailDeliveryStatusValidator(eds EmailDeliveryStatus) error {
+	switch eds {
+	case EmailDeliveryStatusNotSent, EmailDeliveryStatusSent, EmailDeliveryStatusFailed:
+		return nil
+	default:
+		return fmt.Errorf("invoice: invalid enum value for email_delivery_status field: %q", eds)
 	}
 }
 
@@ -214,6 +253,11 @@ func ByPdfRevision(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldPdfRevision, opts...).ToFunc()
 }
 
+// ByEmailDeliveryStatus orders the results by the email_delivery_status field.
+func ByEmailDeliveryStatus(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldEmailDeliveryStatus, opts...).ToFunc()
+}
+
 // ByLastEmailedAt orders the results by the last_emailed_at field.
 func ByLastEmailedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastEmailedAt, opts...).ToFunc()
@@ -222,6 +266,21 @@ func ByLastEmailedAt(opts ...sql.OrderTermOption) OrderOption {
 // ByLastEmailedTo orders the results by the last_emailed_to field.
 func ByLastEmailedTo(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLastEmailedTo, opts...).ToFunc()
+}
+
+// ByLastEmailedRevision orders the results by the last_emailed_revision field.
+func ByLastEmailedRevision(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastEmailedRevision, opts...).ToFunc()
+}
+
+// ByLastEmailError orders the results by the last_email_error field.
+func ByLastEmailError(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastEmailError, opts...).ToFunc()
+}
+
+// ByLastEmailFailedAt orders the results by the last_email_failed_at field.
+func ByLastEmailFailedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLastEmailFailedAt, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

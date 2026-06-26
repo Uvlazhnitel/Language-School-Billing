@@ -90,7 +90,9 @@ func (s *Service) InvoiceSendEmail(ctx context.Context, id int, to, subject, bod
 		return nil, fmt.Errorf("read invoice pdf: %w", err)
 	}
 	if s.emailSender == nil {
-		return nil, fmt.Errorf(email.ErrNotConfiguredText)
+		err := fmt.Errorf(email.ErrNotConfiguredText)
+		s.persistInvoiceEmailFailure(ctx, id, err)
+		return nil, err
 	}
 	filename := filepath.Base(pdfPath)
 	if err := s.emailSender.Send(ctx, email.Message{
@@ -101,13 +103,18 @@ func (s *Service) InvoiceSendEmail(ctx context.Context, id int, to, subject, bod
 		AttachmentFilename: filename,
 		AttachmentData:     pdfData,
 	}); err != nil {
+		s.persistInvoiceEmailFailure(ctx, id, err)
 		return nil, err
 	}
 
 	sentAt := time.Now().UTC()
 	if _, err := s.rt.DB.Ent.Invoice.UpdateOneID(id).
+		SetEmailDeliveryStatus(invoice.EmailDeliveryStatusSent).
 		SetLastEmailedAt(sentAt).
 		SetLastEmailedTo(to).
+		SetLastEmailedRevision(dto.Version).
+		ClearLastEmailError().
+		ClearLastEmailFailedAt().
 		Save(ctx); err != nil {
 		return nil, fmt.Errorf("save invoice email metadata: %w", err)
 	}
@@ -133,6 +140,19 @@ func (s *Service) InvoiceSendEmail(ctx context.Context, id int, to, subject, bod
 		AttachmentFilename: filename,
 		SentAt:             sentAtValue,
 	}, nil
+}
+
+func (s *Service) persistInvoiceEmailFailure(ctx context.Context, id int, sendErr error) {
+	if sendErr == nil {
+		return
+	}
+	if _, err := s.rt.DB.Ent.Invoice.UpdateOneID(id).
+		SetEmailDeliveryStatus(invoice.EmailDeliveryStatusFailed).
+		SetLastEmailError(strings.TrimSpace(sendErr.Error())).
+		SetLastEmailFailedAt(time.Now().UTC()).
+		Save(ctx); err != nil {
+		fmt.Printf("save invoice email failure metadata: %v\n", err)
+	}
 }
 
 func (s *Service) SettingsGetInvoiceEmail(ctx context.Context) (*InvoiceEmailSettingsDTO, error) {

@@ -42,6 +42,7 @@ describe("studentActivity", () => {
           linesCount: 1,
           pdfReady: false,
           eventDate: "2026-06-02T09:30:00Z",
+          emailCommunicationStatus: "not_sent",
         },
       ],
       months,

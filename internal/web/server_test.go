@@ -1299,6 +1299,12 @@ func TestInvoiceEmailPreviewAndSend(t *testing.T) {
 	if updatedList[0].LastEmailedAt == "" {
 		t.Fatal("list lastEmailedAt is empty")
 	}
+	if updatedList[0].EmailCommunicationStatus != "sent" {
+		t.Fatalf("list emailCommunicationStatus = %q, want sent", updatedList[0].EmailCommunicationStatus)
+	}
+	if updatedList[0].LastEmailError != "" {
+		t.Fatalf("list lastEmailError = %q, want empty", updatedList[0].LastEmailError)
+	}
 	updatedInvoice := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID))
 	if updatedInvoice.LastEmailedTo != preview.To {
 		t.Fatalf("invoice lastEmailedTo = %q, want %q", updatedInvoice.LastEmailedTo, preview.To)
@@ -1306,10 +1312,84 @@ func TestInvoiceEmailPreviewAndSend(t *testing.T) {
 	if updatedInvoice.LastEmailedAt == "" {
 		t.Fatal("invoice lastEmailedAt is empty")
 	}
+	if updatedInvoice.EmailCommunicationStatus != "sent" {
+		t.Fatalf("invoice emailCommunicationStatus = %q, want sent", updatedInvoice.EmailCommunicationStatus)
+	}
+	if updatedInvoice.LastEmailError != "" {
+		t.Fatalf("invoice lastEmailError = %q, want empty", updatedInvoice.LastEmailError)
+	}
 
 	resp := getJSON[backend.AuditLogListResult](t, env.Client, env.Server.URL, "/api/audit-logs?action=invoice.send_email&page=1&pageSize=20")
 	if resp.Total < 1 {
 		t.Fatal("expected invoice.send_email audit entry")
+	}
+}
+
+func TestInvoiceEmailStatusBecomesStaleAfterInvoiceVersionChanges(t *testing.T) {
+	env := newTestServerWithEmailSender(t, &stubEmailSender{})
+	defer env.Close()
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "Stale Email Student",
+		"email":    "stale@example.com",
+	})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Stale Email Course",
+		"type":              "group",
+		"lessonPrice":       20,
+		"subscriptionPrice": 60,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
+	})
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      2026,
+		"month":     6,
+		"hours":     1,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  2026,
+		"month": 6,
+	})
+
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=6&status=all")
+	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
+	pdfPath := invsvc.PDFPathByNumberAndName(env.Runtime.Dirs.Invoices, 2026, 6, issue.Number, st.FullName)
+	if err := os.MkdirAll(filepath.Dir(pdfPath), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(pdfPath, []byte("%PDF-1.4\nstale\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	preview := postJSON[backend.InvoiceEmailPreviewResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/email-preview", map[string]any{})
+	postJSON[backend.InvoiceSendEmailResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/send-email", map[string]any{
+		"to":      preview.To,
+		"subject": preview.Subject,
+		"body":    preview.Body,
+	})
+	if _, err := env.Runtime.DB.Ent.Invoice.UpdateOneID(invoices[0].ID).
+		SetVersion(invoices[0].Version + 2).
+		Save(context.Background()); err != nil {
+		t.Fatalf("Invoice.UpdateOneID: %v", err)
+	}
+
+	updatedList := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=6&status=all")
+	if updatedList[0].EmailCommunicationStatus != "stale" {
+		t.Fatalf("list emailCommunicationStatus = %q, want stale", updatedList[0].EmailCommunicationStatus)
+	}
+	updatedInvoice := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID))
+	if updatedInvoice.EmailCommunicationStatus != "stale" {
+		t.Fatalf("invoice emailCommunicationStatus = %q, want stale", updatedInvoice.EmailCommunicationStatus)
 	}
 }
 
@@ -1604,6 +1684,12 @@ func TestInvoiceEmailSendRequiresSMTPConfiguration(t *testing.T) {
 	}
 	if invoiceAfterFailure.LastEmailedTo != "" {
 		t.Fatalf("lastEmailedTo = %q, want empty", invoiceAfterFailure.LastEmailedTo)
+	}
+	if invoiceAfterFailure.EmailCommunicationStatus != "failed" {
+		t.Fatalf("emailCommunicationStatus = %q, want failed", invoiceAfterFailure.EmailCommunicationStatus)
+	}
+	if !strings.Contains(invoiceAfterFailure.LastEmailError, "not configured") {
+		t.Fatalf("lastEmailError = %q, want configuration error", invoiceAfterFailure.LastEmailError)
 	}
 }
 

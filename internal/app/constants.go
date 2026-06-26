@@ -23,6 +23,14 @@ const (
 	InvoiceStatusCanceled         = "canceled"           // Canceled: voided invoice, cannot be paid
 )
 
+// Invoice email communication statuses represent the latest known delivery state.
+const (
+	InvoiceEmailStatusNotSent = "not_sent"
+	InvoiceEmailStatusSent    = "sent"
+	InvoiceEmailStatusFailed  = "failed"
+	InvoiceEmailStatusStale   = "stale"
+)
+
 func InvoiceStatusIsPendingPDF(status string) bool {
 	return status == InvoiceStatusIssuedPendingPDF || status == InvoiceStatusPaidPendingPDF
 }

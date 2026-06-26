@@ -27,6 +27,7 @@ describe("InvoiceDetailsModal", () => {
           pdfReady: false,
           lastEmailedAt: "2026-06-18T10:30:00Z",
           lastEmailedTo: "family@example.com",
+          emailCommunicationStatus: "stale",
           lines: [],
         }}
         summary={{
@@ -60,7 +61,8 @@ describe("InvoiceDetailsModal", () => {
     expect(markup).toContain("Create PDF");
     expect(markup).toContain("Send Email");
     expect(markup).toContain("Record payment");
-    expect(markup).toContain("Email sent");
+    expect(markup).toContain("Email status");
+    expect(markup).toContain("Sent, but invoice changed after sending");
     expect(markup).toContain("Sent to family@example.com");
   });
 
@@ -86,6 +88,7 @@ describe("InvoiceDetailsModal", () => {
           pdfReady: true,
           lastEmailedAt: "",
           lastEmailedTo: "",
+          emailCommunicationStatus: "not_sent",
           lines: [],
         }}
         summary={{
