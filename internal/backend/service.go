@@ -119,12 +119,16 @@ type RecentPaymentDTO = paysvc.RecentPaymentDTO
 type AttendanceRow = attendance.Row
 
 type IssueResult struct {
-	Number string `json:"number"`
+	Number    string `json:"number"`
+	PDFReady  bool   `json:"pdfReady"`
+	PDFStatus string `json:"pdfStatus"`
 }
 
 type IssueAllResult struct {
-	Count    int      `json:"count"`
-	PdfPaths []string `json:"pdfPaths"`
+	Count          int      `json:"count"`
+	PdfPaths       []string `json:"pdfPaths"`
+	GeneratedCount int      `json:"generatedCount"`
+	PendingCount   int      `json:"pendingCount"`
 }
 
 type EnsureAllPDFsItemResult struct {
@@ -194,6 +198,9 @@ type InvoiceArchiveInvoiceDTO struct {
 type InvoiceArchiveMonthDTO struct {
 	Month             int                        `json:"month"`
 	Count             int                        `json:"count"`
+	ReadyPDFCount     int                        `json:"readyPdfCount"`
+	MissingPDFCount   int                        `json:"missingPdfCount"`
+	ZipDownloadURL    string                     `json:"zipDownloadUrl,omitempty"`
 	ExpandedByDefault bool                       `json:"expandedByDefault"`
 	Invoices          []InvoiceArchiveInvoiceDTO `json:"invoices"`
 }
@@ -583,8 +590,9 @@ func (s *Service) InvoiceIssue(ctx context.Context, id int) (IssueResult, error)
 	if err := s.rt.Payment.ApplyCreditToOldestInvoices(ctx, dto.StudentID); err != nil {
 		return IssueResult{}, err
 	}
-	if _, err := s.InvoiceEnsurePDF(ctx, id); err != nil {
-		log.Printf("InvoiceIssue ensure PDF fallback for invoice %d failed: %v", id, err)
+	pdfReady, err := s.ensureIssuedInvoicePDF(ctx, id)
+	if err != nil {
+		return IssueResult{}, err
 	}
 	after, _, err := s.auditStudentFinanceSnapshot(ctx, dto.StudentID)
 	if err == nil {
@@ -599,7 +607,7 @@ func (s *Service) InvoiceIssue(ctx context.Context, id int) (IssueResult, error)
 			InvoiceID:  intPtr(id),
 		})
 	}
-	return IssueResult{Number: num}, nil
+	return IssueResult{Number: num, PDFReady: pdfReady, PDFStatus: issuePDFStatus(pdfReady)}, nil
 }
 
 func (s *Service) InvoiceIssueWithVersion(ctx context.Context, id, version int) (IssueResult, error) {
@@ -614,8 +622,9 @@ func (s *Service) InvoiceIssueWithVersion(ctx context.Context, id, version int) 
 	if err != nil {
 		return IssueResult{}, err
 	}
-	if _, err := s.InvoiceEnsurePDF(ctx, id); err != nil {
-		log.Printf("InvoiceIssueWithVersion ensure PDF fallback for invoice %d failed: %v", id, err)
+	pdfReady, err := s.ensureIssuedInvoicePDF(ctx, id)
+	if err != nil {
+		return IssueResult{}, err
 	}
 	dto, err := s.rt.Invoice.Get(ctx, id)
 	if err != nil {
@@ -634,18 +643,43 @@ func (s *Service) InvoiceIssueWithVersion(ctx context.Context, id, version int) 
 			InvoiceID:  intPtr(id),
 		})
 	}
-	return IssueResult{Number: num}, nil
+	return IssueResult{Number: num, PDFReady: pdfReady, PDFStatus: issuePDFStatus(pdfReady)}, nil
 }
 
 func (s *Service) InvoiceIssueAll(ctx context.Context, year, month int) (IssueAllResult, error) {
 	before, _ := s.auditSnapshotForPeriod(ctx, year, month)
-	fonts, err := appruntime.ResolveFontsDir(s.rt.Config, s.rt.Dirs)
+	drafts, err := s.rt.DB.Ent.Invoice.Query().
+		Where(
+			invoice.PeriodYearEQ(year),
+			invoice.PeriodMonthEQ(month),
+			invoice.StatusEQ(invoice.Status(sharedapp.InvoiceStatusDraft)),
+		).
+		Order(ent.Asc(invoice.FieldID)).
+		All(ctx)
 	if err != nil {
 		return IssueAllResult{}, err
 	}
-	cnt, paths, err := s.rt.Invoice.IssueAll(ctx, year, month, s.rt.Dirs.Invoices, fonts)
-	if err != nil {
-		return IssueAllResult{}, err
+
+	result := IssueAllResult{
+		PdfPaths: make([]string, 0, len(drafts)),
+	}
+	for _, draft := range drafts {
+		if _, err := s.rt.Invoice.IssueOne(ctx, draft.ID); err != nil {
+			return IssueAllResult{}, err
+		}
+		result.Count++
+		ready, path, err := s.ensureIssuedInvoicePDFWithPath(ctx, draft.ID)
+		if err != nil {
+			return IssueAllResult{}, err
+		}
+		if ready {
+			result.GeneratedCount++
+			if path != "" {
+				result.PdfPaths = append(result.PdfPaths, path)
+			}
+		} else {
+			result.PendingCount++
+		}
 	}
 	items, err := s.rt.Invoice.List(ctx, year, month, "all")
 	if err != nil {
@@ -668,11 +702,38 @@ func (s *Service) InvoiceIssueAll(ctx context.Context, year, month int) (IssueAl
 	s.recordAudit(ctx, auditsvc.RecordEvent{
 		EntityType: "invoice_batch",
 		Action:     "invoice.issue_all",
-		Summary:    fmt.Sprintf("Issued %d invoices for %04d-%02d", cnt, year, month),
+		Summary:    fmt.Sprintf("Issued %d invoices for %04d-%02d", result.Count, year, month),
 		Before:     before,
 		After:      after,
 	})
-	return IssueAllResult{Count: cnt, PdfPaths: paths}, nil
+	return result, nil
+}
+
+func (s *Service) ensureIssuedInvoicePDF(ctx context.Context, id int) (bool, error) {
+	ready, _, err := s.ensureIssuedInvoicePDFWithPath(ctx, id)
+	return ready, err
+}
+
+func (s *Service) ensureIssuedInvoicePDFWithPath(ctx context.Context, id int) (bool, string, error) {
+	path, err := s.InvoiceEnsurePDF(ctx, id)
+	if err != nil {
+		log.Printf("Invoice ensure PDF fallback for invoice %d failed: %v", id, err)
+	}
+	ready, readyErr := s.InvoiceHasPDF(ctx, id)
+	if readyErr != nil {
+		return false, "", readyErr
+	}
+	if !ready {
+		path = ""
+	}
+	return ready, path, nil
+}
+
+func issuePDFStatus(pdfReady bool) string {
+	if pdfReady {
+		return "ready"
+	}
+	return "pending"
 }
 
 func (s *Service) InvoiceEnsurePDF(ctx context.Context, id int) (string, error) {
@@ -912,9 +973,25 @@ func (s *Service) InvoiceArchiveList(ctx context.Context) (*InvoiceArchiveResult
 			sort.Slice(invoices, func(i, j int) bool {
 				return invoices[i].InvoiceID > invoices[j].InvoiceID
 			})
+			readyPDFCount := 0
+			missingPDFCount := 0
+			for _, archived := range invoices {
+				if archived.PDFStatus == invoiceArchivePDFStatusReady {
+					readyPDFCount++
+				} else {
+					missingPDFCount++
+				}
+			}
+			zipDownloadURL := ""
+			if readyPDFCount > 0 {
+				zipDownloadURL = invoiceArchiveMonthZipURL(year, month)
+			}
 			months = append(months, InvoiceArchiveMonthDTO{
 				Month:             month,
 				Count:             len(invoices),
+				ReadyPDFCount:     readyPDFCount,
+				MissingPDFCount:   missingPDFCount,
+				ZipDownloadURL:    zipDownloadURL,
 				ExpandedByDefault: year == currentYear && month == currentMonth,
 				Invoices:          invoices,
 			})
@@ -974,6 +1051,51 @@ func (s *Service) InvoiceArchiveFilePath(year, month int, filename string) (stri
 		return "", os.ErrNotExist
 	}
 	return fullPath, nil
+}
+
+type InvoiceArchiveZIPEntry struct {
+	Name string
+	Path string
+}
+
+func (s *Service) InvoiceArchiveZIPEntries(ctx context.Context, year, month int) ([]InvoiceArchiveZIPEntry, string, error) {
+	if year <= 0 {
+		return nil, "", errors.New("invalid archive year")
+	}
+	if month < 1 || month > 12 {
+		return nil, "", errors.New("invalid archive month")
+	}
+
+	items, err := s.rt.DB.Ent.Invoice.Query().
+		Where(
+			invoice.PeriodYearEQ(year),
+			invoice.PeriodMonthEQ(month),
+		).
+		WithStudent().
+		Order(ent.Asc(invoice.FieldID)).
+		All(ctx)
+	if err != nil {
+		return nil, "", err
+	}
+
+	entries := make([]InvoiceArchiveZIPEntry, 0, len(items))
+	for _, iv := range items {
+		_, _, subjectName := archiveInvoiceNames(iv)
+		info := s.invoicePDFInfo(iv, subjectName)
+		if info.Status != invoiceArchivePDFStatusReady || info.Filename == "" || info.Path == "" {
+			continue
+		}
+		entries = append(entries, InvoiceArchiveZIPEntry{
+			Name: info.Filename,
+			Path: info.Path,
+		})
+	}
+	if len(entries) == 0 {
+		return nil, "", errors.New("invalid archive zip: no ready pdfs for this month")
+	}
+
+	filename := fmt.Sprintf("invoices-%04d-%02d.zip", year, month)
+	return entries, filename, nil
 }
 
 func (s *Service) SettingsSetLocale(ctx context.Context, loc string) error {
@@ -2221,4 +2343,8 @@ func invoiceArchiveFileURL(year, month int, filename, action string) string {
 		url.PathEscape(filename),
 		action,
 	)
+}
+
+func invoiceArchiveMonthZipURL(year, month int) string {
+	return fmt.Sprintf("/api/invoice-archive/%04d/%02d/zip", year, month)
 }

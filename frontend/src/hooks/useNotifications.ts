@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type NotificationMessage = {
   text: string;
-  type: "success" | "error";
+  type: "success" | "warning" | "error";
 };
 
 export function useNotifications() {
@@ -17,7 +17,7 @@ export function useNotifications() {
     setMessage(null);
   }, []);
 
-  const showMessage = useCallback((text: string, type: "success" | "error" = "success") => {
+  const showMessage = useCallback((text: string, type: "success" | "warning" | "error" = "success") => {
     console.log(`[${type.toUpperCase()}] ${text}`);
 
     if (messageTimeoutRef.current) {
@@ -27,11 +27,11 @@ export function useNotifications() {
 
     setMessage({ text, type });
 
-    if (type === "success") {
+    if (type !== "error") {
       messageTimeoutRef.current = window.setTimeout(() => {
         setMessage(null);
         messageTimeoutRef.current = null;
-      }, 5000);
+      }, type === "warning" ? 8000 : 5000);
     }
   }, []);
 

@@ -234,6 +234,37 @@ export function SettingsScreen({
                           </span>
                         </summary>
                         <div className="invoiceArchiveFiles">
+                          <div className="settingsActions" style={{ marginBottom: "0.75rem", alignItems: "center" }}>
+                            <span className="mutedInline">
+                              {t("settings.invoiceArchiveMonthZipSummary", {
+                                ready: monthGroup.readyPdfCount,
+                                total: monthGroup.count,
+                              })}
+                            </span>
+                            {monthGroup.zipDownloadUrl ? (
+                              <a
+                                className="workspaceActionButton workspaceActionButtonPrimary"
+                                href={monthGroup.zipDownloadUrl}
+                              >
+                                {t("button.downloadZip")}
+                              </a>
+                            ) : (
+                              <button
+                                type="button"
+                                className="workspaceActionButton workspaceActionButtonPrimary"
+                                disabled
+                              >
+                                {t("button.downloadZip")}
+                              </button>
+                            )}
+                            {monthGroup.missingPdfCount > 0 ? (
+                              <span className="invoiceArchiveHint">
+                                {t("settings.invoiceArchiveMonthZipWarning", {
+                                  count: monthGroup.missingPdfCount,
+                                })}
+                              </span>
+                            ) : null}
+                          </div>
                           {monthGroup.invoices.map((item) => (
                             <div
                               key={item.invoiceId}

@@ -66,6 +66,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "button.copyRu": "Copy RU",
     "button.copyLv": "Copy LV",
     "button.issue": "Issue",
+    "button.downloadZip": "Download ZIP",
     "button.downloadPdf": "Download PDF",
     "button.sendEmail": "Send Email",
     "button.reopenDraft": "Return to draft",
@@ -328,6 +329,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "settings.invoiceArchivePdfDate": "PDF date",
     "settings.invoiceArchivePdfDateMissing": "Not generated",
     "settings.invoiceArchivePdfFile": "PDF file",
+    "settings.invoiceArchiveMonthZipSummary": "PDF ready {ready} out of {total}",
+    "settings.invoiceArchiveMonthZipWarning": "{count} invoices are not included because their PDF is not ready.",
     "settings.invoiceEmailTitle": "Invoice email templates",
     "settings.invoiceEmailDesc": "Configure the default subject, body and optional Reply-To used for invoice emails.",
     "settings.invoiceEmailSubject": "Subject template",
@@ -398,6 +401,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.recordConflict":
       "This record was changed by another user. Refresh the data and try again.",
     "msg.invoiceIssued": "Invoice issued: #{number}",
+    "msg.invoiceIssuedPdfReady": "Invoice issued and PDF created: #{number}",
+    "msg.invoiceIssuedPdfPending": "Invoice issued, but PDF is not ready yet: #{number}",
     "msg.invoiceReopened": "Invoice returned to draft",
     "msg.invoiceReopenConfirm":
       "Return this issued invoice to draft? This is allowed only when there are no payments. The old invoice number will be cleared.",
@@ -628,6 +633,7 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "button.copyRu": "Скопировать RU",
     "button.copyLv": "Скопировать LV",
     "button.issue": "Выставить",
+    "button.downloadZip": "Скачать ZIP",
     "button.downloadPdf": "Скачать PDF",
     "button.sendEmail": "Отправить Email",
     "button.reopenDraft": "Вернуть в черновик",
@@ -905,6 +911,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "settings.invoiceArchivePdfDate": "Дата PDF",
     "settings.invoiceArchivePdfDateMissing": "Не создан",
     "settings.invoiceArchivePdfFile": "Файл PDF",
+    "settings.invoiceArchiveMonthZipSummary": "PDF готово {ready} из {total}",
+    "settings.invoiceArchiveMonthZipWarning": "{count} счетов не вошли в архив, потому что PDF ещё не готов.",
     "settings.invoiceEmailTitle": "Шаблоны email для счетов",
     "settings.invoiceEmailDesc": "Настройте тему, текст и необязательный Reply-To по умолчанию для писем со счетами.",
     "settings.invoiceEmailSubject": "Шаблон темы",
@@ -976,6 +984,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.recordConflict":
       "Эту запись уже изменил другой сотрудник. Обновите данные и попробуйте ещё раз.",
     "msg.invoiceIssued": "Счёт выставлен: #{number}",
+    "msg.invoiceIssuedPdfReady": "Счёт выставлен, PDF создан: #{number}",
+    "msg.invoiceIssuedPdfPending": "Счёт выставлен, но PDF пока не готов: #{number}",
     "msg.invoiceReopened": "Счёт возвращён в черновик",
     "msg.invoiceReopenConfirm":
       "Вернуть этот выставленный счёт в черновик? Это разрешено только если по нему нет оплат. Старый номер счёта будет очищен.",

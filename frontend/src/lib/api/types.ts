@@ -103,6 +103,9 @@ export type InvoiceArchiveInvoiceDTO = {
 export type InvoiceArchiveMonthDTO = {
   month: number;
   count: number;
+  readyPdfCount: number;
+  missingPdfCount: number;
+  zipDownloadUrl?: string;
   expandedByDefault: boolean;
   invoices: InvoiceArchiveInvoiceDTO[];
 };
@@ -251,8 +254,17 @@ export type GenerateResult = {
   skippedNoLines: number;
 };
 
-export type IssueResult = { number: string };
-export type IssueAllResult = { count: number; pdfPaths: string[] };
+export type IssueResult = {
+  number: string;
+  pdfReady: boolean;
+  pdfStatus: "ready" | "pending";
+};
+export type IssueAllResult = {
+  count: number;
+  pdfPaths: string[];
+  generatedCount: number;
+  pendingCount: number;
+};
 
 export type PaymentDTO = {
   id: number;
@@ -506,6 +518,7 @@ export interface AppTransport {
   deleteDraft(id: number, version: number): Promise<void>;
   reopenToDraft(id: number, version: number): Promise<void>;
   issueInvoice(id: number, version: number): Promise<IssueResult>;
+  issueAllInvoices(year: number, month: number): Promise<IssueAllResult>;
   rebuildStudentDraft(studentId: number, year: number, month: number): Promise<GenerateResult>;
   ensurePdf(invoiceId: number): Promise<EnsurePdfResult>;
   ensureAllPdfs(year: number, month: number): Promise<EnsureAllPDFsResult>;

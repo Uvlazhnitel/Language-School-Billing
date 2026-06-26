@@ -34,6 +34,7 @@ import {
   InvoiceListItemView,
   InvoiceDTO,
 } from "./lib/invoices";
+import { buildIssueFeedback } from "./lib/invoiceIssueFeedback";
 import { getInvoiceMenuActions } from "./lib/invoiceUi";
 
 import {
@@ -1921,7 +1922,8 @@ export default function App() {
       if (invoiceDetailsOpen && selectedInv?.id === id) {
         await loadInvoiceDetails(id);
       }
-      showMessage(t("msg.invoiceIssued", { number: res.number }));
+      const feedback = buildIssueFeedback(res, t);
+      showMessage(feedback.text, feedback.type);
     } catch (e: any) {
       if (isStaleRevisionError(e)) {
         showMessage(t("msg.recordConflict"), "error");

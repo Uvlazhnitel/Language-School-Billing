@@ -59,6 +59,7 @@ export const lvTranslations: Record<string, string> = {
   "button.copyRu": "Kopēt RU",
   "button.copyLv": "Kopēt LV",
   "button.issue": "Izrakstīt",
+  "button.downloadZip": "Lejupielādēt ZIP",
   "button.downloadPdf": "Lejupielādēt PDF",
   "button.sendEmail": "Sūtīt e-pastā",
   "button.reopenDraft": "Atgriezt melnrakstā",
@@ -323,6 +324,8 @@ export const lvTranslations: Record<string, string> = {
   "settings.invoiceArchivePdfDate": "PDF datums",
   "settings.invoiceArchivePdfDateMissing": "Nav izveidots",
   "settings.invoiceArchivePdfFile": "PDF fails",
+  "settings.invoiceArchiveMonthZipSummary": "PDF gatavs {ready} no {total}",
+  "settings.invoiceArchiveMonthZipWarning": "{count} rēķini nav iekļauti arhīvā, jo PDF vēl nav gatavs.",
   "settings.invoiceEmailTitle": "Rēķinu e-pasta veidnes",
   "settings.invoiceEmailDesc": "Iestatiet noklusējuma tematu, ziņas tekstu un izvēles Reply-To rēķinu e-pastiem.",
   "settings.invoiceEmailSubject": "Temata veidne",
@@ -392,6 +395,8 @@ export const lvTranslations: Record<string, string> = {
   "msg.recordConflict":
     "Šo ierakstu jau ir mainījis cits darbinieks. Atjaunojiet datus un mēģiniet vēlreiz.",
   "msg.invoiceIssued": "Rēķins izrakstīts: #{number}",
+  "msg.invoiceIssuedPdfReady": "Rēķins izrakstīts un PDF izveidots: #{number}",
+  "msg.invoiceIssuedPdfPending": "Rēķins izrakstīts, bet PDF vēl nav gatavs: #{number}",
   "msg.invoiceReopened": "Rēķins atgriezts melnrakstā",
   "msg.invoiceReopenConfirm":
     "Vai atgriezt šo izrakstīto rēķinu melnrakstā? Tas ir atļauts tikai tad, ja nav maksājumu. Vecais rēķina numurs tiks notīrīts.",

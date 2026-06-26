@@ -1811,8 +1811,13 @@ func TestReopenDraft(t *testing.T) {
 		if got.Number != nil {
 			t.Fatalf("Number = %v, want nil", got.Number)
 		}
-		if got.PdfRevision != nil || got.PdfGeneratedAt != nil {
-			t.Fatalf("expected PDF metadata cleared, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
+		if got.PdfFilename != nil || got.PdfRevision != nil || got.PdfGeneratedAt != nil {
+			t.Fatalf(
+				"expected PDF metadata cleared, got filename=%v revision=%v generatedAt=%v",
+				got.PdfFilename,
+				got.PdfRevision,
+				got.PdfGeneratedAt,
+			)
 		}
 		if got.TotalAmountCents != money.EurosToCents(70) {
 			t.Fatalf("TotalAmount = %v, want 70", money.CentsToEuros(got.TotalAmountCents))

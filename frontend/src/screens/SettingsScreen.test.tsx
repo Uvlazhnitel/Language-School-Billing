@@ -25,6 +25,9 @@ describe("SettingsScreen", () => {
                 {
                   month: 6,
                   count: 4,
+                  readyPdfCount: 1,
+                  missingPdfCount: 3,
+                  zipDownloadUrl: "/api/invoice-archive/2026/06/zip",
                   expandedByDefault: true,
                   invoices: [
                     {
@@ -140,6 +143,10 @@ describe("SettingsScreen", () => {
     expect(markup).toContain("PDF access error");
     expect(markup).toContain("Open invoice");
     expect(markup).toContain("Create PDF");
+    expect(markup).toContain("Download ZIP");
+    expect(markup).toContain("PDF ready 1 out of 4");
+    expect(markup).toContain("3 invoices are not included because their PDF is not ready.");
+    expect(markup).toContain("/api/invoice-archive/2026/06/zip");
     expect(markup).toContain("PDF file");
     expect(markup).toContain("LS-202606-001 - Archive Student.pdf");
     expect(markup).toContain("/api/invoice-archive/2026/06/LS-202606-001.pdf/open");

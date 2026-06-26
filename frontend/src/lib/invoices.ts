@@ -42,6 +42,11 @@ export async function issueOne(id: number, version: number) {
   return transport.issueInvoice(id, version);
 }
 
+export async function issueAll(year: number, month: number) {
+  const transport = await getTransport();
+  return transport.issueAllInvoices(year, month);
+}
+
 export async function rebuildStudentDraft(studentId: number, year: number, month: number) {
   const transport = await getTransport();
   return transport.rebuildStudentDraft(studentId, year, month);

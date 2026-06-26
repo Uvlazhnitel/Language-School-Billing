@@ -8,6 +8,10 @@ type NotificationToastProps = {
 };
 
 export function NotificationToast({ message, onDismiss, t }: NotificationToastProps) {
+  const backgroundColor =
+    message.type === "success" ? "#4caf50" : message.type === "warning" ? "#f59e0b" : "#f44336";
+  const isAlert = message.type === "error" || message.type === "warning";
+
   return (
     <div
       className={`messageToast ${message.type}`}
@@ -16,7 +20,7 @@ export function NotificationToast({ message, onDismiss, t }: NotificationToastPr
         top: "20px",
         right: "20px",
         padding: "16px 24px",
-        backgroundColor: message.type === "success" ? "#4caf50" : "#f44336",
+        backgroundColor,
         color: "white",
         borderRadius: "4px",
         boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
@@ -25,8 +29,8 @@ export function NotificationToast({ message, onDismiss, t }: NotificationToastPr
         fontSize: "14px",
         lineHeight: "1.5",
       }}
-      role={message.type === "error" ? "alert" : "status"}
-      aria-live={message.type === "error" ? "assertive" : "polite"}
+      role={isAlert ? "alert" : "status"}
+      aria-live={isAlert ? "assertive" : "polite"}
       onClick={onDismiss}
     >
       <div

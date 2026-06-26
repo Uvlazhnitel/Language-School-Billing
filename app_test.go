@@ -171,6 +171,12 @@ func TestInvoiceIssueGeneratesPDFAndMarksInvoiceReady(t *testing.T) {
 	if res.Number != "AL-202605-001" {
 		t.Fatalf("IssueResult.Number = %q, want %q", res.Number, "AL-202605-001")
 	}
+	if !res.PDFReady {
+		t.Fatal("IssueResult.PDFReady = false, want true")
+	}
+	if res.PDFStatus != "ready" {
+		t.Fatalf("IssueResult.PDFStatus = %q, want %q", res.PDFStatus, "ready")
+	}
 
 	got, err := db.Ent.Invoice.Get(ctx, iv.ID)
 	if err != nil {
@@ -228,6 +234,122 @@ func TestInvoiceIssueGeneratesPDFAndMarksInvoiceReady(t *testing.T) {
 	}
 	if !hasPDF {
 		t.Fatalf("InvoiceHasPDF after generation = false, want true")
+	}
+}
+
+func TestInvoiceIssueLeavesPendingWhenPDFGenerationFails(t *testing.T) {
+	ctx := context.Background()
+	base := t.TempDir()
+	dirs, err := paths.Ensure(base)
+	if err != nil {
+		t.Fatalf("paths.Ensure: %v", err)
+	}
+
+	db, err := infra.Open(ctx, filepath.Join(dirs.Data, "app.sqlite"))
+	if err != nil {
+		t.Fatalf("infra.Open: %v", err)
+	}
+	defer db.Ent.Close()
+
+	if _, err := db.Ent.Settings.Create().
+		SetSingletonID(sharedapp.SettingsSingletonID).
+		SetOrgName("ArtLab").
+		SetAddress("Latgales iela 260, Rīga, Latvija").
+		SetInvoicePrefix("AL").
+		SetNextSeq(1).
+		SetInvoiceDayOfMonth(1).
+		SetCurrency("EUR").
+		SetLocale("en-IE").
+		Save(ctx); err != nil {
+		t.Fatalf("Settings.Create: %v", err)
+	}
+
+	st, err := db.Ent.Student.Create().
+		SetFullName("Pending Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := db.Ent.Course.Create().
+		SetName("Drawing").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(25)).
+		SetSubscriptionPriceCents(money.EurosToCents(80)).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := db.Ent.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	iv, err := db.Ent.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(5).
+		SetTotalAmountCents(money.EurosToCents(25)).
+		SetStatus(sharedapp.InvoiceStatusDraft).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	if _, err := db.Ent.InvoiceLine.Create().
+		SetInvoiceID(iv.ID).
+		SetEnrollmentID(enr.ID).
+		SetDescription("One lesson").
+		SetQty(1).
+		SetUnitPriceCents(money.EurosToCents(25)).
+		SetAmountCents(money.EurosToCents(25)).
+		Save(ctx); err != nil {
+		t.Fatalf("InvoiceLine.Create: %v", err)
+	}
+
+	t.Setenv("LS_FONTS_DIR", filepath.Join(base, "missing-fonts"))
+	t.Chdir(t.TempDir())
+
+	app := &App{
+		ctx:  ctx,
+		dirs: dirs,
+		db:   db,
+		inv:  invsvc.New(db.Ent),
+		pay:  paysvc.New(db.Ent),
+	}
+
+	res, err := app.InvoiceIssue(iv.ID)
+	if err != nil {
+		t.Fatalf("InvoiceIssue: %v", err)
+	}
+	if res.Number != "AL-202605-001" {
+		t.Fatalf("IssueResult.Number = %q, want %q", res.Number, "AL-202605-001")
+	}
+	if res.PDFReady {
+		t.Fatal("IssueResult.PDFReady = true, want false")
+	}
+	if res.PDFStatus != "pending" {
+		t.Fatalf("IssueResult.PDFStatus = %q, want %q", res.PDFStatus, "pending")
+	}
+
+	got, err := db.Ent.Invoice.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Invoice.Get: %v", err)
+	}
+	if got.Status != sharedapp.InvoiceStatusIssuedPendingPDF {
+		t.Fatalf("Status = %q, want %q", got.Status, sharedapp.InvoiceStatusIssuedPendingPDF)
+	}
+	if got.PdfFilename != nil || got.PdfGeneratedAt != nil || got.PdfRevision != nil {
+		t.Fatalf("expected PDF metadata to stay empty, got filename=%v generatedAt=%v revision=%v", got.PdfFilename, got.PdfGeneratedAt, got.PdfRevision)
 	}
 }
 

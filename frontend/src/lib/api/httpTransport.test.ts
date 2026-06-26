@@ -126,6 +126,37 @@ describe("httpTransport", () => {
     });
   });
 
+  it("maps invoice issue endpoints with pdf status", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/invoices/12/issue")) {
+        return jsonResponse({ number: "LS-202606-001", pdfReady: false, pdfStatus: "pending" });
+      }
+      if (url.endsWith("/api/invoices/issue-all")) {
+        return jsonResponse({
+          count: 2,
+          pdfPaths: ["/tmp/LS-202606-001.pdf"],
+          generatedCount: 1,
+          pendingCount: 1,
+        });
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(httpTransport.issueInvoice(12, 3)).resolves.toEqual({
+      number: "LS-202606-001",
+      pdfReady: false,
+      pdfStatus: "pending",
+    });
+    await expect(httpTransport.issueAllInvoices(2026, 6)).resolves.toEqual({
+      count: 2,
+      pdfPaths: ["/tmp/LS-202606-001.pdf"],
+      generatedCount: 1,
+      pendingCount: 1,
+    });
+  });
+
   it("maps ensure-all-pdfs endpoint", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

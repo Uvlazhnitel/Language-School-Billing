@@ -1,10 +1,12 @@
 package web
 
 import (
+	"archive/zip"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -49,6 +51,7 @@ func (s *Server) routes() {
 	s.mux.HandleFunc("POST /api/me/locale", s.handleCurrentUserSetLocale)
 	s.mux.HandleFunc("POST /api/backups", s.handleBackupsCreate)
 	s.mux.HandleFunc("GET /api/invoice-archive", s.handleInvoiceArchiveList)
+	s.mux.HandleFunc("GET /api/invoice-archive/{year}/{month}/zip", s.handleInvoiceArchiveZip)
 	s.mux.HandleFunc("GET /api/invoice-archive/{year}/{month}/{filename}/open", s.handleInvoiceArchiveOpen)
 	s.mux.HandleFunc("GET /api/invoice-archive/{year}/{month}/{filename}/download", s.handleInvoiceArchiveDownload)
 
@@ -828,6 +831,53 @@ func (s *Server) handleInvoiceArchiveList(w http.ResponseWriter, r *http.Request
 
 func (s *Server) handleInvoiceArchiveOpen(w http.ResponseWriter, r *http.Request) {
 	s.handleInvoiceArchiveFile(w, r, "inline")
+}
+
+func (s *Server) handleInvoiceArchiveZip(w http.ResponseWriter, r *http.Request) {
+	year, ok := pathInt(w, r, "year")
+	if !ok {
+		return
+	}
+	month, ok := pathInt(w, r, "month")
+	if !ok {
+		return
+	}
+
+	entries, filename, err := s.svc.InvoiceArchiveZIPEntries(r.Context(), year, month)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/zip")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", filename))
+
+	zw := zip.NewWriter(w)
+	for _, entry := range entries {
+		fileWriter, err := zw.Create(entry.Name)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		file, err := os.Open(entry.Path)
+		if err != nil {
+			writeError(w, err)
+			return
+		}
+		if _, err := io.Copy(fileWriter, file); err != nil {
+			_ = file.Close()
+			writeError(w, err)
+			return
+		}
+		if err := file.Close(); err != nil {
+			writeError(w, err)
+			return
+		}
+	}
+	if err := zw.Close(); err != nil {
+		writeError(w, err)
+		return
+	}
 }
 
 func (s *Server) handleInvoiceArchiveDownload(w http.ResponseWriter, r *http.Request) {
