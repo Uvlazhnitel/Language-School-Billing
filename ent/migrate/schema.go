@@ -155,6 +155,7 @@ var (
 		{Name: "billing_mode", Type: field.TypeEnum, Enums: []string{"subscription", "per_lesson"}},
 		{Name: "charge_materials", Type: field.TypeBool, Default: true},
 		{Name: "discount_pct", Type: field.TypeFloat64, Default: 0},
+		{Name: "lesson_price_override_cents", Type: field.TypeInt64, Default: -1},
 		{Name: "subscription_lesson_price_cents", Type: field.TypeInt64, Default: -1},
 		{Name: "note", Type: field.TypeString, Default: ""},
 		{Name: "created_at", Type: field.TypeTime, Nullable: true},
@@ -170,13 +171,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "enrollments_courses_enrollments",
-				Columns:    []*schema.Column{EnrollmentsColumns[9]},
+				Columns:    []*schema.Column{EnrollmentsColumns[10]},
 				RefColumns: []*schema.Column{CoursesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "enrollments_students_enrollments",
-				Columns:    []*schema.Column{EnrollmentsColumns[10]},
+				Columns:    []*schema.Column{EnrollmentsColumns[11]},
 				RefColumns: []*schema.Column{StudentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -185,7 +186,7 @@ var (
 			{
 				Name:    "enrollment_student_id_course_id",
 				Unique:  true,
-				Columns: []*schema.Column{EnrollmentsColumns[10], EnrollmentsColumns[9]},
+				Columns: []*schema.Column{EnrollmentsColumns[11], EnrollmentsColumns[10]},
 			},
 		},
 	}
@@ -202,8 +203,12 @@ var (
 		{Name: "pdf_filename", Type: field.TypeString, Nullable: true},
 		{Name: "pdf_generated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "pdf_revision", Type: field.TypeInt, Nullable: true},
+		{Name: "email_delivery_status", Type: field.TypeEnum, Enums: []string{"not_sent", "sent", "failed"}, Default: "not_sent"},
 		{Name: "last_emailed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "last_emailed_to", Type: field.TypeString, Nullable: true},
+		{Name: "last_emailed_revision", Type: field.TypeInt, Nullable: true},
+		{Name: "last_email_error", Type: field.TypeString, Nullable: true},
+		{Name: "last_email_failed_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime, Nullable: true},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "student_id", Type: field.TypeInt},
@@ -216,7 +221,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "invoices_students_invoices",
-				Columns:    []*schema.Column{InvoicesColumns[15]},
+				Columns:    []*schema.Column{InvoicesColumns[19]},
 				RefColumns: []*schema.Column{StudentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -225,7 +230,7 @@ var (
 			{
 				Name:    "invoice_student_id_period_year_period_month",
 				Unique:  true,
-				Columns: []*schema.Column{InvoicesColumns[15], InvoicesColumns[2], InvoicesColumns[3]},
+				Columns: []*schema.Column{InvoicesColumns[19], InvoicesColumns[2], InvoicesColumns[3]},
 			},
 		},
 	}

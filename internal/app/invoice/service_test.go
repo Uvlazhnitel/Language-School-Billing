@@ -135,6 +135,47 @@ func TestGenerateDraftsSubscriptionMaterialsUseCourseMonthStats(t *testing.T) {
 	assertDraft(string(StatusDraft), 65)
 }
 
+func TestResolvePricesUsesPerLessonOverrideWhenPresent(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-lesson-override?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().SetFullName("Override Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+	crs, err := client.Course.Create().
+		SetName("Override Course").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(money.EurosToCents(60)).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetChargeMaterials(true).
+		SetLessonPriceOverrideCents(money.EurosToCents(12.5)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	lessonPriceCents, subscriptionPriceCents := svc.resolvePrices(ctx, enr, 2026, 6)
+	if lessonPriceCents != money.EurosToCents(12.5) {
+		t.Fatalf("lessonPriceCents = %d, want %d", lessonPriceCents, money.EurosToCents(12.5))
+	}
+	if subscriptionPriceCents != money.EurosToCents(60) {
+		t.Fatalf("subscriptionPriceCents = %d, want %d", subscriptionPriceCents, money.EurosToCents(60))
+	}
+}
+
 func TestGenerateDraftsPerLessonDescriptionIsLatvian(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:invoice-generate-per-lesson?mode=memory&_fk=1")
@@ -1793,6 +1834,12 @@ func TestReopenDraft(t *testing.T) {
 			SetPdfFilename(filepath.Base(pdfPath)).
 			SetPdfGeneratedAt(time.Date(2026, 4, 6, 0, 0, 0, 0, time.UTC)).
 			SetPdfRevision(iv.Version).
+			SetEmailDeliveryStatus(invoice.EmailDeliveryStatusSent).
+			SetLastEmailedAt(time.Date(2026, 4, 7, 9, 0, 0, 0, time.UTC)).
+			SetLastEmailedTo("billing@example.com").
+			SetLastEmailedRevision(iv.Version).
+			SetLastEmailError("old error").
+			SetLastEmailFailedAt(time.Date(2026, 4, 7, 8, 0, 0, 0, time.UTC)).
 			Save(ctx); err != nil {
 			t.Fatalf("Invoice.Update metadata: %v", err)
 		}
@@ -1817,6 +1864,19 @@ func TestReopenDraft(t *testing.T) {
 				got.PdfFilename,
 				got.PdfRevision,
 				got.PdfGeneratedAt,
+			)
+		}
+		if got.EmailDeliveryStatus != invoice.EmailDeliveryStatusNotSent {
+			t.Fatalf("EmailDeliveryStatus = %q, want %q", got.EmailDeliveryStatus, invoice.EmailDeliveryStatusNotSent)
+		}
+		if got.LastEmailedAt != nil || got.LastEmailedTo != nil || got.LastEmailedRevision != nil || got.LastEmailError != nil || got.LastEmailFailedAt != nil {
+			t.Fatalf(
+				"expected email metadata cleared, got lastEmailedAt=%v lastEmailedTo=%v lastEmailedRevision=%v lastEmailError=%v lastEmailFailedAt=%v",
+				got.LastEmailedAt,
+				got.LastEmailedTo,
+				got.LastEmailedRevision,
+				got.LastEmailError,
+				got.LastEmailFailedAt,
 			)
 		}
 		if got.TotalAmountCents != money.EurosToCents(70) {
@@ -1951,6 +2011,47 @@ func TestReopenDraft(t *testing.T) {
 			t.Fatalf("NextSeq = %d, want 42", settings.NextSeq)
 		}
 	})
+}
+
+func TestGetComputesStaleEmailCommunicationStatus(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-email-status?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Status Student").
+		SetEmail("family@example.com").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(6).
+		SetTotalAmountCents(money.EurosToCents(55)).
+		SetStatus(StatusIssued).
+		SetNumber("LS-202606-017").
+		SetVersion(4).
+		SetEmailDeliveryStatus(invoice.EmailDeliveryStatusSent).
+		SetLastEmailedAt(time.Date(2026, 6, 20, 10, 0, 0, 0, time.UTC)).
+		SetLastEmailedTo("family@example.com").
+		SetLastEmailedRevision(3).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	dto, err := svc.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if dto.EmailCommunicationStatus != app.InvoiceEmailStatusStale {
+		t.Fatalf("EmailCommunicationStatus = %q, want %q", dto.EmailCommunicationStatus, app.InvoiceEmailStatusStale)
+	}
 }
 
 func TestIssueOneUsesTransactionalSettingsSequence(t *testing.T) {

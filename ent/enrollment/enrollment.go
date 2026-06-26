@@ -27,6 +27,8 @@ const (
 	FieldChargeMaterials = "charge_materials"
 	// FieldDiscountPct holds the string denoting the discount_pct field in the database.
 	FieldDiscountPct = "discount_pct"
+	// FieldLessonPriceOverrideCents holds the string denoting the lesson_price_override_cents field in the database.
+	FieldLessonPriceOverrideCents = "lesson_price_override_cents"
 	// FieldSubscriptionLessonPriceCents holds the string denoting the subscription_lesson_price_cents field in the database.
 	FieldSubscriptionLessonPriceCents = "subscription_lesson_price_cents"
 	// FieldNote holds the string denoting the note field in the database.
@@ -75,6 +77,7 @@ var Columns = []string{
 	FieldBillingMode,
 	FieldChargeMaterials,
 	FieldDiscountPct,
+	FieldLessonPriceOverrideCents,
 	FieldSubscriptionLessonPriceCents,
 	FieldNote,
 	FieldCreatedAt,
@@ -98,6 +101,8 @@ var (
 	DefaultChargeMaterials bool
 	// DefaultDiscountPct holds the default value on creation for the "discount_pct" field.
 	DefaultDiscountPct float64
+	// DefaultLessonPriceOverrideCents holds the default value on creation for the "lesson_price_override_cents" field.
+	DefaultLessonPriceOverrideCents int64
 	// DefaultSubscriptionLessonPriceCents holds the default value on creation for the "subscription_lesson_price_cents" field.
 	DefaultSubscriptionLessonPriceCents int64
 	// DefaultNote holds the default value on creation for the "note" field.
@@ -169,6 +174,11 @@ func ByChargeMaterials(opts ...sql.OrderTermOption) OrderOption {
 // ByDiscountPct orders the results by the discount_pct field.
 func ByDiscountPct(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDiscountPct, opts...).ToFunc()
+}
+
+// ByLessonPriceOverrideCents orders the results by the lesson_price_override_cents field.
+func ByLessonPriceOverrideCents(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldLessonPriceOverrideCents, opts...).ToFunc()
 }
 
 // BySubscriptionLessonPriceCents orders the results by the subscription_lesson_price_cents field.

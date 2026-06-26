@@ -83,6 +83,20 @@ func (_c *EnrollmentCreate) SetNillableDiscountPct(v *float64) *EnrollmentCreate
 	return _c
 }
 
+// SetLessonPriceOverrideCents sets the "lesson_price_override_cents" field.
+func (_c *EnrollmentCreate) SetLessonPriceOverrideCents(v int64) *EnrollmentCreate {
+	_c.mutation.SetLessonPriceOverrideCents(v)
+	return _c
+}
+
+// SetNillableLessonPriceOverrideCents sets the "lesson_price_override_cents" field if the given value is not nil.
+func (_c *EnrollmentCreate) SetNillableLessonPriceOverrideCents(v *int64) *EnrollmentCreate {
+	if v != nil {
+		_c.SetLessonPriceOverrideCents(*v)
+	}
+	return _c
+}
+
 // SetSubscriptionLessonPriceCents sets the "subscription_lesson_price_cents" field.
 func (_c *EnrollmentCreate) SetSubscriptionLessonPriceCents(v int64) *EnrollmentCreate {
 	_c.mutation.SetSubscriptionLessonPriceCents(v)
@@ -211,6 +225,10 @@ func (_c *EnrollmentCreate) defaults() {
 		v := enrollment.DefaultDiscountPct
 		_c.mutation.SetDiscountPct(v)
 	}
+	if _, ok := _c.mutation.LessonPriceOverrideCents(); !ok {
+		v := enrollment.DefaultLessonPriceOverrideCents
+		_c.mutation.SetLessonPriceOverrideCents(v)
+	}
 	if _, ok := _c.mutation.SubscriptionLessonPriceCents(); !ok {
 		v := enrollment.DefaultSubscriptionLessonPriceCents
 		_c.mutation.SetSubscriptionLessonPriceCents(v)
@@ -253,6 +271,9 @@ func (_c *EnrollmentCreate) check() error {
 	}
 	if _, ok := _c.mutation.DiscountPct(); !ok {
 		return &ValidationError{Name: "discount_pct", err: errors.New(`ent: missing required field "Enrollment.discount_pct"`)}
+	}
+	if _, ok := _c.mutation.LessonPriceOverrideCents(); !ok {
+		return &ValidationError{Name: "lesson_price_override_cents", err: errors.New(`ent: missing required field "Enrollment.lesson_price_override_cents"`)}
 	}
 	if _, ok := _c.mutation.SubscriptionLessonPriceCents(); !ok {
 		return &ValidationError{Name: "subscription_lesson_price_cents", err: errors.New(`ent: missing required field "Enrollment.subscription_lesson_price_cents"`)}
@@ -307,6 +328,10 @@ func (_c *EnrollmentCreate) createSpec() (*Enrollment, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.DiscountPct(); ok {
 		_spec.SetField(enrollment.FieldDiscountPct, field.TypeFloat64, value)
 		_node.DiscountPct = value
+	}
+	if value, ok := _c.mutation.LessonPriceOverrideCents(); ok {
+		_spec.SetField(enrollment.FieldLessonPriceOverrideCents, field.TypeInt64, value)
+		_node.LessonPriceOverrideCents = value
 	}
 	if value, ok := _c.mutation.SubscriptionLessonPriceCents(); ok {
 		_spec.SetField(enrollment.FieldSubscriptionLessonPriceCents, field.TypeInt64, value)

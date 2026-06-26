@@ -18,7 +18,7 @@ export async function createEnrollment(
   courseId: number,
   billingMode: EnrollmentDTO["billingMode"],
   chargeMaterials: boolean,
-  discountPct: number,
+  lessonPriceOverride: number,
   subscriptionLessonPrice: number,
   note: string
 ): Promise<EnrollmentDTO> {
@@ -28,7 +28,7 @@ export async function createEnrollment(
     courseId,
     billingMode,
     chargeMaterials,
-    discountPct,
+    lessonPriceOverride,
     subscriptionLessonPrice,
     note
   );
@@ -39,7 +39,7 @@ export async function updateEnrollment(
   version: number,
   billingMode: EnrollmentDTO["billingMode"],
   chargeMaterials: boolean,
-  discountPct: number,
+  lessonPriceOverride: number,
   subscriptionLessonPrice: number,
   note: string
 ): Promise<EnrollmentDTO> {
@@ -49,7 +49,7 @@ export async function updateEnrollment(
     version,
     billingMode,
     chargeMaterials,
-    discountPct,
+    lessonPriceOverride,
     subscriptionLessonPrice,
     note
   );

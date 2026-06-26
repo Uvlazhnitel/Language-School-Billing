@@ -304,7 +304,7 @@ export function StudentDetailPanel({
                     <th>{t("field.course")}</th>
                     <th>{t("field.teacher")}</th>
                     <th>{t("field.billing")}</th>
-                    <th style={{ textAlign: "right" }}>{t("field.discount")}</th>
+                    <th style={{ textAlign: "right" }}>{t("field.lessonPriceOverride")}</th>
                     <th>{t("field.note")}</th>
                   </tr>
                 </thead>
@@ -314,7 +314,11 @@ export function StudentDetailPanel({
                       <td>{enrollment.courseName}</td>
                       <td>{enrollment.teacherName || "—"}</td>
                       <td>{billingModeLabel(enrollment.billingMode)}</td>
-                      <td style={{ textAlign: "right" }}>{enrollment.discountPct.toFixed(1)}%</td>
+                      <td style={{ textAlign: "right" }}>
+                        {enrollment.billingMode === "per_lesson"
+                          ? `€${enrollment.lessonPriceOverride.toFixed(2)}`
+                          : `€${enrollment.subscriptionLessonPrice.toFixed(2)}`}
+                      </td>
                       <td>{enrollment.note || "—"}</td>
                     </tr>
                   ))}

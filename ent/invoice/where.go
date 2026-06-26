@@ -115,6 +115,21 @@ func LastEmailedTo(v string) predicate.Invoice {
 	return predicate.Invoice(sql.FieldEQ(FieldLastEmailedTo, v))
 }
 
+// LastEmailedRevision applies equality check predicate on the "last_emailed_revision" field. It's identical to LastEmailedRevisionEQ.
+func LastEmailedRevision(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldLastEmailedRevision, v))
+}
+
+// LastEmailError applies equality check predicate on the "last_email_error" field. It's identical to LastEmailErrorEQ.
+func LastEmailError(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldLastEmailError, v))
+}
+
+// LastEmailFailedAt applies equality check predicate on the "last_email_failed_at" field. It's identical to LastEmailFailedAtEQ.
+func LastEmailFailedAt(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldLastEmailFailedAt, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Invoice {
 	return predicate.Invoice(sql.FieldEQ(FieldCreatedAt, v))
@@ -615,6 +630,26 @@ func PdfRevisionNotNil() predicate.Invoice {
 	return predicate.Invoice(sql.FieldNotNull(FieldPdfRevision))
 }
 
+// EmailDeliveryStatusEQ applies the EQ predicate on the "email_delivery_status" field.
+func EmailDeliveryStatusEQ(v EmailDeliveryStatus) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldEmailDeliveryStatus, v))
+}
+
+// EmailDeliveryStatusNEQ applies the NEQ predicate on the "email_delivery_status" field.
+func EmailDeliveryStatusNEQ(v EmailDeliveryStatus) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNEQ(FieldEmailDeliveryStatus, v))
+}
+
+// EmailDeliveryStatusIn applies the In predicate on the "email_delivery_status" field.
+func EmailDeliveryStatusIn(vs ...EmailDeliveryStatus) predicate.Invoice {
+	return predicate.Invoice(sql.FieldIn(FieldEmailDeliveryStatus, vs...))
+}
+
+// EmailDeliveryStatusNotIn applies the NotIn predicate on the "email_delivery_status" field.
+func EmailDeliveryStatusNotIn(vs ...EmailDeliveryStatus) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotIn(FieldEmailDeliveryStatus, vs...))
+}
+
 // LastEmailedAtEQ applies the EQ predicate on the "last_emailed_at" field.
 func LastEmailedAtEQ(v time.Time) predicate.Invoice {
 	return predicate.Invoice(sql.FieldEQ(FieldLastEmailedAt, v))
@@ -738,6 +773,181 @@ func LastEmailedToEqualFold(v string) predicate.Invoice {
 // LastEmailedToContainsFold applies the ContainsFold predicate on the "last_emailed_to" field.
 func LastEmailedToContainsFold(v string) predicate.Invoice {
 	return predicate.Invoice(sql.FieldContainsFold(FieldLastEmailedTo, v))
+}
+
+// LastEmailedRevisionEQ applies the EQ predicate on the "last_emailed_revision" field.
+func LastEmailedRevisionEQ(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldLastEmailedRevision, v))
+}
+
+// LastEmailedRevisionNEQ applies the NEQ predicate on the "last_emailed_revision" field.
+func LastEmailedRevisionNEQ(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNEQ(FieldLastEmailedRevision, v))
+}
+
+// LastEmailedRevisionIn applies the In predicate on the "last_emailed_revision" field.
+func LastEmailedRevisionIn(vs ...int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldIn(FieldLastEmailedRevision, vs...))
+}
+
+// LastEmailedRevisionNotIn applies the NotIn predicate on the "last_emailed_revision" field.
+func LastEmailedRevisionNotIn(vs ...int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotIn(FieldLastEmailedRevision, vs...))
+}
+
+// LastEmailedRevisionGT applies the GT predicate on the "last_emailed_revision" field.
+func LastEmailedRevisionGT(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGT(FieldLastEmailedRevision, v))
+}
+
+// LastEmailedRevisionGTE applies the GTE predicate on the "last_emailed_revision" field.
+func LastEmailedRevisionGTE(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGTE(FieldLastEmailedRevision, v))
+}
+
+// LastEmailedRevisionLT applies the LT predicate on the "last_emailed_revision" field.
+func LastEmailedRevisionLT(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLT(FieldLastEmailedRevision, v))
+}
+
+// LastEmailedRevisionLTE applies the LTE predicate on the "last_emailed_revision" field.
+func LastEmailedRevisionLTE(v int) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLTE(FieldLastEmailedRevision, v))
+}
+
+// LastEmailedRevisionIsNil applies the IsNil predicate on the "last_emailed_revision" field.
+func LastEmailedRevisionIsNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldIsNull(FieldLastEmailedRevision))
+}
+
+// LastEmailedRevisionNotNil applies the NotNil predicate on the "last_emailed_revision" field.
+func LastEmailedRevisionNotNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotNull(FieldLastEmailedRevision))
+}
+
+// LastEmailErrorEQ applies the EQ predicate on the "last_email_error" field.
+func LastEmailErrorEQ(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldLastEmailError, v))
+}
+
+// LastEmailErrorNEQ applies the NEQ predicate on the "last_email_error" field.
+func LastEmailErrorNEQ(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNEQ(FieldLastEmailError, v))
+}
+
+// LastEmailErrorIn applies the In predicate on the "last_email_error" field.
+func LastEmailErrorIn(vs ...string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldIn(FieldLastEmailError, vs...))
+}
+
+// LastEmailErrorNotIn applies the NotIn predicate on the "last_email_error" field.
+func LastEmailErrorNotIn(vs ...string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotIn(FieldLastEmailError, vs...))
+}
+
+// LastEmailErrorGT applies the GT predicate on the "last_email_error" field.
+func LastEmailErrorGT(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGT(FieldLastEmailError, v))
+}
+
+// LastEmailErrorGTE applies the GTE predicate on the "last_email_error" field.
+func LastEmailErrorGTE(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGTE(FieldLastEmailError, v))
+}
+
+// LastEmailErrorLT applies the LT predicate on the "last_email_error" field.
+func LastEmailErrorLT(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLT(FieldLastEmailError, v))
+}
+
+// LastEmailErrorLTE applies the LTE predicate on the "last_email_error" field.
+func LastEmailErrorLTE(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLTE(FieldLastEmailError, v))
+}
+
+// LastEmailErrorContains applies the Contains predicate on the "last_email_error" field.
+func LastEmailErrorContains(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldContains(FieldLastEmailError, v))
+}
+
+// LastEmailErrorHasPrefix applies the HasPrefix predicate on the "last_email_error" field.
+func LastEmailErrorHasPrefix(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldHasPrefix(FieldLastEmailError, v))
+}
+
+// LastEmailErrorHasSuffix applies the HasSuffix predicate on the "last_email_error" field.
+func LastEmailErrorHasSuffix(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldHasSuffix(FieldLastEmailError, v))
+}
+
+// LastEmailErrorIsNil applies the IsNil predicate on the "last_email_error" field.
+func LastEmailErrorIsNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldIsNull(FieldLastEmailError))
+}
+
+// LastEmailErrorNotNil applies the NotNil predicate on the "last_email_error" field.
+func LastEmailErrorNotNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotNull(FieldLastEmailError))
+}
+
+// LastEmailErrorEqualFold applies the EqualFold predicate on the "last_email_error" field.
+func LastEmailErrorEqualFold(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEqualFold(FieldLastEmailError, v))
+}
+
+// LastEmailErrorContainsFold applies the ContainsFold predicate on the "last_email_error" field.
+func LastEmailErrorContainsFold(v string) predicate.Invoice {
+	return predicate.Invoice(sql.FieldContainsFold(FieldLastEmailError, v))
+}
+
+// LastEmailFailedAtEQ applies the EQ predicate on the "last_email_failed_at" field.
+func LastEmailFailedAtEQ(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldEQ(FieldLastEmailFailedAt, v))
+}
+
+// LastEmailFailedAtNEQ applies the NEQ predicate on the "last_email_failed_at" field.
+func LastEmailFailedAtNEQ(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNEQ(FieldLastEmailFailedAt, v))
+}
+
+// LastEmailFailedAtIn applies the In predicate on the "last_email_failed_at" field.
+func LastEmailFailedAtIn(vs ...time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldIn(FieldLastEmailFailedAt, vs...))
+}
+
+// LastEmailFailedAtNotIn applies the NotIn predicate on the "last_email_failed_at" field.
+func LastEmailFailedAtNotIn(vs ...time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotIn(FieldLastEmailFailedAt, vs...))
+}
+
+// LastEmailFailedAtGT applies the GT predicate on the "last_email_failed_at" field.
+func LastEmailFailedAtGT(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGT(FieldLastEmailFailedAt, v))
+}
+
+// LastEmailFailedAtGTE applies the GTE predicate on the "last_email_failed_at" field.
+func LastEmailFailedAtGTE(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldGTE(FieldLastEmailFailedAt, v))
+}
+
+// LastEmailFailedAtLT applies the LT predicate on the "last_email_failed_at" field.
+func LastEmailFailedAtLT(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLT(FieldLastEmailFailedAt, v))
+}
+
+// LastEmailFailedAtLTE applies the LTE predicate on the "last_email_failed_at" field.
+func LastEmailFailedAtLTE(v time.Time) predicate.Invoice {
+	return predicate.Invoice(sql.FieldLTE(FieldLastEmailFailedAt, v))
+}
+
+// LastEmailFailedAtIsNil applies the IsNil predicate on the "last_email_failed_at" field.
+func LastEmailFailedAtIsNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldIsNull(FieldLastEmailFailedAt))
+}
+
+// LastEmailFailedAtNotNil applies the NotNil predicate on the "last_email_failed_at" field.
+func LastEmailFailedAtNotNil() predicate.Invoice {
+	return predicate.Invoice(sql.FieldNotNull(FieldLastEmailFailedAt))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

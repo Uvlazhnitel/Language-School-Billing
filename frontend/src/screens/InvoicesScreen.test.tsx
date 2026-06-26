@@ -28,6 +28,7 @@ describe("InvoicesScreen", () => {
             pdfReady: true,
             lastEmailedAt: "2026-06-18T10:30:00Z",
             lastEmailedTo: "payer@example.com",
+            emailCommunicationStatus: "sent",
           },
           {
             id: 7,
@@ -42,6 +43,8 @@ describe("InvoicesScreen", () => {
             number: "LS-202606-007",
             eventDate: "2026-06-15T00:00:00Z",
             pdfReady: false,
+            emailCommunicationStatus: "failed",
+            lastEmailError: "smtp timeout",
           },
           {
             id: 9,
@@ -56,6 +59,7 @@ describe("InvoicesScreen", () => {
             number: "LS-202606-009",
             eventDate: "2026-06-15T00:00:00Z",
             pdfReady: true,
+            emailCommunicationStatus: "not_sent",
           },
         ]}
         months={getMonthNames("en-US")}
@@ -86,8 +90,12 @@ describe("InvoicesScreen", () => {
     expect(markup).toContain("Issued Student");
     expect(markup).toContain("Marharyta Karnafel");
     expect(markup).toContain("Paid Missing PDF");
+    expect(markup).toContain("Sent successfully");
     expect(markup).toContain("Sent to payer@example.com");
     expect(markup).toContain("6/18/2026, 10:30:00 AM");
+    expect(markup).toContain("Sending failed");
+    expect(markup).toContain("smtp timeout");
+    expect(markup).toContain("Email not sent");
     expect(markup.match(/Record payment/g)?.length ?? 0).toBe(1);
   });
 });

@@ -31,6 +31,8 @@ type Enrollment struct {
 	ChargeMaterials bool `json:"charge_materials,omitempty"`
 	// DiscountPct holds the value of the "discount_pct" field.
 	DiscountPct float64 `json:"discount_pct,omitempty"`
+	// LessonPriceOverrideCents holds the value of the "lesson_price_override_cents" field.
+	LessonPriceOverrideCents int64 `json:"lesson_price_override_cents,omitempty"`
 	// SubscriptionLessonPriceCents holds the value of the "subscription_lesson_price_cents" field.
 	SubscriptionLessonPriceCents int64 `json:"subscription_lesson_price_cents,omitempty"`
 	// Note holds the value of the "note" field.
@@ -98,7 +100,7 @@ func (*Enrollment) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case enrollment.FieldDiscountPct:
 			values[i] = new(sql.NullFloat64)
-		case enrollment.FieldID, enrollment.FieldVersion, enrollment.FieldStudentID, enrollment.FieldCourseID, enrollment.FieldSubscriptionLessonPriceCents:
+		case enrollment.FieldID, enrollment.FieldVersion, enrollment.FieldStudentID, enrollment.FieldCourseID, enrollment.FieldLessonPriceOverrideCents, enrollment.FieldSubscriptionLessonPriceCents:
 			values[i] = new(sql.NullInt64)
 		case enrollment.FieldBillingMode, enrollment.FieldNote:
 			values[i] = new(sql.NullString)
@@ -160,6 +162,12 @@ func (_m *Enrollment) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field discount_pct", values[i])
 			} else if value.Valid {
 				_m.DiscountPct = value.Float64
+			}
+		case enrollment.FieldLessonPriceOverrideCents:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field lesson_price_override_cents", values[i])
+			} else if value.Valid {
+				_m.LessonPriceOverrideCents = value.Int64
 			}
 		case enrollment.FieldSubscriptionLessonPriceCents:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -255,6 +263,9 @@ func (_m *Enrollment) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("discount_pct=")
 	builder.WriteString(fmt.Sprintf("%v", _m.DiscountPct))
+	builder.WriteString(", ")
+	builder.WriteString("lesson_price_override_cents=")
+	builder.WriteString(fmt.Sprintf("%v", _m.LessonPriceOverrideCents))
 	builder.WriteString(", ")
 	builder.WriteString("subscription_lesson_price_cents=")
 	builder.WriteString(fmt.Sprintf("%v", _m.SubscriptionLessonPriceCents))

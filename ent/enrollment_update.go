@@ -129,6 +129,27 @@ func (_u *EnrollmentUpdate) AddDiscountPct(v float64) *EnrollmentUpdate {
 	return _u
 }
 
+// SetLessonPriceOverrideCents sets the "lesson_price_override_cents" field.
+func (_u *EnrollmentUpdate) SetLessonPriceOverrideCents(v int64) *EnrollmentUpdate {
+	_u.mutation.ResetLessonPriceOverrideCents()
+	_u.mutation.SetLessonPriceOverrideCents(v)
+	return _u
+}
+
+// SetNillableLessonPriceOverrideCents sets the "lesson_price_override_cents" field if the given value is not nil.
+func (_u *EnrollmentUpdate) SetNillableLessonPriceOverrideCents(v *int64) *EnrollmentUpdate {
+	if v != nil {
+		_u.SetLessonPriceOverrideCents(*v)
+	}
+	return _u
+}
+
+// AddLessonPriceOverrideCents adds value to the "lesson_price_override_cents" field.
+func (_u *EnrollmentUpdate) AddLessonPriceOverrideCents(v int64) *EnrollmentUpdate {
+	_u.mutation.AddLessonPriceOverrideCents(v)
+	return _u
+}
+
 // SetSubscriptionLessonPriceCents sets the "subscription_lesson_price_cents" field.
 func (_u *EnrollmentUpdate) SetSubscriptionLessonPriceCents(v int64) *EnrollmentUpdate {
 	_u.mutation.ResetSubscriptionLessonPriceCents()
@@ -340,6 +361,12 @@ func (_u *EnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if value, ok := _u.mutation.AddedDiscountPct(); ok {
 		_spec.AddField(enrollment.FieldDiscountPct, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.LessonPriceOverrideCents(); ok {
+		_spec.SetField(enrollment.FieldLessonPriceOverrideCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedLessonPriceOverrideCents(); ok {
+		_spec.AddField(enrollment.FieldLessonPriceOverrideCents, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.SubscriptionLessonPriceCents(); ok {
 		_spec.SetField(enrollment.FieldSubscriptionLessonPriceCents, field.TypeInt64, value)
@@ -580,6 +607,27 @@ func (_u *EnrollmentUpdateOne) SetNillableDiscountPct(v *float64) *EnrollmentUpd
 // AddDiscountPct adds value to the "discount_pct" field.
 func (_u *EnrollmentUpdateOne) AddDiscountPct(v float64) *EnrollmentUpdateOne {
 	_u.mutation.AddDiscountPct(v)
+	return _u
+}
+
+// SetLessonPriceOverrideCents sets the "lesson_price_override_cents" field.
+func (_u *EnrollmentUpdateOne) SetLessonPriceOverrideCents(v int64) *EnrollmentUpdateOne {
+	_u.mutation.ResetLessonPriceOverrideCents()
+	_u.mutation.SetLessonPriceOverrideCents(v)
+	return _u
+}
+
+// SetNillableLessonPriceOverrideCents sets the "lesson_price_override_cents" field if the given value is not nil.
+func (_u *EnrollmentUpdateOne) SetNillableLessonPriceOverrideCents(v *int64) *EnrollmentUpdateOne {
+	if v != nil {
+		_u.SetLessonPriceOverrideCents(*v)
+	}
+	return _u
+}
+
+// AddLessonPriceOverrideCents adds value to the "lesson_price_override_cents" field.
+func (_u *EnrollmentUpdateOne) AddLessonPriceOverrideCents(v int64) *EnrollmentUpdateOne {
+	_u.mutation.AddLessonPriceOverrideCents(v)
 	return _u
 }
 
@@ -824,6 +872,12 @@ func (_u *EnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Enrollment, 
 	}
 	if value, ok := _u.mutation.AddedDiscountPct(); ok {
 		_spec.AddField(enrollment.FieldDiscountPct, field.TypeFloat64, value)
+	}
+	if value, ok := _u.mutation.LessonPriceOverrideCents(); ok {
+		_spec.SetField(enrollment.FieldLessonPriceOverrideCents, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedLessonPriceOverrideCents(); ok {
+		_spec.AddField(enrollment.FieldLessonPriceOverrideCents, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.SubscriptionLessonPriceCents(); ok {
 		_spec.SetField(enrollment.FieldSubscriptionLessonPriceCents, field.TypeInt64, value)

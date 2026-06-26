@@ -153,6 +153,20 @@ func (_c *InvoiceCreate) SetNillablePdfRevision(v *int) *InvoiceCreate {
 	return _c
 }
 
+// SetEmailDeliveryStatus sets the "email_delivery_status" field.
+func (_c *InvoiceCreate) SetEmailDeliveryStatus(v invoice.EmailDeliveryStatus) *InvoiceCreate {
+	_c.mutation.SetEmailDeliveryStatus(v)
+	return _c
+}
+
+// SetNillableEmailDeliveryStatus sets the "email_delivery_status" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillableEmailDeliveryStatus(v *invoice.EmailDeliveryStatus) *InvoiceCreate {
+	if v != nil {
+		_c.SetEmailDeliveryStatus(*v)
+	}
+	return _c
+}
+
 // SetLastEmailedAt sets the "last_emailed_at" field.
 func (_c *InvoiceCreate) SetLastEmailedAt(v time.Time) *InvoiceCreate {
 	_c.mutation.SetLastEmailedAt(v)
@@ -177,6 +191,48 @@ func (_c *InvoiceCreate) SetLastEmailedTo(v string) *InvoiceCreate {
 func (_c *InvoiceCreate) SetNillableLastEmailedTo(v *string) *InvoiceCreate {
 	if v != nil {
 		_c.SetLastEmailedTo(*v)
+	}
+	return _c
+}
+
+// SetLastEmailedRevision sets the "last_emailed_revision" field.
+func (_c *InvoiceCreate) SetLastEmailedRevision(v int) *InvoiceCreate {
+	_c.mutation.SetLastEmailedRevision(v)
+	return _c
+}
+
+// SetNillableLastEmailedRevision sets the "last_emailed_revision" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillableLastEmailedRevision(v *int) *InvoiceCreate {
+	if v != nil {
+		_c.SetLastEmailedRevision(*v)
+	}
+	return _c
+}
+
+// SetLastEmailError sets the "last_email_error" field.
+func (_c *InvoiceCreate) SetLastEmailError(v string) *InvoiceCreate {
+	_c.mutation.SetLastEmailError(v)
+	return _c
+}
+
+// SetNillableLastEmailError sets the "last_email_error" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillableLastEmailError(v *string) *InvoiceCreate {
+	if v != nil {
+		_c.SetLastEmailError(*v)
+	}
+	return _c
+}
+
+// SetLastEmailFailedAt sets the "last_email_failed_at" field.
+func (_c *InvoiceCreate) SetLastEmailFailedAt(v time.Time) *InvoiceCreate {
+	_c.mutation.SetLastEmailFailedAt(v)
+	return _c
+}
+
+// SetNillableLastEmailFailedAt sets the "last_email_failed_at" field if the given value is not nil.
+func (_c *InvoiceCreate) SetNillableLastEmailFailedAt(v *time.Time) *InvoiceCreate {
+	if v != nil {
+		_c.SetLastEmailFailedAt(*v)
 	}
 	return _c
 }
@@ -295,6 +351,10 @@ func (_c *InvoiceCreate) defaults() {
 		v := invoice.DefaultStatus
 		_c.mutation.SetStatus(v)
 	}
+	if _, ok := _c.mutation.EmailDeliveryStatus(); !ok {
+		v := invoice.DefaultEmailDeliveryStatus
+		_c.mutation.SetEmailDeliveryStatus(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := invoice.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -331,6 +391,14 @@ func (_c *InvoiceCreate) check() error {
 	if v, ok := _c.mutation.Status(); ok {
 		if err := invoice.StatusValidator(v); err != nil {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Invoice.status": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.EmailDeliveryStatus(); !ok {
+		return &ValidationError{Name: "email_delivery_status", err: errors.New(`ent: missing required field "Invoice.email_delivery_status"`)}
+	}
+	if v, ok := _c.mutation.EmailDeliveryStatus(); ok {
+		if err := invoice.EmailDeliveryStatusValidator(v); err != nil {
+			return &ValidationError{Name: "email_delivery_status", err: fmt.Errorf(`ent: validator failed for field "Invoice.email_delivery_status": %w`, err)}
 		}
 	}
 	if len(_c.mutation.StudentIDs()) == 0 {
@@ -402,6 +470,10 @@ func (_c *InvoiceCreate) createSpec() (*Invoice, *sqlgraph.CreateSpec) {
 		_spec.SetField(invoice.FieldPdfRevision, field.TypeInt, value)
 		_node.PdfRevision = &value
 	}
+	if value, ok := _c.mutation.EmailDeliveryStatus(); ok {
+		_spec.SetField(invoice.FieldEmailDeliveryStatus, field.TypeEnum, value)
+		_node.EmailDeliveryStatus = value
+	}
 	if value, ok := _c.mutation.LastEmailedAt(); ok {
 		_spec.SetField(invoice.FieldLastEmailedAt, field.TypeTime, value)
 		_node.LastEmailedAt = &value
@@ -409,6 +481,18 @@ func (_c *InvoiceCreate) createSpec() (*Invoice, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.LastEmailedTo(); ok {
 		_spec.SetField(invoice.FieldLastEmailedTo, field.TypeString, value)
 		_node.LastEmailedTo = &value
+	}
+	if value, ok := _c.mutation.LastEmailedRevision(); ok {
+		_spec.SetField(invoice.FieldLastEmailedRevision, field.TypeInt, value)
+		_node.LastEmailedRevision = &value
+	}
+	if value, ok := _c.mutation.LastEmailError(); ok {
+		_spec.SetField(invoice.FieldLastEmailError, field.TypeString, value)
+		_node.LastEmailError = &value
+	}
+	if value, ok := _c.mutation.LastEmailFailedAt(); ok {
+		_spec.SetField(invoice.FieldLastEmailFailedAt, field.TypeTime, value)
+		_node.LastEmailFailedAt = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)

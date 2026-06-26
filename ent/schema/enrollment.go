@@ -24,6 +24,7 @@ func (Enrollment) Fields() []ent.Field {
 		field.Enum("billing_mode").Values("subscription", "per_lesson"),
 		field.Bool("charge_materials").Default(true),
 		field.Float("discount_pct").Default(0),
+		field.Int64("lesson_price_override_cents").Default(-1),
 		field.Int64("subscription_lesson_price_cents").Default(-1),
 		field.String("note").Default(""),
 		field.Time("created_at").Optional().Nillable().Default(time.Now),

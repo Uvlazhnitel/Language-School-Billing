@@ -1025,7 +1025,7 @@ export default function App() {
   const [efCourseId, setEfCourseId] = useState<number>(0);
   const [efMode, setEfMode] = useState<"subscription" | "per_lesson">("per_lesson");
   const [efChargeMaterials, setEfChargeMaterials] = useState(true);
-  const [efDiscount, setEfDiscount] = useState("0");
+  const [efLessonPriceOverride, setEfLessonPriceOverride] = useState("0");
   const [efSubscriptionLessonPrice, setEfSubscriptionLessonPrice] = useState("0");
   const [efNote, setEfNote] = useState("");
 
@@ -1109,7 +1109,7 @@ export default function App() {
     setEfCourseId(initialCourseId);
     setEfMode("per_lesson");
     setEfChargeMaterials(true);
-    setEfDiscount("0");
+    setEfLessonPriceOverride(String(allCourses[0]?.lessonPrice ?? 0));
     setEfSubscriptionLessonPrice(String(allCourses[0]?.subscriptionPrice ?? 0));
     setEfNote("");
     setEnrModalOpen(true);
@@ -1123,7 +1123,7 @@ export default function App() {
     setEfCourseId(e.courseId);
     setEfMode(e.billingMode);
     setEfChargeMaterials(e.chargeMaterials);
-    setEfDiscount(String(e.discountPct));
+    setEfLessonPriceOverride(String(e.lessonPriceOverride));
     setEfSubscriptionLessonPrice(String(e.subscriptionLessonPrice));
     setEfNote(e.note);
     setEnrModalOpen(true);
@@ -1132,6 +1132,9 @@ export default function App() {
   function handleEnrollmentCourseIdChange(value: number) {
     setEfCourseId(value);
     const course = allCourses.find((item) => item.id === value);
+    if (course && efMode === "per_lesson") {
+      setEfLessonPriceOverride(String(course.lessonPrice ?? 0));
+    }
     if (course && efMode === "subscription") {
       setEfSubscriptionLessonPrice(String(course.subscriptionPrice ?? 0));
     }
@@ -1139,13 +1142,17 @@ export default function App() {
 
   function handleEnrollmentModeChange(value: "per_lesson" | "subscription") {
     setEfMode(value);
+    if (value === "per_lesson" && (efLessonPriceOverride.trim() === "" || Number(efLessonPriceOverride) === 0)) {
+      setEfLessonPriceOverride(String(selectedEnrollmentCourse?.lessonPrice ?? 0));
+    }
     if (value === "subscription" && (efSubscriptionLessonPrice.trim() === "" || Number(efSubscriptionLessonPrice) === 0)) {
       setEfSubscriptionLessonPrice(String(selectedEnrollmentCourse?.subscriptionPrice ?? 0));
     }
   }
 
   async function saveEnrollment() {
-    const discountValue = efDiscount.trim() === "" ? 0 : Number(efDiscount);
+    const lessonPriceOverrideValue =
+      efLessonPriceOverride.trim() === "" ? 0 : Number(efLessonPriceOverride);
     const subscriptionLessonPriceValue =
       efSubscriptionLessonPrice.trim() === "" ? 0 : Number(efSubscriptionLessonPrice);
 
@@ -1153,8 +1160,8 @@ export default function App() {
       showMessage(t("msg.chooseStudentAndCourse"), "error");
       return;
     }
-    if (!Number.isFinite(discountValue) || discountValue < 0 || discountValue > 100) {
-      showMessage(t("msg.discountRange"), "error");
+    if (!Number.isFinite(lessonPriceOverrideValue) || lessonPriceOverrideValue < 0) {
+      showMessage(t("msg.lessonPriceOverrideRange"), "error");
       return;
     }
     if (!Number.isFinite(subscriptionLessonPriceValue) || subscriptionLessonPriceValue < 0) {
@@ -1170,7 +1177,7 @@ export default function App() {
           editingEnr.version,
           efMode,
           efChargeMaterials,
-          discountValue,
+          efMode === "per_lesson" ? lessonPriceOverrideValue : 0,
           efMode === "subscription" ? subscriptionLessonPriceValue : 0,
           efNote
         );
@@ -1181,7 +1188,7 @@ export default function App() {
           efCourseId,
           efMode,
           efChargeMaterials,
-          discountValue,
+          efMode === "per_lesson" ? lessonPriceOverrideValue : 0,
           efMode === "subscription" ? subscriptionLessonPriceValue : 0,
           efNote
         );
@@ -2815,7 +2822,7 @@ export default function App() {
                 enrollmentCourseId={efCourseId}
                 enrollmentMode={efMode}
                 enrollmentChargeMaterials={efChargeMaterials}
-                enrollmentDiscount={efDiscount}
+                enrollmentLessonPriceOverride={efLessonPriceOverride}
                 enrollmentSubscriptionLessonPrice={efSubscriptionLessonPrice}
                 enrollmentNote={efNote}
                 studentComboRef={efStudentComboRef}
@@ -2825,7 +2832,7 @@ export default function App() {
                 onEnrollmentCourseIdChange={handleEnrollmentCourseIdChange}
                 onEnrollmentModeChange={handleEnrollmentModeChange}
                 onEnrollmentChargeMaterialsChange={setEfChargeMaterials}
-                onEnrollmentDiscountChange={setEfDiscount}
+                onEnrollmentLessonPriceOverrideChange={setEfLessonPriceOverride}
                 onEnrollmentSubscriptionLessonPriceChange={setEfSubscriptionLessonPrice}
                 onEnrollmentNoteChange={setEfNote}
                 onSaveEnrollment={() => void saveEnrollment()}

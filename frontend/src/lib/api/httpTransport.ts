@@ -268,7 +268,7 @@ export const httpTransport: AppTransport = {
     const query = params.toString();
     return request<EnrollmentDTO[]>(`/enrollments${query ? `?${query}` : ""}`);
   },
-  async createEnrollment(studentId, courseId, billingMode, chargeMaterials, discountPct, subscriptionLessonPrice, note) {
+  async createEnrollment(studentId, courseId, billingMode, chargeMaterials, lessonPriceOverride, subscriptionLessonPrice, note) {
     return request<EnrollmentDTO>("/enrollments", {
       method: "POST",
       ...body({
@@ -276,16 +276,16 @@ export const httpTransport: AppTransport = {
         courseId,
         billingMode,
         chargeMaterials,
-        discountPct,
+        lessonPriceOverride,
         subscriptionLessonPrice,
         note,
       }),
     });
   },
-  async updateEnrollment(enrollmentId, version, billingMode, chargeMaterials, discountPct, subscriptionLessonPrice, note) {
+  async updateEnrollment(enrollmentId, version, billingMode, chargeMaterials, lessonPriceOverride, subscriptionLessonPrice, note) {
     return request<EnrollmentDTO>(`/enrollments/${enrollmentId}`, {
       method: "PUT",
-      ...body({ version, billingMode, chargeMaterials, discountPct, subscriptionLessonPrice, note }),
+      ...body({ version, billingMode, chargeMaterials, lessonPriceOverride, subscriptionLessonPrice, note }),
     });
   },
   async deleteEnrollment(enrollmentId, version) {

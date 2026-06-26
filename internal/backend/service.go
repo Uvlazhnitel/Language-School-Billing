@@ -88,7 +88,7 @@ type EnrollmentDTO struct {
 	TeacherName             string  `json:"teacherName"`
 	BillingMode             string  `json:"billingMode"`
 	ChargeMaterials         bool    `json:"chargeMaterials"`
-	DiscountPct             float64 `json:"discountPct"`
+	LessonPriceOverride     float64 `json:"lessonPriceOverride"`
 	SubscriptionLessonPrice float64 `json:"subscriptionLessonPrice"`
 	Note                    string  `json:"note"`
 	CreatedAt               string  `json:"createdAt"`
@@ -1094,7 +1094,7 @@ func (s *Service) InvoiceArchiveZIPEntries(ctx context.Context, year, month int)
 		return nil, "", errors.New("invalid archive zip: no ready pdfs for this month")
 	}
 
-	filename := fmt.Sprintf("invoices-%04d-%02d.zip", year, month)
+	filename := fmt.Sprintf("rekini-%04d-%02d.zip", year, month)
 	return entries, filename, nil
 }
 
@@ -1825,7 +1825,7 @@ func (s *Service) EnrollmentList(ctx context.Context, studentID *int, courseID *
 	return out, nil
 }
 
-func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int, billingMode string, chargeMaterials bool, discountPct, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
+func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int, billingMode string, chargeMaterials bool, lessonPriceOverride, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
 	if studentID <= 0 || courseID <= 0 {
 		return nil, errors.New("studentID and courseID must be > 0")
 	}
@@ -1833,11 +1833,16 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 	if err := validateBillingMode(billingMode); err != nil {
 		return nil, err
 	}
-	if err := validateDiscountPct(discountPct); err != nil {
+	if err := validateLessonPriceOverride(lessonPriceOverride); err != nil {
 		return nil, err
 	}
 	if err := validateSubscriptionLessonPrice(subscriptionLessonPrice); err != nil {
 		return nil, err
+	}
+	if billingMode != BillingModePerLesson {
+		lessonPriceOverride = -1
+	} else if lessonPriceOverride == 0 {
+		lessonPriceOverride = -1
 	}
 	if billingMode != BillingModeSubscription {
 		subscriptionLessonPrice = 0
@@ -1866,7 +1871,7 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 		SetCourseID(courseID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetChargeMaterials(chargeMaterials).
-		SetDiscountPct(discountPct).
+		SetLessonPriceOverrideCents(money.EurosToCents(lessonPriceOverride)).
 		SetSubscriptionLessonPriceCents(money.EurosToCents(subscriptionLessonPrice)).
 		SetNote(sanitizeInput(note)).
 		Save(ctx)
@@ -1885,16 +1890,21 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 	return &dto, nil
 }
 
-func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billingMode string, chargeMaterials bool, discountPct, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
+func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billingMode string, chargeMaterials bool, lessonPriceOverride, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
 	billingMode = strings.TrimSpace(billingMode)
 	if err := validateBillingMode(billingMode); err != nil {
 		return nil, err
 	}
-	if err := validateDiscountPct(discountPct); err != nil {
+	if err := validateLessonPriceOverride(lessonPriceOverride); err != nil {
 		return nil, err
 	}
 	if err := validateSubscriptionLessonPrice(subscriptionLessonPrice); err != nil {
 		return nil, err
+	}
+	if billingMode != BillingModePerLesson {
+		lessonPriceOverride = -1
+	} else if lessonPriceOverride == 0 {
+		lessonPriceOverride = -1
 	}
 	if billingMode != BillingModeSubscription {
 		subscriptionLessonPrice = 0
@@ -1907,7 +1917,7 @@ func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billin
 		AddVersion(1).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetChargeMaterials(chargeMaterials).
-		SetDiscountPct(discountPct).
+		SetLessonPriceOverrideCents(money.EurosToCents(lessonPriceOverride)).
 		SetSubscriptionLessonPriceCents(money.EurosToCents(subscriptionLessonPrice)).
 		SetNote(sanitizeInput(note)).
 		Save(ctx); err != nil {
@@ -1928,7 +1938,7 @@ func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billin
 	return &dto, nil
 }
 
-func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID, version int, billingMode string, chargeMaterials bool, discountPct, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
+func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID, version int, billingMode string, chargeMaterials bool, lessonPriceOverride, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
 	billingMode = strings.TrimSpace(billingMode)
 	if err := validateVersion(version); err != nil {
 		return nil, err
@@ -1936,11 +1946,16 @@ func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID,
 	if err := validateBillingMode(billingMode); err != nil {
 		return nil, err
 	}
-	if err := validateDiscountPct(discountPct); err != nil {
+	if err := validateLessonPriceOverride(lessonPriceOverride); err != nil {
 		return nil, err
 	}
 	if err := validateSubscriptionLessonPrice(subscriptionLessonPrice); err != nil {
 		return nil, err
+	}
+	if billingMode != BillingModePerLesson {
+		lessonPriceOverride = -1
+	} else if lessonPriceOverride == 0 {
+		lessonPriceOverride = -1
 	}
 	if billingMode != BillingModeSubscription {
 		subscriptionLessonPrice = 0
@@ -1954,7 +1969,7 @@ func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID,
 		SetVersion(version + 1).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
 		SetChargeMaterials(chargeMaterials).
-		SetDiscountPct(discountPct).
+		SetLessonPriceOverrideCents(money.EurosToCents(lessonPriceOverride)).
 		SetSubscriptionLessonPriceCents(money.EurosToCents(subscriptionLessonPrice)).
 		SetNote(sanitizeInput(note)).
 		Save(ctx); err != nil {
@@ -2105,6 +2120,14 @@ func toCourseDTO(c *ent.Course) CourseDTO {
 }
 
 func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
+	lessonPriceOverride := 0.0
+	if e.BillingMode == enrollment.BillingModePerLesson {
+		if e.LessonPriceOverrideCents >= 0 {
+			lessonPriceOverride = money.CentsToEuros(e.LessonPriceOverrideCents)
+		} else if e.Edges.Course != nil {
+			lessonPriceOverride = money.CentsToEuros(e.Edges.Course.LessonPriceCents)
+		}
+	}
 	dto := EnrollmentDTO{
 		ID:                      e.ID,
 		Version:                 e.Version,
@@ -2112,7 +2135,7 @@ func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
 		CourseID:                e.CourseID,
 		BillingMode:             string(e.BillingMode),
 		ChargeMaterials:         e.ChargeMaterials,
-		DiscountPct:             e.DiscountPct,
+		LessonPriceOverride:     lessonPriceOverride,
 		SubscriptionLessonPrice: money.CentsToEuros(e.SubscriptionLessonPriceCents),
 		Note:                    e.Note,
 		CreatedAt:               formatOptionalTime(e.CreatedAt),
@@ -2194,9 +2217,9 @@ func validateBillingMode(billingMode string) error {
 	return nil
 }
 
-func validateDiscountPct(discountPct float64) error {
-	if discountPct < 0 || discountPct > 100 {
-		return errors.New("discountPct must be between 0 and 100")
+func validateLessonPriceOverride(lessonPriceOverride float64) error {
+	if math.IsNaN(lessonPriceOverride) || math.IsInf(lessonPriceOverride, 0) || lessonPriceOverride < 0 {
+		return errors.New("lessonPriceOverride must be >= 0")
 	}
 	return nil
 }

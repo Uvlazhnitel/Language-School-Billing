@@ -251,6 +251,20 @@ func (_u *InvoiceUpdate) ClearPdfRevision() *InvoiceUpdate {
 	return _u
 }
 
+// SetEmailDeliveryStatus sets the "email_delivery_status" field.
+func (_u *InvoiceUpdate) SetEmailDeliveryStatus(v invoice.EmailDeliveryStatus) *InvoiceUpdate {
+	_u.mutation.SetEmailDeliveryStatus(v)
+	return _u
+}
+
+// SetNillableEmailDeliveryStatus sets the "email_delivery_status" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillableEmailDeliveryStatus(v *invoice.EmailDeliveryStatus) *InvoiceUpdate {
+	if v != nil {
+		_u.SetEmailDeliveryStatus(*v)
+	}
+	return _u
+}
+
 // SetLastEmailedAt sets the "last_emailed_at" field.
 func (_u *InvoiceUpdate) SetLastEmailedAt(v time.Time) *InvoiceUpdate {
 	_u.mutation.SetLastEmailedAt(v)
@@ -288,6 +302,73 @@ func (_u *InvoiceUpdate) SetNillableLastEmailedTo(v *string) *InvoiceUpdate {
 // ClearLastEmailedTo clears the value of the "last_emailed_to" field.
 func (_u *InvoiceUpdate) ClearLastEmailedTo() *InvoiceUpdate {
 	_u.mutation.ClearLastEmailedTo()
+	return _u
+}
+
+// SetLastEmailedRevision sets the "last_emailed_revision" field.
+func (_u *InvoiceUpdate) SetLastEmailedRevision(v int) *InvoiceUpdate {
+	_u.mutation.ResetLastEmailedRevision()
+	_u.mutation.SetLastEmailedRevision(v)
+	return _u
+}
+
+// SetNillableLastEmailedRevision sets the "last_emailed_revision" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillableLastEmailedRevision(v *int) *InvoiceUpdate {
+	if v != nil {
+		_u.SetLastEmailedRevision(*v)
+	}
+	return _u
+}
+
+// AddLastEmailedRevision adds value to the "last_emailed_revision" field.
+func (_u *InvoiceUpdate) AddLastEmailedRevision(v int) *InvoiceUpdate {
+	_u.mutation.AddLastEmailedRevision(v)
+	return _u
+}
+
+// ClearLastEmailedRevision clears the value of the "last_emailed_revision" field.
+func (_u *InvoiceUpdate) ClearLastEmailedRevision() *InvoiceUpdate {
+	_u.mutation.ClearLastEmailedRevision()
+	return _u
+}
+
+// SetLastEmailError sets the "last_email_error" field.
+func (_u *InvoiceUpdate) SetLastEmailError(v string) *InvoiceUpdate {
+	_u.mutation.SetLastEmailError(v)
+	return _u
+}
+
+// SetNillableLastEmailError sets the "last_email_error" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillableLastEmailError(v *string) *InvoiceUpdate {
+	if v != nil {
+		_u.SetLastEmailError(*v)
+	}
+	return _u
+}
+
+// ClearLastEmailError clears the value of the "last_email_error" field.
+func (_u *InvoiceUpdate) ClearLastEmailError() *InvoiceUpdate {
+	_u.mutation.ClearLastEmailError()
+	return _u
+}
+
+// SetLastEmailFailedAt sets the "last_email_failed_at" field.
+func (_u *InvoiceUpdate) SetLastEmailFailedAt(v time.Time) *InvoiceUpdate {
+	_u.mutation.SetLastEmailFailedAt(v)
+	return _u
+}
+
+// SetNillableLastEmailFailedAt sets the "last_email_failed_at" field if the given value is not nil.
+func (_u *InvoiceUpdate) SetNillableLastEmailFailedAt(v *time.Time) *InvoiceUpdate {
+	if v != nil {
+		_u.SetLastEmailFailedAt(*v)
+	}
+	return _u
+}
+
+// ClearLastEmailFailedAt clears the value of the "last_email_failed_at" field.
+func (_u *InvoiceUpdate) ClearLastEmailFailedAt() *InvoiceUpdate {
+	_u.mutation.ClearLastEmailFailedAt()
 	return _u
 }
 
@@ -454,6 +535,11 @@ func (_u *InvoiceUpdate) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Invoice.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.EmailDeliveryStatus(); ok {
+		if err := invoice.EmailDeliveryStatusValidator(v); err != nil {
+			return &ValidationError{Name: "email_delivery_status", err: fmt.Errorf(`ent: validator failed for field "Invoice.email_delivery_status": %w`, err)}
+		}
+	}
 	if _u.mutation.StudentCleared() && len(_u.mutation.StudentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Invoice.student"`)
 	}
@@ -532,6 +618,9 @@ func (_u *InvoiceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if _u.mutation.PdfRevisionCleared() {
 		_spec.ClearField(invoice.FieldPdfRevision, field.TypeInt)
 	}
+	if value, ok := _u.mutation.EmailDeliveryStatus(); ok {
+		_spec.SetField(invoice.FieldEmailDeliveryStatus, field.TypeEnum, value)
+	}
 	if value, ok := _u.mutation.LastEmailedAt(); ok {
 		_spec.SetField(invoice.FieldLastEmailedAt, field.TypeTime, value)
 	}
@@ -543,6 +632,27 @@ func (_u *InvoiceUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if _u.mutation.LastEmailedToCleared() {
 		_spec.ClearField(invoice.FieldLastEmailedTo, field.TypeString)
+	}
+	if value, ok := _u.mutation.LastEmailedRevision(); ok {
+		_spec.SetField(invoice.FieldLastEmailedRevision, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedLastEmailedRevision(); ok {
+		_spec.AddField(invoice.FieldLastEmailedRevision, field.TypeInt, value)
+	}
+	if _u.mutation.LastEmailedRevisionCleared() {
+		_spec.ClearField(invoice.FieldLastEmailedRevision, field.TypeInt)
+	}
+	if value, ok := _u.mutation.LastEmailError(); ok {
+		_spec.SetField(invoice.FieldLastEmailError, field.TypeString, value)
+	}
+	if _u.mutation.LastEmailErrorCleared() {
+		_spec.ClearField(invoice.FieldLastEmailError, field.TypeString)
+	}
+	if value, ok := _u.mutation.LastEmailFailedAt(); ok {
+		_spec.SetField(invoice.FieldLastEmailFailedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastEmailFailedAtCleared() {
+		_spec.ClearField(invoice.FieldLastEmailFailedAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)
@@ -915,6 +1025,20 @@ func (_u *InvoiceUpdateOne) ClearPdfRevision() *InvoiceUpdateOne {
 	return _u
 }
 
+// SetEmailDeliveryStatus sets the "email_delivery_status" field.
+func (_u *InvoiceUpdateOne) SetEmailDeliveryStatus(v invoice.EmailDeliveryStatus) *InvoiceUpdateOne {
+	_u.mutation.SetEmailDeliveryStatus(v)
+	return _u
+}
+
+// SetNillableEmailDeliveryStatus sets the "email_delivery_status" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillableEmailDeliveryStatus(v *invoice.EmailDeliveryStatus) *InvoiceUpdateOne {
+	if v != nil {
+		_u.SetEmailDeliveryStatus(*v)
+	}
+	return _u
+}
+
 // SetLastEmailedAt sets the "last_emailed_at" field.
 func (_u *InvoiceUpdateOne) SetLastEmailedAt(v time.Time) *InvoiceUpdateOne {
 	_u.mutation.SetLastEmailedAt(v)
@@ -952,6 +1076,73 @@ func (_u *InvoiceUpdateOne) SetNillableLastEmailedTo(v *string) *InvoiceUpdateOn
 // ClearLastEmailedTo clears the value of the "last_emailed_to" field.
 func (_u *InvoiceUpdateOne) ClearLastEmailedTo() *InvoiceUpdateOne {
 	_u.mutation.ClearLastEmailedTo()
+	return _u
+}
+
+// SetLastEmailedRevision sets the "last_emailed_revision" field.
+func (_u *InvoiceUpdateOne) SetLastEmailedRevision(v int) *InvoiceUpdateOne {
+	_u.mutation.ResetLastEmailedRevision()
+	_u.mutation.SetLastEmailedRevision(v)
+	return _u
+}
+
+// SetNillableLastEmailedRevision sets the "last_emailed_revision" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillableLastEmailedRevision(v *int) *InvoiceUpdateOne {
+	if v != nil {
+		_u.SetLastEmailedRevision(*v)
+	}
+	return _u
+}
+
+// AddLastEmailedRevision adds value to the "last_emailed_revision" field.
+func (_u *InvoiceUpdateOne) AddLastEmailedRevision(v int) *InvoiceUpdateOne {
+	_u.mutation.AddLastEmailedRevision(v)
+	return _u
+}
+
+// ClearLastEmailedRevision clears the value of the "last_emailed_revision" field.
+func (_u *InvoiceUpdateOne) ClearLastEmailedRevision() *InvoiceUpdateOne {
+	_u.mutation.ClearLastEmailedRevision()
+	return _u
+}
+
+// SetLastEmailError sets the "last_email_error" field.
+func (_u *InvoiceUpdateOne) SetLastEmailError(v string) *InvoiceUpdateOne {
+	_u.mutation.SetLastEmailError(v)
+	return _u
+}
+
+// SetNillableLastEmailError sets the "last_email_error" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillableLastEmailError(v *string) *InvoiceUpdateOne {
+	if v != nil {
+		_u.SetLastEmailError(*v)
+	}
+	return _u
+}
+
+// ClearLastEmailError clears the value of the "last_email_error" field.
+func (_u *InvoiceUpdateOne) ClearLastEmailError() *InvoiceUpdateOne {
+	_u.mutation.ClearLastEmailError()
+	return _u
+}
+
+// SetLastEmailFailedAt sets the "last_email_failed_at" field.
+func (_u *InvoiceUpdateOne) SetLastEmailFailedAt(v time.Time) *InvoiceUpdateOne {
+	_u.mutation.SetLastEmailFailedAt(v)
+	return _u
+}
+
+// SetNillableLastEmailFailedAt sets the "last_email_failed_at" field if the given value is not nil.
+func (_u *InvoiceUpdateOne) SetNillableLastEmailFailedAt(v *time.Time) *InvoiceUpdateOne {
+	if v != nil {
+		_u.SetLastEmailFailedAt(*v)
+	}
+	return _u
+}
+
+// ClearLastEmailFailedAt clears the value of the "last_email_failed_at" field.
+func (_u *InvoiceUpdateOne) ClearLastEmailFailedAt() *InvoiceUpdateOne {
+	_u.mutation.ClearLastEmailFailedAt()
 	return _u
 }
 
@@ -1131,6 +1322,11 @@ func (_u *InvoiceUpdateOne) check() error {
 			return &ValidationError{Name: "status", err: fmt.Errorf(`ent: validator failed for field "Invoice.status": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.EmailDeliveryStatus(); ok {
+		if err := invoice.EmailDeliveryStatusValidator(v); err != nil {
+			return &ValidationError{Name: "email_delivery_status", err: fmt.Errorf(`ent: validator failed for field "Invoice.email_delivery_status": %w`, err)}
+		}
+	}
 	if _u.mutation.StudentCleared() && len(_u.mutation.StudentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Invoice.student"`)
 	}
@@ -1226,6 +1422,9 @@ func (_u *InvoiceUpdateOne) sqlSave(ctx context.Context) (_node *Invoice, err er
 	if _u.mutation.PdfRevisionCleared() {
 		_spec.ClearField(invoice.FieldPdfRevision, field.TypeInt)
 	}
+	if value, ok := _u.mutation.EmailDeliveryStatus(); ok {
+		_spec.SetField(invoice.FieldEmailDeliveryStatus, field.TypeEnum, value)
+	}
 	if value, ok := _u.mutation.LastEmailedAt(); ok {
 		_spec.SetField(invoice.FieldLastEmailedAt, field.TypeTime, value)
 	}
@@ -1237,6 +1436,27 @@ func (_u *InvoiceUpdateOne) sqlSave(ctx context.Context) (_node *Invoice, err er
 	}
 	if _u.mutation.LastEmailedToCleared() {
 		_spec.ClearField(invoice.FieldLastEmailedTo, field.TypeString)
+	}
+	if value, ok := _u.mutation.LastEmailedRevision(); ok {
+		_spec.SetField(invoice.FieldLastEmailedRevision, field.TypeInt, value)
+	}
+	if value, ok := _u.mutation.AddedLastEmailedRevision(); ok {
+		_spec.AddField(invoice.FieldLastEmailedRevision, field.TypeInt, value)
+	}
+	if _u.mutation.LastEmailedRevisionCleared() {
+		_spec.ClearField(invoice.FieldLastEmailedRevision, field.TypeInt)
+	}
+	if value, ok := _u.mutation.LastEmailError(); ok {
+		_spec.SetField(invoice.FieldLastEmailError, field.TypeString, value)
+	}
+	if _u.mutation.LastEmailErrorCleared() {
+		_spec.ClearField(invoice.FieldLastEmailError, field.TypeString)
+	}
+	if value, ok := _u.mutation.LastEmailFailedAt(); ok {
+		_spec.SetField(invoice.FieldLastEmailFailedAt, field.TypeTime, value)
+	}
+	if _u.mutation.LastEmailFailedAtCleared() {
+		_spec.ClearField(invoice.FieldLastEmailFailedAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(invoice.FieldCreatedAt, field.TypeTime, value)

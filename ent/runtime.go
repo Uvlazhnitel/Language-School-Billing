@@ -104,20 +104,24 @@ func init() {
 	enrollmentDescDiscountPct := enrollmentFields[4].Descriptor()
 	// enrollment.DefaultDiscountPct holds the default value on creation for the discount_pct field.
 	enrollment.DefaultDiscountPct = enrollmentDescDiscountPct.Default.(float64)
+	// enrollmentDescLessonPriceOverrideCents is the schema descriptor for lesson_price_override_cents field.
+	enrollmentDescLessonPriceOverrideCents := enrollmentFields[5].Descriptor()
+	// enrollment.DefaultLessonPriceOverrideCents holds the default value on creation for the lesson_price_override_cents field.
+	enrollment.DefaultLessonPriceOverrideCents = enrollmentDescLessonPriceOverrideCents.Default.(int64)
 	// enrollmentDescSubscriptionLessonPriceCents is the schema descriptor for subscription_lesson_price_cents field.
-	enrollmentDescSubscriptionLessonPriceCents := enrollmentFields[5].Descriptor()
+	enrollmentDescSubscriptionLessonPriceCents := enrollmentFields[6].Descriptor()
 	// enrollment.DefaultSubscriptionLessonPriceCents holds the default value on creation for the subscription_lesson_price_cents field.
 	enrollment.DefaultSubscriptionLessonPriceCents = enrollmentDescSubscriptionLessonPriceCents.Default.(int64)
 	// enrollmentDescNote is the schema descriptor for note field.
-	enrollmentDescNote := enrollmentFields[6].Descriptor()
+	enrollmentDescNote := enrollmentFields[7].Descriptor()
 	// enrollment.DefaultNote holds the default value on creation for the note field.
 	enrollment.DefaultNote = enrollmentDescNote.Default.(string)
 	// enrollmentDescCreatedAt is the schema descriptor for created_at field.
-	enrollmentDescCreatedAt := enrollmentFields[7].Descriptor()
+	enrollmentDescCreatedAt := enrollmentFields[8].Descriptor()
 	// enrollment.DefaultCreatedAt holds the default value on creation for the created_at field.
 	enrollment.DefaultCreatedAt = enrollmentDescCreatedAt.Default.(func() time.Time)
 	// enrollmentDescUpdatedAt is the schema descriptor for updated_at field.
-	enrollmentDescUpdatedAt := enrollmentFields[8].Descriptor()
+	enrollmentDescUpdatedAt := enrollmentFields[9].Descriptor()
 	// enrollment.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	enrollment.DefaultUpdatedAt = enrollmentDescUpdatedAt.Default.(func() time.Time)
 	// enrollment.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -140,11 +144,11 @@ func init() {
 	// invoice.DefaultTotalAmountCents holds the default value on creation for the total_amount_cents field.
 	invoice.DefaultTotalAmountCents = invoiceDescTotalAmountCents.Default.(int64)
 	// invoiceDescCreatedAt is the schema descriptor for created_at field.
-	invoiceDescCreatedAt := invoiceFields[12].Descriptor()
+	invoiceDescCreatedAt := invoiceFields[16].Descriptor()
 	// invoice.DefaultCreatedAt holds the default value on creation for the created_at field.
 	invoice.DefaultCreatedAt = invoiceDescCreatedAt.Default.(func() time.Time)
 	// invoiceDescUpdatedAt is the schema descriptor for updated_at field.
-	invoiceDescUpdatedAt := invoiceFields[13].Descriptor()
+	invoiceDescUpdatedAt := invoiceFields[17].Descriptor()
 	// invoice.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	invoice.DefaultUpdatedAt = invoiceDescUpdatedAt.Default.(func() time.Time)
 	// invoice.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

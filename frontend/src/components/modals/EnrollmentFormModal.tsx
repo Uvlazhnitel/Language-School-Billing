@@ -15,7 +15,7 @@ type EnrollmentFormModalProps = {
   courseId: number;
   mode: "per_lesson" | "subscription";
   chargeMaterials: boolean;
-  discount: string;
+  lessonPriceOverride: string;
   subscriptionLessonPrice: string;
   note: string;
   allCourses: CourseDTO[];
@@ -26,7 +26,7 @@ type EnrollmentFormModalProps = {
   onCourseIdChange: (value: number) => void;
   onModeChange: (value: "per_lesson" | "subscription") => void;
   onChargeMaterialsChange: (value: boolean) => void;
-  onDiscountChange: (value: string) => void;
+  onLessonPriceOverrideChange: (value: string) => void;
   onSubscriptionLessonPriceChange: (value: string) => void;
   onNoteChange: (value: string) => void;
   onSave: () => void;
@@ -44,7 +44,7 @@ export function EnrollmentFormModal({
   courseId,
   mode,
   chargeMaterials,
-  discount,
+  lessonPriceOverride,
   subscriptionLessonPrice,
   note,
   allCourses,
@@ -55,7 +55,7 @@ export function EnrollmentFormModal({
   onCourseIdChange,
   onModeChange,
   onChargeMaterialsChange,
-  onDiscountChange,
+  onLessonPriceOverrideChange,
   onSubscriptionLessonPriceChange,
   onNoteChange,
   onSave,
@@ -156,18 +156,19 @@ export function EnrollmentFormModal({
           />
         </div>
 
-        <div className="formRow">
-          <label>{t("field.discount")} %</label>
-          <input
-            type="number"
-            min={0}
-            max={100}
-            step="0.1"
-            value={discount}
-            onFocus={(e) => e.currentTarget.select()}
-            onChange={(e) => onDiscountChange(e.target.value)}
-          />
-        </div>
+        {mode === "per_lesson" && (
+          <div className="formRow">
+            <label>{t("field.lessonPriceOverride")} (EUR)</label>
+            <input
+              type="number"
+              min={0}
+              step="0.1"
+              value={lessonPriceOverride}
+              onFocus={(e) => e.currentTarget.select()}
+              onChange={(e) => onLessonPriceOverrideChange(e.target.value)}
+            />
+          </div>
+        )}
 
         {mode === "subscription" && (
           <div className="formRow">

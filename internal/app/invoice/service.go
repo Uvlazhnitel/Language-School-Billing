@@ -64,20 +64,22 @@ func NewWithInvoicesDir(db *ent.Client, invoicesDir string) *Service {
 
 // ListItem represents a summary of an invoice for list views.
 type ListItem struct {
-	ID            int     `json:"id"`               // Invoice ID
-	Version       int     `json:"version"`          // Optimistic-lock revision
-	StudentID     int     `json:"studentId"`        // Student ID
-	StudentName   string  `json:"studentName"`      // Student's full name
-	Year          int     `json:"year"`             // Invoice period year
-	Month         int     `json:"month"`            // Invoice period month
-	Total         float64 `json:"total"`            // Total invoice amount
-	Status        string  `json:"status"`           // Invoice status
-	PDFReady      bool    `json:"pdfReady"`         // Whether canonical PDF is ready
-	LinesCount    int     `json:"linesCount"`       // Number of line items
-	Number        *string `json:"number,omitempty"` // Invoice number (nil for drafts)
-	EventDate     string  `json:"eventDate"`        // Real timeline event date for draft/update/issue/pay
-	LastEmailedAt string  `json:"lastEmailedAt,omitempty"`
-	LastEmailedTo string  `json:"lastEmailedTo,omitempty"`
+	ID                       int     `json:"id"`               // Invoice ID
+	Version                  int     `json:"version"`          // Optimistic-lock revision
+	StudentID                int     `json:"studentId"`        // Student ID
+	StudentName              string  `json:"studentName"`      // Student's full name
+	Year                     int     `json:"year"`             // Invoice period year
+	Month                    int     `json:"month"`            // Invoice period month
+	Total                    float64 `json:"total"`            // Total invoice amount
+	Status                   string  `json:"status"`           // Invoice status
+	PDFReady                 bool    `json:"pdfReady"`         // Whether canonical PDF is ready
+	LinesCount               int     `json:"linesCount"`       // Number of line items
+	Number                   *string `json:"number,omitempty"` // Invoice number (nil for drafts)
+	EventDate                string  `json:"eventDate"`        // Real timeline event date for draft/update/issue/pay
+	LastEmailedAt            string  `json:"lastEmailedAt,omitempty"`
+	LastEmailedTo            string  `json:"lastEmailedTo,omitempty"`
+	EmailCommunicationStatus string  `json:"emailCommunicationStatus"`
+	LastEmailError           string  `json:"lastEmailError,omitempty"`
 }
 
 // LineDTO represents a single line item in an invoice.
@@ -91,25 +93,27 @@ type LineDTO struct {
 
 // InvoiceDTO represents a complete invoice with all line items.
 type InvoiceDTO struct {
-	ID                  int       `json:"id"`                  // Invoice ID
-	Version             int       `json:"version"`             // Optimistic-lock revision
-	StudentID           int       `json:"studentId"`           // Student ID
-	StudentName         string    `json:"studentName"`         // Student's full name
-	RecipientName       string    `json:"recipientName"`       // Visible invoice recipient
-	RecipientPhone      string    `json:"recipientPhone"`      // Optional recipient phone
-	RecipientEmail      string    `json:"recipientEmail"`      // Optional recipient email
-	ChildName           string    `json:"childName"`           // Child/student name
-	StudentPersonalCode string    `json:"studentPersonalCode"` // Student's own personal code
-	IsMinor             bool      `json:"isMinor"`             // Whether invoice is for a minor student
-	Year                int       `json:"year"`                // Invoice period year
-	Month               int       `json:"month"`               // Invoice period month
-	Total               float64   `json:"total"`               // Total invoice amount
-	Status              string    `json:"status"`              // Invoice status
-	PDFReady            bool      `json:"pdfReady"`            // Whether canonical PDF is ready
-	Number              *string   `json:"number,omitempty"`    // Invoice number (nil for drafts)
-	LastEmailedAt       string    `json:"lastEmailedAt,omitempty"`
-	LastEmailedTo       string    `json:"lastEmailedTo,omitempty"`
-	Lines               []LineDTO `json:"lines"` // All line items in the invoice
+	ID                       int       `json:"id"`                  // Invoice ID
+	Version                  int       `json:"version"`             // Optimistic-lock revision
+	StudentID                int       `json:"studentId"`           // Student ID
+	StudentName              string    `json:"studentName"`         // Student's full name
+	RecipientName            string    `json:"recipientName"`       // Visible invoice recipient
+	RecipientPhone           string    `json:"recipientPhone"`      // Optional recipient phone
+	RecipientEmail           string    `json:"recipientEmail"`      // Optional recipient email
+	ChildName                string    `json:"childName"`           // Child/student name
+	StudentPersonalCode      string    `json:"studentPersonalCode"` // Student's own personal code
+	IsMinor                  bool      `json:"isMinor"`             // Whether invoice is for a minor student
+	Year                     int       `json:"year"`                // Invoice period year
+	Month                    int       `json:"month"`               // Invoice period month
+	Total                    float64   `json:"total"`               // Total invoice amount
+	Status                   string    `json:"status"`              // Invoice status
+	PDFReady                 bool      `json:"pdfReady"`            // Whether canonical PDF is ready
+	Number                   *string   `json:"number,omitempty"`    // Invoice number (nil for drafts)
+	LastEmailedAt            string    `json:"lastEmailedAt,omitempty"`
+	LastEmailedTo            string    `json:"lastEmailedTo,omitempty"`
+	EmailCommunicationStatus string    `json:"emailCommunicationStatus"`
+	LastEmailError           string    `json:"lastEmailError,omitempty"`
+	Lines                    []LineDTO `json:"lines"` // All line items in the invoice
 }
 
 // GenerateResult contains statistics about invoice generation.
@@ -143,6 +147,23 @@ func optionalString(value *string) string {
 		return ""
 	}
 	return strings.TrimSpace(*value)
+}
+
+func emailCommunicationStatus(iv *ent.Invoice) string {
+	if iv == nil {
+		return app.InvoiceEmailStatusNotSent
+	}
+	switch string(iv.EmailDeliveryStatus) {
+	case app.InvoiceEmailStatusSent:
+		if iv.LastEmailedRevision == nil || *iv.LastEmailedRevision != iv.Version {
+			return app.InvoiceEmailStatusStale
+		}
+		return app.InvoiceEmailStatusSent
+	case app.InvoiceEmailStatusFailed:
+		return app.InvoiceEmailStatusFailed
+	default:
+		return app.InvoiceEmailStatusNotSent
+	}
 }
 
 func buildCourseLineDescription(courseName string) string {
@@ -268,9 +289,8 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 	c, err := s.db.Enrollment.Query().Where(enrollment.IDEQ(en.ID)).QueryCourse().Only(ctx)
 	if err == nil && c != nil {
 		lp, sp := c.LessonPriceCents, c.SubscriptionPriceCents
-		if en.DiscountPct != 0 {
-			lp = int64(float64(lp) * (1 - en.DiscountPct/100.0))
-			sp = int64(float64(sp) * (1 - en.DiscountPct/100.0))
+		if en.BillingMode == BillingPerLesson && en.LessonPriceOverrideCents >= 0 {
+			lp = en.LessonPriceOverrideCents
 		}
 		lessonPriceCents, subscriptionPriceCents = lp, sp
 	}
@@ -631,9 +651,11 @@ func (s *Service) ListDrafts(ctx context.Context, y, m int) ([]ListItem, error) 
 			ID: iv.ID, StudentID: iv.StudentID, StudentName: getStudentName(iv),
 			Year: iv.PeriodYear, Month: iv.PeriodMonth,
 			Total: money.CentsToEuros(iv.TotalAmountCents), Status: string(iv.Status), PDFReady: CanonicalPDFReady(iv), LinesCount: count, Number: iv.Number,
-			EventDate:     invoiceEventDate(iv),
-			LastEmailedAt: optionalRFC3339(iv.LastEmailedAt),
-			LastEmailedTo: optionalString(iv.LastEmailedTo),
+			EventDate:                invoiceEventDate(iv),
+			LastEmailedAt:            optionalRFC3339(iv.LastEmailedAt),
+			LastEmailedTo:            optionalString(iv.LastEmailedTo),
+			EmailCommunicationStatus: emailCommunicationStatus(iv),
+			LastEmailError:           optionalString(iv.LastEmailError),
 		})
 	}
 	return items, nil
@@ -655,24 +677,26 @@ func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 		return nil, err
 	}
 	dto := &InvoiceDTO{
-		ID:                  iv.ID,
-		Version:             iv.Version,
-		StudentID:           iv.StudentID,
-		StudentName:         getStudentName(iv),
-		RecipientName:       recipientInfo.RecipientName,
-		RecipientPhone:      recipientInfo.RecipientPhone,
-		RecipientEmail:      recipientInfo.RecipientEmail,
-		ChildName:           recipientInfo.ChildName,
-		StudentPersonalCode: recipientInfo.StudentPersonalCode,
-		IsMinor:             recipientInfo.IsMinor,
-		Year:                iv.PeriodYear,
-		Month:               iv.PeriodMonth,
-		Total:               money.CentsToEuros(iv.TotalAmountCents),
-		Status:              string(iv.Status),
-		PDFReady:            CanonicalPDFReady(iv),
-		Number:              iv.Number,
-		LastEmailedAt:       optionalRFC3339(iv.LastEmailedAt),
-		LastEmailedTo:       optionalString(iv.LastEmailedTo),
+		ID:                       iv.ID,
+		Version:                  iv.Version,
+		StudentID:                iv.StudentID,
+		StudentName:              getStudentName(iv),
+		RecipientName:            recipientInfo.RecipientName,
+		RecipientPhone:           recipientInfo.RecipientPhone,
+		RecipientEmail:           recipientInfo.RecipientEmail,
+		ChildName:                recipientInfo.ChildName,
+		StudentPersonalCode:      recipientInfo.StudentPersonalCode,
+		IsMinor:                  recipientInfo.IsMinor,
+		Year:                     iv.PeriodYear,
+		Month:                    iv.PeriodMonth,
+		Total:                    money.CentsToEuros(iv.TotalAmountCents),
+		Status:                   string(iv.Status),
+		PDFReady:                 CanonicalPDFReady(iv),
+		Number:                   iv.Number,
+		LastEmailedAt:            optionalRFC3339(iv.LastEmailedAt),
+		LastEmailedTo:            optionalString(iv.LastEmailedTo),
+		EmailCommunicationStatus: emailCommunicationStatus(iv),
+		LastEmailError:           optionalString(iv.LastEmailError),
 	}
 	for _, l := range ls {
 		dto.Lines = append(dto.Lines, LineDTO{
@@ -789,10 +813,16 @@ func (s *Service) ReopenDraftWithVersion(ctx context.Context, id, version int, o
 		Where(invoice.VersionEQ(version)).
 		SetVersion(version + 1).
 		SetStatus(StatusDraft).
+		SetEmailDeliveryStatus(invoice.EmailDeliveryStatusNotSent).
 		ClearNumber().
 		ClearPdfFilename().
 		ClearPdfRevision().
 		ClearPdfGeneratedAt().
+		ClearLastEmailedAt().
+		ClearLastEmailedTo().
+		ClearLastEmailedRevision().
+		ClearLastEmailError().
+		ClearLastEmailFailedAt().
 		Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
 			return apperrors.StaleRevision()
@@ -1129,20 +1159,22 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 	for _, iv := range invs {
 		cnt := countMap[iv.ID]
 		out = append(out, ListItem{
-			ID:            iv.ID,
-			Version:       iv.Version,
-			StudentID:     iv.StudentID,
-			StudentName:   getStudentName(iv),
-			Year:          iv.PeriodYear,
-			Month:         iv.PeriodMonth,
-			Total:         money.CentsToEuros(iv.TotalAmountCents),
-			Status:        string(iv.Status),
-			PDFReady:      CanonicalPDFReady(iv),
-			LinesCount:    cnt,
-			Number:        iv.Number,
-			EventDate:     invoiceEventDate(iv),
-			LastEmailedAt: optionalRFC3339(iv.LastEmailedAt),
-			LastEmailedTo: optionalString(iv.LastEmailedTo),
+			ID:                       iv.ID,
+			Version:                  iv.Version,
+			StudentID:                iv.StudentID,
+			StudentName:              getStudentName(iv),
+			Year:                     iv.PeriodYear,
+			Month:                    iv.PeriodMonth,
+			Total:                    money.CentsToEuros(iv.TotalAmountCents),
+			Status:                   string(iv.Status),
+			PDFReady:                 CanonicalPDFReady(iv),
+			LinesCount:               cnt,
+			Number:                   iv.Number,
+			EventDate:                invoiceEventDate(iv),
+			LastEmailedAt:            optionalRFC3339(iv.LastEmailedAt),
+			LastEmailedTo:            optionalString(iv.LastEmailedTo),
+			EmailCommunicationStatus: emailCommunicationStatus(iv),
+			LastEmailError:           optionalString(iv.LastEmailError),
 		})
 	}
 	return out, nil

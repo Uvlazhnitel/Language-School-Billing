@@ -131,7 +131,6 @@ export type Row = {
   courseType: CourseType;
   billingMode: BillingMode;
   lessonPrice: number;
-  discountPct: number;
   subscriptionLessonPrice: number;
   hours: number;
   hasRecord: boolean;
@@ -185,7 +184,7 @@ export type EnrollmentDTO = {
   teacherName: string;
   billingMode: BillingMode;
   chargeMaterials: boolean;
-  discountPct: number;
+  lessonPriceOverride: number;
   subscriptionLessonPrice: number;
   note: string;
   createdAt: string;
@@ -213,6 +212,8 @@ export type InvoiceListItem = {
   eventDate: string;
   lastEmailedAt?: string;
   lastEmailedTo?: string;
+  emailCommunicationStatus: "not_sent" | "sent" | "failed" | "stale";
+  lastEmailError?: string;
 };
 
 export type InvoiceListItemView = InvoiceListItem;
@@ -244,6 +245,8 @@ export type InvoiceDTO = {
   number?: string;
   lastEmailedAt?: string;
   lastEmailedTo?: string;
+  emailCommunicationStatus: "not_sent" | "sent" | "failed" | "stale";
+  lastEmailError?: string;
   lines: InvoiceLine[];
 };
 
@@ -476,7 +479,7 @@ export interface AppTransport {
     courseId: number,
     billingMode: EnrollmentDTO["billingMode"],
     chargeMaterials: boolean,
-    discountPct: number,
+    lessonPriceOverride: number,
     subscriptionLessonPrice: number,
     note: string
   ): Promise<EnrollmentDTO>;
@@ -485,7 +488,7 @@ export interface AppTransport {
     version: number,
     billingMode: EnrollmentDTO["billingMode"],
     chargeMaterials: boolean,
-    discountPct: number,
+    lessonPriceOverride: number,
     subscriptionLessonPrice: number,
     note: string
   ): Promise<EnrollmentDTO>;

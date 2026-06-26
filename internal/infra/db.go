@@ -55,6 +55,10 @@ func Open(ctx context.Context, dbPath string) (*DB, error) {
 		_ = client.Close()
 		return nil, err
 	}
+	if err := migratePerLessonDiscountsToLessonPriceOverrides(ctx, dsn); err != nil {
+		_ = client.Close()
+		return nil, err
+	}
 
 	log.Println("DB ready at", dbPath)
 	return &DB{Ent: client}, nil
@@ -150,6 +154,35 @@ func applyLegacySubscriptionLessonPrices(ctx context.Context, dsn string, prices
 		}
 	}
 	return nil
+}
+
+func migratePerLessonDiscountsToLessonPriceOverrides(ctx context.Context, dsn string) error {
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	hasOverrideColumn, err := hasColumn(ctx, db, "enrollments", "lesson_price_override_cents")
+	if err != nil {
+		return err
+	}
+	if !hasOverrideColumn {
+		return nil
+	}
+
+	_, err = db.ExecContext(ctx, `
+UPDATE enrollments
+SET lesson_price_override_cents = CAST(ROUND(COALESCE((
+	SELECT c.lesson_price_cents
+	FROM courses c
+	WHERE c.id = enrollments.course_id
+), 0) * (1 - discount_pct / 100.0)) AS INTEGER)
+WHERE billing_mode = 'per_lesson'
+  AND discount_pct <> 0
+  AND lesson_price_override_cents < 0
+`)
+	return err
 }
 
 func hasColumn(ctx context.Context, db *sql.DB, tableName, columnName string) (bool, error) {

@@ -140,20 +140,20 @@ func (a *App) EnrollmentList(studentID *int, courseID *int) ([]EnrollmentDTO, er
 	return svc.EnrollmentList(a.appContext(), studentID, courseID)
 }
 
-func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, chargeMaterials bool, discountPct, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
+func (a *App) EnrollmentCreate(studentID, courseID int, billingMode string, chargeMaterials bool, lessonPriceOverride, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
 	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-	return svc.EnrollmentCreate(a.appContext(), studentID, courseID, billingMode, chargeMaterials, discountPct, subscriptionLessonPrice, note)
+	return svc.EnrollmentCreate(a.appContext(), studentID, courseID, billingMode, chargeMaterials, lessonPriceOverride, subscriptionLessonPrice, note)
 }
 
-func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, chargeMaterials bool, discountPct, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
+func (a *App) EnrollmentUpdate(enrollmentID int, billingMode string, chargeMaterials bool, lessonPriceOverride, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
 	svc, err := a.crudService()
 	if err != nil {
 		return nil, err
 	}
-	return svc.EnrollmentUpdate(a.appContext(), enrollmentID, billingMode, chargeMaterials, discountPct, subscriptionLessonPrice, note)
+	return svc.EnrollmentUpdate(a.appContext(), enrollmentID, billingMode, chargeMaterials, lessonPriceOverride, subscriptionLessonPrice, note)
 }
 
 func (a *App) CourseMonthSubscriptionList(year, month int, courseID *int) ([]CourseMonthSubscriptionDTO, error) {

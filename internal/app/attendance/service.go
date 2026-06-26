@@ -54,7 +54,6 @@ type Row struct {
 	CourseType              string  `json:"courseType"`              // Course type: "group" or "individual"
 	BillingMode             string  `json:"billingMode"`             // Enrollment billing mode
 	LessonPrice             float64 `json:"lessonPrice"`             // Hourly rate for this enrollment
-	DiscountPct             float64 `json:"discountPct"`             // Personal discount percentage for the enrollment
 	SubscriptionLessonPrice float64 `json:"subscriptionLessonPrice"` // Explicit subscription lesson price for this enrollment
 	Hours                   float64 `json:"hours"`                   // Hours attended in the month
 	HasRecord               bool    `json:"hasRecord"`               // Whether an AttendanceMonth record exists for this month
@@ -169,6 +168,11 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			return nil, err
 		}
 
+		lessonPriceCents := c.LessonPriceCents
+		if e.BillingMode == enrollment.BillingModePerLesson && e.LessonPriceOverrideCents >= 0 {
+			lessonPriceCents = e.LessonPriceOverrideCents
+		}
+
 		rows = append(rows, Row{
 			EnrollmentID:            e.ID,
 			EnrollmentVersion:       e.Version,
@@ -178,8 +182,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			CourseName:              c.Name,
 			CourseType:              string(c.Type),
 			BillingMode:             string(e.BillingMode),
-			LessonPrice:             money.CentsToEuros(c.LessonPriceCents),
-			DiscountPct:             utils.Round2(e.DiscountPct),
+			LessonPrice:             money.CentsToEuros(lessonPriceCents),
 			SubscriptionLessonPrice: utils.Round2(money.CentsToEuros(e.SubscriptionLessonPriceCents)),
 			Hours:                   hours,
 			HasRecord:               hasRecord,

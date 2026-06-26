@@ -494,7 +494,7 @@ func (s *Server) handleEnrollmentsCreate(w http.ResponseWriter, r *http.Request)
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.EnrollmentCreate(r.Context(), req.StudentID, req.CourseID, req.BillingMode, req.ChargeMaterials, req.DiscountPct, req.SubscriptionLessonPrice, req.Note)
+	item, err := s.svc.EnrollmentCreate(r.Context(), req.StudentID, req.CourseID, req.BillingMode, req.ChargeMaterials, req.LessonPriceOverride, req.SubscriptionLessonPrice, req.Note)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -511,7 +511,7 @@ func (s *Server) handleEnrollmentsUpdate(w http.ResponseWriter, r *http.Request)
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.EnrollmentUpdateWithVersion(r.Context(), id, req.Version, req.BillingMode, req.ChargeMaterials, req.DiscountPct, req.SubscriptionLessonPrice, req.Note)
+	item, err := s.svc.EnrollmentUpdateWithVersion(r.Context(), id, req.Version, req.BillingMode, req.ChargeMaterials, req.LessonPriceOverride, req.SubscriptionLessonPrice, req.Note)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -1279,7 +1279,7 @@ type enrollmentCreateRequest struct {
 	CourseID                int     `json:"courseId"`
 	BillingMode             string  `json:"billingMode"`
 	ChargeMaterials         bool    `json:"chargeMaterials"`
-	DiscountPct             float64 `json:"discountPct"`
+	LessonPriceOverride     float64 `json:"lessonPriceOverride"`
 	SubscriptionLessonPrice float64 `json:"subscriptionLessonPrice"`
 	Note                    string  `json:"note"`
 }
@@ -1288,7 +1288,7 @@ type enrollmentUpdateRequest struct {
 	Version                 int     `json:"version"`
 	BillingMode             string  `json:"billingMode"`
 	ChargeMaterials         bool    `json:"chargeMaterials"`
-	DiscountPct             float64 `json:"discountPct"`
+	LessonPriceOverride     float64 `json:"lessonPriceOverride"`
 	SubscriptionLessonPrice float64 `json:"subscriptionLessonPrice"`
 	Note                    string  `json:"note"`
 }
