@@ -790,6 +790,7 @@ func (s *Service) ReopenDraftWithVersion(ctx context.Context, id, version int, o
 		SetVersion(version + 1).
 		SetStatus(StatusDraft).
 		ClearNumber().
+		ClearPdfFilename().
 		ClearPdfRevision().
 		ClearPdfGeneratedAt().
 		Save(ctx); err != nil {

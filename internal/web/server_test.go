@@ -892,6 +892,12 @@ func TestIssuedInvoiceCanReopenAfterEnsuringPDF(t *testing.T) {
 	if reopened.Status != "draft" {
 		t.Fatalf("invoice status = %q, want draft", reopened.Status)
 	}
+	if reopened.PDFReady {
+		t.Fatal("expected reopened invoice to have pdfReady=false")
+	}
+	if reopened.Number != nil {
+		t.Fatalf("expected reopened invoice number to be cleared, got %v", reopened.Number)
+	}
 }
 
 func TestCurrentMonthInvoiceStaysLiveAfterFullPayment(t *testing.T) {
