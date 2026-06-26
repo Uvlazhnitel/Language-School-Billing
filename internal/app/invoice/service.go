@@ -289,9 +289,8 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 	c, err := s.db.Enrollment.Query().Where(enrollment.IDEQ(en.ID)).QueryCourse().Only(ctx)
 	if err == nil && c != nil {
 		lp, sp := c.LessonPriceCents, c.SubscriptionPriceCents
-		if en.DiscountPct != 0 {
-			lp = int64(float64(lp) * (1 - en.DiscountPct/100.0))
-			sp = int64(float64(sp) * (1 - en.DiscountPct/100.0))
+		if en.BillingMode == BillingPerLesson && en.LessonPriceOverrideCents >= 0 {
+			lp = en.LessonPriceOverrideCents
 		}
 		lessonPriceCents, subscriptionPriceCents = lp, sp
 	}

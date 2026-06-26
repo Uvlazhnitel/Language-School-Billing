@@ -21,7 +21,7 @@ describe("studentActivity", () => {
           teacherName: "Natalja",
           billingMode: "per_lesson",
           chargeMaterials: true,
-          discountPct: 0,
+          lessonPriceOverride: 17.5,
           subscriptionLessonPrice: 0,
           note: "",
           createdAt: "2026-06-03T11:15:00Z",

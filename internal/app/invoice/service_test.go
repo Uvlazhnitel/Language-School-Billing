@@ -135,6 +135,47 @@ func TestGenerateDraftsSubscriptionMaterialsUseCourseMonthStats(t *testing.T) {
 	assertDraft(string(StatusDraft), 65)
 }
 
+func TestResolvePricesUsesPerLessonOverrideWhenPresent(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-lesson-override?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().SetFullName("Override Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+	crs, err := client.Course.Create().
+		SetName("Override Course").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(money.EurosToCents(60)).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetChargeMaterials(true).
+		SetLessonPriceOverrideCents(money.EurosToCents(12.5)).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	lessonPriceCents, subscriptionPriceCents := svc.resolvePrices(ctx, enr, 2026, 6)
+	if lessonPriceCents != money.EurosToCents(12.5) {
+		t.Fatalf("lessonPriceCents = %d, want %d", lessonPriceCents, money.EurosToCents(12.5))
+	}
+	if subscriptionPriceCents != money.EurosToCents(60) {
+		t.Fatalf("subscriptionPriceCents = %d, want %d", subscriptionPriceCents, money.EurosToCents(60))
+	}
+}
+
 func TestGenerateDraftsPerLessonDescriptionIsLatvian(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:invoice-generate-per-lesson?mode=memory&_fk=1")

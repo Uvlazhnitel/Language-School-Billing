@@ -3745,6 +3745,8 @@ type EnrollmentMutation struct {
 	charge_materials                   *bool
 	discount_pct                       *float64
 	adddiscount_pct                    *float64
+	lesson_price_override_cents        *int64
+	addlesson_price_override_cents     *int64
 	subscription_lesson_price_cents    *int64
 	addsubscription_lesson_price_cents *int64
 	note                               *string
@@ -4117,6 +4119,62 @@ func (m *EnrollmentMutation) ResetDiscountPct() {
 	m.adddiscount_pct = nil
 }
 
+// SetLessonPriceOverrideCents sets the "lesson_price_override_cents" field.
+func (m *EnrollmentMutation) SetLessonPriceOverrideCents(i int64) {
+	m.lesson_price_override_cents = &i
+	m.addlesson_price_override_cents = nil
+}
+
+// LessonPriceOverrideCents returns the value of the "lesson_price_override_cents" field in the mutation.
+func (m *EnrollmentMutation) LessonPriceOverrideCents() (r int64, exists bool) {
+	v := m.lesson_price_override_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLessonPriceOverrideCents returns the old "lesson_price_override_cents" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldLessonPriceOverrideCents(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLessonPriceOverrideCents is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLessonPriceOverrideCents requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLessonPriceOverrideCents: %w", err)
+	}
+	return oldValue.LessonPriceOverrideCents, nil
+}
+
+// AddLessonPriceOverrideCents adds i to the "lesson_price_override_cents" field.
+func (m *EnrollmentMutation) AddLessonPriceOverrideCents(i int64) {
+	if m.addlesson_price_override_cents != nil {
+		*m.addlesson_price_override_cents += i
+	} else {
+		m.addlesson_price_override_cents = &i
+	}
+}
+
+// AddedLessonPriceOverrideCents returns the value that was added to the "lesson_price_override_cents" field in this mutation.
+func (m *EnrollmentMutation) AddedLessonPriceOverrideCents() (r int64, exists bool) {
+	v := m.addlesson_price_override_cents
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetLessonPriceOverrideCents resets all changes to the "lesson_price_override_cents" field.
+func (m *EnrollmentMutation) ResetLessonPriceOverrideCents() {
+	m.lesson_price_override_cents = nil
+	m.addlesson_price_override_cents = nil
+}
+
 // SetSubscriptionLessonPriceCents sets the "subscription_lesson_price_cents" field.
 func (m *EnrollmentMutation) SetSubscriptionLessonPriceCents(i int64) {
 	m.subscription_lesson_price_cents = &i
@@ -4449,7 +4507,7 @@ func (m *EnrollmentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *EnrollmentMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.version != nil {
 		fields = append(fields, enrollment.FieldVersion)
 	}
@@ -4467,6 +4525,9 @@ func (m *EnrollmentMutation) Fields() []string {
 	}
 	if m.discount_pct != nil {
 		fields = append(fields, enrollment.FieldDiscountPct)
+	}
+	if m.lesson_price_override_cents != nil {
+		fields = append(fields, enrollment.FieldLessonPriceOverrideCents)
 	}
 	if m.subscription_lesson_price_cents != nil {
 		fields = append(fields, enrollment.FieldSubscriptionLessonPriceCents)
@@ -4500,6 +4561,8 @@ func (m *EnrollmentMutation) Field(name string) (ent.Value, bool) {
 		return m.ChargeMaterials()
 	case enrollment.FieldDiscountPct:
 		return m.DiscountPct()
+	case enrollment.FieldLessonPriceOverrideCents:
+		return m.LessonPriceOverrideCents()
 	case enrollment.FieldSubscriptionLessonPriceCents:
 		return m.SubscriptionLessonPriceCents()
 	case enrollment.FieldNote:
@@ -4529,6 +4592,8 @@ func (m *EnrollmentMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldChargeMaterials(ctx)
 	case enrollment.FieldDiscountPct:
 		return m.OldDiscountPct(ctx)
+	case enrollment.FieldLessonPriceOverrideCents:
+		return m.OldLessonPriceOverrideCents(ctx)
 	case enrollment.FieldSubscriptionLessonPriceCents:
 		return m.OldSubscriptionLessonPriceCents(ctx)
 	case enrollment.FieldNote:
@@ -4588,6 +4653,13 @@ func (m *EnrollmentMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetDiscountPct(v)
 		return nil
+	case enrollment.FieldLessonPriceOverrideCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLessonPriceOverrideCents(v)
+		return nil
 	case enrollment.FieldSubscriptionLessonPriceCents:
 		v, ok := value.(int64)
 		if !ok {
@@ -4630,6 +4702,9 @@ func (m *EnrollmentMutation) AddedFields() []string {
 	if m.adddiscount_pct != nil {
 		fields = append(fields, enrollment.FieldDiscountPct)
 	}
+	if m.addlesson_price_override_cents != nil {
+		fields = append(fields, enrollment.FieldLessonPriceOverrideCents)
+	}
 	if m.addsubscription_lesson_price_cents != nil {
 		fields = append(fields, enrollment.FieldSubscriptionLessonPriceCents)
 	}
@@ -4645,6 +4720,8 @@ func (m *EnrollmentMutation) AddedField(name string) (ent.Value, bool) {
 		return m.AddedVersion()
 	case enrollment.FieldDiscountPct:
 		return m.AddedDiscountPct()
+	case enrollment.FieldLessonPriceOverrideCents:
+		return m.AddedLessonPriceOverrideCents()
 	case enrollment.FieldSubscriptionLessonPriceCents:
 		return m.AddedSubscriptionLessonPriceCents()
 	}
@@ -4669,6 +4746,13 @@ func (m *EnrollmentMutation) AddField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.AddDiscountPct(v)
+		return nil
+	case enrollment.FieldLessonPriceOverrideCents:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddLessonPriceOverrideCents(v)
 		return nil
 	case enrollment.FieldSubscriptionLessonPriceCents:
 		v, ok := value.(int64)
@@ -4736,6 +4820,9 @@ func (m *EnrollmentMutation) ResetField(name string) error {
 		return nil
 	case enrollment.FieldDiscountPct:
 		m.ResetDiscountPct()
+		return nil
+	case enrollment.FieldLessonPriceOverrideCents:
+		m.ResetLessonPriceOverrideCents()
 		return nil
 	case enrollment.FieldSubscriptionLessonPriceCents:
 		m.ResetSubscriptionLessonPriceCents()

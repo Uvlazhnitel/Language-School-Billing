@@ -33,7 +33,7 @@ type EnrollmentsScreenProps = {
   enrollmentCourseId: number;
   enrollmentMode: "per_lesson" | "subscription";
   enrollmentChargeMaterials: boolean;
-  enrollmentDiscount: string;
+  enrollmentLessonPriceOverride: string;
   enrollmentSubscriptionLessonPrice: string;
   enrollmentNote: string;
   studentComboRef: RefObject<HTMLDivElement | null>;
@@ -43,7 +43,7 @@ type EnrollmentsScreenProps = {
   onEnrollmentCourseIdChange: (value: number) => void;
   onEnrollmentModeChange: (value: "per_lesson" | "subscription") => void;
   onEnrollmentChargeMaterialsChange: (value: boolean) => void;
-  onEnrollmentDiscountChange: (value: string) => void;
+  onEnrollmentLessonPriceOverrideChange: (value: string) => void;
   onEnrollmentSubscriptionLessonPriceChange: (value: string) => void;
   onEnrollmentNoteChange: (value: string) => void;
   onSaveEnrollment: () => void;
@@ -77,7 +77,7 @@ export function EnrollmentsScreen({
   enrollmentCourseId,
   enrollmentMode,
   enrollmentChargeMaterials,
-  enrollmentDiscount,
+  enrollmentLessonPriceOverride,
   enrollmentSubscriptionLessonPrice,
   enrollmentNote,
   studentComboRef,
@@ -87,7 +87,7 @@ export function EnrollmentsScreen({
   onEnrollmentCourseIdChange,
   onEnrollmentModeChange,
   onEnrollmentChargeMaterialsChange,
-  onEnrollmentDiscountChange,
+  onEnrollmentLessonPriceOverrideChange,
   onEnrollmentSubscriptionLessonPriceChange,
   onEnrollmentNoteChange,
   onSaveEnrollment,
@@ -189,7 +189,7 @@ export function EnrollmentsScreen({
               <th>{t("field.type")}</th>
               <th>{t("field.teacher")}</th>
               <th>{t("field.billing")}</th>
-              <th style={{ textAlign: "right" }}>{t("field.discount")}</th>
+              <th style={{ textAlign: "right" }}>{t("field.lessonPriceOverride")}</th>
               <th></th>
             </tr>
           </thead>
@@ -208,7 +208,11 @@ export function EnrollmentsScreen({
                 <td>{courseTypeLabel(enrollment.courseType)}</td>
                 <td>{enrollment.teacherName || "—"}</td>
                 <td>{billingModeLabel(enrollment.billingMode)}</td>
-                <td style={{ textAlign: "right" }}>{enrollment.discountPct.toFixed(1)}%</td>
+                <td style={{ textAlign: "right" }}>
+                  {enrollment.billingMode === "per_lesson"
+                    ? `€${enrollment.lessonPriceOverride.toFixed(2)}`
+                    : `€${enrollment.subscriptionLessonPrice.toFixed(2)}`}
+                </td>
                 <td>
                   <button onClick={() => onEditEnrollment(enrollment)}>{t("button.edit")}</button>
                 </td>
@@ -229,7 +233,7 @@ export function EnrollmentsScreen({
           courseId={enrollmentCourseId}
           mode={enrollmentMode}
           chargeMaterials={enrollmentChargeMaterials}
-          discount={enrollmentDiscount}
+          lessonPriceOverride={enrollmentLessonPriceOverride}
           subscriptionLessonPrice={enrollmentSubscriptionLessonPrice}
           note={enrollmentNote}
           allCourses={allCourses}
@@ -240,7 +244,7 @@ export function EnrollmentsScreen({
           onCourseIdChange={onEnrollmentCourseIdChange}
           onModeChange={onEnrollmentModeChange}
           onChargeMaterialsChange={onEnrollmentChargeMaterialsChange}
-          onDiscountChange={onEnrollmentDiscountChange}
+          onLessonPriceOverrideChange={onEnrollmentLessonPriceOverrideChange}
           onSubscriptionLessonPriceChange={onEnrollmentSubscriptionLessonPriceChange}
           onNoteChange={onEnrollmentNoteChange}
           onSave={onSaveEnrollment}

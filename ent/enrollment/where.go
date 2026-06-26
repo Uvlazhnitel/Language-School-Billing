@@ -80,6 +80,11 @@ func DiscountPct(v float64) predicate.Enrollment {
 	return predicate.Enrollment(sql.FieldEQ(FieldDiscountPct, v))
 }
 
+// LessonPriceOverrideCents applies equality check predicate on the "lesson_price_override_cents" field. It's identical to LessonPriceOverrideCentsEQ.
+func LessonPriceOverrideCents(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldEQ(FieldLessonPriceOverrideCents, v))
+}
+
 // SubscriptionLessonPriceCents applies equality check predicate on the "subscription_lesson_price_cents" field. It's identical to SubscriptionLessonPriceCentsEQ.
 func SubscriptionLessonPriceCents(v int64) predicate.Enrollment {
 	return predicate.Enrollment(sql.FieldEQ(FieldSubscriptionLessonPriceCents, v))
@@ -248,6 +253,46 @@ func DiscountPctLT(v float64) predicate.Enrollment {
 // DiscountPctLTE applies the LTE predicate on the "discount_pct" field.
 func DiscountPctLTE(v float64) predicate.Enrollment {
 	return predicate.Enrollment(sql.FieldLTE(FieldDiscountPct, v))
+}
+
+// LessonPriceOverrideCentsEQ applies the EQ predicate on the "lesson_price_override_cents" field.
+func LessonPriceOverrideCentsEQ(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldEQ(FieldLessonPriceOverrideCents, v))
+}
+
+// LessonPriceOverrideCentsNEQ applies the NEQ predicate on the "lesson_price_override_cents" field.
+func LessonPriceOverrideCentsNEQ(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldNEQ(FieldLessonPriceOverrideCents, v))
+}
+
+// LessonPriceOverrideCentsIn applies the In predicate on the "lesson_price_override_cents" field.
+func LessonPriceOverrideCentsIn(vs ...int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldIn(FieldLessonPriceOverrideCents, vs...))
+}
+
+// LessonPriceOverrideCentsNotIn applies the NotIn predicate on the "lesson_price_override_cents" field.
+func LessonPriceOverrideCentsNotIn(vs ...int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldNotIn(FieldLessonPriceOverrideCents, vs...))
+}
+
+// LessonPriceOverrideCentsGT applies the GT predicate on the "lesson_price_override_cents" field.
+func LessonPriceOverrideCentsGT(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldGT(FieldLessonPriceOverrideCents, v))
+}
+
+// LessonPriceOverrideCentsGTE applies the GTE predicate on the "lesson_price_override_cents" field.
+func LessonPriceOverrideCentsGTE(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldGTE(FieldLessonPriceOverrideCents, v))
+}
+
+// LessonPriceOverrideCentsLT applies the LT predicate on the "lesson_price_override_cents" field.
+func LessonPriceOverrideCentsLT(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldLT(FieldLessonPriceOverrideCents, v))
+}
+
+// LessonPriceOverrideCentsLTE applies the LTE predicate on the "lesson_price_override_cents" field.
+func LessonPriceOverrideCentsLTE(v int64) predicate.Enrollment {
+	return predicate.Enrollment(sql.FieldLTE(FieldLessonPriceOverrideCents, v))
 }
 
 // SubscriptionLessonPriceCentsEQ applies the EQ predicate on the "subscription_lesson_price_cents" field.
