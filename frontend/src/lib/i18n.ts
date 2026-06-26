@@ -398,6 +398,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.recordConflict":
       "This record was changed by another user. Refresh the data and try again.",
     "msg.invoiceIssued": "Invoice issued: #{number}",
+    "msg.invoiceIssuedPdfReady": "Invoice issued and PDF created: #{number}",
+    "msg.invoiceIssuedPdfPending": "Invoice issued, but PDF is not ready yet: #{number}",
     "msg.invoiceReopened": "Invoice returned to draft",
     "msg.invoiceReopenConfirm":
       "Return this issued invoice to draft? This is allowed only when there are no payments. The old invoice number will be cleared.",
@@ -976,6 +978,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.recordConflict":
       "Эту запись уже изменил другой сотрудник. Обновите данные и попробуйте ещё раз.",
     "msg.invoiceIssued": "Счёт выставлен: #{number}",
+    "msg.invoiceIssuedPdfReady": "Счёт выставлен, PDF создан: #{number}",
+    "msg.invoiceIssuedPdfPending": "Счёт выставлен, но PDF пока не готов: #{number}",
     "msg.invoiceReopened": "Счёт возвращён в черновик",
     "msg.invoiceReopenConfirm":
       "Вернуть этот выставленный счёт в черновик? Это разрешено только если по нему нет оплат. Старый номер счёта будет очищен.",

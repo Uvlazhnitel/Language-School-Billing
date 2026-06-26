@@ -392,6 +392,8 @@ export const lvTranslations: Record<string, string> = {
   "msg.recordConflict":
     "Šo ierakstu jau ir mainījis cits darbinieks. Atjaunojiet datus un mēģiniet vēlreiz.",
   "msg.invoiceIssued": "Rēķins izrakstīts: #{number}",
+  "msg.invoiceIssuedPdfReady": "Rēķins izrakstīts un PDF izveidots: #{number}",
+  "msg.invoiceIssuedPdfPending": "Rēķins izrakstīts, bet PDF vēl nav gatavs: #{number}",
   "msg.invoiceReopened": "Rēķins atgriezts melnrakstā",
   "msg.invoiceReopenConfirm":
     "Vai atgriezt šo izrakstīto rēķinu melnrakstā? Tas ir atļauts tikai tad, ja nav maksājumu. Vecais rēķina numurs tiks notīrīts.",

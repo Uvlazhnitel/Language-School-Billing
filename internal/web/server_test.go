@@ -155,12 +155,11 @@ func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/issue", map[string]any{
 		"version": invoices[0].Version,
 	})
-	pdfPath := invsvc.PDFPathByNumberAndName(env.Runtime.Dirs.Invoices, 2026, 6, issue.Number, st.FullName)
-	if err := os.MkdirAll(filepath.Dir(pdfPath), 0o755); err != nil {
-		t.Fatal(err)
+	if !issue.PDFReady {
+		t.Fatal("expected PDFReady=true immediately after issue")
 	}
-	if err := os.WriteFile(pdfPath, []byte("%PDF-1.4\n%test\n"), 0o644); err != nil {
-		t.Fatal(err)
+	if issue.PDFStatus != "ready" {
+		t.Fatalf("issue pdfStatus = %q, want ready", issue.PDFStatus)
 	}
 
 	status := getJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/pdf-status")
@@ -205,6 +204,129 @@ func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 	summary := getJSON[backend.InvoiceSummaryDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceID)+"/payment-summary")
 	if summary.Paid <= 0 {
 		t.Fatalf("summary paid = %f, want > 0", summary.Paid)
+	}
+}
+
+func TestInvoiceIssueReturnsPendingWhenPDFFails(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	env.Runtime.Config.FontsDir = filepath.Join(t.TempDir(), "missing-fonts")
+	t.Chdir(t.TempDir())
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "Pending Student"})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Painting",
+		"type":              "group",
+		"lessonPrice":       25,
+		"subscriptionPrice": 90,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
+	})
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      2026,
+		"month":     6,
+		"hours":     1.0,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{"year": 2026, "month": 6})
+
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=6&status=all")
+	if len(invoices) != 1 {
+		t.Fatalf("invoice count = %d, want 1", len(invoices))
+	}
+
+	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
+	if issue.PDFReady {
+		t.Fatal("expected PDFReady=false when PDF generation fails")
+	}
+	if issue.PDFStatus != "pending" {
+		t.Fatalf("issue pdfStatus = %q, want pending", issue.PDFStatus)
+	}
+
+	items := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=6&status=all")
+	if len(items) != 1 {
+		t.Fatalf("invoice count after issue = %d, want 1", len(items))
+	}
+	if items[0].Status != "issued_pending_pdf" {
+		t.Fatalf("status = %q, want issued_pending_pdf", items[0].Status)
+	}
+	if items[0].PDFReady {
+		t.Fatal("expected listed invoice to have pdfReady=false")
+	}
+}
+
+func TestInvoiceIssueAllReportsGeneratedAndPendingCounts(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	st1 := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "Ready Student"})
+	st2 := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "Pending Student"})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Painting",
+		"type":              "group",
+		"lessonPrice":       25,
+		"subscriptionPrice": 90,
+	})
+	for _, studentID := range []int{st1.ID, st2.ID} {
+		postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+			"studentId":       studentID,
+			"courseId":        course.ID,
+			"billingMode":     "per_lesson",
+			"chargeMaterials": true,
+			"discountPct":     0,
+			"note":            "",
+		})
+		putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+			"studentId": studentID,
+			"courseId":  course.ID,
+			"year":      2026,
+			"month":     6,
+			"hours":     1.0,
+		})
+	}
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{"year": 2026, "month": 6})
+
+	originalFontsDir := env.Runtime.Config.FontsDir
+	env.Runtime.Config.FontsDir = filepath.Join(t.TempDir(), "missing-fonts")
+	t.Chdir(t.TempDir())
+
+	issueAll := postJSON[backend.IssueAllResult](t, env.Client, env.Server.URL, "/api/invoices/issue-all", map[string]any{
+		"year":  2026,
+		"month": 6,
+	})
+	if issueAll.Count != 2 {
+		t.Fatalf("issue-all count = %d, want 2", issueAll.Count)
+	}
+	if issueAll.GeneratedCount != 0 {
+		t.Fatalf("issue-all generatedCount = %d, want 0", issueAll.GeneratedCount)
+	}
+	if issueAll.PendingCount != 2 {
+		t.Fatalf("issue-all pendingCount = %d, want 2", issueAll.PendingCount)
+	}
+	if len(issueAll.PdfPaths) != 0 {
+		t.Fatalf("issue-all pdfPaths len = %d, want 0", len(issueAll.PdfPaths))
+	}
+
+	env.Runtime.Config.FontsDir = originalFontsDir
+
+	items := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=6&status=all")
+	if len(items) != 2 {
+		t.Fatalf("invoice count after issue-all = %d, want 2", len(items))
+	}
+	for _, item := range items {
+		if item.Status != "issued_pending_pdf" {
+			t.Fatalf("status = %q, want issued_pending_pdf", item.Status)
+		}
 	}
 }
 

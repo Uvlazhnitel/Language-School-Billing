@@ -18,6 +18,7 @@ import type {
   InvoiceEmailSettingsDTO,
   InvoiceListItem,
   InvoiceSummaryDTO,
+  IssueAllResult,
   IssueResult,
   MonthOverviewDTO,
   PaymentDTO,
@@ -342,6 +343,12 @@ export const httpTransport: AppTransport = {
   },
   async issueInvoice(id, version) {
     return request<IssueResult>(`/invoices/${id}/issue`, { method: "POST", ...body({ version }) });
+  },
+  async issueAllInvoices(year, month) {
+    return request<IssueAllResult>("/invoices/issue-all", {
+      method: "POST",
+      ...body({ year, month }),
+    });
   },
   async rebuildStudentDraft(studentId, year, month) {
     return request<GenerateResult>("/invoices/rebuild-student-draft", {

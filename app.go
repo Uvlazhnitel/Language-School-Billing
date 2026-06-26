@@ -267,10 +267,11 @@ func (a *App) InvoiceIssue(id int) (IssueResult, error) {
 	if err != nil {
 		return IssueResult{}, err
 	}
-	if _, err := a.InvoiceEnsurePDF(id); err != nil {
-		log.Printf("InvoiceIssue ensure PDF fallback for invoice %d failed: %v", id, err)
+	pdfReady, err := a.ensureIssuedInvoicePDF(id)
+	if err != nil {
+		return IssueResult{}, err
 	}
-	return IssueResult{Number: num}, nil
+	return IssueResult{Number: num, PDFReady: pdfReady, PDFStatus: issuePDFStatus(pdfReady)}, nil
 }
 
 // InvoiceIssueAll issues all draft invoices for the specified year and month.
@@ -280,13 +281,37 @@ func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 	if a.svc != nil {
 		return a.svc.InvoiceIssueAll(a.ctx, year, month)
 	}
-	fonts, err := a.resolveFontsDir()
+	drafts, err := a.db.Ent.Invoice.Query().
+		Where(
+			invoice.PeriodYearEQ(year),
+			invoice.PeriodMonthEQ(month),
+			invoice.StatusEQ(invoice.Status(app.InvoiceStatusDraft)),
+		).
+		Order(invoice.ByID()).
+		All(a.ctx)
 	if err != nil {
 		return IssueAllResult{}, err
 	}
-	cnt, paths, err := a.inv.IssueAll(a.ctx, year, month, a.dirs.Invoices, fonts)
-	if err != nil {
-		return IssueAllResult{}, err
+	result := IssueAllResult{
+		PdfPaths: make([]string, 0, len(drafts)),
+	}
+	for _, draft := range drafts {
+		if _, err := a.inv.IssueOne(a.ctx, draft.ID); err != nil {
+			return IssueAllResult{}, err
+		}
+		result.Count++
+		ready, path, err := a.ensureIssuedInvoicePDFWithPath(draft.ID)
+		if err != nil {
+			return IssueAllResult{}, err
+		}
+		if ready {
+			result.GeneratedCount++
+			if path != "" {
+				result.PdfPaths = append(result.PdfPaths, path)
+			}
+		} else {
+			result.PendingCount++
+		}
 	}
 	// Apply credit for all students whose invoices were issued in this period.
 	items, err := a.inv.List(a.ctx, year, month, "all")
@@ -306,7 +331,34 @@ func (a *App) InvoiceIssueAll(year, month int) (IssueAllResult, error) {
 			return IssueAllResult{}, err
 		}
 	}
-	return IssueAllResult{Count: cnt, PdfPaths: paths}, nil
+	return result, nil
+}
+
+func (a *App) ensureIssuedInvoicePDF(id int) (bool, error) {
+	ready, _, err := a.ensureIssuedInvoicePDFWithPath(id)
+	return ready, err
+}
+
+func (a *App) ensureIssuedInvoicePDFWithPath(id int) (bool, string, error) {
+	path, err := a.InvoiceEnsurePDF(id)
+	if err != nil {
+		log.Printf("Invoice ensure PDF fallback for invoice %d failed: %v", id, err)
+	}
+	ready, readyErr := a.InvoiceHasPDF(id)
+	if readyErr != nil {
+		return false, "", readyErr
+	}
+	if !ready {
+		path = ""
+	}
+	return ready, path, nil
+}
+
+func issuePDFStatus(pdfReady bool) string {
+	if pdfReady {
+		return "ready"
+	}
+	return "pending"
 }
 
 // InvoiceEnsurePDF ensures that a canonical PDF exists for a numbered invoice.
