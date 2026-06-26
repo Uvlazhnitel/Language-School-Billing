@@ -1,6 +1,7 @@
 package web
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -1309,6 +1310,131 @@ func TestInvoiceEmailPreviewAndSend(t *testing.T) {
 	resp := getJSON[backend.AuditLogListResult](t, env.Client, env.Server.URL, "/api/audit-logs?action=invoice.send_email&page=1&pageSize=20")
 	if resp.Total < 1 {
 		t.Fatal("expected invoice.send_email audit entry")
+	}
+}
+
+func TestInvoiceArchiveMonthZIPDownload(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "ZIP Student",
+	})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "ZIP Course",
+		"type":              "group",
+		"lessonPrice":       25,
+		"subscriptionPrice": 80,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
+	})
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      2026,
+		"month":     6,
+		"hours":     1.5,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  2026,
+		"month": 6,
+	})
+
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=6&status=all")
+	if len(invoices) != 1 {
+		t.Fatalf("invoice count = %d, want 1", len(invoices))
+	}
+	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
+	if !issue.PDFReady {
+		t.Fatal("expected issued invoice pdfReady=true")
+	}
+
+	res, err := env.Client.Get(env.Server.URL + "/api/invoice-archive/2026/06/zip")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(res.Body)
+		t.Fatalf("zip status = %d body=%s, want 200", res.StatusCode, string(body))
+	}
+	if got := res.Header.Get("Content-Type"); got != "application/zip" {
+		t.Fatalf("content type = %q, want application/zip", got)
+	}
+	if got := res.Header.Get("Content-Disposition"); !strings.Contains(got, `invoices-2026-06.zip`) {
+		t.Fatalf("content disposition = %q, want invoices-2026-06.zip", got)
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader, err := zip.NewReader(bytes.NewReader(body), int64(len(body)))
+	if err != nil {
+		t.Fatalf("zip reader: %v", err)
+	}
+	if len(reader.File) != 1 {
+		t.Fatalf("zip entries = %d, want 1", len(reader.File))
+	}
+	if !strings.HasSuffix(reader.File[0].Name, ".pdf") {
+		t.Fatalf("zip entry name = %q, want pdf", reader.File[0].Name)
+	}
+}
+
+func TestInvoiceArchiveMonthZIPDownloadRejectsMonthWithoutReadyPDFs(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "Pending ZIP Student",
+	})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Pending ZIP Course",
+		"type":              "group",
+		"lessonPrice":       25,
+		"subscriptionPrice": 80,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":       st.ID,
+		"courseId":        course.ID,
+		"billingMode":     "per_lesson",
+		"chargeMaterials": true,
+		"discountPct":     0,
+		"note":            "",
+	})
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      2026,
+		"month":     6,
+		"hours":     1.5,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  2026,
+		"month": 6,
+	})
+
+	env.Runtime.Config.FontsDir = filepath.Join(t.TempDir(), "missing-fonts")
+	t.Chdir(t.TempDir())
+
+	invoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=6&status=all")
+	postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/issue", map[string]any{
+		"version": invoices[0].Version,
+	})
+
+	res, body := rawRequest(t, env.Client, http.MethodGet, env.Server.URL+"/api/invoice-archive/2026/06/zip", nil)
+	if res.StatusCode != http.StatusBadRequest {
+		t.Fatalf("zip status = %d body=%s, want 400", res.StatusCode, body)
+	}
+	if !strings.Contains(string(body), "no ready pdfs for this month") {
+		t.Fatalf("zip error body = %q", string(body))
 	}
 }
 

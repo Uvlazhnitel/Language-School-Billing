@@ -198,6 +198,9 @@ type InvoiceArchiveInvoiceDTO struct {
 type InvoiceArchiveMonthDTO struct {
 	Month             int                        `json:"month"`
 	Count             int                        `json:"count"`
+	ReadyPDFCount     int                        `json:"readyPdfCount"`
+	MissingPDFCount   int                        `json:"missingPdfCount"`
+	ZipDownloadURL    string                     `json:"zipDownloadUrl,omitempty"`
 	ExpandedByDefault bool                       `json:"expandedByDefault"`
 	Invoices          []InvoiceArchiveInvoiceDTO `json:"invoices"`
 }
@@ -970,9 +973,25 @@ func (s *Service) InvoiceArchiveList(ctx context.Context) (*InvoiceArchiveResult
 			sort.Slice(invoices, func(i, j int) bool {
 				return invoices[i].InvoiceID > invoices[j].InvoiceID
 			})
+			readyPDFCount := 0
+			missingPDFCount := 0
+			for _, archived := range invoices {
+				if archived.PDFStatus == invoiceArchivePDFStatusReady {
+					readyPDFCount++
+				} else {
+					missingPDFCount++
+				}
+			}
+			zipDownloadURL := ""
+			if readyPDFCount > 0 {
+				zipDownloadURL = invoiceArchiveMonthZipURL(year, month)
+			}
 			months = append(months, InvoiceArchiveMonthDTO{
 				Month:             month,
 				Count:             len(invoices),
+				ReadyPDFCount:     readyPDFCount,
+				MissingPDFCount:   missingPDFCount,
+				ZipDownloadURL:    zipDownloadURL,
 				ExpandedByDefault: year == currentYear && month == currentMonth,
 				Invoices:          invoices,
 			})
@@ -1032,6 +1051,51 @@ func (s *Service) InvoiceArchiveFilePath(year, month int, filename string) (stri
 		return "", os.ErrNotExist
 	}
 	return fullPath, nil
+}
+
+type InvoiceArchiveZIPEntry struct {
+	Name string
+	Path string
+}
+
+func (s *Service) InvoiceArchiveZIPEntries(ctx context.Context, year, month int) ([]InvoiceArchiveZIPEntry, string, error) {
+	if year <= 0 {
+		return nil, "", errors.New("invalid archive year")
+	}
+	if month < 1 || month > 12 {
+		return nil, "", errors.New("invalid archive month")
+	}
+
+	items, err := s.rt.DB.Ent.Invoice.Query().
+		Where(
+			invoice.PeriodYearEQ(year),
+			invoice.PeriodMonthEQ(month),
+		).
+		WithStudent().
+		Order(ent.Asc(invoice.FieldID)).
+		All(ctx)
+	if err != nil {
+		return nil, "", err
+	}
+
+	entries := make([]InvoiceArchiveZIPEntry, 0, len(items))
+	for _, iv := range items {
+		_, _, subjectName := archiveInvoiceNames(iv)
+		info := s.invoicePDFInfo(iv, subjectName)
+		if info.Status != invoiceArchivePDFStatusReady || info.Filename == "" || info.Path == "" {
+			continue
+		}
+		entries = append(entries, InvoiceArchiveZIPEntry{
+			Name: info.Filename,
+			Path: info.Path,
+		})
+	}
+	if len(entries) == 0 {
+		return nil, "", errors.New("invalid archive zip: no ready pdfs for this month")
+	}
+
+	filename := fmt.Sprintf("invoices-%04d-%02d.zip", year, month)
+	return entries, filename, nil
 }
 
 func (s *Service) SettingsSetLocale(ctx context.Context, loc string) error {
@@ -2279,4 +2343,8 @@ func invoiceArchiveFileURL(year, month int, filename, action string) string {
 		url.PathEscape(filename),
 		action,
 	)
+}
+
+func invoiceArchiveMonthZipURL(year, month int) string {
+	return fmt.Sprintf("/api/invoice-archive/%04d/%02d/zip", year, month)
 }

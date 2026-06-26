@@ -103,6 +103,9 @@ export type InvoiceArchiveInvoiceDTO = {
 export type InvoiceArchiveMonthDTO = {
   month: number;
   count: number;
+  readyPdfCount: number;
+  missingPdfCount: number;
+  zipDownloadUrl?: string;
   expandedByDefault: boolean;
   invoices: InvoiceArchiveInvoiceDTO[];
 };
