@@ -91,7 +91,6 @@ export function DashboardOverview({
     return <div className="empty">{t("msg.dashboardError")}</div>;
   }
 
-  const monthControlReady = overview.monthControlTotal === 0 || overview.monthControlMissing === 0;
   const stageLabel = monthClosingStageLabel(overview.monthClosingStage, t);
   const closingSummary = overview.monthReadyToClose
     ? t("msg.monthReadyToClose")

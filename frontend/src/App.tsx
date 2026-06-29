@@ -5,7 +5,6 @@ import {
   useState,
   useCallback,
   useRef,
-  type FormEvent,
 } from "react";
 import "./App.css";
 
@@ -79,13 +78,7 @@ import {
   RecentPaymentDTO,
 } from "./lib/dashboard";
 import { AuditLogItem, listAuditLogs } from "./lib/audit";
-import {
-  getTransport,
-  type InvoiceArchiveResult,
-  type InvoiceEmailSettingsDTO,
-  type UserDTO,
-} from "./lib/api";
-import { AUTH_REQUIRED_EVENT, isConflictError } from "./lib/api/shared";
+import { isConflictError } from "./lib/api/shared";
 import { AppShell, type AppTab } from "./components/AppShell";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { LoginScreen } from "./components/LoginScreen";
@@ -106,7 +99,7 @@ import {
   StudentActivityItem,
   StudentNextAction,
 } from "./lib/studentActivity";
-import { createTranslator, getMonthNames, normalizeLocale, UiLocale } from "./lib/i18n";
+import { createTranslator, getMonthNames } from "./lib/i18n";
 import {
   AppTabId,
   billingModeLabel,
@@ -146,11 +139,12 @@ import { EnrollmentsScreen } from "./screens/EnrollmentsScreen";
 import { InvoicesScreen } from "./screens/InvoicesScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { StudentsScreen } from "./screens/StudentsScreen";
+import { useAuthController } from "./hooks/app/useAuthController";
+import { useSettingsController } from "./hooks/app/useSettingsController";
 
 type Tab = AppTabId;
 type InvoiceMenuTarget = { kind: "row" | "modal"; invoiceId: number };
 type InvoiceMenuPosition = { top: number; left: number; openUpward: boolean };
-type UserDraft = { username: string; role: string; isActive: boolean };
 
 function auditActionLabel(action: string): string {
   return action.replaceAll("_", " ").replaceAll(".", " ");
@@ -159,97 +153,29 @@ function auditActionLabel(action: string): string {
 export default function App() {
   const now = new Date();
   const [tab, setTab] = useState<Tab>("dashboard");
-  const [appReady, setAppReady] = useState(false);
-  const [authLoading, setAuthLoading] = useState(true);
-  const [authRequired, setAuthRequired] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
-  const [currentSessionUser, setCurrentSessionUser] = useState<{
-    id: number;
-    username: string;
-    role: string;
-  } | null>(null);
-  const [sessionCapabilities, setSessionCapabilities] = useState<Record<string, boolean>>({});
-  const [loginUsername, setLoginUsername] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
-  const [loginRememberMe, setLoginRememberMe] = useState(true);
-  const [loginPending, setLoginPending] = useState(false);
-  const [loginError, setLoginError] = useState<string | null>(null);
-  const [sessionExpired, setSessionExpired] = useState(false);
-  const [uiLocale, setUiLocale] = useState<UiLocale>("lv-LV");
-  const [creatingBackup, setCreatingBackup] = useState(false);
-  const [invoiceArchive, setInvoiceArchive] = useState<InvoiceArchiveResult | null>(null);
-  const [invoiceArchiveLoading, setInvoiceArchiveLoading] = useState(false);
-  const [invoiceEmailSettings, setInvoiceEmailSettings] = useState<InvoiceEmailSettingsDTO | null>(null);
-  const [invoiceEmailSettingsLoading, setInvoiceEmailSettingsLoading] = useState(false);
-  const [savingInvoiceEmailSettings, setSavingInvoiceEmailSettings] = useState(false);
-  const [invoiceEmailSubjectTemplate, setInvoiceEmailSubjectTemplate] = useState("");
-  const [invoiceEmailBodyTemplate, setInvoiceEmailBodyTemplate] = useState("");
-  const [invoiceEmailReplyTo, setInvoiceEmailReplyTo] = useState("");
-  const [users, setUsers] = useState<UserDTO[]>([]);
-  const [usersLoading, setUsersLoading] = useState(false);
-  const [creatingUser, setCreatingUser] = useState(false);
-  const [newUserUsername, setNewUserUsername] = useState("");
-  const [newUserPassword, setNewUserPassword] = useState("");
-  const [newUserRole, setNewUserRole] = useState("staff");
-  const [userDrafts, setUserDrafts] = useState<Record<number, UserDraft>>({});
-  const [userPasswordDrafts, setUserPasswordDrafts] = useState<Record<number, string>>({});
   const { message, showMessage, clearMessage } = useNotifications();
   const { confirmDialog, showConfirm, handleConfirmYes, handleConfirmNo } = useConfirmDialog();
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const bootstrap = async () => {
-      try {
-        const transport = await getTransport();
-        const bootstrapResult = await transport.bootstrap();
-        if (cancelled) return;
-        setUiLocale(normalizeLocale(bootstrapResult.locale));
-        setAuthRequired(bootstrapResult.authRequired);
-        setIsAuthenticated(bootstrapResult.session.authenticated);
-        setCurrentSessionUser(bootstrapResult.session.user ?? null);
-        setSessionCapabilities(bootstrapResult.session.capabilities ?? {});
-        setAppReady(
-          bootstrapResult.ready &&
-            (!bootstrapResult.authRequired || bootstrapResult.session.authenticated)
-        );
-        setAuthLoading(false);
-      } catch (e: any) {
-        if (!cancelled) {
-          setAuthLoading(false);
-          showMessage(
-            createTranslator("lv-LV")("msg.loadingFoldersError", {
-              message: String(e?.message ?? e),
-            }),
-            "error"
-          );
-        }
-      }
-    };
-
-    void bootstrap();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [showMessage]);
-
-  useEffect(() => {
-    const onAuthRequired = () => {
-      setIsAuthenticated(false);
-      setCurrentSessionUser(null);
-      setSessionCapabilities({});
-      setAppReady(false);
-      setLoginPassword("");
-      setLoginError(null);
-      setSessionExpired(true);
-    };
-
-    window.addEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
-    return () => {
-      window.removeEventListener(AUTH_REQUIRED_EVENT, onAuthRequired);
-    };
-  }, []);
+  const {
+    appReady,
+    authLoading,
+    authRequired,
+    isAuthenticated,
+    currentSessionUser,
+    sessionCapabilities,
+    loginUsername,
+    loginPassword,
+    loginRememberMe,
+    loginPending,
+    loginError,
+    sessionExpired,
+    uiLocale,
+    setUiLocale,
+    setLoginUsername,
+    setLoginPassword,
+    setLoginRememberMe,
+    handleLogin,
+    handleLogout,
+  } = useAuthController({ showMessage });
 
   const t = useMemo(() => createTranslator(uiLocale), [uiLocale]);
   const uiMonths = useMemo(() => getMonthNames(uiLocale), [uiLocale]);
@@ -262,6 +188,56 @@ export default function App() {
   const canDeleteCourses = Boolean(sessionCapabilities.deleteCourses);
   const canDeletePayments = Boolean(sessionCapabilities.deletePayments);
   const canViewAuditLog = Boolean(sessionCapabilities.viewAuditLog);
+  const {
+    creatingBackup,
+    invoiceArchive,
+    invoiceArchiveLoading,
+    invoiceEmailSettings,
+    invoiceEmailSettingsLoading,
+    savingInvoiceEmailSettings,
+    invoiceEmailSubjectTemplate,
+    invoiceEmailBodyTemplate,
+    invoiceEmailReplyTo,
+    users,
+    usersLoading,
+    creatingUser,
+    newUserUsername,
+    newUserPassword,
+    newUserRole,
+    userDrafts,
+    userPasswordDrafts,
+    setInvoiceEmailSubjectTemplate,
+    setInvoiceEmailBodyTemplate,
+    setInvoiceEmailReplyTo,
+    setNewUserUsername,
+    setNewUserPassword,
+    setNewUserRole,
+    setUserDrafts,
+    setUserPasswordDrafts,
+    createManualBackup,
+    loadInvoiceArchive,
+    loadUsers,
+    handleCreateUser,
+    handleSaveUser,
+    handleDeleteUser,
+    handleResetUserPassword,
+    handleLocaleChange,
+    handleSaveInvoiceEmailSettings,
+    handleResetInvoiceEmailSettings,
+  } = useSettingsController({
+    appReady,
+    isAuthenticated,
+    tab,
+    canManageUsers,
+    canManageSettings,
+    canCreateBackups,
+    canViewInvoiceArchive,
+    uiLocale,
+    setUiLocale,
+    showMessage,
+    showConfirm,
+    t: createTranslator(uiLocale),
+  });
 
   const localizedPayerRoleLabel = useCallback(
     (relation: string) => payerRoleLabel(relation, t),
@@ -2241,33 +2217,6 @@ export default function App() {
     );
   };
 
-  const createManualBackup = async () => {
-    try {
-      setCreatingBackup(true);
-      const transport = await getTransport();
-      const backup = await transport.createBackup();
-      showMessage(t("msg.backupCreated", { path: backup.path ?? backup.filename }));
-    } catch (e: any) {
-      showMessage(t("msg.backupCreateError", { message: String(e?.message ?? e) }), "error");
-    } finally {
-      setCreatingBackup(false);
-    }
-  };
-
-  const loadInvoiceArchive = useCallback(async () => {
-    if (!canViewInvoiceArchive) return;
-    try {
-      setInvoiceArchiveLoading(true);
-      const transport = await getTransport();
-      const archive = await transport.listInvoiceArchive();
-      setInvoiceArchive(archive);
-    } catch (e: any) {
-      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-    } finally {
-      setInvoiceArchiveLoading(false);
-    }
-  }, [canViewInvoiceArchive, showMessage, t]);
-
   const onGenerateArchivePdf = useCallback(
     async (id: number) => {
       try {
@@ -2278,219 +2227,8 @@ export default function App() {
         showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
     },
-    [ensurePdf, loadInvoiceArchive, showMessage, t]
+    [loadInvoiceArchive, showMessage, t]
   );
-
-  const loadUsers = useCallback(async () => {
-    if (!canManageUsers) return;
-    try {
-      setUsersLoading(true);
-      const transport = await getTransport();
-      const items = await transport.listUsers();
-      setUsers(items);
-      setUserDrafts(
-        Object.fromEntries(
-          items.map((item) => [
-            item.id,
-            { username: item.username, role: item.role, isActive: item.isActive },
-          ])
-        )
-      );
-    } catch (e: any) {
-      showMessage(t("msg.userLoadError", { message: String(e?.message ?? e) }), "error");
-    } finally {
-      setUsersLoading(false);
-    }
-  }, [canManageUsers, showMessage, t]);
-
-  useEffect(() => {
-    if (isAuthenticated && canManageUsers) {
-      void loadUsers();
-    }
-  }, [isAuthenticated, canManageUsers, loadUsers]);
-
-  useEffect(() => {
-    if (!appReady || tab !== "settings" || !canViewInvoiceArchive) return;
-    void loadInvoiceArchive();
-  }, [appReady, canViewInvoiceArchive, loadInvoiceArchive, tab]);
-
-  const handleCreateUser = async () => {
-    try {
-      setCreatingUser(true);
-      const transport = await getTransport();
-      const created = await transport.createUser(newUserUsername, newUserPassword, newUserRole);
-      setUsers((prev) => [...prev, created]);
-      setUserDrafts((prev) => ({
-        ...prev,
-        [created.id]: {
-          username: created.username,
-          role: created.role,
-          isActive: created.isActive,
-        },
-      }));
-      setNewUserUsername("");
-      setNewUserPassword("");
-      setNewUserRole("staff");
-      showMessage(t("msg.userCreated"));
-    } catch (e: any) {
-      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-    } finally {
-      setCreatingUser(false);
-    }
-  };
-
-  const handleSaveUser = async (userId: number) => {
-    const draft = userDrafts[userId];
-    if (!draft) return;
-    try {
-      const transport = await getTransport();
-      const updated = await transport.updateUser(
-        userId,
-        draft.username,
-        draft.role,
-        draft.isActive
-      );
-      setUsers((prev) => prev.map((item) => (item.id === userId ? updated : item)));
-      setUserDrafts((prev) => ({
-        ...prev,
-        [userId]: { username: updated.username, role: updated.role, isActive: updated.isActive },
-      }));
-      showMessage(t("msg.userUpdated"));
-    } catch (e: any) {
-      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-    }
-  };
-
-  const handleDeleteUser = async (userId: number) => {
-    const target = users.find((item) => item.id === userId);
-    if (!target) return;
-    showConfirm(
-      t("msg.userDeleteConfirm", { username: target.username }),
-      async () => {
-        try {
-          const transport = await getTransport();
-          await transport.deleteUser(userId);
-          setUsers((prev) => prev.filter((item) => item.id !== userId));
-          setUserDrafts((prev) => {
-            const next = { ...prev };
-            delete next[userId];
-            return next;
-          });
-          setUserPasswordDrafts((prev) => {
-            const next = { ...prev };
-            delete next[userId];
-            return next;
-          });
-          showMessage(t("msg.userDeleted"));
-        } catch (e: any) {
-          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-        }
-      },
-      t("settings.userDelete")
-    );
-  };
-
-  const handleResetUserPassword = async (userId: number) => {
-    const password = userPasswordDrafts[userId]?.trim() ?? "";
-    if (!password) {
-      showMessage(t("msg.userPasswordRequired"), "error");
-      return;
-    }
-    try {
-      const transport = await getTransport();
-      await transport.setUserPassword(userId, password);
-      setUserPasswordDrafts((prev) => ({ ...prev, [userId]: "" }));
-      showMessage(t("msg.userPasswordReset"));
-    } catch (e: any) {
-      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-    }
-  };
-
-  const handleLocaleChange = async (nextLocale: UiLocale) => {
-    const previousLocale = uiLocale;
-    setUiLocale(nextLocale);
-    try {
-      const transport = await getTransport();
-      await transport.setLocale(nextLocale);
-      showMessage(createTranslator(nextLocale)("settings.languageSaved"));
-    } catch (e: any) {
-      setUiLocale(previousLocale);
-      showMessage(
-        createTranslator(previousLocale)("settings.languageSaveError") +
-          `: ${String(e?.message ?? e)}`,
-        "error"
-      );
-    }
-  };
-
-  const applyInvoiceEmailSettingsDraft = useCallback((settings: InvoiceEmailSettingsDTO) => {
-    setInvoiceEmailSettings(settings);
-    setInvoiceEmailSubjectTemplate(settings.subjectTemplate);
-    setInvoiceEmailBodyTemplate(settings.bodyTemplate);
-    setInvoiceEmailReplyTo(settings.replyTo);
-  }, []);
-
-  const loadInvoiceEmailSettings = useCallback(async () => {
-    if (!canManageSettings) return;
-    setInvoiceEmailSettingsLoading(true);
-    try {
-      const transport = await getTransport();
-      const settings = await transport.getInvoiceEmailSettings();
-      applyInvoiceEmailSettingsDraft(settings);
-    } catch (e: any) {
-      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-    } finally {
-      setInvoiceEmailSettingsLoading(false);
-    }
-  }, [applyInvoiceEmailSettingsDraft, canManageSettings, showMessage, t]);
-
-  const handleSaveInvoiceEmailSettings = useCallback(async () => {
-    setSavingInvoiceEmailSettings(true);
-    try {
-      const transport = await getTransport();
-      const settings = await transport.saveInvoiceEmailSettings({
-        subjectTemplate: invoiceEmailSubjectTemplate,
-        bodyTemplate: invoiceEmailBodyTemplate,
-        replyTo: invoiceEmailReplyTo,
-      });
-      applyInvoiceEmailSettingsDraft(settings);
-      showMessage(t("settings.invoiceEmailSaved"));
-    } catch (e: any) {
-      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-    } finally {
-      setSavingInvoiceEmailSettings(false);
-    }
-  }, [
-    applyInvoiceEmailSettingsDraft,
-    invoiceEmailBodyTemplate,
-    invoiceEmailReplyTo,
-    invoiceEmailSubjectTemplate,
-    showMessage,
-    t,
-  ]);
-
-  const handleResetInvoiceEmailSettings = useCallback(async () => {
-    setSavingInvoiceEmailSettings(true);
-    try {
-      const transport = await getTransport();
-      const settings = await transport.saveInvoiceEmailSettings({
-        subjectTemplate: "",
-        bodyTemplate: "",
-        replyTo: "",
-      });
-      applyInvoiceEmailSettingsDraft(settings);
-      showMessage(t("settings.invoiceEmailResetDone"));
-    } catch (e: any) {
-      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-    } finally {
-      setSavingInvoiceEmailSettings(false);
-    }
-  }, [applyInvoiceEmailSettingsDraft, showMessage, t]);
-
-  useEffect(() => {
-    if (!appReady || tab !== "settings" || !canManageSettings) return;
-    void loadInvoiceEmailSettings();
-  }, [appReady, canManageSettings, loadInvoiceEmailSettings, tab]);
 
   // ---------------- Render ----------------
   const showMonthPicker = tab === "dashboard" || tab === "attendance" || tab === "invoice";
@@ -2505,47 +2243,6 @@ export default function App() {
     const rowInvoice = invItems.find((item) => item.id === openInvoiceMenu.invoiceId);
     return rowInvoice ? buildInvoiceMenuItems(rowInvoice) : [];
   }, [buildInvoiceMenuItems, invItems, openInvoiceMenu, selectedInv, selectedInvPdfReady]);
-
-  const handleLogin = useCallback(
-    async (event: FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      setLoginPending(true);
-      setLoginError(null);
-      try {
-        const transport = await getTransport();
-        const session = await transport.login(loginUsername, loginPassword, loginRememberMe);
-        setUiLocale(normalizeLocale(session.locale));
-        setCurrentSessionUser(session.user ?? null);
-        setSessionCapabilities(session.capabilities ?? {});
-        setIsAuthenticated(session.authenticated);
-        setAppReady(session.ready && session.authenticated);
-        setLoginError(null);
-        setLoginPassword("");
-        setSessionExpired(false);
-      } catch (e: any) {
-        setLoginError(String(e?.message ?? e));
-      } finally {
-        setLoginPending(false);
-      }
-    },
-    [loginRememberMe, loginPassword, loginUsername]
-  );
-
-  const handleLogout = useCallback(async () => {
-    try {
-      const transport = await getTransport();
-      await transport.logout();
-    } catch (error) {
-      void error;
-    }
-    setIsAuthenticated(false);
-    setCurrentSessionUser(null);
-    setSessionCapabilities({});
-    setAppReady(false);
-    setLoginPassword("");
-    setLoginError(null);
-    setSessionExpired(false);
-  }, []);
 
   const tabs = useMemo<AppTab[]>(
     () => [
