@@ -236,7 +236,7 @@ export default function App() {
     setUiLocale,
     showMessage,
     showConfirm,
-    t: createTranslator(uiLocale),
+    t,
   });
 
   const localizedPayerRoleLabel = useCallback(

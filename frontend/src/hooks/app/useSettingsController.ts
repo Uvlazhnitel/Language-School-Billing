@@ -103,10 +103,10 @@ export function useSettingsController({
   }, [canManageUsers, showMessage, t]);
 
   useEffect(() => {
-    if (isAuthenticated && canManageUsers) {
+    if (appReady && isAuthenticated && canManageUsers && tab === "settings") {
       void loadUsers();
     }
-  }, [isAuthenticated, canManageUsers, loadUsers]);
+  }, [appReady, isAuthenticated, canManageUsers, loadUsers, tab]);
 
   useEffect(() => {
     if (!appReady || tab !== "settings" || !canViewInvoiceArchive) return;
