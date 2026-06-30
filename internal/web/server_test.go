@@ -1007,7 +1007,7 @@ func TestCurrentMonthInvoiceStaysLiveAfterFullPayment(t *testing.T) {
 	}
 }
 
-func TestEnrollmentChargeMaterialsRebuildsCurrentMonthInvoiceOnly(t *testing.T) {
+func TestEnrollmentChargeMaterialsRebuildsCurrentMonthDraftOnly(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
 
@@ -1102,6 +1102,199 @@ func TestEnrollmentChargeMaterialsRebuildsCurrentMonthInvoiceOnly(t *testing.T) 
 		if line.Description == "Mācību materiāli" {
 			t.Fatal("current invoice still has materials line after toggle off")
 		}
+	}
+}
+
+func TestEnrollmentChargeMaterialsDefersToNextMonthDraftWhenCurrentMonthIssued(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	now := time.Now()
+	currentYear, currentMonth := now.Year(), int(now.Month())
+	nextYear, nextMonth := currentYear, currentMonth+1
+	if nextMonth == 13 {
+		nextMonth = 1
+		nextYear++
+	}
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "Future Month Student"})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Future Month Course",
+		"type":              "group",
+		"lessonPrice":       20,
+		"subscriptionPrice": 0,
+	})
+	enr := postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":           st.ID,
+		"courseId":            course.ID,
+		"billingMode":         "per_lesson",
+		"chargeMaterials":     true,
+		"lessonPriceOverride": 0,
+		"note":                "",
+	})
+
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      currentYear,
+		"month":     currentMonth,
+		"hours":     1.0,
+	})
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      nextYear,
+		"month":     nextMonth,
+		"hours":     1.0,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  currentYear,
+		"month": currentMonth,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  nextYear,
+		"month": nextMonth,
+	})
+
+	currentInvoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year="+strconv.Itoa(currentYear)+"&month="+strconv.Itoa(currentMonth)+"&status=all")
+	nextInvoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year="+strconv.Itoa(nextYear)+"&month="+strconv.Itoa(nextMonth)+"&status=all")
+	if len(currentInvoices) != 1 || len(nextInvoices) != 1 {
+		t.Fatalf("invoice counts current=%d next=%d, want 1/1", len(currentInvoices), len(nextInvoices))
+	}
+	issue := postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(currentInvoices[0].ID)+"/issue", map[string]any{
+		"version": currentInvoices[0].Version,
+	})
+	if issue.Number == "" {
+		t.Fatal("expected invoice number")
+	}
+
+	beforeCurrent := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(currentInvoices[0].ID))
+	beforeNext := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(nextInvoices[0].ID))
+	if beforeCurrent.Total != 25 || beforeNext.Total != 25 {
+		t.Fatalf("before totals current=%v next=%v, want 25/25", beforeCurrent.Total, beforeNext.Total)
+	}
+
+	updated := putJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments/"+strconv.Itoa(enr.ID), map[string]any{
+		"version":                 enr.Version,
+		"billingMode":             "per_lesson",
+		"chargeMaterials":         false,
+		"lessonPriceOverride":     0,
+		"subscriptionLessonPrice": 0,
+		"note":                    "",
+	})
+	if updated.ChargeMaterials {
+		t.Fatal("updated chargeMaterials = true, want false")
+	}
+
+	afterCurrent := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(currentInvoices[0].ID))
+	afterNext := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(nextInvoices[0].ID))
+	if afterCurrent.Total != 25 {
+		t.Fatalf("current invoice total = %v, want 25", afterCurrent.Total)
+	}
+	if afterNext.Total != 20 {
+		t.Fatalf("next invoice total = %v, want 20", afterNext.Total)
+	}
+	if afterCurrent.Status != beforeCurrent.Status {
+		t.Fatalf("current invoice status = %q, want unchanged %q", afterCurrent.Status, beforeCurrent.Status)
+	}
+
+	nextLines, err := env.Runtime.DB.Ent.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(nextInvoices[0].ID)).
+		All(context.Background())
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query next: %v", err)
+	}
+	for _, line := range nextLines {
+		if line.Description == "Mācību materiāli" {
+			t.Fatal("next invoice still has materials line after toggle off")
+		}
+	}
+}
+
+func TestEnrollmentChargeMaterialsAppliesOnNextGenerationWhenFutureDraftMissing(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	now := time.Now()
+	currentYear, currentMonth := now.Year(), int(now.Month())
+	nextYear, nextMonth := currentYear, currentMonth+1
+	if nextMonth == 13 {
+		nextMonth = 1
+		nextYear++
+	}
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "Generate Later Student"})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Generate Later Course",
+		"type":              "group",
+		"lessonPrice":       20,
+		"subscriptionPrice": 0,
+	})
+	enr := postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":           st.ID,
+		"courseId":            course.ID,
+		"billingMode":         "per_lesson",
+		"chargeMaterials":     true,
+		"lessonPriceOverride": 0,
+		"note":                "",
+	})
+
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      currentYear,
+		"month":     currentMonth,
+		"hours":     1.0,
+	})
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      nextYear,
+		"month":     nextMonth,
+		"hours":     1.0,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  currentYear,
+		"month": currentMonth,
+	})
+
+	currentInvoices := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year="+strconv.Itoa(currentYear)+"&month="+strconv.Itoa(currentMonth)+"&status=all")
+	if len(currentInvoices) != 1 {
+		t.Fatalf("current invoice count = %d, want 1", len(currentInvoices))
+	}
+	postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(currentInvoices[0].ID)+"/issue", map[string]any{
+		"version": currentInvoices[0].Version,
+	})
+
+	updated := putJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments/"+strconv.Itoa(enr.ID), map[string]any{
+		"version":                 enr.Version,
+		"billingMode":             "per_lesson",
+		"chargeMaterials":         false,
+		"lessonPriceOverride":     0,
+		"subscriptionLessonPrice": 0,
+		"note":                    "",
+	})
+	if updated.ChargeMaterials {
+		t.Fatal("updated chargeMaterials = true, want false")
+	}
+
+	nextBeforeGeneration := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year="+strconv.Itoa(nextYear)+"&month="+strconv.Itoa(nextMonth)+"&status=all")
+	if len(nextBeforeGeneration) != 0 {
+		t.Fatalf("next invoice count before generation = %d, want 0", len(nextBeforeGeneration))
+	}
+
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{
+		"year":  nextYear,
+		"month": nextMonth,
+	})
+
+	nextAfterGeneration := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year="+strconv.Itoa(nextYear)+"&month="+strconv.Itoa(nextMonth)+"&status=all")
+	if len(nextAfterGeneration) != 1 {
+		t.Fatalf("next invoice count after generation = %d, want 1", len(nextAfterGeneration))
+	}
+	nextInvoice := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(nextAfterGeneration[0].ID))
+	if nextInvoice.Total != 20 {
+		t.Fatalf("next invoice total = %v, want 20", nextInvoice.Total)
 	}
 }
 

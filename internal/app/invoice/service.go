@@ -466,20 +466,32 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 				return res, err
 			}
 		} else if err == nil && isCurrentEditableMonth(y, m) && existing.Status != StatusCanceled {
+			pdfRef, err := s.invoicePDFRef(existing)
+			if err != nil {
+				return res, err
+			}
 			if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx); err != nil {
 				return res, err
 			}
-			update := existing.Update().SetTotalAmountCents(0)
+			update := existing.Update().
+				SetTotalAmountCents(0).
+				SetEmailDeliveryStatus(invoice.EmailDeliveryStatusNotSent).
+				ClearPdfFilename().
+				ClearPdfRevision().
+				ClearPdfGeneratedAt().
+				ClearLastEmailedAt().
+				ClearLastEmailedTo().
+				ClearLastEmailedRevision().
+				ClearLastEmailError().
+				ClearLastEmailFailedAt()
 			if existing.Status != StatusDraft {
-				update = update.ClearPdfRevision().ClearPdfGeneratedAt()
+				update = update.SetStatus(StatusDraft).ClearNumber()
 			}
 			if _, err := update.Save(ctx); err != nil {
 				return res, err
 			}
-			if existing.Status != StatusDraft {
-				if err := paysvc.New(s.db).RecomputeInvoiceStatus(ctx, existing.ID); err != nil {
-					return res, err
-				}
+			if existing.Status != StatusDraft && pdfRef != nil {
+				res.pdfsToInvalidate = append(res.pdfsToInvalidate, *pdfRef)
 			}
 			res.stats.Updated++
 		}

@@ -8,8 +8,11 @@ import (
 
 	"langschool/ent"
 	"langschool/ent/enrollment"
+	entinvoice "langschool/ent/invoice"
 	"langschool/internal/money"
 )
+
+var enrollmentCurrentTime = time.Now
 
 func (s *Service) EnrollmentList(ctx context.Context, studentID *int, courseID *int) ([]EnrollmentDTO, error) {
 	q := s.rt.DB.Ent.Enrollment.Query().
@@ -140,7 +143,7 @@ func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billin
 	if err != nil {
 		return nil, err
 	}
-	if err := s.rebuildCurrentMonthInvoiceForEnrollmentChange(ctx, before.StudentID, before.ChargeMaterials != chargeMaterials); err != nil {
+	if err := s.rebuildInvoiceForEnrollmentChange(ctx, before, billingMode, chargeMaterials, lessonPriceOverride, subscriptionLessonPrice); err != nil {
 		return nil, err
 	}
 	dto := toEnrollmentDTO(item)
@@ -192,23 +195,111 @@ func (s *Service) EnrollmentUpdateWithVersion(ctx context.Context, enrollmentID,
 	if err != nil {
 		return nil, err
 	}
-	if err := s.rebuildCurrentMonthInvoiceForEnrollmentChange(ctx, before.StudentID, before.ChargeMaterials != chargeMaterials); err != nil {
+	if err := s.rebuildInvoiceForEnrollmentChange(ctx, before, billingMode, chargeMaterials, lessonPriceOverride, subscriptionLessonPrice); err != nil {
 		return nil, err
 	}
 	dto := toEnrollmentDTO(item)
 	return &dto, nil
 }
 
-func (s *Service) rebuildCurrentMonthInvoiceForEnrollmentChange(ctx context.Context, studentID int, materialsChanged bool) error {
-	if !materialsChanged {
+func (s *Service) rebuildInvoiceForEnrollmentChange(ctx context.Context, before *ent.Enrollment, billingMode string, chargeMaterials bool, lessonPriceOverride, subscriptionLessonPrice float64) error {
+	if before == nil || !enrollmentInvoiceAffectingFieldsChanged(before, billingMode, chargeMaterials, lessonPriceOverride, subscriptionLessonPrice) {
 		return nil
 	}
-	if s.rt == nil || s.rt.Invoice == nil {
+	if s.rt == nil || s.rt.Invoice == nil || s.rt.DB.Ent == nil {
 		return nil
 	}
-	now := time.Now()
-	_, err := s.rt.Invoice.RebuildStudentDraft(ctx, studentID, now.Year(), int(now.Month()))
+	year, month, err := s.resolveEnrollmentInvoiceRebuildMonth(ctx, before.StudentID)
+	if err != nil {
+		return err
+	}
+	existing, err := s.rt.DB.Ent.Invoice.Query().
+		Where(
+			entinvoice.StudentIDEQ(before.StudentID),
+			entinvoice.PeriodYearEQ(year),
+			entinvoice.PeriodMonthEQ(month),
+		).
+		Only(ctx)
+	if ent.IsNotFound(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if existing.Status != entinvoice.StatusDraft {
+		return nil
+	}
+	_, err = s.rt.Invoice.RebuildStudentDraft(ctx, before.StudentID, year, month)
 	return err
+}
+
+func (s *Service) resolveEnrollmentInvoiceRebuildMonth(ctx context.Context, studentID int) (int, int, error) {
+	now := enrollmentCurrentTime()
+	year, month := now.Year(), int(now.Month())
+	if s.rt == nil || s.rt.DB.Ent == nil {
+		return year, month, nil
+	}
+	currentInvoice, err := s.rt.DB.Ent.Invoice.Query().
+		Where(
+			entinvoice.StudentIDEQ(studentID),
+			entinvoice.PeriodYearEQ(year),
+			entinvoice.PeriodMonthEQ(month),
+		).
+		Only(ctx)
+	if ent.IsNotFound(err) {
+		return year, month, nil
+	}
+	if err != nil {
+		return 0, 0, err
+	}
+	if invoiceLocksEnrollmentChangesToNextMonth(currentInvoice.Status) {
+		nextYear, nextMonth := nextBillingMonth(year, month)
+		return nextYear, nextMonth, nil
+	}
+	return year, month, nil
+}
+
+func enrollmentInvoiceAffectingFieldsChanged(before *ent.Enrollment, billingMode string, chargeMaterials bool, lessonPriceOverride, subscriptionLessonPrice float64) bool {
+	if before == nil {
+		return false
+	}
+	nextLessonPriceOverrideCents := normalizedLessonPriceOverrideCents(billingMode, lessonPriceOverride)
+	nextSubscriptionLessonPriceCents := normalizedSubscriptionLessonPriceCents(billingMode, subscriptionLessonPrice)
+	return before.BillingMode != enrollment.BillingMode(billingMode) ||
+		before.ChargeMaterials != chargeMaterials ||
+		before.LessonPriceOverrideCents != nextLessonPriceOverrideCents ||
+		before.SubscriptionLessonPriceCents != nextSubscriptionLessonPriceCents
+}
+
+func normalizedLessonPriceOverrideCents(billingMode string, lessonPriceOverride float64) int64 {
+	if billingMode != BillingModePerLesson {
+		return -1
+	}
+	if lessonPriceOverride == 0 {
+		return -1
+	}
+	return money.EurosToCents(lessonPriceOverride)
+}
+
+func normalizedSubscriptionLessonPriceCents(billingMode string, subscriptionLessonPrice float64) int64 {
+	if billingMode != BillingModeSubscription {
+		return 0
+	}
+	return money.EurosToCents(subscriptionLessonPrice)
+}
+
+func invoiceLocksEnrollmentChangesToNextMonth(status entinvoice.Status) bool {
+	return status == entinvoice.StatusIssued ||
+		status == entinvoice.StatusIssuedPendingPdf ||
+		status == entinvoice.StatusPaid ||
+		status == entinvoice.StatusPaidPendingPdf
+}
+
+func nextBillingMonth(year, month int) (int, int) {
+	if month == 12 {
+		return year + 1, 1
+	}
+	return year, month + 1
 }
 
 func toEnrollmentDTO(e *ent.Enrollment) EnrollmentDTO {
