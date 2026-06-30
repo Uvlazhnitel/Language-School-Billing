@@ -908,6 +908,134 @@ func TestGenerateDraftsDeletesExistingZeroDraft(t *testing.T) {
 	}
 }
 
+func TestGenerateDraftsReopensCurrentMonthZeroIssuedInvoiceToDraft(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-zero-issued-to-draft?mode=memory&_fk=1")
+	defer client.Close()
+
+	setInvoiceCurrentTime(t, time.Date(2026, 6, 15, 10, 0, 0, 0, time.UTC))
+	tmpDir := t.TempDir()
+	svc := NewWithInvoicesDir(client, tmpDir)
+
+	st, err := client.Student.Create().
+		SetFullName("Zero Current Student").
+		SetEmail("family@example.com").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Keramika").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(25)).
+		SetSubscriptionPriceCents(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	enr, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	number := "LS-202606-009"
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(6).
+		SetStatus(StatusPaidPendingPDF).
+		SetNumber(number).
+		SetTotalAmountCents(money.EurosToCents(25)).
+		SetPdfFilename(number + ".pdf").
+		SetPdfRevision(2).
+		SetPdfGeneratedAt(time.Date(2026, 6, 10, 9, 0, 0, 0, time.UTC)).
+		SetEmailDeliveryStatus(invoice.EmailDeliveryStatusSent).
+		SetLastEmailedAt(time.Date(2026, 6, 11, 12, 0, 0, 0, time.UTC)).
+		SetLastEmailedTo("family@example.com").
+		SetLastEmailedRevision(2).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	if _, err := client.InvoiceLine.Create().
+		SetInvoiceID(iv.ID).
+		SetEnrollmentID(enr.ID).
+		SetDescription("Dalības maksa par Keramika").
+		SetQty(1).
+		SetUnitPriceCents(money.EurosToCents(25)).
+		SetAmountCents(money.EurosToCents(25)).
+		Save(ctx); err != nil {
+		t.Fatalf("InvoiceLine.Create: %v", err)
+	}
+
+	pdfPath := PDFPathByNumberAndName(tmpDir, 2026, 6, number, st.FullName)
+	if err := os.MkdirAll(filepath.Dir(pdfPath), 0o755); err != nil {
+		t.Fatalf("MkdirAll: %v", err)
+	}
+	if err := os.WriteFile(pdfPath, []byte("demo"), 0o644); err != nil {
+		t.Fatalf("WriteFile: %v", err)
+	}
+
+	res, err := svc.GenerateDrafts(ctx, 2026, 6)
+	if err != nil {
+		t.Fatalf("GenerateDrafts: %v", err)
+	}
+	if res.Created != 0 || res.Updated != 1 || res.SkippedNoLines != 1 || res.SkippedHasInvoice != 0 {
+		t.Fatalf("unexpected GenerateDrafts result: %+v", res)
+	}
+
+	got, err := client.Invoice.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Invoice.Get: %v", err)
+	}
+	if got.Status != StatusDraft {
+		t.Fatalf("Status = %q, want %q", got.Status, StatusDraft)
+	}
+	if got.Number != nil {
+		t.Fatalf("Number = %v, want nil", got.Number)
+	}
+	if got.PdfFilename != nil || got.PdfRevision != nil || got.PdfGeneratedAt != nil {
+		t.Fatalf("expected PDF metadata cleared, got filename=%v revision=%v generatedAt=%v", got.PdfFilename, got.PdfRevision, got.PdfGeneratedAt)
+	}
+	if got.EmailDeliveryStatus != invoice.EmailDeliveryStatusNotSent {
+		t.Fatalf("EmailDeliveryStatus = %q, want %q", got.EmailDeliveryStatus, invoice.EmailDeliveryStatusNotSent)
+	}
+	if got.LastEmailedAt != nil || got.LastEmailedTo != nil || got.LastEmailedRevision != nil || got.LastEmailError != nil || got.LastEmailFailedAt != nil {
+		t.Fatalf(
+			"expected email metadata cleared, got lastEmailedAt=%v lastEmailedTo=%v lastEmailedRevision=%v lastEmailError=%v lastEmailFailedAt=%v",
+			got.LastEmailedAt,
+			got.LastEmailedTo,
+			got.LastEmailedRevision,
+			got.LastEmailError,
+			got.LastEmailFailedAt,
+		)
+	}
+	if got.TotalAmountCents != 0 {
+		t.Fatalf("TotalAmountCents = %d, want 0", got.TotalAmountCents)
+	}
+	lineCount, err := client.InvoiceLine.Query().Where(invoiceline.InvoiceIDEQ(iv.ID)).Count(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Count: %v", err)
+	}
+	if lineCount != 0 {
+		t.Fatalf("invoice line count = %d, want 0", lineCount)
+	}
+	if _, err := os.Stat(pdfPath); !os.IsNotExist(err) {
+		t.Fatalf("expected pdf removed, stat err=%v", err)
+	}
+}
+
 func TestRebuildStudentDraft(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:invoice-rebuild-student-draft?mode=memory&_fk=1")
