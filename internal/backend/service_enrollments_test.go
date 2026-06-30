@@ -93,3 +93,60 @@ func TestEnrollmentInvoiceAffectingFieldsChangedIgnoresNoteOnlyEdits(t *testing.
 		t.Fatal("expected note-only edit to be ignored")
 	}
 }
+
+func TestResolveEnrollmentInvoiceRebuildMonthUsesCurrentOpenMonthWithoutCurrentInvoice(t *testing.T) {
+	setEnrollmentCurrentTime(t, time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC))
+
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+
+	st, err := svc.rt.DB.Ent.Student.Create().
+		SetFullName("Open Month Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	year, month, err := svc.resolveEnrollmentInvoiceRebuildMonth(ctx, st.ID)
+	if err != nil {
+		t.Fatalf("resolveEnrollmentInvoiceRebuildMonth: %v", err)
+	}
+	if year != 2026 || month != 7 {
+		t.Fatalf("resolved month = %04d-%02d, want 2026-07", year, month)
+	}
+}
+
+func TestResolveEnrollmentInvoiceRebuildMonthUsesNextMonthWhenCurrentMonthIssued(t *testing.T) {
+	setEnrollmentCurrentTime(t, time.Date(2026, 7, 12, 10, 0, 0, 0, time.UTC))
+
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+
+	st, err := svc.rt.DB.Ent.Student.Create().
+		SetFullName("Issued Current Month Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	if _, err := svc.rt.DB.Ent.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(7).
+		SetStatus(entinvoice.StatusIssued).
+		SetNumber("LS-202607-001").
+		SetTotalAmountCents(money.EurosToCents(25)).
+		Save(ctx); err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	year, month, err := svc.resolveEnrollmentInvoiceRebuildMonth(ctx, st.ID)
+	if err != nil {
+		t.Fatalf("resolveEnrollmentInvoiceRebuildMonth: %v", err)
+	}
+	if year != 2026 || month != 8 {
+		t.Fatalf("resolved month = %04d-%02d, want 2026-08", year, month)
+	}
+}
