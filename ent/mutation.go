@@ -9826,6 +9826,7 @@ type StudentMutation struct {
 	version            *int
 	addversion         *int
 	full_name          *string
+	created_at         *time.Time
 	personal_code      *string
 	phone              *string
 	email              *string
@@ -10037,6 +10038,55 @@ func (m *StudentMutation) OldFullName(ctx context.Context) (v string, err error)
 // ResetFullName resets all changes to the "full_name" field.
 func (m *StudentMutation) ResetFullName() {
 	m.full_name = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *StudentMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *StudentMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Student entity.
+// If the Student object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *StudentMutation) OldCreatedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ClearCreatedAt clears the value of the "created_at" field.
+func (m *StudentMutation) ClearCreatedAt() {
+	m.created_at = nil
+	m.clearedFields[student.FieldCreatedAt] = struct{}{}
+}
+
+// CreatedAtCleared returns if the "created_at" field was cleared in this mutation.
+func (m *StudentMutation) CreatedAtCleared() bool {
+	_, ok := m.clearedFields[student.FieldCreatedAt]
+	return ok
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *StudentMutation) ResetCreatedAt() {
+	m.created_at = nil
+	delete(m.clearedFields, student.FieldCreatedAt)
 }
 
 // SetPersonalCode sets the "personal_code" field.
@@ -10523,12 +10573,15 @@ func (m *StudentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *StudentMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.version != nil {
 		fields = append(fields, student.FieldVersion)
 	}
 	if m.full_name != nil {
 		fields = append(fields, student.FieldFullName)
+	}
+	if m.created_at != nil {
+		fields = append(fields, student.FieldCreatedAt)
 	}
 	if m.personal_code != nil {
 		fields = append(fields, student.FieldPersonalCode)
@@ -10566,6 +10619,8 @@ func (m *StudentMutation) Field(name string) (ent.Value, bool) {
 		return m.Version()
 	case student.FieldFullName:
 		return m.FullName()
+	case student.FieldCreatedAt:
+		return m.CreatedAt()
 	case student.FieldPersonalCode:
 		return m.PersonalCode()
 	case student.FieldPhone:
@@ -10595,6 +10650,8 @@ func (m *StudentMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldVersion(ctx)
 	case student.FieldFullName:
 		return m.OldFullName(ctx)
+	case student.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
 	case student.FieldPersonalCode:
 		return m.OldPersonalCode(ctx)
 	case student.FieldPhone:
@@ -10633,6 +10690,13 @@ func (m *StudentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetFullName(v)
+		return nil
+	case student.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
 		return nil
 	case student.FieldPersonalCode:
 		v, ok := value.(string)
@@ -10734,7 +10798,11 @@ func (m *StudentMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *StudentMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(student.FieldCreatedAt) {
+		fields = append(fields, student.FieldCreatedAt)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -10747,6 +10815,11 @@ func (m *StudentMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *StudentMutation) ClearField(name string) error {
+	switch name {
+	case student.FieldCreatedAt:
+		m.ClearCreatedAt()
+		return nil
+	}
 	return fmt.Errorf("unknown Student nullable field %s", name)
 }
 
@@ -10759,6 +10832,9 @@ func (m *StudentMutation) ResetField(name string) error {
 		return nil
 	case student.FieldFullName:
 		m.ResetFullName()
+		return nil
+	case student.FieldCreatedAt:
+		m.ResetCreatedAt()
 		return nil
 	case student.FieldPersonalCode:
 		m.ResetPersonalCode()

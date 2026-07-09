@@ -46,6 +46,7 @@ type StudentDTO struct {
 	ID           int     `json:"id"`
 	Version      int     `json:"version"`
 	FullName     string  `json:"fullName"`
+	CreatedAt    string  `json:"createdAt"`
 	PersonalCode string  `json:"personalCode"`
 	Phone        string  `json:"phone"`
 	Email        string  `json:"email"`

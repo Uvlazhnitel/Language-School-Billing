@@ -63,6 +63,10 @@ func Open(ctx context.Context, dbPath string) (*DB, error) {
 		_ = client.Close()
 		return nil, err
 	}
+	if err := backfillStudentCreatedAt(ctx, dsn); err != nil {
+		_ = client.Close()
+		return nil, err
+	}
 	if err := ensureStudentPersonalCodeUniqueIndex(ctx, dsn); err != nil {
 		log.Printf("student personal_code unique index was not applied: %v", err)
 	}
@@ -240,6 +244,29 @@ func ensureStudentPersonalCodeUniqueIndex(ctx context.Context, dsn string) error
 CREATE UNIQUE INDEX IF NOT EXISTS idx_students_personal_code_nonempty_unique
 ON students (personal_code COLLATE NOCASE)
 WHERE personal_code <> ''
+`)
+	return err
+}
+
+func backfillStudentCreatedAt(ctx context.Context, dsn string) error {
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	hasCreatedAt, err := hasColumn(ctx, db, "students", "created_at")
+	if err != nil {
+		return err
+	}
+	if !hasCreatedAt {
+		return nil
+	}
+
+	_, err = db.ExecContext(ctx, `
+UPDATE students
+SET created_at = CURRENT_TIMESTAMP
+WHERE created_at IS NULL
 `)
 	return err
 }

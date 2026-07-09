@@ -349,6 +349,7 @@ var (
 		{Name: "id", Type: field.TypeInt, Increment: true},
 		{Name: "version", Type: field.TypeInt, Default: 1},
 		{Name: "full_name", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime, Nullable: true},
 		{Name: "personal_code", Type: field.TypeString, Default: ""},
 		{Name: "phone", Type: field.TypeString, Default: ""},
 		{Name: "email", Type: field.TypeString, Default: ""},

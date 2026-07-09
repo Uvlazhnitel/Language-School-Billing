@@ -248,36 +248,40 @@ func init() {
 	studentDescVersion := studentMixinFields0[0].Descriptor()
 	// student.DefaultVersion holds the default value on creation for the version field.
 	student.DefaultVersion = studentDescVersion.Default.(int)
+	// studentDescCreatedAt is the schema descriptor for created_at field.
+	studentDescCreatedAt := studentFields[1].Descriptor()
+	// student.DefaultCreatedAt holds the default value on creation for the created_at field.
+	student.DefaultCreatedAt = studentDescCreatedAt.Default.(func() time.Time)
 	// studentDescPersonalCode is the schema descriptor for personal_code field.
-	studentDescPersonalCode := studentFields[1].Descriptor()
+	studentDescPersonalCode := studentFields[2].Descriptor()
 	// student.DefaultPersonalCode holds the default value on creation for the personal_code field.
 	student.DefaultPersonalCode = studentDescPersonalCode.Default.(string)
 	// studentDescPhone is the schema descriptor for phone field.
-	studentDescPhone := studentFields[2].Descriptor()
+	studentDescPhone := studentFields[3].Descriptor()
 	// student.DefaultPhone holds the default value on creation for the phone field.
 	student.DefaultPhone = studentDescPhone.Default.(string)
 	// studentDescEmail is the schema descriptor for email field.
-	studentDescEmail := studentFields[3].Descriptor()
+	studentDescEmail := studentFields[4].Descriptor()
 	// student.DefaultEmail holds the default value on creation for the email field.
 	student.DefaultEmail = studentDescEmail.Default.(string)
 	// studentDescNote is the schema descriptor for note field.
-	studentDescNote := studentFields[4].Descriptor()
+	studentDescNote := studentFields[5].Descriptor()
 	// student.DefaultNote holds the default value on creation for the note field.
 	student.DefaultNote = studentDescNote.Default.(string)
 	// studentDescIsMinor is the schema descriptor for is_minor field.
-	studentDescIsMinor := studentFields[5].Descriptor()
+	studentDescIsMinor := studentFields[6].Descriptor()
 	// student.DefaultIsMinor holds the default value on creation for the is_minor field.
 	student.DefaultIsMinor = studentDescIsMinor.Default.(bool)
 	// studentDescPayerName is the schema descriptor for payer_name field.
-	studentDescPayerName := studentFields[6].Descriptor()
+	studentDescPayerName := studentFields[7].Descriptor()
 	// student.DefaultPayerName holds the default value on creation for the payer_name field.
 	student.DefaultPayerName = studentDescPayerName.Default.(string)
 	// studentDescPayerRole is the schema descriptor for payer_role field.
-	studentDescPayerRole := studentFields[7].Descriptor()
+	studentDescPayerRole := studentFields[8].Descriptor()
 	// student.DefaultPayerRole holds the default value on creation for the payer_role field.
 	student.DefaultPayerRole = studentDescPayerRole.Default.(string)
 	// studentDescIsActive is the schema descriptor for is_active field.
-	studentDescIsActive := studentFields[8].Descriptor()
+	studentDescIsActive := studentFields[9].Descriptor()
 	// student.DefaultIsActive holds the default value on creation for the is_active field.
 	student.DefaultIsActive = studentDescIsActive.Default.(bool)
 	teacherFields := schema.Teacher{}.Fields()

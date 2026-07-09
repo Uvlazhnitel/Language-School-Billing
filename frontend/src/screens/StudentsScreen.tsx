@@ -6,12 +6,24 @@ import type { BalanceDTO, DebtInvoiceDTO, PaymentDTO } from "../lib/payments";
 import type { StudentDTO, StudentDuplicateCheckResult } from "../lib/students";
 import type { StudentActivityItem, StudentNextAction } from "../lib/studentActivity";
 import type { TranslateFn } from "../lib/i18n";
+import type {
+  StudentAgeFilter,
+  StudentBalanceFilter,
+  StudentDebtFilter,
+  StudentSortOption,
+  StudentStatusFilter,
+} from "../lib/studentListControls";
 
 type StudentsScreenProps = {
   students: StudentDTO[];
   loading: boolean;
   query: string;
-  includeInactive: boolean;
+  statusFilter: StudentStatusFilter;
+  debtFilter: StudentDebtFilter;
+  balanceFilter: StudentBalanceFilter;
+  ageFilter: StudentAgeFilter;
+  sortOption: StudentSortOption;
+  hasActiveStudentFilters: boolean;
   selectedStudent: StudentDTO | null;
   detailLoading: boolean;
   detailEnrollments: EnrollmentDTO[];
@@ -31,7 +43,12 @@ type StudentsScreenProps = {
   formatEUR: (value: number) => string;
   months: string[];
   onQueryChange: (value: string) => void;
-  onIncludeInactiveChange: (value: boolean) => void;
+  onStatusFilterChange: (value: StudentStatusFilter) => void;
+  onDebtFilterChange: (value: StudentDebtFilter) => void;
+  onBalanceFilterChange: (value: StudentBalanceFilter) => void;
+  onAgeFilterChange: (value: StudentAgeFilter) => void;
+  onSortOptionChange: (value: StudentSortOption) => void;
+  onResetStudentFilters: () => void;
   onAddStudent: () => void;
   onSelectStudent: (student: StudentDTO) => void | Promise<void>;
   onEditStudent: (student: StudentDTO) => void;

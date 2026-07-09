@@ -289,6 +289,9 @@ func TestStudentCreateAndUpdateIsMinor(t *testing.T) {
 	if created.PersonalCode != "020202-23456" {
 		t.Fatalf("created.PersonalCode = %q, want %q", created.PersonalCode, "020202-23456")
 	}
+	if created.CreatedAt == "" {
+		t.Fatal("created.CreatedAt = empty, want RFC3339 timestamp")
+	}
 
 	updated, err := app.StudentUpdate(created.ID, "Nika Test", "030303-34567", "+371 22123", "", "", false, "", "")
 	if err != nil {
@@ -302,6 +305,9 @@ func TestStudentCreateAndUpdateIsMinor(t *testing.T) {
 	}
 	if updated.PersonalCode != "030303-34567" {
 		t.Fatalf("updated.PersonalCode = %q, want %q", updated.PersonalCode, "030303-34567")
+	}
+	if updated.CreatedAt == "" {
+		t.Fatal("updated.CreatedAt = empty, want original timestamp")
 	}
 }
 
@@ -440,6 +446,9 @@ func TestStudentDuplicateCheck(t *testing.T) {
 	}
 	if result.ExactMatch == nil || result.ExactMatch.ID != exact.ID {
 		t.Fatalf("exactMatch = %+v, want student %d", result.ExactMatch, exact.ID)
+	}
+	if result.ExactMatch != nil && result.ExactMatch.CreatedAt == "" {
+		t.Fatal("expected duplicate-check exactMatch to include createdAt")
 	}
 	if len(result.PossibleMatches) != 0 {
 		t.Fatalf("possibleMatches len = %d, want 0", len(result.PossibleMatches))

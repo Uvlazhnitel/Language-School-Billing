@@ -11,6 +11,7 @@ import (
 	"langschool/ent/payment"
 	"langschool/ent/predicate"
 	"langschool/ent/student"
+	"time"
 
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
@@ -62,6 +63,26 @@ func (_u *StudentUpdate) SetNillableFullName(v *string) *StudentUpdate {
 	if v != nil {
 		_u.SetFullName(*v)
 	}
+	return _u
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (_u *StudentUpdate) SetCreatedAt(v time.Time) *StudentUpdate {
+	_u.mutation.SetCreatedAt(v)
+	return _u
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (_u *StudentUpdate) SetNillableCreatedAt(v *time.Time) *StudentUpdate {
+	if v != nil {
+		_u.SetCreatedAt(*v)
+	}
+	return _u
+}
+
+// ClearCreatedAt clears the value of the "created_at" field.
+func (_u *StudentUpdate) ClearCreatedAt() *StudentUpdate {
+	_u.mutation.ClearCreatedAt()
 	return _u
 }
 
@@ -335,6 +356,12 @@ func (_u *StudentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.FullName(); ok {
 		_spec.SetField(student.FieldFullName, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.CreatedAt(); ok {
+		_spec.SetField(student.FieldCreatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.CreatedAtCleared() {
+		_spec.ClearField(student.FieldCreatedAt, field.TypeTime)
+	}
 	if value, ok := _u.mutation.PersonalCode(); ok {
 		_spec.SetField(student.FieldPersonalCode, field.TypeString, value)
 	}
@@ -546,6 +573,26 @@ func (_u *StudentUpdateOne) SetNillableFullName(v *string) *StudentUpdateOne {
 	if v != nil {
 		_u.SetFullName(*v)
 	}
+	return _u
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (_u *StudentUpdateOne) SetCreatedAt(v time.Time) *StudentUpdateOne {
+	_u.mutation.SetCreatedAt(v)
+	return _u
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (_u *StudentUpdateOne) SetNillableCreatedAt(v *time.Time) *StudentUpdateOne {
+	if v != nil {
+		_u.SetCreatedAt(*v)
+	}
+	return _u
+}
+
+// ClearCreatedAt clears the value of the "created_at" field.
+func (_u *StudentUpdateOne) ClearCreatedAt() *StudentUpdateOne {
+	_u.mutation.ClearCreatedAt()
 	return _u
 }
 
@@ -848,6 +895,12 @@ func (_u *StudentUpdateOne) sqlSave(ctx context.Context) (_node *Student, err er
 	}
 	if value, ok := _u.mutation.FullName(); ok {
 		_spec.SetField(student.FieldFullName, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.CreatedAt(); ok {
+		_spec.SetField(student.FieldCreatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.CreatedAtCleared() {
+		_spec.ClearField(student.FieldCreatedAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.PersonalCode(); ok {
 		_spec.SetField(student.FieldPersonalCode, field.TypeString, value)

@@ -3,6 +3,8 @@
 package student
 
 import (
+	"time"
+
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 )
@@ -16,6 +18,8 @@ const (
 	FieldVersion = "version"
 	// FieldFullName holds the string denoting the full_name field in the database.
 	FieldFullName = "full_name"
+	// FieldCreatedAt holds the string denoting the created_at field in the database.
+	FieldCreatedAt = "created_at"
 	// FieldPersonalCode holds the string denoting the personal_code field in the database.
 	FieldPersonalCode = "personal_code"
 	// FieldPhone holds the string denoting the phone field in the database.
@@ -68,6 +72,7 @@ var Columns = []string{
 	FieldID,
 	FieldVersion,
 	FieldFullName,
+	FieldCreatedAt,
 	FieldPersonalCode,
 	FieldPhone,
 	FieldEmail,
@@ -91,6 +96,8 @@ func ValidColumn(column string) bool {
 var (
 	// DefaultVersion holds the default value on creation for the "version" field.
 	DefaultVersion int
+	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
+	DefaultCreatedAt func() time.Time
 	// DefaultPersonalCode holds the default value on creation for the "personal_code" field.
 	DefaultPersonalCode string
 	// DefaultPhone holds the default value on creation for the "phone" field.
@@ -125,6 +132,11 @@ func ByVersion(opts ...sql.OrderTermOption) OrderOption {
 // ByFullName orders the results by the full_name field.
 func ByFullName(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldFullName, opts...).ToFunc()
+}
+
+// ByCreatedAt orders the results by the created_at field.
+func ByCreatedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreatedAt, opts...).ToFunc()
 }
 
 // ByPersonalCode orders the results by the personal_code field.

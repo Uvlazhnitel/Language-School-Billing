@@ -4,6 +4,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
+	"time"
 )
 
 type Student struct{ ent.Schema }
@@ -17,6 +18,7 @@ func (Student) Mixin() []ent.Mixin {
 func (Student) Fields() []ent.Field {
 	return []ent.Field{
 		field.String("full_name"),
+		field.Time("created_at").Optional().Nillable().Default(time.Now),
 		field.String("personal_code").Default(""),
 		field.String("phone").Default(""),
 		field.String("email").Default(""),

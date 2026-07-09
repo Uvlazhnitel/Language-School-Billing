@@ -524,6 +524,7 @@ func toStudentDTO(s *ent.Student, summary studentBalanceSummary) StudentDTO {
 		ID:           s.ID,
 		Version:      s.Version,
 		FullName:     s.FullName,
+		CreatedAt:    formatOptionalTime(s.CreatedAt),
 		PersonalCode: s.PersonalCode,
 		Phone:        s.Phone,
 		Email:        s.Email,

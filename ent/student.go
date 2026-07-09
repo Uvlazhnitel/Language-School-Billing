@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"langschool/ent/student"
 	"strings"
+	"time"
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
@@ -20,6 +21,8 @@ type Student struct {
 	Version int `json:"version,omitempty"`
 	// FullName holds the value of the "full_name" field.
 	FullName string `json:"full_name,omitempty"`
+	// CreatedAt holds the value of the "created_at" field.
+	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// PersonalCode holds the value of the "personal_code" field.
 	PersonalCode string `json:"personal_code,omitempty"`
 	// Phone holds the value of the "phone" field.
@@ -93,6 +96,8 @@ func (*Student) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullInt64)
 		case student.FieldFullName, student.FieldPersonalCode, student.FieldPhone, student.FieldEmail, student.FieldNote, student.FieldPayerName, student.FieldPayerRole:
 			values[i] = new(sql.NullString)
+		case student.FieldCreatedAt:
+			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
 		}
@@ -125,6 +130,13 @@ func (_m *Student) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field full_name", values[i])
 			} else if value.Valid {
 				_m.FullName = value.String
+			}
+		case student.FieldCreatedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field created_at", values[i])
+			} else if value.Valid {
+				_m.CreatedAt = new(time.Time)
+				*_m.CreatedAt = value.Time
 			}
 		case student.FieldPersonalCode:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -230,6 +242,11 @@ func (_m *Student) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("full_name=")
 	builder.WriteString(_m.FullName)
+	builder.WriteString(", ")
+	if v := _m.CreatedAt; v != nil {
+		builder.WriteString("created_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("personal_code=")
 	builder.WriteString(_m.PersonalCode)

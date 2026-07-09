@@ -6,12 +6,25 @@ import { InvoiceListItemView } from "../lib/invoices";
 import { StudentActivityItem, StudentNextAction } from "../lib/studentActivity";
 import { StudentDetailPanel } from "./StudentDetailPanel";
 import { EmptyState } from "./EmptyState";
+import { FilterToolbar } from "./FilterToolbar";
+import type {
+  StudentAgeFilter,
+  StudentBalanceFilter,
+  StudentDebtFilter,
+  StudentSortOption,
+  StudentStatusFilter,
+} from "../lib/studentListControls";
 
 type StudentWorkspaceProps = {
   students: StudentDTO[];
   loading: boolean;
   query: string;
-  includeInactive: boolean;
+  statusFilter: StudentStatusFilter;
+  debtFilter: StudentDebtFilter;
+  balanceFilter: StudentBalanceFilter;
+  ageFilter: StudentAgeFilter;
+  sortOption: StudentSortOption;
+  hasActiveStudentFilters: boolean;
   selectedStudent: StudentDTO | null;
   detailLoading: boolean;
   detailEnrollments: EnrollmentDTO[];
@@ -24,7 +37,12 @@ type StudentWorkspaceProps = {
   t: TranslateFn;
   deletingPaymentId: number | null;
   onQueryChange: (value: string) => void;
-  onIncludeInactiveChange: (value: boolean) => void;
+  onStatusFilterChange: (value: StudentStatusFilter) => void;
+  onDebtFilterChange: (value: StudentDebtFilter) => void;
+  onBalanceFilterChange: (value: StudentBalanceFilter) => void;
+  onAgeFilterChange: (value: StudentAgeFilter) => void;
+  onSortOptionChange: (value: StudentSortOption) => void;
+  onResetStudentFilters: () => void;
   onAddStudent: () => void;
   onSelectStudent: (student: StudentDTO) => void;
   onEditStudent: (student: StudentDTO) => void;
@@ -50,7 +68,12 @@ export function StudentWorkspace({
   students,
   loading,
   query,
-  includeInactive,
+  statusFilter,
+  debtFilter,
+  balanceFilter,
+  ageFilter,
+  sortOption,
+  hasActiveStudentFilters,
   selectedStudent,
   detailLoading,
   detailEnrollments,
@@ -63,7 +86,12 @@ export function StudentWorkspace({
   t,
   deletingPaymentId,
   onQueryChange,
-  onIncludeInactiveChange,
+  onStatusFilterChange,
+  onDebtFilterChange,
+  onBalanceFilterChange,
+  onAgeFilterChange,
+  onSortOptionChange,
+  onResetStudentFilters,
   onAddStudent,
   onSelectStudent,
   onEditStudent,
@@ -109,34 +137,80 @@ export function StudentWorkspace({
   return (
     <div className="studentWorkspace">
       <div className="studentSidebar">
-        <div className="controls controls--sidebar">
-          <button onClick={onAddStudent}>{t("button.addStudent")}</button>
-          <input
-            className="searchField"
-            placeholder={t("msg.searchPlaceholderStudent")}
-            value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
-          />
-          <label className="inline">
+        <FilterToolbar
+          primaryAction={<button onClick={onAddStudent}>{t("button.addStudent")}</button>}
+          search={
             <input
-              type="checkbox"
-              checked={includeInactive}
-              onChange={(e) => onIncludeInactiveChange(e.target.checked)}
+              className="searchField"
+              placeholder={t("msg.searchPlaceholderStudent")}
+              value={query}
+              onChange={(e) => onQueryChange(e.target.value)}
             />
-            {t("label.showInactive")}
-          </label>
-        </div>
+          }
+          filters={
+            <>
+              <select
+                value={statusFilter}
+                onChange={(e) => onStatusFilterChange(e.target.value as StudentStatusFilter)}
+              >
+                <option value="active">{t("filter.studentStatusActive")}</option>
+                <option value="inactive">{t("filter.studentStatusInactive")}</option>
+                <option value="all">{t("filter.studentStatusAll")}</option>
+              </select>
+              <select
+                value={debtFilter}
+                onChange={(e) => onDebtFilterChange(e.target.value as StudentDebtFilter)}
+              >
+                <option value="all">{t("filter.studentDebtAll")}</option>
+                <option value="debt_only">{t("filter.studentDebtOnly")}</option>
+                <option value="no_debt">{t("filter.studentDebtNone")}</option>
+              </select>
+              <select
+                value={balanceFilter}
+                onChange={(e) => onBalanceFilterChange(e.target.value as StudentBalanceFilter)}
+              >
+                <option value="all">{t("filter.studentBalanceAll")}</option>
+                <option value="credit_only">{t("filter.studentBalanceCreditOnly")}</option>
+                <option value="zero_or_debt">{t("filter.studentBalanceZeroOrDebt")}</option>
+              </select>
+              <select
+                value={ageFilter}
+                onChange={(e) => onAgeFilterChange(e.target.value as StudentAgeFilter)}
+              >
+                <option value="all">{t("filter.studentAgeAll")}</option>
+                <option value="minors_only">{t("filter.studentAgeMinorsOnly")}</option>
+                <option value="adults_only">{t("filter.studentAgeAdultsOnly")}</option>
+              </select>
+              <select
+                value={sortOption}
+                onChange={(e) => onSortOptionChange(e.target.value as StudentSortOption)}
+              >
+                <option value="name_asc">{t("filter.studentSortNameAsc")}</option>
+                <option value="name_desc">{t("filter.studentSortNameDesc")}</option>
+                <option value="created_desc">{t("filter.studentSortCreatedDesc")}</option>
+                <option value="created_asc">{t("filter.studentSortCreatedAsc")}</option>
+                <option value="debt_desc">{t("filter.studentSortDebtDesc")}</option>
+                <option value="balance_desc">{t("filter.studentSortBalanceDesc")}</option>
+              </select>
+            </>
+          }
+          hasActiveFilters={hasActiveStudentFilters}
+          onClearFilters={onResetStudentFilters}
+          clearLabel={t("button.clearFilters")}
+        />
 
         {loading ? (
           <div className="empty">{t("label.loading")}</div>
         ) : students.length === 0 ? (
-          query.trim() ? (
+          query.trim() || hasActiveStudentFilters ? (
             <EmptyState
               compact
               title={t("msg.noStudentsSearchTitle")}
               description={t("msg.noStudentsSearchDescription")}
-              actionLabel={t("button.clearSearch")}
-              onAction={() => onQueryChange("")}
+              actionLabel={
+                hasActiveStudentFilters ? t("button.clearFilters") : t("button.clearSearch")
+              }
+              onAction={hasActiveStudentFilters ? onResetStudentFilters : () => onQueryChange("")}
             />
           ) : (
             <EmptyState
@@ -202,9 +276,7 @@ export function StudentWorkspace({
           canDeletePayment={canDeletePayment}
           onEditStudent={() => selectedStudent && onEditStudent(selectedStudent)}
           onToggleActive={selectedStudent ? () => onToggleActive(selectedStudent) : undefined}
-          onDeleteStudent={
-            selectedStudent ? () => onDeleteStudent(selectedStudent.id) : undefined
-          }
+          onDeleteStudent={selectedStudent ? () => onDeleteStudent(selectedStudent.id) : undefined}
           canDeleteStudent={canDeleteStudent}
           onAddPayment={onAddPayment}
           onCopyDebtRu={onCopyDebtRu}

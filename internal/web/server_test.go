@@ -56,6 +56,9 @@ func TestStudentCourseEnrollmentCRUD(t *testing.T) {
 	if st.FullName != "Alice Student" {
 		t.Fatalf("student fullName = %q", st.FullName)
 	}
+	if st.CreatedAt == "" {
+		t.Fatal("student createdAt = empty, want RFC3339 timestamp")
+	}
 
 	st = putJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students/"+strconv.Itoa(st.ID), map[string]any{
 		"version":  st.Version,
@@ -65,6 +68,9 @@ func TestStudentCourseEnrollmentCRUD(t *testing.T) {
 	})
 	if st.FullName != "Alice Updated" {
 		t.Fatalf("student fullName = %q, want updated", st.FullName)
+	}
+	if st.CreatedAt == "" {
+		t.Fatal("updated student createdAt = empty, want original timestamp")
 	}
 
 	teacher := postJSON[backend.TeacherDTO](t, env.Client, env.Server.URL, "/api/teachers", map[string]any{
@@ -156,6 +162,9 @@ func TestStudentDuplicateProtectionAPI(t *testing.T) {
 	})
 	if check.ExactMatch == nil || check.ExactMatch.ID != exact.ID {
 		t.Fatalf("exactMatch = %+v, want %d", check.ExactMatch, exact.ID)
+	}
+	if check.ExactMatch != nil && check.ExactMatch.CreatedAt == "" {
+		t.Fatal("duplicate-check exactMatch createdAt = empty")
 	}
 	if len(check.PossibleMatches) != 0 {
 		t.Fatalf("possibleMatches len = %d, want 0", len(check.PossibleMatches))

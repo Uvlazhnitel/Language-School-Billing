@@ -10,6 +10,7 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
 	"langschool/ent/student"
+	"time"
 
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
@@ -39,6 +40,20 @@ func (_c *StudentCreate) SetNillableVersion(v *int) *StudentCreate {
 // SetFullName sets the "full_name" field.
 func (_c *StudentCreate) SetFullName(v string) *StudentCreate {
 	_c.mutation.SetFullName(v)
+	return _c
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (_c *StudentCreate) SetCreatedAt(v time.Time) *StudentCreate {
+	_c.mutation.SetCreatedAt(v)
+	return _c
+}
+
+// SetNillableCreatedAt sets the "created_at" field if the given value is not nil.
+func (_c *StudentCreate) SetNillableCreatedAt(v *time.Time) *StudentCreate {
+	if v != nil {
+		_c.SetCreatedAt(*v)
+	}
 	return _c
 }
 
@@ -238,6 +253,10 @@ func (_c *StudentCreate) defaults() {
 		v := student.DefaultVersion
 		_c.mutation.SetVersion(v)
 	}
+	if _, ok := _c.mutation.CreatedAt(); !ok {
+		v := student.DefaultCreatedAt()
+		_c.mutation.SetCreatedAt(v)
+	}
 	if _, ok := _c.mutation.PersonalCode(); !ok {
 		v := student.DefaultPersonalCode
 		_c.mutation.SetPersonalCode(v)
@@ -337,6 +356,10 @@ func (_c *StudentCreate) createSpec() (*Student, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.FullName(); ok {
 		_spec.SetField(student.FieldFullName, field.TypeString, value)
 		_node.FullName = value
+	}
+	if value, ok := _c.mutation.CreatedAt(); ok {
+		_spec.SetField(student.FieldCreatedAt, field.TypeTime, value)
+		_node.CreatedAt = &value
 	}
 	if value, ok := _c.mutation.PersonalCode(); ok {
 		_spec.SetField(student.FieldPersonalCode, field.TypeString, value)

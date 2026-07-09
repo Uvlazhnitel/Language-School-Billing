@@ -143,6 +143,7 @@ export type StudentDTO = {
   id: number;
   version: number;
   fullName: string;
+  createdAt: string;
   personalCode: string;
   phone: string;
   email: string;

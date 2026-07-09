@@ -1,19 +1,7 @@
-import {
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-  useCallback,
-  useRef,
-} from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
 
-import {
-  fetchRows,
-  saveHours,
-  deleteEnrollment,
-  Row,
-} from "./lib/attendance";
+import { fetchRows, saveHours, deleteEnrollment, Row } from "./lib/attendance";
 
 import {
   listInvoices,
@@ -99,6 +87,14 @@ import {
   StudentNextAction,
 } from "./lib/studentActivity";
 import { createTranslator, getMonthNames } from "./lib/i18n";
+import {
+  applyStudentListControls,
+  type StudentAgeFilter,
+  type StudentBalanceFilter,
+  type StudentDebtFilter,
+  type StudentSortOption,
+  type StudentStatusFilter,
+} from "./lib/studentListControls";
 import {
   AppTabId,
   billingModeLabel,
@@ -291,7 +287,11 @@ export default function App() {
   const [studentList, setStudentList] = useState<StudentDTO[]>([]);
   const [allStudents, setAllStudents] = useState<StudentDTO[]>([]);
   const [studentQ, setStudentQ] = useState("");
-  const [includeInactive, setIncludeInactive] = useState(false);
+  const [studentStatusFilter, setStudentStatusFilter] = useState<StudentStatusFilter>("active");
+  const [studentDebtFilter, setStudentDebtFilter] = useState<StudentDebtFilter>("all");
+  const [studentBalanceFilter, setStudentBalanceFilter] = useState<StudentBalanceFilter>("all");
+  const [studentAgeFilter, setStudentAgeFilter] = useState<StudentAgeFilter>("all");
+  const [studentSortOption, setStudentSortOption] = useState<StudentSortOption>("name_asc");
   const [studentLoading, setStudentLoading] = useState(false);
 
   const [studentModalOpen, setStudentModalOpen] = useState(false);
@@ -328,12 +328,12 @@ export default function App() {
   const loadStudents = useCallback(async () => {
     setStudentLoading(true);
     try {
-      const data = await listStudents(studentQ, includeInactive);
+      const data = await listStudents(studentQ, true);
       setStudentList(data);
     } finally {
       setStudentLoading(false);
     }
-  }, [studentQ, includeInactive]);
+  }, [studentQ]);
 
   const loadAllStudents = useCallback(async () => {
     const data = await listStudents("", true);
@@ -354,6 +354,49 @@ export default function App() {
   const resetStudentDuplicateCheck = useCallback(() => {
     setStudentDuplicateCheckResult(null);
   }, []);
+
+  const resetStudentFilters = useCallback(() => {
+    setStudentStatusFilter("active");
+    setStudentDebtFilter("all");
+    setStudentBalanceFilter("all");
+    setStudentAgeFilter("all");
+    setStudentSortOption("name_asc");
+  }, []);
+
+  const filteredStudentList = useMemo(
+    () =>
+      applyStudentListControls(studentList, {
+        statusFilter: studentStatusFilter,
+        debtFilter: studentDebtFilter,
+        balanceFilter: studentBalanceFilter,
+        ageFilter: studentAgeFilter,
+        sortOption: studentSortOption,
+      }),
+    [
+      studentAgeFilter,
+      studentBalanceFilter,
+      studentDebtFilter,
+      studentList,
+      studentSortOption,
+      studentStatusFilter,
+    ]
+  );
+
+  const hasActiveStudentFilters = useMemo(
+    () =>
+      studentStatusFilter !== "active" ||
+      studentDebtFilter !== "all" ||
+      studentBalanceFilter !== "all" ||
+      studentAgeFilter !== "all" ||
+      studentSortOption !== "name_asc",
+    [
+      studentAgeFilter,
+      studentBalanceFilter,
+      studentDebtFilter,
+      studentSortOption,
+      studentStatusFilter,
+    ]
+  );
 
   const loadDashboard = useCallback(async () => {
     setOverviewLoading(true);
@@ -628,14 +671,18 @@ export default function App() {
   );
 
   useEffect(() => {
-    if (tab !== "students" || studentLoading || studentList.length === 0) return;
+    if (tab !== "students" || studentLoading) return;
+    if (filteredStudentList.length === 0) {
+      setSelectedStudentCard(null);
+      return;
+    }
     if (
       !selectedStudentCard ||
-      !studentList.some((student) => student.id === selectedStudentCard.id)
+      !filteredStudentList.some((student) => student.id === selectedStudentCard.id)
     ) {
-      void openStudentCard(studentList[0], { inline: true });
+      void openStudentCard(filteredStudentList[0], { inline: true });
     }
-  }, [openStudentCard, tab, studentLoading, studentList, selectedStudentCard]);
+  }, [filteredStudentList, openStudentCard, tab, studentLoading, selectedStudentCard]);
 
   async function openStudentCardById(studentId: number) {
     const existing = allStudents.find((s) => s.id === studentId);
@@ -1151,10 +1198,16 @@ export default function App() {
 
   function handleEnrollmentModeChange(value: "per_lesson" | "subscription") {
     setEfMode(value);
-    if (value === "per_lesson" && (efLessonPriceOverride.trim() === "" || Number(efLessonPriceOverride) === 0)) {
+    if (
+      value === "per_lesson" &&
+      (efLessonPriceOverride.trim() === "" || Number(efLessonPriceOverride) === 0)
+    ) {
       setEfLessonPriceOverride(String(selectedEnrollmentCourse?.lessonPrice ?? 0));
     }
-    if (value === "subscription" && (efSubscriptionLessonPrice.trim() === "" || Number(efSubscriptionLessonPrice) === 0)) {
+    if (
+      value === "subscription" &&
+      (efSubscriptionLessonPrice.trim() === "" || Number(efSubscriptionLessonPrice) === 0)
+    ) {
       setEfSubscriptionLessonPrice(String(selectedEnrollmentCourse?.subscriptionPrice ?? 0));
     }
   }
@@ -1477,7 +1530,9 @@ export default function App() {
   const invoiceMenuRef = useRef<HTMLDivElement | null>(null);
   const activeInvoiceMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [invoiceMenuPosition, setInvoiceMenuPosition] = useState<InvoiceMenuPosition | null>(null);
-  const [invoiceEmailDraft, setInvoiceEmailDraft] = useState<InvoiceEmailPreviewResult | null>(null);
+  const [invoiceEmailDraft, setInvoiceEmailDraft] = useState<InvoiceEmailPreviewResult | null>(
+    null
+  );
   const [invoiceEmailInvoiceID, setInvoiceEmailInvoiceID] = useState<number | null>(null);
   const [invoiceEmailSending, setInvoiceEmailSending] = useState(false);
 
@@ -1893,7 +1948,15 @@ export default function App() {
         showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
     },
-    [closeInvoiceMenu, invoiceDetailsOpen, loadInvoiceDetails, loadInvoices, selectedInv, showMessage, t]
+    [
+      closeInvoiceMenu,
+      invoiceDetailsOpen,
+      loadInvoiceDetails,
+      loadInvoices,
+      selectedInv,
+      showMessage,
+      t,
+    ]
   );
 
   const onEnsureAllPDFs = useCallback(async () => {
@@ -1907,7 +1970,16 @@ export default function App() {
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
-  }, [invoiceDetailsOpen, loadInvoiceDetails, loadInvoices, month, selectedInv, showMessage, t, year]);
+  }, [
+    invoiceDetailsOpen,
+    loadInvoiceDetails,
+    loadInvoices,
+    month,
+    selectedInv,
+    showMessage,
+    t,
+    year,
+  ]);
 
   const onDownloadPdf = useCallback(
     async (id: number) => {
@@ -1937,7 +2009,15 @@ export default function App() {
         showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       }
     },
-    [closeInvoiceMenu, invoiceDetailsOpen, loadInvoiceDetails, loadInvoices, selectedInv, showMessage, t]
+    [
+      closeInvoiceMenu,
+      invoiceDetailsOpen,
+      loadInvoiceDetails,
+      loadInvoices,
+      selectedInv,
+      showMessage,
+      t,
+    ]
   );
 
   const closeInvoiceEmailModal = useCallback(() => {
@@ -2273,10 +2353,15 @@ export default function App() {
 
             {tab === "students" && (
               <StudentsScreen
-                students={studentList}
+                students={filteredStudentList}
                 loading={studentLoading}
                 query={studentQ}
-                includeInactive={includeInactive}
+                statusFilter={studentStatusFilter}
+                debtFilter={studentDebtFilter}
+                balanceFilter={studentBalanceFilter}
+                ageFilter={studentAgeFilter}
+                sortOption={studentSortOption}
+                hasActiveStudentFilters={hasActiveStudentFilters}
                 selectedStudent={selectedStudentCard}
                 detailLoading={studentCardLoading}
                 detailEnrollments={studentCardEnrollments}
@@ -2289,7 +2374,12 @@ export default function App() {
                 deletingPaymentId={studentCardDeletingPaymentId}
                 t={t}
                 onQueryChange={setStudentQ}
-                onIncludeInactiveChange={setIncludeInactive}
+                onStatusFilterChange={setStudentStatusFilter}
+                onDebtFilterChange={setStudentDebtFilter}
+                onBalanceFilterChange={setStudentBalanceFilter}
+                onAgeFilterChange={setStudentAgeFilter}
+                onSortOptionChange={setStudentSortOption}
+                onResetStudentFilters={resetStudentFilters}
                 onAddStudent={openAddStudent}
                 onSelectStudent={(student) => void openStudentCard(student, { inline: true })}
                 onEditStudent={openEditStudent}
@@ -2702,7 +2792,9 @@ export default function App() {
               setInvoiceEmailDraft((current) => (current ? { ...current, to: value } : current))
             }
             onSubjectChange={(value) =>
-              setInvoiceEmailDraft((current) => (current ? { ...current, subject: value } : current))
+              setInvoiceEmailDraft((current) =>
+                current ? { ...current, subject: value } : current
+              )
             }
             onBodyChange={(value) =>
               setInvoiceEmailDraft((current) => (current ? { ...current, body: value } : current))

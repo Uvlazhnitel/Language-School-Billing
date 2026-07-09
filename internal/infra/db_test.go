@@ -279,6 +279,52 @@ func TestOpenBackfillDoesNotOverwriteExistingAttendanceMonths(t *testing.T) {
 	}
 }
 
+func TestOpenBackfillsStudentCreatedAtForLegacyRows(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "legacy-student-created-at.sqlite")
+
+	legacyDB, err := sql.Open("sqlite3", buildDSN(dbPath))
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer legacyDB.Close()
+
+	for _, stmt := range []string{
+		`CREATE TABLE students (
+			id INTEGER PRIMARY KEY,
+			version INTEGER DEFAULT 1,
+			full_name TEXT,
+			personal_code TEXT DEFAULT '',
+			phone TEXT DEFAULT '',
+			email TEXT DEFAULT '',
+			note TEXT DEFAULT '',
+			is_minor BOOLEAN DEFAULT 0,
+			payer_name TEXT DEFAULT '',
+			payer_role TEXT DEFAULT '',
+			is_active BOOLEAN DEFAULT 1
+		)`,
+		`INSERT INTO students (id, full_name, is_active) VALUES (1, 'Legacy Student', 1)`,
+	} {
+		if _, err := legacyDB.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("legacy schema setup failed for %q: %v", stmt, err)
+		}
+	}
+
+	db, err := Open(ctx, dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer db.Ent.Close()
+
+	item, err := db.Ent.Student.Get(ctx, 1)
+	if err != nil {
+		t.Fatalf("Student.Get: %v", err)
+	}
+	if item.CreatedAt == nil || item.CreatedAt.IsZero() {
+		t.Fatalf("createdAt = %v, want non-empty", item.CreatedAt)
+	}
+}
+
 func TestOpenCreatesUniqueIndexForNonEmptyStudentPersonalCode(t *testing.T) {
 	ctx := context.Background()
 	dbPath := filepath.Join(t.TempDir(), "student-personal-code-index.sqlite")
