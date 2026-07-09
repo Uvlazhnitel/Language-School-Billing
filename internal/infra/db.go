@@ -64,8 +64,7 @@ func Open(ctx context.Context, dbPath string) (*DB, error) {
 		return nil, err
 	}
 	if err := ensureStudentPersonalCodeUniqueIndex(ctx, dsn); err != nil {
-		_ = client.Close()
-		return nil, err
+		log.Printf("student personal_code unique index was not applied: %v", err)
 	}
 
 	log.Println("DB ready at", dbPath)
