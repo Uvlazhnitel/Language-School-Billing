@@ -21,7 +21,7 @@ export function ConfirmDialog({ dialog, onConfirm, onCancel, t }: ConfirmDialogP
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        zIndex: 10100,
+        zIndex: "var(--layer-confirm)",
       }}
     >
       <div

@@ -25,6 +25,9 @@
   --radius-md: 18px;
   --radius-sm: 14px;
   --focus: 0 0 0 4px rgba(212, 109, 53, 0.18);
+  --layer-modal: 10050;
+  --layer-confirm: 10100;
+  --layer-toast: 10150;
   color-scheme: light;
 }
 
@@ -1682,9 +1685,28 @@ tfoot td {
 }
 
 .messageToast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: var(--layer-toast);
+  max-width: min(400px, calc(100vw - 24px));
+  padding: 16px 24px;
+  color: white;
   border: 1px solid transparent;
   border-radius: 18px !important;
   box-shadow: var(--shadow-lg) !important;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.messageToastClose {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0;
+  line-height: 1;
 }
 
 .messageToast.success {
@@ -1698,7 +1720,7 @@ tfoot td {
 .modal {
   position: fixed;
   inset: 0;
-  z-index: 10050;
+  z-index: var(--layer-modal);
   display: grid;
   place-items: center;
   padding: 22px;
