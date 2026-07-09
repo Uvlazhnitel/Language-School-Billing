@@ -117,6 +117,7 @@ import {
   payerRoleOptions,
   paymentMethodLabel,
 } from "./lib/appUi";
+import { validatePersonName, validateStudentForm } from "./lib/inputValidation";
 
 const staleRevisionMessage = "record was changed or deleted by another user";
 
@@ -449,16 +450,17 @@ export default function App() {
   }
 
   async function saveStudent(skipDuplicateCheck = false) {
-    if (!sfName.trim()) {
-      showMessage(t("msg.studentNameRequired"), "error");
-      return;
-    }
-    if (sfIsMinor && !sfPayerName.trim()) {
-      showMessage(t("msg.studentPayerRequired"), "error");
-      return;
-    }
-    if (sfIsMinor && !sfPayerRole) {
-      showMessage(t("msg.studentPayerRoleRequired"), "error");
+    const validationError = validateStudentForm({
+      fullName: sfName,
+      personalCode: sfPersonalCode,
+      phone: sfPhone,
+      email: sfEmail,
+      isMinor: sfIsMinor,
+      payerName: sfPayerName,
+      payerRole: sfPayerRole,
+    });
+    if (validationError) {
+      showMessage(t(validationError), "error");
       return;
     }
     try {
@@ -922,6 +924,11 @@ export default function App() {
   async function addTeacherFromCourseForm() {
     const name = cfTeacherSearch.trim();
     if (!name) return;
+    const validationError = validatePersonName(name, "teacher", true);
+    if (validationError) {
+      showMessage(t(validationError), "error");
+      return;
+    }
 
     try {
       setCfTeacherCreating(true);

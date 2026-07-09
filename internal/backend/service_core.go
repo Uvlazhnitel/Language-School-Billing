@@ -6,10 +6,13 @@ import (
 	"html"
 	"log"
 	"math"
+	"net/mail"
 	"net/url"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"langschool/ent"
 	sharedapp "langschool/internal/app"
@@ -20,6 +23,11 @@ import (
 	"langschool/internal/auth"
 	"langschool/internal/email"
 	appruntime "langschool/internal/runtime"
+)
+
+var (
+	personalCodePattern = regexp.MustCompile(`^\d{6}-\d{5}$`)
+	phonePattern        = regexp.MustCompile(`^[+\d][\d\s().-]*$`)
 )
 
 const (
@@ -345,6 +353,78 @@ func validateMinorPayer(isMinor bool, payerName, payerRole string) error {
 	}
 	if strings.TrimSpace(payerRole) == "" {
 		return errors.New("payerRole is required when isMinor is true")
+	}
+	return nil
+}
+
+func normalizePersonNameInput(input string) string {
+	return strings.Join(strings.Fields(input), " ")
+}
+
+func validatePersonName(value, fieldName string, required bool) error {
+	value = normalizePersonNameInput(value)
+	if value == "" {
+		if required {
+			return fmt.Errorf("%s is required", fieldName)
+		}
+		return nil
+	}
+
+	for _, r := range value {
+		switch {
+		case unicode.IsLetter(r):
+		case r == ' ' || r == '-' || r == '\'' || r == '’' || r == '.':
+		default:
+			return fmt.Errorf("%s contains invalid characters", fieldName)
+		}
+	}
+
+	return nil
+}
+
+func validatePersonalCode(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	if !personalCodePattern.MatchString(value) {
+		return errors.New("personalCode must be in the format 123456-12345")
+	}
+	return nil
+}
+
+func validatePhone(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	if !phonePattern.MatchString(value) {
+		return errors.New("phone contains invalid characters")
+	}
+	digits := 0
+	for _, r := range value {
+		if unicode.IsDigit(r) {
+			digits++
+		}
+	}
+	if digits < 5 {
+		return errors.New("phone must contain at least 5 digits")
+	}
+	return nil
+}
+
+func validateEmail(value string) error {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return nil
+	}
+	addr, err := mail.ParseAddress(value)
+	if err != nil || addr.Address != value {
+		return errors.New("email is invalid")
+	}
+	parts := strings.Split(value, "@")
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" || !strings.Contains(parts[1], ".") {
+		return errors.New("email is invalid")
 	}
 	return nil
 }

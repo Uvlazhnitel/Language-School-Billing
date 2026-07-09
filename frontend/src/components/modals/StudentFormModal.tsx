@@ -115,60 +115,46 @@ export function StudentFormModal({
         )}
 
         {(exactMatch || possibleMatches.length > 0) && (
-          <div className="formRow">
-            <div
-              style={{
-                width: "100%",
-                padding: "12px",
-                borderRadius: "8px",
-                backgroundColor: "#fff4e5",
-                border: "1px solid #f59e0b",
-              }}
-            >
-              <div style={{ fontWeight: 600, marginBottom: "8px" }}>
+          <section className="duplicateAlert">
+            <div className="duplicateAlertHeader">
+              <div className="duplicateAlertEyebrow">{t("field.warning")}</div>
+              <div className="duplicateAlertTitle">
                 {exactMatch ? t("student.duplicateExactTitle") : t("student.duplicatePossibleTitle")}
               </div>
-              <div style={{ marginBottom: "12px", lineHeight: "1.5" }}>
+              <p className="duplicateAlertText">
                 {exactMatch ? t("msg.studentDuplicateExact") : t("msg.studentDuplicatePossible")}
-              </div>
-              <div style={{ display: "grid", gap: "8px" }}>
-                {(exactMatch ? [exactMatch] : possibleMatches).map((student) => (
-                  <div
-                    key={student.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: "12px",
-                      alignItems: "center",
-                      padding: "10px",
-                      borderRadius: "6px",
-                      backgroundColor: "white",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{student.fullName}</div>
-                      <div style={{ fontSize: "0.95em", color: "#555" }}>
-                        {[student.personalCode, student.phone, student.email].filter(Boolean).join(" · ")}
-                      </div>
-                      <div style={{ fontSize: "0.9em", color: "#777" }}>
-                        {student.isActive ? t("student.statusActive") : t("student.statusInactive")}
-                      </div>
+              </p>
+            </div>
+
+            <div className="duplicateMatchList">
+              {(exactMatch ? [exactMatch] : possibleMatches).map((student) => (
+                <article key={student.id} className="duplicateMatchCard">
+                  <div className="duplicateMatchMain">
+                    <div className="duplicateMatchName">{student.fullName}</div>
+                    <div className="duplicateMatchMeta">
+                      {[student.personalCode, student.phone, student.email].filter(Boolean).join(" · ")}
                     </div>
+                    <div className="duplicateMatchStatus">
+                      {student.isActive ? t("student.statusActive") : t("student.statusInactive")}
+                    </div>
+                  </div>
+                  <div className="duplicateMatchActions">
                     <button type="button" onClick={() => onOpenExistingStudent(student.id)}>
                       {t("button.openStudent")}
                     </button>
                   </div>
-                ))}
-              </div>
-              {!exactMatch && possibleMatches.length > 0 && (
-                <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}>
-                  <button type="button" onClick={onCreateAnyway}>
-                    {t("button.createAnyway")}
-                  </button>
-                </div>
-              )}
+                </article>
+              ))}
             </div>
-          </div>
+
+            {!exactMatch && possibleMatches.length > 0 && (
+              <div className="duplicateAlertFooter">
+                <button type="button" onClick={onCreateAnyway}>
+                  {t("button.createAnyway")}
+                </button>
+              </div>
+            )}
+          </section>
         )}
 
         <div className="modalActions">

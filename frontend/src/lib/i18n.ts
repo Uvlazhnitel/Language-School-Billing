@@ -367,6 +367,17 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.studentNameRequired": "Enter the student name",
     "msg.studentPayerRequired": "A payer name is required for a minor student",
     "msg.studentPayerRoleRequired": "Choose the payer relation for a minor student",
+    "msg.teacherNameRequired": "Enter the teacher name",
+    "msg.invalidStudentName":
+      "Student name can contain only letters, spaces, hyphens, apostrophes, and dots",
+    "msg.invalidPayerName":
+      "Payer name can contain only letters, spaces, hyphens, apostrophes, and dots",
+    "msg.invalidTeacherName":
+      "Teacher name can contain only letters, spaces, hyphens, apostrophes, and dots",
+    "msg.invalidPersonalCode": "Personal code must be in the format 123456-12345",
+    "msg.invalidPhone":
+      "Phone can contain only digits, spaces, +, parentheses, hyphens, and must include at least 5 digits",
+    "msg.invalidEmail": "Enter a valid email address",
     "msg.studentUpdated": "Student updated",
     "msg.studentCreated": "Student created",
     "msg.studentDeactivated": "Student deactivated",
@@ -965,6 +976,17 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.studentPayerRequired": "Для несовершеннолетнего ученика нужно указать имя плательщика",
     "msg.studentPayerRoleRequired":
       "Для несовершеннолетнего ученика нужно выбрать роль плательщика",
+    "msg.teacherNameRequired": "Введите имя учителя",
+    "msg.invalidStudentName":
+      "Имя ученика может содержать только буквы, пробелы, дефисы, апострофы и точки",
+    "msg.invalidPayerName":
+      "Имя плательщика может содержать только буквы, пробелы, дефисы, апострофы и точки",
+    "msg.invalidTeacherName":
+      "Имя учителя может содержать только буквы, пробелы, дефисы, апострофы и точки",
+    "msg.invalidPersonalCode": "Персональный код должен быть в формате 123456-12345",
+    "msg.invalidPhone":
+      "Телефон может содержать только цифры, пробелы, +, скобки, дефисы и должен включать минимум 5 цифр",
+    "msg.invalidEmail": "Введите корректный email",
     "msg.studentUpdated": "Ученик успешно обновлён",
     "msg.studentCreated": "Ученик успешно создан",
     "msg.studentDeactivated": "Ученик деактивирован",

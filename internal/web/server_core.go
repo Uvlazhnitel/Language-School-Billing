@@ -316,6 +316,7 @@ func isBadRequestError(err error) bool {
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "required") ||
 		strings.Contains(msg, "must be") ||
+		strings.Contains(msg, "must contain") ||
 		strings.Contains(msg, "invalid") ||
 		strings.Contains(msg, "not configured") ||
 		strings.Contains(msg, "некоррект") ||

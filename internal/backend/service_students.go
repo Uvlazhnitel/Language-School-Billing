@@ -56,7 +56,7 @@ func (s *Service) StudentGet(ctx context.Context, id int) (*StudentDTO, error) {
 }
 
 func (s *Service) StudentDuplicateCheck(ctx context.Context, fullName, personalCode, phone, email string) (*StudentDuplicateCheckResult, error) {
-	fullName = sanitizeInput(fullName)
+	fullName = sanitizeInput(normalizePersonNameInput(fullName))
 	personalCode = sanitizeInput(personalCode)
 	phone = sanitizeInput(phone)
 	email = sanitizeInput(email)
@@ -216,16 +216,28 @@ func (s *Service) aggregatePaymentTotalsByStudent(ctx context.Context, studentID
 }
 
 func (s *Service) StudentCreate(ctx context.Context, fullName, personalCode, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
-	fullName = sanitizeInput(fullName)
-	if err := validateNonEmpty(fullName, "fullName"); err != nil {
+	fullName = sanitizeInput(normalizePersonNameInput(fullName))
+	if err := validatePersonName(fullName, "fullName", true); err != nil {
 		return nil, err
 	}
 	personalCode = sanitizeInput(personalCode)
 	phone = sanitizeInput(phone)
 	email = sanitizeInput(email)
 	note = sanitizeInput(note)
-	payerName = sanitizeInput(payerName)
+	payerName = sanitizeInput(normalizePersonNameInput(payerName))
 	payerRole = normalizePayerRole(payerRole)
+	if err := validatePersonalCode(personalCode); err != nil {
+		return nil, err
+	}
+	if err := validatePhone(phone); err != nil {
+		return nil, err
+	}
+	if err := validateEmail(email); err != nil {
+		return nil, err
+	}
+	if err := validatePersonName(payerName, "payerName", isMinor); err != nil {
+		return nil, err
+	}
 	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
 		return nil, err
 	}
@@ -254,16 +266,28 @@ func (s *Service) StudentCreate(ctx context.Context, fullName, personalCode, pho
 }
 
 func (s *Service) StudentUpdate(ctx context.Context, id int, fullName, personalCode, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
-	fullName = sanitizeInput(fullName)
-	if err := validateNonEmpty(fullName, "fullName"); err != nil {
+	fullName = sanitizeInput(normalizePersonNameInput(fullName))
+	if err := validatePersonName(fullName, "fullName", true); err != nil {
 		return nil, err
 	}
 	personalCode = sanitizeInput(personalCode)
 	phone = sanitizeInput(phone)
 	email = sanitizeInput(email)
 	note = sanitizeInput(note)
-	payerName = sanitizeInput(payerName)
+	payerName = sanitizeInput(normalizePersonNameInput(payerName))
 	payerRole = normalizePayerRole(payerRole)
+	if err := validatePersonalCode(personalCode); err != nil {
+		return nil, err
+	}
+	if err := validatePhone(phone); err != nil {
+		return nil, err
+	}
+	if err := validateEmail(email); err != nil {
+		return nil, err
+	}
+	if err := validatePersonName(payerName, "payerName", isMinor); err != nil {
+		return nil, err
+	}
 	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
 		return nil, err
 	}
@@ -289,19 +313,31 @@ func (s *Service) StudentUpdate(ctx context.Context, id int, fullName, personalC
 }
 
 func (s *Service) StudentUpdateWithVersion(ctx context.Context, id, version int, fullName, personalCode, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
-	fullName = sanitizeInput(fullName)
+	fullName = sanitizeInput(normalizePersonNameInput(fullName))
 	if err := validateVersion(version); err != nil {
 		return nil, err
 	}
-	if err := validateNonEmpty(fullName, "fullName"); err != nil {
+	if err := validatePersonName(fullName, "fullName", true); err != nil {
 		return nil, err
 	}
 	personalCode = sanitizeInput(personalCode)
 	phone = sanitizeInput(phone)
 	email = sanitizeInput(email)
 	note = sanitizeInput(note)
-	payerName = sanitizeInput(payerName)
+	payerName = sanitizeInput(normalizePersonNameInput(payerName))
 	payerRole = normalizePayerRole(payerRole)
+	if err := validatePersonalCode(personalCode); err != nil {
+		return nil, err
+	}
+	if err := validatePhone(phone); err != nil {
+		return nil, err
+	}
+	if err := validateEmail(email); err != nil {
+		return nil, err
+	}
+	if err := validatePersonName(payerName, "payerName", isMinor); err != nil {
+		return nil, err
+	}
 	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
 		return nil, err
 	}

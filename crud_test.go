@@ -64,6 +64,17 @@ func TestTeacherCreateAndList(t *testing.T) {
 	}
 }
 
+func TestTeacherCreateRejectsInvalidName(t *testing.T) {
+	app, client := newCRUDTestApp(t, "crudteacher-invalid")
+	defer client.Close()
+
+	if _, err := app.TeacherCreate("Anna2 Petrova"); err == nil {
+		t.Fatal("expected TeacherCreate to reject digits in name")
+	} else if !strings.Contains(err.Error(), "fullName contains invalid characters") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
 func TestCourseTeacherCRUDAndSearch(t *testing.T) {
 	app, client := newCRUDTestApp(t, "crudcourse")
 	defer client.Close()
@@ -279,7 +290,7 @@ func TestStudentCreateAndUpdateIsMinor(t *testing.T) {
 		t.Fatalf("created.PersonalCode = %q, want %q", created.PersonalCode, "020202-23456")
 	}
 
-	updated, err := app.StudentUpdate(created.ID, "Nika Test", "030303-34567", "123", "", "", false, "", "")
+	updated, err := app.StudentUpdate(created.ID, "Nika Test", "030303-34567", "+371 22123", "", "", false, "", "")
 	if err != nil {
 		t.Fatalf("StudentUpdate: %v", err)
 	}
@@ -311,6 +322,75 @@ func TestStudentCreateMinorRequiresPayerFields(t *testing.T) {
 	}
 }
 
+func TestStudentValidationRejectsInvalidPeopleAndContactFields(t *testing.T) {
+	app, client := newCRUDTestApp(t, "crudstudent-invalid-fields")
+	defer client.Close()
+
+	if _, err := app.StudentCreate("Žanna Petrova", "131008-22451", "+371 22137936", "valid@example.com", "", false, "", ""); err != nil {
+		t.Fatalf("expected valid multilingual student create, got %v", err)
+	}
+
+	tests := []struct {
+		name         string
+		fullName     string
+		personalCode string
+		phone        string
+		email        string
+		isMinor      bool
+		payerName    string
+		payerRole    string
+		wantErr      string
+	}{
+		{
+			name:         "student name digits",
+			fullName:     "Ivan2 Test",
+			personalCode: "",
+			wantErr:      "fullName contains invalid characters",
+		},
+		{
+			name:         "invalid personal code",
+			fullName:     "Ivan Test",
+			personalCode: "abc",
+			wantErr:      "personalCode must be in the format 123456-12345",
+		},
+		{
+			name:         "invalid phone",
+			fullName:     "Ivan Test",
+			personalCode: "",
+			phone:        "abc123",
+			wantErr:      "phone contains invalid characters",
+		},
+		{
+			name:         "invalid email",
+			fullName:     "Ivan Test",
+			personalCode: "",
+			email:        "bad-email",
+			wantErr:      "email is invalid",
+		},
+		{
+			name:         "invalid payer name",
+			fullName:     "Ivan Test",
+			personalCode: "",
+			isMinor:      true,
+			payerName:    "Mama2",
+			payerRole:    "mother",
+			wantErr:      "payerName contains invalid characters",
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := app.StudentCreate(tc.fullName, tc.personalCode, tc.phone, tc.email, "", tc.isMinor, tc.payerName, tc.payerRole)
+			if err == nil {
+				t.Fatalf("expected validation error containing %q", tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("error = %v, want substring %q", err, tc.wantErr)
+			}
+		})
+	}
+}
+
 func TestStudentCreateRejectsDuplicatePersonalCodeForInactiveStudent(t *testing.T) {
 	app, client := newCRUDTestApp(t, "crudstudentduplicate-create")
 	defer client.Close()
@@ -334,11 +414,11 @@ func TestStudentDuplicateCheck(t *testing.T) {
 	app, client := newCRUDTestApp(t, "crudstudentduplicate-check")
 	defer client.Close()
 
-	exact, err := app.StudentCreate("Anna Student", "020202-23456", "111", "anna@example.com", "", false, "", "")
+	exact, err := app.StudentCreate("Anna Student", "020202-23456", "+371 22111", "anna@example.com", "", false, "", "")
 	if err != nil {
 		t.Fatalf("StudentCreate exact: %v", err)
 	}
-	possibleByPhone, err := app.StudentCreate("Berta Student", "", "222", "", "", false, "", "")
+	possibleByPhone, err := app.StudentCreate("Berta Student", "", "+371 22222", "", "", false, "", "")
 	if err != nil {
 		t.Fatalf("StudentCreate phone match: %v", err)
 	}
@@ -349,7 +429,7 @@ func TestStudentDuplicateCheck(t *testing.T) {
 	if err := app.StudentSetActive(possibleByEmail.ID, false); err != nil {
 		t.Fatalf("StudentSetActive possibleByEmail: %v", err)
 	}
-	if _, err := app.StudentCreate("Other Name", "", "222", "berta@example.com", "", false, "", ""); err != nil {
+	if _, err := app.StudentCreate("Other Name", "", "+371 22222", "berta@example.com", "", false, "", ""); err != nil {
 		t.Fatalf("StudentCreate other name: %v", err)
 	}
 
@@ -365,7 +445,7 @@ func TestStudentDuplicateCheck(t *testing.T) {
 		t.Fatalf("possibleMatches len = %d, want 0", len(result.PossibleMatches))
 	}
 
-	result, err = svc.StudentDuplicateCheck(app.ctx, "Berta Student", "", "222", "")
+	result, err = svc.StudentDuplicateCheck(app.ctx, "Berta Student", "", "+371 22222", "")
 	if err != nil {
 		t.Fatalf("StudentDuplicateCheck phone: %v", err)
 	}
@@ -387,7 +467,7 @@ func TestStudentDuplicateCheck(t *testing.T) {
 		t.Fatal("expected inactive student to be included in possible matches")
 	}
 
-	result, err = svc.StudentDuplicateCheck(app.ctx, "Different Name", "", "222", "berta@example.com")
+	result, err = svc.StudentDuplicateCheck(app.ctx, "Different Name", "", "+371 22222", "berta@example.com")
 	if err != nil {
 		t.Fatalf("StudentDuplicateCheck different name: %v", err)
 	}

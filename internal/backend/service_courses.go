@@ -30,8 +30,8 @@ func (s *Service) TeacherList(ctx context.Context, q string) ([]TeacherDTO, erro
 }
 
 func (s *Service) TeacherCreate(ctx context.Context, fullName string) (*TeacherDTO, error) {
-	fullName = sanitizeInput(fullName)
-	if err := validateNonEmpty(fullName, "fullName"); err != nil {
+	fullName = sanitizeInput(normalizePersonNameInput(fullName))
+	if err := validatePersonName(fullName, "fullName", true); err != nil {
 		return nil, err
 	}
 	existing, err := s.rt.DB.Ent.Teacher.Query().Where(teacher.FullNameEqualFold(fullName)).Only(ctx)

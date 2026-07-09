@@ -50,7 +50,7 @@ func TestStudentCourseEnrollmentCRUD(t *testing.T) {
 
 	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
 		"fullName": "Alice Student",
-		"phone":    "123",
+		"phone":    "+371 22123",
 		"email":    "alice@example.com",
 	})
 	if st.FullName != "Alice Student" {
@@ -60,7 +60,7 @@ func TestStudentCourseEnrollmentCRUD(t *testing.T) {
 	st = putJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students/"+strconv.Itoa(st.ID), map[string]any{
 		"version":  st.Version,
 		"fullName": "Alice Updated",
-		"phone":    "555",
+		"phone":    "+371 22555",
 		"email":    "alice@example.com",
 	})
 	if st.FullName != "Alice Updated" {
@@ -134,12 +134,12 @@ func TestStudentDuplicateProtectionAPI(t *testing.T) {
 	exact := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
 		"fullName":     "Anna Student",
 		"personalCode": "020202-23456",
-		"phone":        "111",
+		"phone":        "+371 22111",
 		"email":        "anna@example.com",
 	})
 	possible := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
 		"fullName": "Berta Student",
-		"phone":    "222",
+		"phone":    "+371 22222",
 	})
 	possibleInactive := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
 		"fullName": "Berta Student",
@@ -163,7 +163,7 @@ func TestStudentDuplicateProtectionAPI(t *testing.T) {
 
 	check = postJSON[backend.StudentDuplicateCheckResult](t, env.Client, env.Server.URL, "/api/students/duplicate-check", map[string]any{
 		"fullName": "Berta Student",
-		"phone":    "222",
+		"phone":    "+371 22222",
 	})
 	if check.ExactMatch != nil {
 		t.Fatalf("exactMatch = %+v, want nil", check.ExactMatch)

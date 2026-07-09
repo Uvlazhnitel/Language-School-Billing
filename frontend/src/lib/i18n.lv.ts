@@ -362,6 +362,17 @@ export const lvTranslations: Record<string, string> = {
   "msg.studentNameRequired": "Ievadiet skolēna vārdu",
   "msg.studentPayerRequired": "Nepilngadīgam skolēnam ir nepieciešams maksātāja vārds",
   "msg.studentPayerRoleRequired": "Nepilngadīgam skolēnam izvēlieties maksātāja saistību",
+  "msg.teacherNameRequired": "Ievadiet skolotāja vārdu",
+  "msg.invalidStudentName":
+    "Skolēna vārds drīkst saturēt tikai burtus, atstarpes, defises, apostrofus un punktus",
+  "msg.invalidPayerName":
+    "Maksātāja vārds drīkst saturēt tikai burtus, atstarpes, defises, apostrofus un punktus",
+  "msg.invalidTeacherName":
+    "Skolotāja vārds drīkst saturēt tikai burtus, atstarpes, defises, apostrofus un punktus",
+  "msg.invalidPersonalCode": "Personas kodam jābūt formātā 123456-12345",
+  "msg.invalidPhone":
+    "Tālrunis drīkst saturēt tikai ciparus, atstarpes, +, iekavas, defises un vismaz 5 ciparus",
+  "msg.invalidEmail": "Ievadiet derīgu e-pasta adresi",
   "msg.studentUpdated": "Skolēns atjaunināts",
   "msg.studentCreated": "Skolēns izveidots",
   "msg.studentDeactivated": "Skolēns deaktivizēts",

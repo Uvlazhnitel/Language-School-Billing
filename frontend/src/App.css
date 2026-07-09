@@ -1775,6 +1775,106 @@ tfoot td {
   color: var(--bad);
 }
 
+.duplicateAlert {
+  margin: 18px 0 8px;
+  padding: 18px;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 248, 233, 0.98), rgba(255, 242, 217, 0.92)),
+    radial-gradient(circle at top right, rgba(245, 158, 11, 0.16), transparent 34%);
+  border: 1px solid rgba(224, 142, 20, 0.55);
+  box-shadow: 0 18px 38px rgba(109, 73, 15, 0.08);
+}
+
+.duplicateAlertHeader {
+  display: grid;
+  gap: 8px;
+}
+
+.duplicateAlertEyebrow {
+  color: #9a6700;
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.duplicateAlertTitle {
+  color: #2d3448;
+  font-size: 1.25rem;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.duplicateAlertText {
+  margin: 0;
+  max-width: 42ch;
+  color: #5f4a2f;
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+.duplicateMatchList {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.duplicateMatchCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid rgba(179, 145, 95, 0.2);
+}
+
+.duplicateMatchMain {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.duplicateMatchName {
+  color: #283149;
+  font-size: 1.05rem;
+  font-weight: 800;
+  line-height: 1.2;
+}
+
+.duplicateMatchMeta {
+  color: #545d73;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.duplicateMatchStatus {
+  color: #7b6a52;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.duplicateMatchActions {
+  flex: 0 0 auto;
+}
+
+.duplicateMatchActions button,
+.duplicateAlertFooter button {
+  min-height: 42px;
+}
+
+.duplicateAlertFooter {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 14px;
+}
+
 .templatePlaceholderList {
   display: flex;
   flex-wrap: wrap;
@@ -2226,6 +2326,29 @@ tfoot td {
 
   .modalActions {
     bottom: -18px;
+  }
+}
+
+@media (max-width: 720px) {
+  .duplicateAlert {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .duplicateMatchCard {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .duplicateMatchActions,
+  .duplicateAlertFooter {
+    display: flex;
+    justify-content: stretch;
+  }
+
+  .duplicateMatchActions button,
+  .duplicateAlertFooter button {
+    width: 100%;
   }
 }
 
