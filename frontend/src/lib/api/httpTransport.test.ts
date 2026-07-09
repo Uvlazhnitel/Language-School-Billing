@@ -108,6 +108,45 @@ describe("httpTransport", () => {
     );
   });
 
+  it("maps student duplicate-check endpoint", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.endsWith("/api/students/duplicate-check")) {
+        return jsonResponse({
+          exactMatch: {
+            id: 7,
+            version: 1,
+            fullName: "Anna Student",
+            personalCode: "020202-23456",
+            phone: "123",
+            email: "anna@example.com",
+            note: "",
+            isMinor: false,
+            payerName: "",
+            payerRole: "",
+            isActive: true,
+            balance: 0,
+            debt: 0,
+          },
+          possibleMatches: [],
+        });
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      httpTransport.checkStudentDuplicates("Anna Student", "020202-23456", "123", "anna@example.com")
+    ).resolves.toEqual({
+      exactMatch: expect.objectContaining({
+        id: 7,
+        fullName: "Anna Student",
+        personalCode: "020202-23456",
+      }),
+      possibleMatches: [],
+    });
+  });
+
   it("maps invoice pdf endpoints", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

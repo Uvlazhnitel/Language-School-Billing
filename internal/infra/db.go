@@ -63,6 +63,10 @@ func Open(ctx context.Context, dbPath string) (*DB, error) {
 		_ = client.Close()
 		return nil, err
 	}
+	if err := ensureStudentPersonalCodeUniqueIndex(ctx, dsn); err != nil {
+		_ = client.Close()
+		return nil, err
+	}
 
 	log.Println("DB ready at", dbPath)
 	return &DB{Ent: client}, nil
@@ -222,6 +226,21 @@ WHERE e.billing_mode = 'subscription'
       AND am.year = cms.year
       AND am.month = cms.month
   )
+`)
+	return err
+}
+
+func ensureStudentPersonalCodeUniqueIndex(ctx context.Context, dsn string) error {
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	_, err = db.ExecContext(ctx, `
+CREATE UNIQUE INDEX IF NOT EXISTS idx_students_personal_code_nonempty_unique
+ON students (personal_code COLLATE NOCASE)
+WHERE personal_code <> ''
 `)
 	return err
 }

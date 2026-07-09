@@ -311,6 +311,99 @@ func TestStudentCreateMinorRequiresPayerFields(t *testing.T) {
 	}
 }
 
+func TestStudentCreateRejectsDuplicatePersonalCodeForInactiveStudent(t *testing.T) {
+	app, client := newCRUDTestApp(t, "crudstudentduplicate-create")
+	defer client.Close()
+
+	first, err := app.StudentCreate("Mila Test", "010101-12345", "", "", "", false, "", "")
+	if err != nil {
+		t.Fatalf("StudentCreate first: %v", err)
+	}
+	if err := app.StudentSetActive(first.ID, false); err != nil {
+		t.Fatalf("StudentSetActive: %v", err)
+	}
+
+	if _, err := app.StudentCreate("Mila Clone", "010101-12345", "", "", "", false, "", ""); err == nil {
+		t.Fatal("expected StudentCreate to reject duplicate personalCode")
+	} else if !strings.Contains(err.Error(), "personal code already exists") {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestStudentDuplicateCheck(t *testing.T) {
+	app, client := newCRUDTestApp(t, "crudstudentduplicate-check")
+	defer client.Close()
+
+	exact, err := app.StudentCreate("Anna Student", "020202-23456", "111", "anna@example.com", "", false, "", "")
+	if err != nil {
+		t.Fatalf("StudentCreate exact: %v", err)
+	}
+	possibleByPhone, err := app.StudentCreate("Berta Student", "", "222", "", "", false, "", "")
+	if err != nil {
+		t.Fatalf("StudentCreate phone match: %v", err)
+	}
+	possibleByEmail, err := app.StudentCreate("Berta Student", "", "", "berta@example.com", "", false, "", "")
+	if err != nil {
+		t.Fatalf("StudentCreate email match: %v", err)
+	}
+	if err := app.StudentSetActive(possibleByEmail.ID, false); err != nil {
+		t.Fatalf("StudentSetActive possibleByEmail: %v", err)
+	}
+	if _, err := app.StudentCreate("Other Name", "", "222", "berta@example.com", "", false, "", ""); err != nil {
+		t.Fatalf("StudentCreate other name: %v", err)
+	}
+
+	svc := app.ensureBackendService()
+	result, err := svc.StudentDuplicateCheck(app.ctx, "Anna Student", "020202-23456", "", "")
+	if err != nil {
+		t.Fatalf("StudentDuplicateCheck exact: %v", err)
+	}
+	if result.ExactMatch == nil || result.ExactMatch.ID != exact.ID {
+		t.Fatalf("exactMatch = %+v, want student %d", result.ExactMatch, exact.ID)
+	}
+	if len(result.PossibleMatches) != 0 {
+		t.Fatalf("possibleMatches len = %d, want 0", len(result.PossibleMatches))
+	}
+
+	result, err = svc.StudentDuplicateCheck(app.ctx, "Berta Student", "", "222", "")
+	if err != nil {
+		t.Fatalf("StudentDuplicateCheck phone: %v", err)
+	}
+	if result.ExactMatch != nil {
+		t.Fatalf("exactMatch = %+v, want nil", result.ExactMatch)
+	}
+	if len(result.PossibleMatches) != 1 || result.PossibleMatches[0].ID != possibleByPhone.ID {
+		t.Fatalf("possibleMatches = %+v, want [%d]", result.PossibleMatches, possibleByPhone.ID)
+	}
+
+	result, err = svc.StudentDuplicateCheck(app.ctx, "Berta Student", "", "", "berta@example.com")
+	if err != nil {
+		t.Fatalf("StudentDuplicateCheck email: %v", err)
+	}
+	if len(result.PossibleMatches) != 1 || result.PossibleMatches[0].ID != possibleByEmail.ID {
+		t.Fatalf("possibleMatches = %+v, want [%d]", result.PossibleMatches, possibleByEmail.ID)
+	}
+	if result.PossibleMatches[0].IsActive {
+		t.Fatal("expected inactive student to be included in possible matches")
+	}
+
+	result, err = svc.StudentDuplicateCheck(app.ctx, "Different Name", "", "222", "berta@example.com")
+	if err != nil {
+		t.Fatalf("StudentDuplicateCheck different name: %v", err)
+	}
+	if len(result.PossibleMatches) != 0 {
+		t.Fatalf("possibleMatches len = %d, want 0", len(result.PossibleMatches))
+	}
+
+	result, err = svc.StudentDuplicateCheck(app.ctx, "Berta Student", "", "", "")
+	if err != nil {
+		t.Fatalf("StudentDuplicateCheck empty contacts: %v", err)
+	}
+	if len(result.PossibleMatches) != 0 || result.ExactMatch != nil {
+		t.Fatalf("unexpected duplicate result for empty contacts: %+v", result)
+	}
+}
+
 func TestStudentDeleteAllowsDraftInvoices(t *testing.T) {
 	app, client := newCRUDTestApp(t, "crudstudentdelete-draft")
 	defer client.Close()

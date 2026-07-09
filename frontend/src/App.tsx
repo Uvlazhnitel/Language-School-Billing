@@ -36,11 +36,13 @@ import { getInvoiceMenuActions } from "./lib/invoiceUi";
 import {
   listStudents,
   getStudent,
+  checkStudentDuplicates,
   createStudent,
   updateStudent,
   setStudentActive,
   deleteStudent,
   StudentDTO,
+  StudentDuplicateCheckResult,
 } from "./lib/students";
 
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
@@ -301,6 +303,8 @@ export default function App() {
   const [sfIsMinor, setSfIsMinor] = useState(false);
   const [sfPayerName, setSfPayerName] = useState("");
   const [sfPayerRole, setSfPayerRole] = useState("");
+  const [studentDuplicateCheckResult, setStudentDuplicateCheckResult] =
+    useState<StudentDuplicateCheckResult | null>(null);
 
   // ---------------- Student Card ----------------
   const [studentCardOpen, setStudentCardOpen] = useState(false);
@@ -345,6 +349,10 @@ export default function App() {
     if (!appReady) return;
     void loadAllStudents();
   }, [appReady, loadAllStudents]);
+
+  const resetStudentDuplicateCheck = useCallback(() => {
+    setStudentDuplicateCheckResult(null);
+  }, []);
 
   const loadDashboard = useCallback(async () => {
     setOverviewLoading(true);
@@ -413,6 +421,7 @@ export default function App() {
   }, [appReady, tab, loadAuditLog]);
 
   function openAddStudent() {
+    resetStudentDuplicateCheck();
     setEditingStudent(null);
     setSfName("");
     setSfPersonalCode("");
@@ -426,6 +435,7 @@ export default function App() {
   }
 
   function openEditStudent(s: StudentDTO) {
+    resetStudentDuplicateCheck();
     setEditingStudent(s);
     setSfName(s.fullName);
     setSfPersonalCode(s.personalCode ?? "");
@@ -438,7 +448,7 @@ export default function App() {
     setStudentModalOpen(true);
   }
 
-  async function saveStudent() {
+  async function saveStudent(skipDuplicateCheck = false) {
     if (!sfName.trim()) {
       showMessage(t("msg.studentNameRequired"), "error");
       return;
@@ -467,6 +477,18 @@ export default function App() {
           sfPayerRole
         );
       } else {
+        if (!skipDuplicateCheck) {
+          const duplicateResult = await checkStudentDuplicates(
+            sfName,
+            sfPersonalCode,
+            sfPhone,
+            sfEmail
+          );
+          if (duplicateResult.exactMatch || duplicateResult.possibleMatches.length > 0) {
+            setStudentDuplicateCheckResult(duplicateResult);
+            return;
+          }
+        }
         savedStudent = await createStudent(
           sfName,
           sfPersonalCode,
@@ -478,6 +500,7 @@ export default function App() {
           sfPayerRole
         );
       }
+      resetStudentDuplicateCheck();
       setStudentModalOpen(false);
       await Promise.all([loadStudents(), loadAllStudents()]);
       if (selectedStudentCard?.id === savedStudent.id) {
@@ -634,6 +657,12 @@ export default function App() {
     } catch (e: any) {
       showMessage(t("msg.studentCardLoadError", { message: String(e?.message ?? e) }), "error");
     }
+  }
+
+  async function openExistingDuplicateStudent(studentId: number) {
+    resetStudentDuplicateCheck();
+    setStudentModalOpen(false);
+    await openStudentInWorkspaceById(studentId);
   }
 
   useEffect(() => {
@@ -2283,17 +2312,49 @@ export default function App() {
                 sfIsMinor={sfIsMinor}
                 sfPayerName={sfPayerName}
                 sfPayerRole={sfPayerRole}
+                studentDuplicateCheckResult={studentDuplicateCheckResult}
                 payerRoleOptions={payerRoleOptions}
-                onSfNameChange={setSfName}
-                onSfPersonalCodeChange={setSfPersonalCode}
-                onSfPhoneChange={setSfPhone}
-                onSfEmailChange={setSfEmail}
-                onSfNoteChange={setSfNote}
-                onSfIsMinorChange={setSfIsMinor}
-                onSfPayerNameChange={setSfPayerName}
-                onSfPayerRoleChange={setSfPayerRole}
+                onSfNameChange={(value) => {
+                  resetStudentDuplicateCheck();
+                  setSfName(value);
+                }}
+                onSfPersonalCodeChange={(value) => {
+                  resetStudentDuplicateCheck();
+                  setSfPersonalCode(value);
+                }}
+                onSfPhoneChange={(value) => {
+                  resetStudentDuplicateCheck();
+                  setSfPhone(value);
+                }}
+                onSfEmailChange={(value) => {
+                  resetStudentDuplicateCheck();
+                  setSfEmail(value);
+                }}
+                onSfNoteChange={(value) => {
+                  resetStudentDuplicateCheck();
+                  setSfNote(value);
+                }}
+                onSfIsMinorChange={(value) => {
+                  resetStudentDuplicateCheck();
+                  setSfIsMinor(value);
+                }}
+                onSfPayerNameChange={(value) => {
+                  resetStudentDuplicateCheck();
+                  setSfPayerName(value);
+                }}
+                onSfPayerRoleChange={(value) => {
+                  resetStudentDuplicateCheck();
+                  setSfPayerRole(value);
+                }}
                 onSaveStudent={() => void saveStudent()}
-                onCloseStudentModal={() => setStudentModalOpen(false)}
+                onOpenExistingDuplicateStudent={(studentId) =>
+                  void openExistingDuplicateStudent(studentId)
+                }
+                onCreateStudentAnyway={() => void saveStudent(true)}
+                onCloseStudentModal={() => {
+                  resetStudentDuplicateCheck();
+                  setStudentModalOpen(false);
+                }}
               />
             )}
 

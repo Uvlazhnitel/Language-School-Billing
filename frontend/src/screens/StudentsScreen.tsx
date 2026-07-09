@@ -3,7 +3,7 @@ import { StudentFormModal } from "../components/modals/StudentFormModal";
 import type { EnrollmentDTO } from "../lib/enrollments";
 import type { InvoiceListItemView } from "../lib/invoices";
 import type { BalanceDTO, DebtInvoiceDTO, PaymentDTO } from "../lib/payments";
-import type { StudentDTO } from "../lib/students";
+import type { StudentDTO, StudentDuplicateCheckResult } from "../lib/students";
 import type { StudentActivityItem, StudentNextAction } from "../lib/studentActivity";
 import type { TranslateFn } from "../lib/i18n";
 
@@ -53,6 +53,7 @@ type StudentsScreenProps = {
   sfIsMinor: boolean;
   sfPayerName: string;
   sfPayerRole: string;
+  studentDuplicateCheckResult: StudentDuplicateCheckResult | null;
   payerRoleOptions: readonly string[];
   onSfNameChange: (value: string) => void;
   onSfPersonalCodeChange: (value: string) => void;
@@ -63,6 +64,8 @@ type StudentsScreenProps = {
   onSfPayerNameChange: (value: string) => void;
   onSfPayerRoleChange: (value: string) => void;
   onSaveStudent: () => void;
+  onOpenExistingDuplicateStudent: (studentId: number) => void;
+  onCreateStudentAnyway: () => void;
   onCloseStudentModal: () => void;
   t: TranslateFn;
 };
@@ -78,6 +81,7 @@ export function StudentsScreen({
   sfIsMinor,
   sfPayerName,
   sfPayerRole,
+  studentDuplicateCheckResult,
   payerRoleOptions,
   onSfNameChange,
   onSfPersonalCodeChange,
@@ -88,6 +92,8 @@ export function StudentsScreen({
   onSfPayerNameChange,
   onSfPayerRoleChange,
   onSaveStudent,
+  onOpenExistingDuplicateStudent,
+  onCreateStudentAnyway,
   onCloseStudentModal,
   t,
   ...workspaceProps
@@ -118,6 +124,9 @@ export function StudentsScreen({
           onPayerRoleChange={onSfPayerRoleChange}
           onSave={onSaveStudent}
           onCancel={onCloseStudentModal}
+          duplicateCheckResult={studentDuplicateCheckResult}
+          onOpenExistingStudent={onOpenExistingDuplicateStudent}
+          onCreateAnyway={onCreateStudentAnyway}
           t={t}
         />
       )}

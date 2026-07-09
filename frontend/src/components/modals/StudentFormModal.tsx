@@ -1,4 +1,5 @@
 import type { TranslateFn } from "../../lib/i18n";
+import type { StudentDuplicateCheckResult } from "../../lib/students";
 
 type StudentFormModalProps = {
   editing: boolean;
@@ -22,6 +23,9 @@ type StudentFormModalProps = {
   onPayerRoleChange: (value: string) => void;
   onSave: () => void;
   onCancel: () => void;
+  duplicateCheckResult?: StudentDuplicateCheckResult | null;
+  onOpenExistingStudent: (studentId: number) => void;
+  onCreateAnyway: () => void;
   t: TranslateFn;
 };
 
@@ -47,8 +51,14 @@ export function StudentFormModal({
   onPayerRoleChange,
   onSave,
   onCancel,
+  duplicateCheckResult,
+  onOpenExistingStudent,
+  onCreateAnyway,
   t,
 }: StudentFormModalProps) {
+  const exactMatch = duplicateCheckResult?.exactMatch;
+  const possibleMatches = duplicateCheckResult?.possibleMatches ?? [];
+
   return (
     <div className="modal">
       <div className="modalBody">
@@ -102,6 +112,63 @@ export function StudentFormModal({
               </select>
             </div>
           </>
+        )}
+
+        {(exactMatch || possibleMatches.length > 0) && (
+          <div className="formRow">
+            <div
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "8px",
+                backgroundColor: "#fff4e5",
+                border: "1px solid #f59e0b",
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: "8px" }}>
+                {exactMatch ? t("student.duplicateExactTitle") : t("student.duplicatePossibleTitle")}
+              </div>
+              <div style={{ marginBottom: "12px", lineHeight: "1.5" }}>
+                {exactMatch ? t("msg.studentDuplicateExact") : t("msg.studentDuplicatePossible")}
+              </div>
+              <div style={{ display: "grid", gap: "8px" }}>
+                {(exactMatch ? [exactMatch] : possibleMatches).map((student) => (
+                  <div
+                    key={student.id}
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      gap: "12px",
+                      alignItems: "center",
+                      padding: "10px",
+                      borderRadius: "6px",
+                      backgroundColor: "white",
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: 600 }}>{student.fullName}</div>
+                      <div style={{ fontSize: "0.95em", color: "#555" }}>
+                        {[student.personalCode, student.phone, student.email].filter(Boolean).join(" · ")}
+                      </div>
+                      <div style={{ fontSize: "0.9em", color: "#777" }}>
+                        {student.isActive ? t("student.statusActive") : t("student.statusInactive")}
+                      </div>
+                    </div>
+                    <button type="button" onClick={() => onOpenExistingStudent(student.id)}>
+                      {t("button.openStudent")}
+                    </button>
+                  </div>
+                ))}
+              </div>
+              {!exactMatch && possibleMatches.length > 0 && (
+                <div style={{ marginTop: "12px", display: "flex", justifyContent: "flex-end" }}>
+                  <button type="button" onClick={onCreateAnyway}>
+                    {t("button.createAnyway")}
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         <div className="modalActions">

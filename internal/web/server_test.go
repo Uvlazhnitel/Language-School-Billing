@@ -127,6 +127,74 @@ func TestStudentCourseEnrollmentCRUD(t *testing.T) {
 	}
 }
 
+func TestStudentDuplicateProtectionAPI(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	exact := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName":     "Anna Student",
+		"personalCode": "020202-23456",
+		"phone":        "111",
+		"email":        "anna@example.com",
+	})
+	possible := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "Berta Student",
+		"phone":    "222",
+	})
+	possibleInactive := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "Berta Student",
+		"email":    "berta@example.com",
+	})
+	postJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/students/"+strconv.Itoa(possibleInactive.ID)+"/active", map[string]any{
+		"version": possibleInactive.Version,
+		"active":  false,
+	})
+
+	check := postJSON[backend.StudentDuplicateCheckResult](t, env.Client, env.Server.URL, "/api/students/duplicate-check", map[string]any{
+		"fullName":     "Anna Student",
+		"personalCode": "020202-23456",
+	})
+	if check.ExactMatch == nil || check.ExactMatch.ID != exact.ID {
+		t.Fatalf("exactMatch = %+v, want %d", check.ExactMatch, exact.ID)
+	}
+	if len(check.PossibleMatches) != 0 {
+		t.Fatalf("possibleMatches len = %d, want 0", len(check.PossibleMatches))
+	}
+
+	check = postJSON[backend.StudentDuplicateCheckResult](t, env.Client, env.Server.URL, "/api/students/duplicate-check", map[string]any{
+		"fullName": "Berta Student",
+		"phone":    "222",
+	})
+	if check.ExactMatch != nil {
+		t.Fatalf("exactMatch = %+v, want nil", check.ExactMatch)
+	}
+	if len(check.PossibleMatches) != 1 || check.PossibleMatches[0].ID != possible.ID {
+		t.Fatalf("possibleMatches = %+v, want [%d]", check.PossibleMatches, possible.ID)
+	}
+
+	check = postJSON[backend.StudentDuplicateCheckResult](t, env.Client, env.Server.URL, "/api/students/duplicate-check", map[string]any{
+		"fullName": "Berta Student",
+		"email":    "berta@example.com",
+	})
+	if len(check.PossibleMatches) != 1 || check.PossibleMatches[0].ID != possibleInactive.ID {
+		t.Fatalf("possibleMatches = %+v, want [%d]", check.PossibleMatches, possibleInactive.ID)
+	}
+	if check.PossibleMatches[0].IsActive {
+		t.Fatal("expected inactive student in duplicate check results")
+	}
+
+	resp, body := rawRequest(t, env.Client, http.MethodPost, env.Server.URL+"/api/students", bytes.NewReader(mustJSON(t, map[string]any{
+		"fullName":     "Duplicate Student",
+		"personalCode": "020202-23456",
+	})))
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("duplicate create status = %d body=%s, want 409", resp.StatusCode, body)
+	}
+	if !strings.Contains(string(body), "personal code already exists") {
+		t.Fatalf("duplicate create body = %s, want personal code message", body)
+	}
+}
+
 func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
@@ -2823,4 +2891,13 @@ func rawRequest(t *testing.T, client *http.Client, method, url string, body io.R
 		t.Fatal(err)
 	}
 	return resp, data
+}
+
+func mustJSON(t *testing.T, payload any) []byte {
+	t.Helper()
+	data, err := json.Marshal(payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return data
 }

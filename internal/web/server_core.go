@@ -69,6 +69,7 @@ func (s *Server) registerMetaRoutes() {
 func (s *Server) registerStudentRoutes() {
 	s.mux.HandleFunc("GET /api/students", s.handleStudentsList)
 	s.mux.HandleFunc("POST /api/students", s.handleStudentsCreate)
+	s.mux.HandleFunc("POST /api/students/duplicate-check", s.handleStudentsDuplicateCheck)
 	s.mux.HandleFunc("GET /api/students/{id}", s.handleStudentsGet)
 	s.mux.HandleFunc("PUT /api/students/{id}", s.handleStudentsUpdate)
 	s.mux.HandleFunc("DELETE /api/students/{id}", s.handleStudentsDelete)

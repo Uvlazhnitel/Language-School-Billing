@@ -36,6 +36,7 @@ export type {
   RecentPaymentDTO,
   Row,
   StudentDTO,
+  StudentDuplicateCheckResult,
   TeacherDTO,
   TransportCapabilities,
   UserDTO,

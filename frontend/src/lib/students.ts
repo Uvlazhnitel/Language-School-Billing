@@ -1,5 +1,5 @@
-import { getTransport, type StudentDTO } from "./api";
-export type { StudentDTO } from "./api";
+import { getTransport, type StudentDTO, type StudentDuplicateCheckResult } from "./api";
+export type { StudentDTO, StudentDuplicateCheckResult } from "./api";
 
 export async function listStudents(q: string, includeInactive: boolean): Promise<StudentDTO[]> {
   const transport = await getTransport();
@@ -9,6 +9,16 @@ export async function listStudents(q: string, includeInactive: boolean): Promise
 export async function getStudent(id: number): Promise<StudentDTO> {
   const transport = await getTransport();
   return transport.getStudent(id);
+}
+
+export async function checkStudentDuplicates(
+  fullName: string,
+  personalCode: string,
+  phone: string,
+  email: string
+): Promise<StudentDuplicateCheckResult> {
+  const transport = await getTransport();
+  return transport.checkStudentDuplicates(fullName, personalCode, phone, email);
 }
 
 export async function createStudent(

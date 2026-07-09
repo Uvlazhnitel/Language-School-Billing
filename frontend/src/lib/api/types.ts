@@ -155,6 +155,11 @@ export type StudentDTO = {
   debt: number;
 };
 
+export type StudentDuplicateCheckResult = {
+  exactMatch?: StudentDTO;
+  possibleMatches: StudentDTO[];
+};
+
 export type TeacherDTO = {
   id: number;
   fullName: string;
@@ -425,6 +430,12 @@ export interface AppTransport {
 
   listStudents(q: string, includeInactive: boolean): Promise<StudentDTO[]>;
   getStudent(id: number): Promise<StudentDTO>;
+  checkStudentDuplicates(
+    fullName: string,
+    personalCode: string,
+    phone: string,
+    email: string
+  ): Promise<StudentDuplicateCheckResult>;
   createStudent(
     fullName: string,
     personalCode: string,

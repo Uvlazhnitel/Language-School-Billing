@@ -25,6 +25,7 @@ import type {
   RecentPaymentDTO,
   Row,
   StudentDTO,
+  StudentDuplicateCheckResult,
   TeacherDTO,
   SessionInfo,
   UserDTO,
@@ -212,6 +213,12 @@ export const httpTransport: AppTransport = {
   },
   async getStudent(id) {
     return request<StudentDTO>(`/students/${id}`);
+  },
+  async checkStudentDuplicates(fullName, personalCode, phone, email) {
+    return request<StudentDuplicateCheckResult>("/students/duplicate-check", {
+      method: "POST",
+      ...body({ fullName, personalCode, phone, email }),
+    });
   },
   async createStudent(fullName, personalCode, phone, email, note, isMinor, payerName, payerRole) {
     return request<StudentDTO>("/students", {

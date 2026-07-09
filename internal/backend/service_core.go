@@ -50,6 +50,11 @@ type StudentDTO struct {
 	Debt         float64 `json:"debt"`
 }
 
+type StudentDuplicateCheckResult struct {
+	ExactMatch      *StudentDTO  `json:"exactMatch,omitempty"`
+	PossibleMatches []StudentDTO `json:"possibleMatches"`
+}
+
 type CourseDTO struct {
 	ID                int     `json:"id"`
 	Version           int     `json:"version"`

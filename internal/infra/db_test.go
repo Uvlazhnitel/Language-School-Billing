@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"langschool/ent/attendancemonth"
@@ -275,5 +276,52 @@ func TestOpenBackfillDoesNotOverwriteExistingAttendanceMonths(t *testing.T) {
 	}
 	if rows[1].StudentID != 2 || rows[1].Hours != 4 {
 		t.Fatalf("second attendance month = %+v, want student 2 with hours 4", rows[1])
+	}
+}
+
+func TestOpenCreatesUniqueIndexForNonEmptyStudentPersonalCode(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "student-personal-code-index.sqlite")
+
+	db, err := Open(ctx, dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer db.Ent.Close()
+
+	if _, err := db.Ent.Student.Create().
+		SetFullName("First Student").
+		SetPersonalCode("010101-12345").
+		Save(ctx); err != nil {
+		t.Fatalf("Student.Create first: %v", err)
+	}
+
+	if _, err := db.Ent.Student.Create().
+		SetFullName("Duplicate Student").
+		SetPersonalCode("010101-12345").
+		Save(ctx); err == nil {
+		t.Fatal("expected duplicate personal_code insert to fail")
+	} else if !strings.Contains(strings.ToLower(err.Error()), "unique") {
+		t.Fatalf("expected unique constraint error, got %v", err)
+	}
+}
+
+func TestOpenAllowsMultipleEmptyStudentPersonalCodes(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "student-personal-code-empty.sqlite")
+
+	db, err := Open(ctx, dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer db.Ent.Close()
+
+	for _, name := range []string{"First Student", "Second Student"} {
+		if _, err := db.Ent.Student.Create().
+			SetFullName(name).
+			SetPersonalCode("").
+			Save(ctx); err != nil {
+			t.Fatalf("Student.Create %q: %v", name, err)
+		}
 	}
 }

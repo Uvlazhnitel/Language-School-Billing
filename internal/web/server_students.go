@@ -42,6 +42,19 @@ func (s *Server) handleStudentsCreate(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, item)
 }
 
+func (s *Server) handleStudentsDuplicateCheck(w http.ResponseWriter, r *http.Request) {
+	var req studentUpsertRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	item, err := s.svc.StudentDuplicateCheck(r.Context(), req.FullName, req.PersonalCode, req.Phone, req.Email)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, item)
+}
+
 func (s *Server) handleStudentsUpdate(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathInt(w, r, "id")
 	if !ok {

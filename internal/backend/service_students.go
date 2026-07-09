@@ -11,6 +11,7 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
+	"langschool/ent/predicate"
 	"langschool/ent/student"
 	sharedapp "langschool/internal/app"
 	"langschool/internal/apperrors"
@@ -54,6 +55,66 @@ func (s *Service) StudentGet(ctx context.Context, id int) (*StudentDTO, error) {
 	return &dto, nil
 }
 
+func (s *Service) StudentDuplicateCheck(ctx context.Context, fullName, personalCode, phone, email string) (*StudentDuplicateCheckResult, error) {
+	fullName = sanitizeInput(fullName)
+	personalCode = sanitizeInput(personalCode)
+	phone = sanitizeInput(phone)
+	email = sanitizeInput(email)
+
+	result := &StudentDuplicateCheckResult{
+		PossibleMatches: []StudentDTO{},
+	}
+
+	if personalCode != "" {
+		exact, err := s.rt.DB.Ent.Student.Query().
+			Where(student.PersonalCodeEqualFold(personalCode)).
+			Order(ent.Desc(student.FieldIsActive), ent.Asc(student.FieldFullName)).
+			First(ctx)
+		if err == nil {
+			dto := toStudentDTO(exact, s.studentBalanceSummary(ctx, exact.ID))
+			result.ExactMatch = &dto
+			return result, nil
+		}
+		if err != nil && !ent.IsNotFound(err) {
+			return nil, err
+		}
+	}
+
+	if fullName == "" || (phone == "" && email == "") {
+		return result, nil
+	}
+
+	predicates := []predicate.Student{
+		student.FullNameEqualFold(fullName),
+	}
+	contactPredicates := make([]predicate.Student, 0, 2)
+	if phone != "" {
+		contactPredicates = append(contactPredicates, student.PhoneEqualFold(phone))
+	}
+	if email != "" {
+		contactPredicates = append(contactPredicates, student.EmailEqualFold(email))
+	}
+	if len(contactPredicates) == 1 {
+		predicates = append(predicates, contactPredicates[0])
+	} else {
+		predicates = append(predicates, student.Or(contactPredicates...))
+	}
+
+	matches, err := s.rt.DB.Ent.Student.Query().
+		Where(predicates...).
+		Order(ent.Desc(student.FieldIsActive), ent.Asc(student.FieldFullName)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	items, err := s.toStudentDTOs(ctx, matches)
+	if err != nil {
+		return nil, err
+	}
+	result.PossibleMatches = items
+	return result, nil
+}
+
 func (s *Service) studentBalanceSummaries(ctx context.Context, studs []*ent.Student) (map[int]studentBalanceSummary, error) {
 	summaries := make(map[int]studentBalanceSummary, len(studs))
 	if len(studs) == 0 {
@@ -75,6 +136,18 @@ func (s *Service) studentBalanceSummaries(ctx context.Context, studs []*ent.Stud
 		summaries[st.ID] = makeStudentBalanceSummary(invoicedByStudent[st.ID], paidByStudent[st.ID])
 	}
 	return summaries, nil
+}
+
+func (s *Service) toStudentDTOs(ctx context.Context, studs []*ent.Student) ([]StudentDTO, error) {
+	summaries, err := s.studentBalanceSummaries(ctx, studs)
+	if err != nil {
+		return nil, err
+	}
+	items := make([]StudentDTO, 0, len(studs))
+	for _, st := range studs {
+		items = append(items, toStudentDTO(st, summaries[st.ID]))
+	}
+	return items, nil
 }
 
 func (s *Service) studentBalanceSummary(ctx context.Context, studentID int) studentBalanceSummary {
@@ -148,23 +221,32 @@ func (s *Service) StudentCreate(ctx context.Context, fullName, personalCode, pho
 		return nil, err
 	}
 	personalCode = sanitizeInput(personalCode)
+	phone = sanitizeInput(phone)
+	email = sanitizeInput(email)
+	note = sanitizeInput(note)
 	payerName = sanitizeInput(payerName)
 	payerRole = normalizePayerRole(payerRole)
 	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
 		return nil, err
 	}
+	if err := s.ensureStudentPersonalCodeUnique(ctx, 0, personalCode); err != nil {
+		return nil, err
+	}
 	item, err := s.rt.DB.Ent.Student.Create().
 		SetFullName(fullName).
 		SetPersonalCode(personalCode).
-		SetPhone(sanitizeInput(phone)).
-		SetEmail(sanitizeInput(email)).
-		SetNote(sanitizeInput(note)).
+		SetPhone(phone).
+		SetEmail(email).
+		SetNote(note).
 		SetIsMinor(isMinor).
 		SetPayerName(payerName).
 		SetPayerRole(payerRole).
 		SetIsActive(true).
 		Save(ctx)
 	if err != nil {
+		if ent.IsConstraintError(err) && personalCode != "" {
+			return nil, apperrors.Conflict("student with this personal code already exists")
+		}
 		return nil, err
 	}
 	dto := toStudentDTO(item, studentBalanceSummary{})
@@ -177,18 +259,24 @@ func (s *Service) StudentUpdate(ctx context.Context, id int, fullName, personalC
 		return nil, err
 	}
 	personalCode = sanitizeInput(personalCode)
+	phone = sanitizeInput(phone)
+	email = sanitizeInput(email)
+	note = sanitizeInput(note)
 	payerName = sanitizeInput(payerName)
 	payerRole = normalizePayerRole(payerRole)
 	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
+		return nil, err
+	}
+	if err := s.ensureStudentPersonalCodeUnique(ctx, id, personalCode); err != nil {
 		return nil, err
 	}
 	item, err := s.rt.DB.Ent.Student.UpdateOneID(id).
 		AddVersion(1).
 		SetFullName(fullName).
 		SetPersonalCode(personalCode).
-		SetPhone(sanitizeInput(phone)).
-		SetEmail(sanitizeInput(email)).
-		SetNote(sanitizeInput(note)).
+		SetPhone(phone).
+		SetEmail(email).
+		SetNote(note).
 		SetIsMinor(isMinor).
 		SetPayerName(payerName).
 		SetPayerRole(payerRole).
@@ -209,9 +297,15 @@ func (s *Service) StudentUpdateWithVersion(ctx context.Context, id, version int,
 		return nil, err
 	}
 	personalCode = sanitizeInput(personalCode)
+	phone = sanitizeInput(phone)
+	email = sanitizeInput(email)
+	note = sanitizeInput(note)
 	payerName = sanitizeInput(payerName)
 	payerRole = normalizePayerRole(payerRole)
 	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
+		return nil, err
+	}
+	if err := s.ensureStudentPersonalCodeUnique(ctx, id, personalCode); err != nil {
 		return nil, err
 	}
 	item, err := s.rt.DB.Ent.Student.UpdateOneID(id).
@@ -219,9 +313,9 @@ func (s *Service) StudentUpdateWithVersion(ctx context.Context, id, version int,
 		SetVersion(version + 1).
 		SetFullName(fullName).
 		SetPersonalCode(personalCode).
-		SetPhone(sanitizeInput(phone)).
-		SetEmail(sanitizeInput(email)).
-		SetNote(sanitizeInput(note)).
+		SetPhone(phone).
+		SetEmail(email).
+		SetNote(note).
 		SetIsMinor(isMinor).
 		SetPayerName(payerName).
 		SetPayerRole(payerRole).
@@ -305,6 +399,25 @@ func (s *Service) StudentDelete(ctx context.Context, id int) error {
 		return err
 	}
 	return tx.Commit()
+}
+
+func (s *Service) ensureStudentPersonalCodeUnique(ctx context.Context, studentID int, personalCode string) error {
+	if personalCode == "" {
+		return nil
+	}
+
+	query := s.rt.DB.Ent.Student.Query().Where(student.PersonalCodeEqualFold(personalCode))
+	if studentID > 0 {
+		query = query.Where(student.IDNEQ(studentID))
+	}
+	exists, err := query.Exist(ctx)
+	if err != nil {
+		return err
+	}
+	if exists {
+		return apperrors.Conflict("student with this personal code already exists")
+	}
+	return nil
 }
 
 func (s *Service) StudentDeleteWithVersion(ctx context.Context, id, version int) error {
