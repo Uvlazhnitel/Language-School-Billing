@@ -13,7 +13,6 @@ import (
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
 	"langschool/ent/course"
-	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/payment"
@@ -725,9 +724,9 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		return nil, err
 	}
 
-	subscriptionCourseIDs := make(map[int]struct{}, len(subscriptionEnrollments))
+	subscriptionKeys := make(map[string]struct{}, len(subscriptionEnrollments))
 	for _, enr := range subscriptionEnrollments {
-		subscriptionCourseIDs[enr.CourseID] = struct{}{}
+		subscriptionKeys[overviewEnrollmentKey(enr.StudentID, enr.CourseID)] = struct{}{}
 	}
 
 	filledRows, err := s.db.AttendanceMonth.Query().
@@ -760,35 +759,30 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		attendanceMissing = 0
 	}
 
-	subscriptionCoursesTracked := len(subscriptionCourseIDs)
+	subscriptionCoursesTracked := len(subscriptionEnrollments)
 	subscriptionFilled := 0
 	if subscriptionCoursesTracked > 0 {
-		courseIDs := make([]int, 0, subscriptionCoursesTracked)
-		for courseID := range subscriptionCourseIDs {
-			courseIDs = append(courseIDs, courseID)
-		}
-
-		subscriptionStats, err := s.db.CourseMonthStat.Query().
+		subscriptionRows, err := s.db.AttendanceMonth.Query().
 			Where(
-				coursemonthstat.YearEQ(year),
-				coursemonthstat.MonthEQ(month),
-				coursemonthstat.SubscriptionLessonsHeldGT(0),
-				coursemonthstat.CourseIDIn(courseIDs...),
+				attendancemonth.YearEQ(year),
+				attendancemonth.MonthEQ(month),
+				attendancemonth.HoursGT(0),
 			).
 			All(ctx)
 		if err != nil {
 			return nil, err
 		}
 
-		seenSubscriptionCourses := make(map[int]struct{}, len(subscriptionStats))
-		for _, item := range subscriptionStats {
-			if _, ok := subscriptionCourseIDs[item.CourseID]; !ok {
+		seenSubscriptionEnrollments := make(map[string]struct{}, len(subscriptionRows))
+		for _, item := range subscriptionRows {
+			key := overviewEnrollmentKey(item.StudentID, item.CourseID)
+			if _, ok := subscriptionKeys[key]; !ok {
 				continue
 			}
-			if _, ok := seenSubscriptionCourses[item.CourseID]; ok {
+			if _, ok := seenSubscriptionEnrollments[key]; ok {
 				continue
 			}
-			seenSubscriptionCourses[item.CourseID] = struct{}{}
+			seenSubscriptionEnrollments[key] = struct{}{}
 			subscriptionFilled++
 		}
 	}

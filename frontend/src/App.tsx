@@ -12,8 +12,6 @@ import {
   fetchRows,
   saveHours,
   deleteEnrollment,
-  listCourseMonthSubscriptions,
-  saveCourseMonthSubscriptionLessons,
   Row,
 } from "./lib/attendance";
 
@@ -23,7 +21,6 @@ import {
   genDrafts,
   issueOne,
   reopenToDraft,
-  rebuildStudentDraft,
   ensurePdf,
   ensureAllPdfs,
   previewInvoiceEmail,
@@ -1220,15 +1217,6 @@ export default function App() {
   const attendanceSavingRowsRef = useRef<Record<number, boolean>>({});
   const [attendanceInputDrafts, setAttendanceInputDrafts] = useState<Record<number, string>>({});
   const attendancePendingSelectRef = useRef<number | null>(null);
-  const [subscriptionMonthLessons, setSubscriptionMonthLessons] = useState<Record<number, number>>(
-    {}
-  );
-  const [subscriptionMonthDrafts, setSubscriptionMonthDrafts] = useState<Record<number, string>>(
-    {}
-  );
-  const [subscriptionMonthSaving, setSubscriptionMonthSaving] = useState<Record<number, boolean>>(
-    {}
-  );
 
   // For search by phone we need students list (shared with invoices and attendance)
   const studentIndex = useMemo(() => {
@@ -1252,15 +1240,8 @@ export default function App() {
     try {
       await ensureStudentsLoaded();
       await ensureCoursesLoaded();
-      const [data, subscriptionData] = await Promise.all([
-        fetchRows(year, month, courseFilter),
-        listCourseMonthSubscriptions(year, month, courseFilter),
-      ]);
+      const data = await fetchRows(year, month, courseFilter);
       setRows(data);
-      setSubscriptionMonthLessons(
-        Object.fromEntries(subscriptionData.map((item) => [item.courseId, item.lessonsHeld]))
-      );
-      setSubscriptionMonthDrafts({});
     } finally {
       setLoadingAtt(false);
     }
@@ -1278,7 +1259,11 @@ export default function App() {
   const perLessonTotal = useMemo(
     () =>
       rows.reduce(
-        (s, r) => s + (r.billingMode === BillingModePerLesson ? r.hours * r.lessonPrice : 0),
+        (s, r) =>
+          s +
+          (r.billingMode === BillingModePerLesson
+            ? r.hours * r.lessonPrice
+            : r.hours * r.subscriptionLessonPrice),
         0
       ),
     [rows]
@@ -1299,13 +1284,11 @@ export default function App() {
     }
 
     if (attFilter === "missing") {
-      filtered = filtered.filter((r) => r.billingMode === BillingModePerLesson && !r.hasRecord);
+      filtered = filtered.filter((r) => !r.hasRecord);
     } else if (attFilter === "filled") {
-      filtered = filtered.filter((r) => r.billingMode === BillingModePerLesson && r.hasRecord);
+      filtered = filtered.filter((r) => r.hasRecord);
     } else if (attFilter === "zero") {
-      filtered = filtered.filter(
-        (r) => r.billingMode === BillingModePerLesson && r.hasRecord && r.hours === 0
-      );
+      filtered = filtered.filter((r) => r.hasRecord && r.hours === 0);
     }
 
     return [...filtered].sort((a, b) => {
@@ -1326,28 +1309,15 @@ export default function App() {
   }, [rows, attQ, attFilter, studentIndex]);
 
   const attendanceSummary = useMemo(() => {
-    const editableRows = rows.filter((r) => r.billingMode === BillingModePerLesson);
+    const editableRows = rows;
     const filled = editableRows.filter((r) => r.hasRecord).length;
     const missing = editableRows.filter((r) => !r.hasRecord).length;
     const zero = editableRows.filter((r) => r.hasRecord && r.hours === 0).length;
     return { filled, missing, zero, total: editableRows.length };
   }, [rows]);
 
-  const subscriptionLeadEnrollmentIds = useMemo(() => {
-    const seen = new Set<number>();
-    const leadIds = new Set<number>();
-    for (const row of filteredAttendanceRows) {
-      if (row.billingMode !== BillingModeSubscription) continue;
-      if (seen.has(row.courseId)) continue;
-      seen.add(row.courseId);
-      leadIds.add(row.enrollmentId);
-    }
-    return leadIds;
-  }, [filteredAttendanceRows]);
-
   const onChangeHours = useCallback(
     async (r: Row, v: number) => {
-      if (r.billingMode !== BillingModePerLesson) return;
       if (r.attendanceLocked) {
         showMessage(
           t("msg.attendanceLocked", {
@@ -1369,16 +1339,6 @@ export default function App() {
             x.enrollmentId === r.enrollmentId ? { ...x, hours: n, hasRecord: true } : x
           )
         );
-        try {
-          await rebuildStudentDraft(r.studentId, year, month);
-        } catch (invoiceError: any) {
-          showMessage(
-            t("msg.attendanceSavedDraftError", {
-              message: String(invoiceError?.message ?? invoiceError),
-            }),
-            "error"
-          );
-        }
       } catch (e: any) {
         showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
       } finally {
@@ -1450,82 +1410,6 @@ export default function App() {
       return Number.isFinite(parsed) ? parsed : r.hours;
     },
     [attendanceInputDrafts]
-  );
-
-  const getSubscriptionMonthLessonsValue = useCallback(
-    (courseId: number) => {
-      const draft = subscriptionMonthDrafts[courseId];
-      if (draft !== undefined) return draft;
-      return formatHoursValue(subscriptionMonthLessons[courseId] ?? 0);
-    },
-    [subscriptionMonthDrafts, subscriptionMonthLessons]
-  );
-
-  const setSubscriptionMonthLessonsDraft = useCallback((courseId: number, value: string) => {
-    setSubscriptionMonthDrafts((prev) => ({ ...prev, [courseId]: value }));
-  }, []);
-
-  const clearSubscriptionMonthLessonsDraft = useCallback((courseId: number) => {
-    setSubscriptionMonthDrafts((prev) => {
-      if (!(courseId in prev)) return prev;
-      const next = { ...prev };
-      delete next[courseId];
-      return next;
-    });
-  }, []);
-
-  const commitSubscriptionMonthLessonsDraft = useCallback(
-    async (row: Row) => {
-      const draft = subscriptionMonthDrafts[row.courseId];
-      if (draft === undefined) return;
-      const trimmed = draft.trim();
-      if (trimmed === "") {
-        clearSubscriptionMonthLessonsDraft(row.courseId);
-        return;
-      }
-      const parsed = Number(trimmed.replace(",", "."));
-      if (!Number.isFinite(parsed) || parsed < 0) {
-        clearSubscriptionMonthLessonsDraft(row.courseId);
-        showMessage(t("msg.errorGeneric", { message: t("msg.invalidLessonsValue") }), "error");
-        return;
-      }
-      const normalized = normalizeQuarterHours(parsed);
-      if (normalized === (subscriptionMonthLessons[row.courseId] ?? 0)) {
-        clearSubscriptionMonthLessonsDraft(row.courseId);
-        return;
-      }
-
-      try {
-        setSubscriptionMonthSaving((prev) => ({ ...prev, [row.courseId]: true }));
-        const updated = await saveCourseMonthSubscriptionLessons(
-          row.courseId,
-          year,
-          month,
-          normalized
-        );
-        setSubscriptionMonthLessons((prev) => ({ ...prev, [row.courseId]: updated.lessonsHeld }));
-        await loadAttendance();
-      } catch (e: any) {
-        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-      } finally {
-        clearSubscriptionMonthLessonsDraft(row.courseId);
-        setSubscriptionMonthSaving((prev) => {
-          const next = { ...prev };
-          delete next[row.courseId];
-          return next;
-        });
-      }
-    },
-    [
-      clearSubscriptionMonthLessonsDraft,
-      loadAttendance,
-      month,
-      showMessage,
-      subscriptionMonthDrafts,
-      subscriptionMonthLessons,
-      t,
-      year,
-    ]
   );
 
   const onDeleteEnrollmentFromSheet = async (id: number, version: number) => {
@@ -2282,34 +2166,6 @@ export default function App() {
     [authRequired, handleLogout, t]
   );
 
-  const adjustSubscriptionLessons = useCallback(
-    async (courseId: number, nextValue: number) => {
-      try {
-        setSubscriptionMonthSaving((prev) => ({ ...prev, [courseId]: true }));
-        const updated = await saveCourseMonthSubscriptionLessons(courseId, year, month, nextValue);
-        setSubscriptionMonthLessons((prev) => ({
-          ...prev,
-          [courseId]: updated.lessonsHeld,
-        }));
-        await loadAttendance();
-      } catch (e: any) {
-        showMessage(
-          t("msg.errorGeneric", {
-            message: String(e?.message ?? e),
-          }),
-          "error"
-        );
-      } finally {
-        setSubscriptionMonthSaving((prev) => {
-          const next = { ...prev };
-          delete next[courseId];
-          return next;
-        });
-      }
-    },
-    [loadAttendance, month, showMessage, t, year]
-  );
-
   return (
     <div className="container">
       {message && <NotificationToast message={message} onDismiss={clearMessage} t={t} />}
@@ -2550,9 +2406,6 @@ export default function App() {
                 loading={loadingAtt}
                 attendanceSavingRows={attendanceSavingRows}
                 attendancePendingSelectRef={attendancePendingSelectRef}
-                subscriptionLeadEnrollmentIds={subscriptionLeadEnrollmentIds}
-                subscriptionMonthLessons={subscriptionMonthLessons}
-                subscriptionMonthSaving={subscriptionMonthSaving}
                 year={year}
                 month={month}
                 perLessonTotal={perLessonTotal}
@@ -2561,15 +2414,10 @@ export default function App() {
                 normalizeHoursDraftInput={normalizeHoursDraftInput}
                 getAttendanceStepBase={getAttendanceStepBase}
                 getAttendanceInputValue={getAttendanceInputValue}
-                getSubscriptionMonthLessonsValue={getSubscriptionMonthLessonsValue}
                 setAttendanceDraft={setAttendanceDraft}
                 clearAttendanceDraft={clearAttendanceDraft}
                 commitAttendanceDraft={commitAttendanceDraft}
                 onChangeHours={onChangeHours}
-                setSubscriptionMonthLessonsDraft={setSubscriptionMonthLessonsDraft}
-                clearSubscriptionMonthLessonsDraft={clearSubscriptionMonthLessonsDraft}
-                commitSubscriptionMonthLessonsDraft={commitSubscriptionMonthLessonsDraft}
-                onAdjustSubscriptionLessons={adjustSubscriptionLessons}
                 onRefresh={() => void loadAttendance()}
                 onOpenInvoices={() => setTab("invoice")}
                 onOpenEnrollments={() => setTab("enrollments")}

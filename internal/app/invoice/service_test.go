@@ -33,7 +33,7 @@ func setInvoiceCurrentTime(t *testing.T, ts time.Time) {
 	})
 }
 
-func TestGenerateDraftsSubscriptionMaterialsUseCourseMonthStats(t *testing.T) {
+func TestGenerateDraftsSubscriptionMaterialsUsePerStudentAttendance(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:invoice-generate?mode=memory&_fk=1")
 	defer client.Close()
@@ -70,13 +70,14 @@ func TestGenerateDraftsSubscriptionMaterialsUseCourseMonthStats(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Enrollment.Create: %v", err)
 	}
-	if _, err := client.CourseMonthStat.Create().
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
 		SetCourseID(crs.ID).
 		SetYear(2026).
 		SetMonth(4).
-		SetSubscriptionLessonsHeld(3).
+		SetHours(3).
 		Save(ctx); err != nil {
-		t.Fatalf("CourseMonthStat.Create: %v", err)
+		t.Fatalf("AttendanceMonth.Create: %v", err)
 	}
 
 	assertDraft := func(expectedStatus string, expectedTotal float64) {
@@ -600,13 +601,14 @@ func TestGenerateDraftsSubscriptionLessonsAddMaterialsWithoutAttendanceRows(t *t
 		t.Fatalf("Enrollment.Create: %v", err)
 	}
 
-	if _, err := client.CourseMonthStat.Create().
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
 		SetCourseID(crs.ID).
 		SetYear(2026).
 		SetMonth(6).
-		SetSubscriptionLessonsHeld(4).
+		SetHours(4).
 		Save(ctx); err != nil {
-		t.Fatalf("CourseMonthStat.Create: %v", err)
+		t.Fatalf("AttendanceMonth.Create: %v", err)
 	}
 
 	res, err := svc.GenerateDrafts(ctx, 2026, 6)
@@ -717,13 +719,14 @@ func TestGenerateDraftsMixedEnrollmentsAddMaterialsFromSubscriptionLessons(t *te
 		t.Fatalf("AttendanceMonth.Create per lesson: %v", err)
 	}
 
-	if _, err := client.CourseMonthStat.Create().
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
 		SetCourseID(subscriptionCourse.ID).
 		SetYear(2026).
 		SetMonth(6).
-		SetSubscriptionLessonsHeld(2).
+		SetHours(2).
 		Save(ctx); err != nil {
-		t.Fatalf("CourseMonthStat.Create subscription: %v", err)
+		t.Fatalf("AttendanceMonth.Create subscription: %v", err)
 	}
 
 	res, err := svc.GenerateDrafts(ctx, 2026, 6)

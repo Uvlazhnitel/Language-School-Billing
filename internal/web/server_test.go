@@ -1279,8 +1279,12 @@ func TestEnrollmentChargeMaterialsAppliesOnNextGenerationWhenFutureDraftMissing(
 	}
 
 	nextBeforeGeneration := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year="+strconv.Itoa(nextYear)+"&month="+strconv.Itoa(nextMonth)+"&status=all")
-	if len(nextBeforeGeneration) != 0 {
-		t.Fatalf("next invoice count before generation = %d, want 0", len(nextBeforeGeneration))
+	if len(nextBeforeGeneration) != 1 {
+		t.Fatalf("next invoice count before generation = %d, want 1", len(nextBeforeGeneration))
+	}
+	nextInvoiceBeforeGeneration := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(nextBeforeGeneration[0].ID))
+	if nextInvoiceBeforeGeneration.Total != 20 {
+		t.Fatalf("next invoice total before generation = %v, want 20", nextInvoiceBeforeGeneration.Total)
 	}
 
 	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{

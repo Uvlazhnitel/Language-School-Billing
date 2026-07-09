@@ -12,7 +12,6 @@ import (
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
-	"langschool/ent/coursemonthstat"
 	"langschool/ent/enrollment"
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
@@ -298,25 +297,26 @@ func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m in
 	return lessonPriceCents, subscriptionPriceCents
 }
 
-func (s *Service) subscriptionLessonsHeld(ctx context.Context, courseID, y, m int) float64 {
-	item, err := s.db.CourseMonthStat.Query().
+func (s *Service) subscriptionLessonsHeld(ctx context.Context, studentID, courseID, y, m int) float64 {
+	item, err := s.db.AttendanceMonth.Query().
 		Where(
-			coursemonthstat.CourseIDEQ(courseID),
-			coursemonthstat.YearEQ(y),
-			coursemonthstat.MonthEQ(m),
+			attendancemonth.StudentIDEQ(studentID),
+			attendancemonth.CourseIDEQ(courseID),
+			attendancemonth.YearEQ(y),
+			attendancemonth.MonthEQ(m),
 		).
 		Only(ctx)
 	if err != nil {
 		return 0
 	}
-	return item.SubscriptionLessonsHeld
+	return item.Hours
 }
 
 func (s *Service) hasAnyLessonsInMonth(ctx context.Context, ens []*ent.Enrollment, y, m int) bool {
 	for _, en := range ens {
 		switch en.BillingMode {
 		case BillingSubscription:
-			if s.subscriptionLessonsHeld(ctx, en.CourseID, y, m) > 0 {
+			if s.subscriptionLessonsHeld(ctx, en.StudentID, en.CourseID, y, m) > 0 {
 				return true
 			}
 		default:
@@ -429,7 +429,7 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 			totalCents += amount
 
 		case BillingSubscription:
-			lessonsHeld := s.subscriptionLessonsHeld(ctx, en.CourseID, y, m)
+			lessonsHeld := s.subscriptionLessonsHeld(ctx, en.StudentID, en.CourseID, y, m)
 			if lp <= 0 || lessonsHeld <= 0 {
 				continue
 			}

@@ -59,6 +59,10 @@ func Open(ctx context.Context, dbPath string) (*DB, error) {
 		_ = client.Close()
 		return nil, err
 	}
+	if err := backfillSubscriptionAttendanceMonths(ctx, dsn); err != nil {
+		_ = client.Close()
+		return nil, err
+	}
 
 	log.Println("DB ready at", dbPath)
 	return &DB{Ent: client}, nil
@@ -185,6 +189,43 @@ WHERE billing_mode = 'per_lesson'
 	return err
 }
 
+func backfillSubscriptionAttendanceMonths(ctx context.Context, dsn string) error {
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	hasAttendanceTable, err := hasTable(ctx, db, "attendance_months")
+	if err != nil {
+		return err
+	}
+	hasCourseMonthStatsTable, err := hasTable(ctx, db, "course_month_stats")
+	if err != nil {
+		return err
+	}
+	if !hasAttendanceTable || !hasCourseMonthStatsTable {
+		return nil
+	}
+
+	_, err = db.ExecContext(ctx, `
+INSERT INTO attendance_months (student_id, course_id, year, month, lessons_count)
+SELECT e.student_id, cms.course_id, cms.year, cms.month, cms.subscription_lessons_held
+FROM course_month_stats cms
+JOIN enrollments e ON e.course_id = cms.course_id
+WHERE e.billing_mode = 'subscription'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM attendance_months am
+    WHERE am.student_id = e.student_id
+      AND am.course_id = cms.course_id
+      AND am.year = cms.year
+      AND am.month = cms.month
+  )
+`)
+	return err
+}
+
 func hasColumn(ctx context.Context, db *sql.DB, tableName, columnName string) (bool, error) {
 	rows, err := db.QueryContext(ctx, "PRAGMA table_info("+tableName+")")
 	if err != nil {
@@ -207,4 +248,16 @@ func hasColumn(ctx context.Context, db *sql.DB, tableName, columnName string) (b
 		}
 	}
 	return false, rows.Err()
+}
+
+func hasTable(ctx context.Context, db *sql.DB, tableName string) (bool, error) {
+	row := db.QueryRowContext(ctx, "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1", tableName)
+	var value int
+	if err := row.Scan(&value); err != nil {
+		if err == sql.ErrNoRows {
+			return false, nil
+		}
+		return false, err
+	}
+	return value == 1, nil
 }

@@ -436,14 +436,10 @@ func TestUpsertAllowsDraftOrMissingInvoice(t *testing.T) {
 		t.Fatalf("Upsert without invoice: %v", err)
 	}
 
-	if _, err := client.Invoice.Create().
-		SetStudentID(st.ID).
-		SetPeriodYear(2026).
-		SetPeriodMonth(7).
-		SetStatus(app.InvoiceStatusDraft).
-		SetTotalAmountCents(money.EurosToCents(30)).
-		Save(ctx); err != nil {
-		t.Fatalf("Invoice.Create: %v", err)
+	if _, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(7)).
+		Only(ctx); err != nil {
+		t.Fatalf("Invoice.Query after first upsert: %v", err)
 	}
 
 	if err := svc.Upsert(ctx, st.ID, crs.ID, 2026, 7, 5); err != nil {
@@ -463,6 +459,104 @@ func TestUpsertAllowsDraftOrMissingInvoice(t *testing.T) {
 	}
 	if am.Hours != 5 {
 		t.Fatalf("hours = %v, want 5", am.Hours)
+	}
+}
+
+func TestUpsertSubscriptionRebuildsOnlyEditedStudentDraft(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:attendance-upsert-subscription-draft?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+	invoiceSvc := invsvc.New(client)
+
+	studentOne, err := client.Student.Create().SetFullName("Subscription One").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create one: %v", err)
+	}
+	studentTwo, err := client.Student.Create().SetFullName("Subscription Two").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create two: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Subscription Group").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	if _, err := client.Enrollment.Create().
+		SetStudentID(studentOne.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModeSubscription).
+		SetChargeMaterials(false).
+		SetSubscriptionLessonPriceCents(money.EurosToCents(10)).
+		Save(ctx); err != nil {
+		t.Fatalf("Enrollment.Create one: %v", err)
+	}
+	if _, err := client.Enrollment.Create().
+		SetStudentID(studentTwo.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModeSubscription).
+		SetChargeMaterials(false).
+		SetSubscriptionLessonPriceCents(money.EurosToCents(10)).
+		Save(ctx); err != nil {
+		t.Fatalf("Enrollment.Create two: %v", err)
+	}
+
+	for _, studentID := range []int{studentOne.ID, studentTwo.ID} {
+		if _, err := client.AttendanceMonth.Create().
+			SetStudentID(studentID).
+			SetCourseID(crs.ID).
+			SetYear(2026).
+			SetMonth(7).
+			SetHours(1).
+			Save(ctx); err != nil {
+			t.Fatalf("AttendanceMonth.Create for %d: %v", studentID, err)
+		}
+	}
+
+	if _, err := invoiceSvc.GenerateDrafts(ctx, 2026, 7); err != nil {
+		t.Fatalf("GenerateDrafts: %v", err)
+	}
+
+	if err := svc.Upsert(ctx, studentOne.ID, crs.ID, 2026, 7, 2); err != nil {
+		t.Fatalf("Upsert: %v", err)
+	}
+
+	invoiceOne, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(studentOne.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(7)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Query one: %v", err)
+	}
+	if money.CentsToEuros(invoiceOne.TotalAmountCents) != 20 {
+		t.Fatalf("student one total = %v, want 20", money.CentsToEuros(invoiceOne.TotalAmountCents))
+	}
+
+	invoiceTwo, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(studentTwo.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(7)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Query two: %v", err)
+	}
+	if money.CentsToEuros(invoiceTwo.TotalAmountCents) != 10 {
+		t.Fatalf("student two total = %v, want 10", money.CentsToEuros(invoiceTwo.TotalAmountCents))
+	}
+
+	linesTwo, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(invoiceTwo.ID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query two: %v", err)
+	}
+	if len(linesTwo) != 1 || linesTwo[0].Qty != 1 {
+		t.Fatalf("student two lines = %+v, want one line with qty 1", linesTwo)
 	}
 }
 

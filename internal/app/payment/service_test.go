@@ -732,15 +732,6 @@ func TestMonthOverview(t *testing.T) {
 	createTestAttendanceMonth(t, ctx, client, st2.ID, c1.ID, 2026, 4, 0)
 	createTestAttendanceMonth(t, ctx, client, st3.ID, c2.ID, 2026, 4, 5)
 	createTestAttendanceMonth(t, ctx, client, inactiveStudent.ID, c1.ID, 2026, 4, 4)
-	if _, err := client.CourseMonthStat.Create().
-		SetCourseID(c2.ID).
-		SetYear(2026).
-		SetMonth(4).
-		SetSubscriptionLessonsHeld(4).
-		Save(ctx); err != nil {
-		t.Fatalf("CourseMonthStat.Create: %v", err)
-	}
-
 	draftInvoice := createTestInvoice(t, ctx, client, st3.ID, 2026, 4, 10, app.InvoiceStatusDraft)
 	issuedInvoice := createTestInvoice(t, ctx, client, st1.ID, 2026, 4, 70, app.InvoiceStatusIssued)
 	paidInvoice := createTestInvoice(t, ctx, client, st2.ID, 2026, 4, 30, app.InvoiceStatusPaid)
@@ -821,7 +812,7 @@ func TestMonthOverview(t *testing.T) {
 	}
 }
 
-func TestMonthOverviewCountsSubscriptionCourseOnce(t *testing.T) {
+func TestMonthOverviewCountsSubscriptionEnrollmentSeparately(t *testing.T) {
 	ctx := context.Background()
 	client := newTestClient(t)
 	defer client.Close()
@@ -843,13 +834,13 @@ func TestMonthOverviewCountsSubscriptionCourseOnce(t *testing.T) {
 	assertEqual(t, got.PerLessonEnrollments, 0)
 	assertEqual(t, got.AttendanceFilled, 0)
 	assertEqual(t, got.AttendanceMissing, 0)
-	assertEqual(t, got.SubscriptionCoursesTracked, 1)
+	assertEqual(t, got.SubscriptionCoursesTracked, 2)
 	assertEqual(t, got.SubscriptionFilled, 0)
-	assertEqual(t, got.SubscriptionMissing, 1)
-	assertEqual(t, got.MonthControlTotal, 1)
+	assertEqual(t, got.SubscriptionMissing, 2)
+	assertEqual(t, got.MonthControlTotal, 2)
 	assertEqual(t, got.MonthControlFilled, 0)
-	assertEqual(t, got.MonthControlMissing, 1)
-	assertEqual(t, got.ActionQueueCount, 1)
+	assertEqual(t, got.MonthControlMissing, 2)
+	assertEqual(t, got.ActionQueueCount, 2)
 }
 
 func TestMonthOverviewEmailProgressDoesNotBlockReadyToClose(t *testing.T) {

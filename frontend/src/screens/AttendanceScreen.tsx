@@ -27,9 +27,6 @@ type AttendanceScreenProps = {
   loading: boolean;
   attendanceSavingRows: Record<number, boolean>;
   attendancePendingSelectRef: MutableRefObject<number | null>;
-  subscriptionLeadEnrollmentIds: Set<number>;
-  subscriptionMonthLessons: Record<number, number>;
-  subscriptionMonthSaving: Record<number, boolean>;
   year: number;
   month: number;
   perLessonTotal: number;
@@ -38,15 +35,10 @@ type AttendanceScreenProps = {
   normalizeHoursDraftInput: (value: string) => string | null;
   getAttendanceStepBase: (row: Row) => number;
   getAttendanceInputValue: (row: Row) => string;
-  getSubscriptionMonthLessonsValue: (courseId: number) => string;
   setAttendanceDraft: (enrollmentId: number, value: string) => void;
   clearAttendanceDraft: (enrollmentId: number) => void;
   commitAttendanceDraft: (row: Row) => void | Promise<void>;
   onChangeHours: (row: Row, nextBase: number) => void;
-  setSubscriptionMonthLessonsDraft: (courseId: number, value: string) => void;
-  clearSubscriptionMonthLessonsDraft: (courseId: number) => void;
-  commitSubscriptionMonthLessonsDraft: (row: Row) => void | Promise<void>;
-  onAdjustSubscriptionLessons: (courseId: number, nextValue: number) => void | Promise<void>;
   onRefresh: () => void;
   onOpenInvoices: () => void;
   onOpenEnrollments: () => void;
@@ -72,9 +64,6 @@ export function AttendanceScreen({
   loading,
   attendanceSavingRows,
   attendancePendingSelectRef,
-  subscriptionLeadEnrollmentIds,
-  subscriptionMonthLessons,
-  subscriptionMonthSaving,
   year: _year,
   month: _month,
   perLessonTotal,
@@ -83,15 +72,10 @@ export function AttendanceScreen({
   normalizeHoursDraftInput,
   getAttendanceStepBase,
   getAttendanceInputValue,
-  getSubscriptionMonthLessonsValue,
   setAttendanceDraft,
   clearAttendanceDraft,
   commitAttendanceDraft,
   onChangeHours,
-  setSubscriptionMonthLessonsDraft,
-  clearSubscriptionMonthLessonsDraft,
-  commitSubscriptionMonthLessonsDraft,
-  onAdjustSubscriptionLessons,
   onRefresh,
   onOpenInvoices,
   onOpenEnrollments,
@@ -253,13 +237,15 @@ export function AttendanceScreen({
                   )}
                 </td>
                 <td style={{ textAlign: "right" }}>
-                  {row.billingMode === BillingModePerLesson && !row.hasRecord && (
+                  {!row.hasRecord && (
                     <span className="attBadge attBadge--missing">{t("msg.attMissing")}</span>
                   )}
-                  {row.billingMode === BillingModePerLesson && row.hasRecord && row.hours === 0 && (
-                    <span className="attBadge attBadge--zero">0h</span>
+                  {row.hasRecord && row.hours === 0 && (
+                    <span className="attBadge attBadge--zero">
+                      {row.billingMode === BillingModePerLesson ? "0h" : "0"}
+                    </span>
                   )}
-                  {row.billingMode === BillingModePerLesson && !row.attendanceLocked ? (
+                  {!row.attendanceLocked ? (
                     <div className="attendanceStepper">
                       <button
                         type="button"
@@ -318,7 +304,7 @@ export function AttendanceScreen({
                           }
                         }}
                         className="attendanceStepperInput"
-                        aria-label={`Hours for ${row.studentName}`}
+                        aria-label={`Quantity for ${row.studentName}`}
                       />
                       <button
                         type="button"
@@ -330,76 +316,6 @@ export function AttendanceScreen({
                         +
                       </button>
                     </div>
-                  ) : row.billingMode === BillingModeSubscription && !row.attendanceLocked ? (
-                    subscriptionLeadEnrollmentIds.has(row.enrollmentId) ? (
-                      <div className="attendanceStepper">
-                        <button
-                          type="button"
-                          className="attendanceStepperButton"
-                          onClick={() =>
-                            void onAdjustSubscriptionLessons(
-                              row.courseId,
-                              Math.max(0, (subscriptionMonthLessons[row.courseId] ?? 0) - 1)
-                            )
-                          }
-                          disabled={
-                            subscriptionMonthSaving[row.courseId] ||
-                            (subscriptionMonthLessons[row.courseId] ?? 0) <= 0
-                          }
-                          aria-label={`Decrease subscription lessons for ${row.courseName}`}
-                        >
-                          −
-                        </button>
-                        <input
-                          type="text"
-                          inputMode="decimal"
-                          value={getSubscriptionMonthLessonsValue(row.courseId)}
-                          disabled={subscriptionMonthSaving[row.courseId]}
-                          onChange={(e) => {
-                            const nextValue = normalizeHoursDraftInput(e.target.value);
-                            if (nextValue !== null) {
-                              setSubscriptionMonthLessonsDraft(row.courseId, nextValue);
-                            }
-                          }}
-                          onFocus={(e) => e.currentTarget.select()}
-                          onBlur={() => {
-                            void commitSubscriptionMonthLessonsDraft(row);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              void commitSubscriptionMonthLessonsDraft(row);
-                            }
-                            if (e.key === "Escape") {
-                              e.preventDefault();
-                              clearSubscriptionMonthLessonsDraft(row.courseId);
-                              e.currentTarget.blur();
-                            }
-                          }}
-                          className="attendanceStepperInput"
-                          aria-label={`Subscription lessons held for ${row.courseName}`}
-                        />
-                        <button
-                          type="button"
-                          className="attendanceStepperButton"
-                          onClick={() =>
-                            void onAdjustSubscriptionLessons(
-                              row.courseId,
-                              (subscriptionMonthLessons[row.courseId] ?? 0) + 1
-                            )
-                          }
-                          disabled={subscriptionMonthSaving[row.courseId]}
-                          aria-label={`Increase subscription lessons for ${row.courseName}`}
-                        >
-                          +
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="attendanceReadOnly">
-                        <span className="attBadge attBadge--subscription">{t("msg.readOnly")}</span>
-                        <span className="mutedInline">{t("msg.subscriptionSharedValue")}</span>
-                      </div>
-                    )
                   ) : (
                     <div className="attendanceReadOnly">
                       <span className="attBadge attBadge--subscription">{t("msg.readOnly")}</span>
@@ -420,12 +336,10 @@ export function AttendanceScreen({
                 <td style={{ textAlign: "right" }}>
                   {row.billingMode === BillingModePerLesson
                     ? formatEUR(row.hours * row.lessonPrice)
-                    : formatEUR(row.subscriptionLessonPrice * (subscriptionMonthLessons[row.courseId] ?? 0))}
+                    : formatEUR(row.subscriptionLessonPrice * row.hours)}
                 </td>
                 <td>
-                  {row.billingMode === BillingModePerLesson &&
-                    !row.attendanceLocked &&
-                    !row.hasRecord && (
+                  {!row.attendanceLocked && !row.hasRecord && (
                       <button
                         onClick={() => onChangeHours(row, 0)}
                         disabled={attendanceSavingRows[row.enrollmentId]}

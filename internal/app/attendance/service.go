@@ -217,20 +217,24 @@ func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m int, hou
 			attendancemonth.MonthEQ(m),
 		).Only(ctx)
 	if err == nil {
-		_, err = am.Update().SetHours(hours).Save(ctx)
-		return err
+		if _, err = am.Update().SetHours(hours).Save(ctx); err != nil {
+			return err
+		}
+		return s.rebuildDraftForStudent(ctx, studentID, y, m)
 	}
 	if !ent.IsNotFound(err) {
 		return err
 	}
-	_, err = s.db.AttendanceMonth.
+	if _, err = s.db.AttendanceMonth.
 		Create().
 		SetStudentID(studentID).
 		SetCourseID(courseID).
 		SetYear(y).SetMonth(m).
 		SetHours(hours).
-		Save(ctx)
-	return err
+		Save(ctx); err != nil {
+		return err
+	}
+	return s.rebuildDraftForStudent(ctx, studentID, y, m)
 }
 
 // AddOneForFilter increments tracked hours by 0.25 for all attendance
@@ -252,22 +256,75 @@ func (s *Service) AddOneForFilter(ctx context.Context, y, m int, courseID *int) 
 }
 
 func (s *Service) ListCourseMonthSubscriptions(ctx context.Context, y, m int, courseID *int) ([]CourseMonthSubscription, error) {
-	q := s.db.CourseMonthStat.Query().
-		Where(coursemonthstat.YearEQ(y), coursemonthstat.MonthEQ(m))
-	if courseID != nil && *courseID > 0 {
-		q = q.Where(coursemonthstat.CourseIDEQ(*courseID))
-	}
-	items, err := q.Order(ent.Asc(coursemonthstat.FieldCourseID)).All(ctx)
+	subscriptionEnrollments, err := s.db.Enrollment.Query().
+		Where(enrollment.BillingModeEQ(enrollment.BillingModeSubscription)).
+		All(ctx)
 	if err != nil {
 		return nil, err
 	}
+
+	courseIDs := make([]int, 0, len(subscriptionEnrollments))
+	seenCourseIDs := make(map[int]struct{}, len(subscriptionEnrollments))
+	for _, item := range subscriptionEnrollments {
+		if courseID != nil && *courseID > 0 && item.CourseID != *courseID {
+			continue
+		}
+		if _, ok := seenCourseIDs[item.CourseID]; ok {
+			continue
+		}
+		seenCourseIDs[item.CourseID] = struct{}{}
+		courseIDs = append(courseIDs, item.CourseID)
+	}
+
+	if len(courseIDs) == 0 {
+		return nil, nil
+	}
+
+	items, err := s.db.AttendanceMonth.Query().
+		Where(
+			attendancemonth.YearEQ(y),
+			attendancemonth.MonthEQ(m),
+			attendancemonth.CourseIDIn(courseIDs...),
+		).
+		Order(ent.Asc(attendancemonth.FieldCourseID), ent.Asc(attendancemonth.FieldStudentID)).
+		All(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(items) == 0 {
+		legacyQuery := s.db.CourseMonthStat.Query().
+			Where(coursemonthstat.YearEQ(y), coursemonthstat.MonthEQ(m))
+		if courseID != nil && *courseID > 0 {
+			legacyQuery = legacyQuery.Where(coursemonthstat.CourseIDEQ(*courseID))
+		}
+		legacyItems, legacyErr := legacyQuery.Order(ent.Asc(coursemonthstat.FieldCourseID)).All(ctx)
+		if legacyErr != nil {
+			return nil, legacyErr
+		}
+		out := make([]CourseMonthSubscription, 0, len(legacyItems))
+		for _, item := range legacyItems {
+			out = append(out, CourseMonthSubscription{
+				CourseID:    item.CourseID,
+				Year:        item.Year,
+				Month:       item.Month,
+				LessonsHeld: utils.Round2(item.SubscriptionLessonsHeld),
+			})
+		}
+		return out, nil
+	}
+
+	seenCourseIDs = make(map[int]struct{}, len(items))
 	out := make([]CourseMonthSubscription, 0, len(items))
 	for _, item := range items {
+		if _, ok := seenCourseIDs[item.CourseID]; ok {
+			continue
+		}
+		seenCourseIDs[item.CourseID] = struct{}{}
 		out = append(out, CourseMonthSubscription{
 			CourseID:    item.CourseID,
 			Year:        item.Year,
 			Month:       item.Month,
-			LessonsHeld: utils.Round2(item.SubscriptionLessonsHeld),
+			LessonsHeld: utils.Round2(item.Hours),
 		})
 	}
 	return out, nil
@@ -311,32 +368,6 @@ func (s *Service) UpsertCourseMonthSubscription(ctx context.Context, courseID, y
 		return nil, err
 	}
 
-	item, err := s.db.CourseMonthStat.Query().
-		Where(
-			coursemonthstat.CourseIDEQ(courseID),
-			coursemonthstat.YearEQ(y),
-			coursemonthstat.MonthEQ(m),
-		).
-		Only(ctx)
-	if err == nil {
-		item, err = item.Update().SetSubscriptionLessonsHeld(lessonsHeld).Save(ctx)
-		if err != nil {
-			return nil, err
-		}
-	} else if ent.IsNotFound(err) {
-		item, err = s.db.CourseMonthStat.Create().
-			SetCourseID(courseID).
-			SetYear(y).
-			SetMonth(m).
-			SetSubscriptionLessonsHeld(lessonsHeld).
-			Save(ctx)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, err
-	}
-
 	subscriptionEnrollments, err := s.db.Enrollment.Query().
 		Where(
 			enrollment.CourseIDEQ(courseID),
@@ -348,17 +379,48 @@ func (s *Service) UpsertCourseMonthSubscription(ctx context.Context, courseID, y
 	}
 	invoiceService := invsvc.NewWithInvoicesDir(s.db, s.invoicesDir)
 	for _, en := range subscriptionEnrollments {
+		am, attendanceErr := s.db.AttendanceMonth.Query().
+			Where(
+				attendancemonth.StudentIDEQ(en.StudentID),
+				attendancemonth.CourseIDEQ(en.CourseID),
+				attendancemonth.YearEQ(y),
+				attendancemonth.MonthEQ(m),
+			).
+			Only(ctx)
+		if attendanceErr == nil {
+			if _, attendanceErr = am.Update().SetHours(lessonsHeld).Save(ctx); attendanceErr != nil {
+				return nil, attendanceErr
+			}
+		} else if ent.IsNotFound(attendanceErr) {
+			if _, attendanceErr = s.db.AttendanceMonth.Create().
+				SetStudentID(en.StudentID).
+				SetCourseID(en.CourseID).
+				SetYear(y).
+				SetMonth(m).
+				SetHours(lessonsHeld).
+				Save(ctx); attendanceErr != nil {
+				return nil, attendanceErr
+			}
+		} else {
+			return nil, attendanceErr
+		}
 		if _, err := invoiceService.RebuildStudentDraft(ctx, en.StudentID, y, m); err != nil {
 			return nil, err
 		}
 	}
 
 	return &CourseMonthSubscription{
-		CourseID:    item.CourseID,
-		Year:        item.Year,
-		Month:       item.Month,
-		LessonsHeld: utils.Round2(item.SubscriptionLessonsHeld),
+		CourseID:    courseID,
+		Year:        y,
+		Month:       m,
+		LessonsHeld: utils.Round2(lessonsHeld),
 	}, nil
+}
+
+func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m int) error {
+	invoiceService := invsvc.NewWithInvoicesDir(s.db, s.invoicesDir)
+	_, err := invoiceService.RebuildStudentDraft(ctx, studentID, y, m)
+	return err
 }
 
 // DeleteEnrollment deletes an enrollment and all associated attendance records.
