@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { BalanceDTO, DebtInvoiceDTO, PaymentDTO } from "../lib/payments";
 import { EnrollmentDTO } from "../lib/enrollments";
 import { TranslateFn } from "../lib/i18n";
@@ -14,6 +15,13 @@ import type {
   StudentSortOption,
   StudentStatusFilter,
 } from "../lib/studentListControls";
+import {
+  hasActiveAdvancedStudentFilters,
+  isStudentQuickFilterActive,
+  studentQuickFilterDefaults,
+  toggleStudentQuickFilter,
+  type StudentQuickFilterKey,
+} from "../lib/studentQuickFilters";
 
 type StudentWorkspaceProps = {
   students: StudentDTO[];
@@ -112,6 +120,36 @@ export function StudentWorkspace({
   formatEUR,
   months,
 }: StudentWorkspaceProps) {
+  const controls = {
+    statusFilter,
+    debtFilter,
+    balanceFilter,
+    ageFilter,
+    sortOption,
+  };
+  const advancedFiltersActive = hasActiveAdvancedStudentFilters(controls);
+  const [advancedFiltersOpen, setAdvancedFiltersOpen] = useState(advancedFiltersActive);
+  const previousAdvancedFiltersActive = useRef(advancedFiltersActive);
+
+  useEffect(() => {
+    if (!previousAdvancedFiltersActive.current && advancedFiltersActive) {
+      setAdvancedFiltersOpen(true);
+    }
+    previousAdvancedFiltersActive.current = advancedFiltersActive;
+  }, [advancedFiltersActive]);
+
+  useEffect(() => {
+    if (
+      statusFilter === studentQuickFilterDefaults.statusFilter &&
+      debtFilter === studentQuickFilterDefaults.debtFilter &&
+      balanceFilter === studentQuickFilterDefaults.balanceFilter &&
+      ageFilter === studentQuickFilterDefaults.ageFilter &&
+      sortOption === studentQuickFilterDefaults.sortOption
+    ) {
+      setAdvancedFiltersOpen(false);
+    }
+  }, [ageFilter, balanceFilter, debtFilter, sortOption, statusFilter]);
+
   const studentBalanceMeta = (student: StudentDTO) => {
     if (student.debt > 0) {
       return {
@@ -134,6 +172,19 @@ export function StudentWorkspace({
     };
   };
 
+  const handleQuickFilterToggle = (key: StudentQuickFilterKey) => {
+    const nextControls = toggleStudentQuickFilter(key, controls);
+    if (nextControls.statusFilter !== statusFilter) {
+      onStatusFilterChange(nextControls.statusFilter);
+    }
+    if (nextControls.debtFilter !== debtFilter) {
+      onDebtFilterChange(nextControls.debtFilter);
+    }
+    if (nextControls.sortOption !== sortOption) {
+      onSortOptionChange(nextControls.sortOption);
+    }
+  };
+
   return (
     <div className="studentWorkspace">
       <div className="studentSidebar">
@@ -147,7 +198,29 @@ export function StudentWorkspace({
               onChange={(e) => onQueryChange(e.target.value)}
             />
           }
-          filters={
+          quickFilters={
+            <div className="quickFilterChips">
+              {(
+                [
+                  ["active", t("chip.studentActive")],
+                  ["debt", t("chip.studentDebt")],
+                  ["recent", t("chip.studentRecent")],
+                ] as Array<[StudentQuickFilterKey, string]>
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`quickFilterChip ${
+                    isStudentQuickFilterActive(key, controls) ? "active" : ""
+                  }`}
+                  onClick={() => handleQuickFilterToggle(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          }
+          advancedFilters={
             <>
               <select
                 value={statusFilter}
@@ -194,6 +267,10 @@ export function StudentWorkspace({
               </select>
             </>
           }
+          advancedFiltersOpen={advancedFiltersOpen}
+          onToggleAdvancedFilters={() => setAdvancedFiltersOpen((value) => !value)}
+          advancedFiltersLabel={t("button.filters")}
+          hasActiveAdvancedFilters={advancedFiltersActive}
           hasActiveFilters={hasActiveStudentFilters}
           onClearFilters={onResetStudentFilters}
           clearLabel={t("button.clearFilters")}

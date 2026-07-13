@@ -294,7 +294,7 @@ export default function App() {
   const [studentDebtFilter, setStudentDebtFilter] = useState<StudentDebtFilter>("all");
   const [studentBalanceFilter, setStudentBalanceFilter] = useState<StudentBalanceFilter>("all");
   const [studentAgeFilter, setStudentAgeFilter] = useState<StudentAgeFilter>("all");
-  const [studentSortOption, setStudentSortOption] = useState<StudentSortOption>("name_asc");
+  const [studentSortOption, setStudentSortOption] = useState<StudentSortOption>("created_desc");
   const [studentLoading, setStudentLoading] = useState(false);
 
   const [studentModalOpen, setStudentModalOpen] = useState(false);
@@ -364,7 +364,7 @@ export default function App() {
     setStudentDebtFilter("all");
     setStudentBalanceFilter("all");
     setStudentAgeFilter("all");
-    setStudentSortOption("name_asc");
+    setStudentSortOption("created_desc");
   }, []);
 
   const filteredStudentList = useMemo(
@@ -392,7 +392,7 @@ export default function App() {
       studentDebtFilter !== "all" ||
       studentBalanceFilter !== "all" ||
       studentAgeFilter !== "all" ||
-      studentSortOption !== "name_asc",
+      studentSortOption !== "created_desc",
     [
       studentAgeFilter,
       studentBalanceFilter,
