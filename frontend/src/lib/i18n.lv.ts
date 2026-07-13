@@ -28,6 +28,7 @@ export const lvTranslations: Record<string, string> = {
   "button.cancel": "Atcelt",
   "button.close": "Aizvērt",
   "button.save": "Saglabāt",
+  "button.saveAndAddAnother": "Saglabāt un pievienot nākamo",
   "button.openStudent": "Atvērt skolēnu",
   "button.createAnyway": "Izveidot tik un tā",
   "button.delete": "Dzēst",

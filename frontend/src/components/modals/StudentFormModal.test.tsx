@@ -26,11 +26,22 @@ describe("StudentFormModal", () => {
     onPayerNameChange: vi.fn(),
     onPayerRoleChange: vi.fn(),
     onSave: vi.fn(),
+    onSaveAndAddAnother: vi.fn(),
     onCancel: vi.fn(),
     onOpenExistingStudent: vi.fn(),
     onCreateAnyway: vi.fn(),
     t: createTranslator("en-US"),
   };
+
+  it("renders save-and-add-another action only while creating a student", () => {
+    const createMarkup = renderToStaticMarkup(<StudentFormModal {...baseProps} />);
+    const editMarkup = renderToStaticMarkup(<StudentFormModal {...baseProps} editing />);
+
+    expect(createMarkup).toContain("Save");
+    expect(createMarkup).toContain("Save and add another");
+    expect(createMarkup).toContain("Cancel");
+    expect(editMarkup).not.toContain("Save and add another");
+  });
 
   it("renders exact duplicate warning without create-anyway action", () => {
     const markup = renderToStaticMarkup(

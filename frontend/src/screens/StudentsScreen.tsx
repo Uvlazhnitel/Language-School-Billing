@@ -81,6 +81,7 @@ type StudentsScreenProps = {
   onSfPayerNameChange: (value: string) => void;
   onSfPayerRoleChange: (value: string) => void;
   onSaveStudent: () => void;
+  onSaveStudentAndAddAnother: () => void;
   onOpenExistingDuplicateStudent: (studentId: number) => void;
   onCreateStudentAnyway: () => void;
   onCloseStudentModal: () => void;
@@ -109,6 +110,7 @@ export function StudentsScreen({
   onSfPayerNameChange,
   onSfPayerRoleChange,
   onSaveStudent,
+  onSaveStudentAndAddAnother,
   onOpenExistingDuplicateStudent,
   onCreateStudentAnyway,
   onCloseStudentModal,
@@ -140,6 +142,7 @@ export function StudentsScreen({
           onPayerNameChange={onSfPayerNameChange}
           onPayerRoleChange={onSfPayerRoleChange}
           onSave={onSaveStudent}
+          onSaveAndAddAnother={onSaveStudentAndAddAnother}
           onCancel={onCloseStudentModal}
           duplicateCheckResult={studentDuplicateCheckResult}
           onOpenExistingStudent={onOpenExistingDuplicateStudent}

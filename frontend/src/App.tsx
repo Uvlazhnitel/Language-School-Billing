@@ -114,8 +114,10 @@ import {
   paymentMethodLabel,
 } from "./lib/appUi";
 import { validatePersonName, validateStudentForm } from "./lib/inputValidation";
+import { buildNextStudentDraft } from "./lib/studentFormState";
 
 const staleRevisionMessage = "record was changed or deleted by another user";
+type StudentCreateFlow = "save" | "save_and_add_another";
 
 function isStaleRevisionError(error: unknown): boolean {
   const message = String(
@@ -306,6 +308,7 @@ export default function App() {
   const [sfPayerRole, setSfPayerRole] = useState("");
   const [studentDuplicateCheckResult, setStudentDuplicateCheckResult] =
     useState<StudentDuplicateCheckResult | null>(null);
+  const [studentCreateFlow, setStudentCreateFlow] = useState<StudentCreateFlow>("save");
 
   // ---------------- Student Card ----------------
   const [studentCardOpen, setStudentCardOpen] = useState(false);
@@ -466,6 +469,7 @@ export default function App() {
 
   function openAddStudent() {
     resetStudentDuplicateCheck();
+    setStudentCreateFlow("save");
     setEditingStudent(null);
     setSfName("");
     setSfPersonalCode("");
@@ -480,6 +484,7 @@ export default function App() {
 
   function openEditStudent(s: StudentDTO) {
     resetStudentDuplicateCheck();
+    setStudentCreateFlow("save");
     setEditingStudent(s);
     setSfName(s.fullName);
     setSfPersonalCode(s.personalCode ?? "");
@@ -492,7 +497,10 @@ export default function App() {
     setStudentModalOpen(true);
   }
 
-  async function saveStudent(skipDuplicateCheck = false) {
+  async function saveStudent(
+    skipDuplicateCheck = false,
+    createFlow: StudentCreateFlow = "save"
+  ) {
     const validationError = validateStudentForm({
       fullName: sfName,
       personalCode: sfPersonalCode,
@@ -506,6 +514,7 @@ export default function App() {
       showMessage(t(validationError), "error");
       return;
     }
+    setStudentCreateFlow(createFlow);
     try {
       let savedStudent: StudentDTO;
       if (editingStudent) {
@@ -546,11 +555,36 @@ export default function App() {
         );
       }
       resetStudentDuplicateCheck();
-      setStudentModalOpen(false);
+      if (!editingStudent) {
+        // Make the newly created student immediately visible at the top of the workspace list.
+        setStudentQ("");
+        setStudentStatusFilter("active");
+        setStudentDebtFilter("all");
+        setStudentBalanceFilter("all");
+        setStudentAgeFilter("all");
+        setStudentSortOption("created_desc");
+      }
       await Promise.all([loadStudents(), loadAllStudents()]);
-      if (selectedStudentCard?.id === savedStudent.id) {
+      if (!editingStudent && createFlow === "save_and_add_another") {
+        const nextDraft = buildNextStudentDraft(sfIsMinor);
+        setSfName(nextDraft.name);
+        setSfPersonalCode(nextDraft.personalCode);
+        setSfPhone(nextDraft.phone);
+        setSfEmail(nextDraft.email);
+        setSfNote(nextDraft.note);
+        setSfIsMinor(nextDraft.isMinor);
+        setSfPayerName(nextDraft.payerName);
+        setSfPayerRole(nextDraft.payerRole);
+        await openStudentCard(savedStudent, { inline: true });
+      } else if (!editingStudent) {
+        setStudentModalOpen(false);
+        await openStudentCard(savedStudent, { inline: true });
+      } else if (selectedStudentCard?.id === savedStudent.id) {
+        setStudentModalOpen(false);
         setSelectedStudentCard(savedStudent);
         void refreshStudentCardData(savedStudent.id);
+      } else {
+        setStudentModalOpen(false);
       }
       showMessage(editingStudent ? t("msg.studentUpdated") : t("msg.studentCreated"));
     } catch (e: any) {
@@ -2444,12 +2478,14 @@ export default function App() {
                   setSfPayerRole(value);
                 }}
                 onSaveStudent={() => void saveStudent()}
+                onSaveStudentAndAddAnother={() => void saveStudent(false, "save_and_add_another")}
                 onOpenExistingDuplicateStudent={(studentId) =>
                   void openExistingDuplicateStudent(studentId)
                 }
-                onCreateStudentAnyway={() => void saveStudent(true)}
+                onCreateStudentAnyway={() => void saveStudent(true, studentCreateFlow)}
                 onCloseStudentModal={() => {
                   resetStudentDuplicateCheck();
+                  setStudentCreateFlow("save");
                   setStudentModalOpen(false);
                 }}
               />

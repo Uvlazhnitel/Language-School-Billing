@@ -22,6 +22,7 @@ type StudentFormModalProps = {
   onPayerNameChange: (value: string) => void;
   onPayerRoleChange: (value: string) => void;
   onSave: () => void;
+  onSaveAndAddAnother?: () => void;
   onCancel: () => void;
   duplicateCheckResult?: StudentDuplicateCheckResult | null;
   onOpenExistingStudent: (studentId: number) => void;
@@ -50,6 +51,7 @@ export function StudentFormModal({
   onPayerNameChange,
   onPayerRoleChange,
   onSave,
+  onSaveAndAddAnother,
   onCancel,
   duplicateCheckResult,
   onOpenExistingStudent,
@@ -159,6 +161,9 @@ export function StudentFormModal({
 
         <div className="modalActions">
           <button onClick={onSave}>{t("button.save")}</button>
+          {!editing && onSaveAndAddAnother && (
+            <button onClick={onSaveAndAddAnother}>{t("button.saveAndAddAnother")}</button>
+          )}
           <button onClick={onCancel}>{t("button.cancel")}</button>
         </div>
       </div>
