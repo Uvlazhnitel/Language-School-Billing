@@ -115,6 +115,7 @@ import {
 } from "./lib/appUi";
 import { validatePersonName, validateStudentForm } from "./lib/inputValidation";
 import { buildNextStudentDraft } from "./lib/studentFormState";
+import { defaultLessonPriceForCourseType } from "./lib/courseDefaults";
 
 const staleRevisionMessage = "record was changed or deleted by another user";
 type StudentCreateFlow = "save" | "save_and_add_another";
@@ -829,6 +830,16 @@ export default function App() {
   const [cfLessonPrice, setCfLessonPrice] = useState("0.00");
   const [cfSubscriptionPrice, setCfSubscriptionPrice] = useState("0.00");
 
+  const handleCourseTypeChange = useCallback(
+    (value: "group" | "individual") => {
+      setCfType(value);
+      if (!editingCourse) {
+        setCfLessonPrice(defaultLessonPriceForCourseType(value));
+      }
+    },
+    [editingCourse]
+  );
+
   const handleCoursePriceChange = (value: string, setter: (value: string) => void) => {
     const next = normalizeMoneyInput(value);
     if (next !== null) setter(next);
@@ -985,7 +996,7 @@ export default function App() {
     setCfTeacherSearch("");
     setCfTeacherPickerOpen(false);
     setCfType("group");
-    setCfLessonPrice("");
+    setCfLessonPrice(defaultLessonPriceForCourseType("group"));
     setCfSubscriptionPrice("");
     setCourseModalOpen(true);
   }
@@ -2531,7 +2542,7 @@ export default function App() {
                 onCfTeacherIdChange={setCfTeacherId}
                 onCfTeacherPickerOpenChange={setCfTeacherPickerOpen}
                 onAddTeacherFromCourseForm={addTeacherFromCourseForm}
-                onCfTypeChange={setCfType}
+                onCfTypeChange={handleCourseTypeChange}
                 onCfLessonPriceChange={(value) => handleCoursePriceChange(value, setCfLessonPrice)}
                 onCfSubscriptionPriceChange={(value) =>
                   handleCoursePriceChange(value, setCfSubscriptionPrice)
