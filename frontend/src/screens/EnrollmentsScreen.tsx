@@ -1,4 +1,4 @@
-import type { Ref, RefObject } from "react";
+import { useEffect, useRef, useState, type Ref, type RefObject } from "react";
 import { EnrollmentFormModal } from "../components/modals/EnrollmentFormModal";
 import { EmptyState } from "../components/EmptyState";
 import type { CourseDTO } from "../lib/courses";
@@ -54,6 +54,14 @@ type EnrollmentsScreenProps = {
   t: TranslateFn;
 };
 
+type EnrollmentGroup = {
+  courseId: number;
+  courseName: string;
+  courseType: string;
+  teacherName: string;
+  enrollments: EnrollmentDTO[];
+};
+
 export function EnrollmentsScreen({
   loading,
   enrollments,
@@ -100,7 +108,84 @@ export function EnrollmentsScreen({
   onCloseEnrollmentModal,
   t,
 }: EnrollmentsScreenProps) {
-  const hasActiveFilters = studentFilter !== undefined || courseFilter !== undefined;
+  const [query, setQuery] = useState("");
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const visibleEnrollments = normalizedQuery
+    ? enrollments.filter((enrollment) =>
+        enrollment.studentName.toLocaleLowerCase().includes(normalizedQuery)
+      )
+    : enrollments;
+  const hasActiveFilters =
+    normalizedQuery !== "" || studentFilter !== undefined || courseFilter !== undefined;
+  const groupedEnrollments = new Map<number, EnrollmentGroup>();
+  for (const enrollment of visibleEnrollments) {
+    const existing = groupedEnrollments.get(enrollment.courseId);
+    if (existing) {
+      existing.enrollments.push(enrollment);
+      continue;
+    }
+    groupedEnrollments.set(enrollment.courseId, {
+      courseId: enrollment.courseId,
+      courseName: enrollment.courseName,
+      courseType: enrollment.courseType,
+      teacherName: enrollment.teacherName,
+      enrollments: [enrollment],
+    });
+  }
+  const enrollmentGroups = Array.from(groupedEnrollments.values()).sort((left, right) =>
+    left.courseName.localeCompare(right.courseName)
+  );
+  for (const group of enrollmentGroups) {
+    group.enrollments.sort((left, right) => left.studentName.localeCompare(right.studentName));
+  }
+  const visibleCourseIdsKey = enrollmentGroups.map((group) => group.courseId).join(",");
+  const [expandedCourseIds, setExpandedCourseIds] = useState<Set<number>>(
+    () =>
+      new Set(
+        courseFilter !== undefined || studentFilter !== undefined
+          ? enrollmentGroups.map((group) => group.courseId)
+          : enrollmentGroups[0]
+            ? [enrollmentGroups[0].courseId]
+            : []
+      )
+  );
+  const initializedExpansion = useRef(visibleEnrollments.length > 0);
+
+  useEffect(() => {
+    const visibleCourseIds = visibleCourseIdsKey.split(",").filter(Boolean).map(Number);
+    if (visibleCourseIds.length === 0) return;
+
+    if (normalizedQuery !== "" || courseFilter !== undefined || studentFilter !== undefined) {
+      setExpandedCourseIds((current) => {
+        const next = new Set(current);
+        for (const id of visibleCourseIds) next.add(id);
+        return next;
+      });
+      initializedExpansion.current = true;
+      return;
+    }
+
+    if (!initializedExpansion.current) {
+      setExpandedCourseIds(new Set([visibleCourseIds[0]]));
+      initializedExpansion.current = true;
+    }
+  }, [courseFilter, normalizedQuery, studentFilter, visibleCourseIdsKey]);
+
+  const allVisibleGroupsExpanded =
+    enrollmentGroups.length > 0 &&
+    enrollmentGroups.every((group) => expandedCourseIds.has(group.courseId));
+  const hasVisibleExpandedGroup = enrollmentGroups.some((group) =>
+    expandedCourseIds.has(group.courseId)
+  );
+
+  function toggleGroup(courseId: number) {
+    setExpandedCourseIds((current) => {
+      const next = new Set(current);
+      if (next.has(courseId)) next.delete(courseId);
+      else next.add(courseId);
+      return next;
+    });
+  }
 
   function courseOptionLabel(course: CourseDTO): string {
     const typeLabel = courseTypeLabel(course.type);
@@ -113,6 +198,15 @@ export function EnrollmentsScreen({
     <>
       <FilterToolbar
         primaryAction={<button onClick={onAddEnrollment}>{t("button.addEnrollment")}</button>}
+        search={
+          <input
+            className="searchField"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={t("msg.searchPlaceholderEnrollment")}
+            aria-label={t("msg.searchPlaceholderEnrollment")}
+          />
+        }
         filters={
           <>
             <select
@@ -145,21 +239,47 @@ export function EnrollmentsScreen({
         }
         hasActiveFilters={hasActiveFilters}
         onClearFilters={() => {
+          setQuery("");
           onStudentFilterChange(undefined);
           onCourseFilterChange(undefined);
         }}
         clearLabel={t("button.clearFilters")}
+        secondaryActions={
+          enrollmentGroups.length > 1 ? (
+            <div className="enrollmentGroupControls">
+              <button
+                type="button"
+                className="secondaryActionButton"
+                disabled={allVisibleGroupsExpanded}
+                onClick={() =>
+                  setExpandedCourseIds(new Set(enrollmentGroups.map((group) => group.courseId)))
+                }
+              >
+                {t("button.expandAll")}
+              </button>
+              <button
+                type="button"
+                className="secondaryActionButton"
+                disabled={!hasVisibleExpandedGroup}
+                onClick={() => setExpandedCourseIds(new Set())}
+              >
+                {t("button.collapseAll")}
+              </button>
+            </div>
+          ) : undefined
+        }
       />
 
       {loading ? (
         <div>{t("label.loading")}</div>
-      ) : enrollments.length === 0 ? (
+      ) : visibleEnrollments.length === 0 ? (
         hasActiveFilters ? (
           <EmptyState
             title={t("msg.noEnrollmentsSearchTitle")}
             description={t("msg.noEnrollmentsSearchDescription")}
             actionLabel={t("button.clearFilters")}
             onAction={() => {
+              setQuery("");
               onStudentFilterChange(undefined);
               onCourseFilterChange(undefined);
             }}
@@ -187,45 +307,101 @@ export function EnrollmentsScreen({
           />
         )
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>{t("field.student")}</th>
-              <th>{t("field.course")}</th>
-              <th>{t("field.type")}</th>
-              <th>{t("field.teacher")}</th>
-              <th>{t("field.billing")}</th>
-              <th style={{ textAlign: "right" }}>{t("field.lessonPriceOverride")}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {enrollments.map((enrollment) => (
-              <tr key={enrollment.id}>
-                <td>
-                  <button
-                    className="linkButton"
-                    onClick={() => void onOpenStudent(enrollment.studentId)}
-                  >
-                    {enrollment.studentName}
-                  </button>
-                </td>
-                <td>{enrollment.courseName}</td>
-                <td>{courseTypeLabel(enrollment.courseType)}</td>
-                <td>{enrollment.teacherName || "—"}</td>
-                <td>{billingModeLabel(enrollment.billingMode)}</td>
-                <td style={{ textAlign: "right" }}>
-                  {enrollment.billingMode === "per_lesson"
-                    ? `€${enrollment.lessonPriceOverride.toFixed(2)}`
-                    : `€${enrollment.subscriptionLessonPrice.toFixed(2)}`}
-                </td>
-                <td>
-                  <button onClick={() => onEditEnrollment(enrollment)}>{t("button.edit")}</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="enrollmentGroupList">
+          {enrollmentGroups.map((group) => {
+            const expanded = expandedCourseIds.has(group.courseId);
+            return (
+              <section
+                key={group.courseId}
+                className={`enrollmentGroup ${expanded ? "enrollmentGroup--expanded" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="enrollmentGroupHeader"
+                  aria-expanded={expanded}
+                  onClick={() => toggleGroup(group.courseId)}
+                >
+                  <span className="enrollmentGroupChevron" aria-hidden="true">
+                    {expanded ? "▾" : "▸"}
+                  </span>
+                  <span className="enrollmentGroupTitle">
+                    <strong>{group.courseName}</strong>
+                    <span>
+                      {courseTypeLabel(group.courseType)} · {group.teacherName || "—"}
+                    </span>
+                  </span>
+                  <span className="enrollmentGroupCount">
+                    {t("msg.studentsCount", { count: group.enrollments.length })}
+                  </span>
+                </button>
+
+                {expanded && (
+                  <div className="tableWrap enrollmentGroupTableWrap">
+                    <table className="enrollmentCompactTable">
+                      <thead>
+                        <tr>
+                          <th>{t("field.student")}</th>
+                          <th>{t("field.billing")}</th>
+                          <th style={{ textAlign: "right" }}>{t("field.lessonPriceOverride")}</th>
+                          <th>{t("field.materials")}</th>
+                          <th>{t("field.note")}</th>
+                          <th aria-label={t("field.actions")}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.enrollments.map((enrollment) => (
+                          <tr key={enrollment.id}>
+                            <td>
+                              <button
+                                className="linkButton enrollmentStudentLink"
+                                onClick={() => void onOpenStudent(enrollment.studentId)}
+                              >
+                                {enrollment.studentName}
+                              </button>
+                            </td>
+                            <td>{billingModeLabel(enrollment.billingMode)}</td>
+                            <td className="enrollmentCompactPrice">
+                              {enrollment.billingMode === "per_lesson"
+                                ? `€${enrollment.lessonPriceOverride.toFixed(2)}`
+                                : `€${enrollment.subscriptionLessonPrice.toFixed(2)}`}
+                            </td>
+                            <td>
+                              <span
+                                className={`enrollmentMaterialsFlag ${
+                                  enrollment.chargeMaterials
+                                    ? "enrollmentMaterialsFlag--charged"
+                                    : ""
+                                }`}
+                              >
+                                {enrollment.chargeMaterials ? t("label.yes") : t("label.no")}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="enrollmentCompactNote" title={enrollment.note}>
+                                {enrollment.note || "—"}
+                              </span>
+                            </td>
+                            <td className="enrollmentCompactActions">
+                              <button
+                                type="button"
+                                className="enrollmentRowAction"
+                                aria-label={`${t("button.edit")}: ${enrollment.studentName}`}
+                                title={t("button.edit")}
+                                onClick={() => onEditEnrollment(enrollment)}
+                              >
+                                ...
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            );
+          })}
+        </div>
       )}
 
       {enrollmentModalOpen && (

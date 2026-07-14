@@ -1985,6 +1985,191 @@ tfoot td {
   background: linear-gradient(180deg, #fffdfb, #fff8f1);
 }
 
+.enrollmentGroupControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.enrollmentGroupControls .secondaryActionButton,
+.enrollmentGroupControls .secondaryActionButton:first-child {
+  color: var(--muted-strong);
+  background: rgba(255, 255, 255, 0.84);
+  border-color: rgba(133, 102, 69, 0.14);
+  box-shadow: none;
+}
+
+.enrollmentGroupControls .secondaryActionButton:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.enrollmentGroupList {
+  display: grid;
+  gap: 10px;
+}
+
+.enrollmentGroup {
+  overflow: hidden;
+  border: 1px solid rgba(133, 102, 69, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 8px 22px rgba(94, 72, 47, 0.07);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.enrollmentGroup--expanded {
+  border-color: rgba(212, 109, 53, 0.22);
+  box-shadow: var(--shadow-md);
+}
+
+.enrollmentGroupHeader {
+  display: flex;
+  width: 100%;
+  min-height: 66px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 0;
+  color: var(--text);
+  background: linear-gradient(110deg, rgba(255, 249, 242, 0.96), rgba(255, 255, 255, 0.94));
+  text-align: left;
+  cursor: pointer;
+}
+
+.enrollmentGroupHeader:hover,
+.enrollmentGroupHeader:focus-visible {
+  background: linear-gradient(110deg, rgba(255, 241, 227, 0.98), rgba(255, 255, 255, 0.96));
+}
+
+.enrollmentGroupHeader:focus-visible {
+  outline: 3px solid rgba(42, 117, 99, 0.22);
+  outline-offset: -3px;
+}
+
+.enrollmentGroupChevron {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.enrollmentGroupTitle {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.enrollmentGroupTitle strong {
+  overflow: hidden;
+  font-size: 1rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.enrollmentGroupTitle span {
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 750;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.enrollmentGroupCount {
+  margin-left: auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: var(--muted-strong);
+  background: rgba(133, 102, 69, 0.09);
+  font-size: 0.8rem;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.enrollmentGroupTableWrap {
+  border-top: 1px solid rgba(133, 102, 69, 0.1);
+}
+
+.enrollmentCompactTable {
+  min-width: 720px;
+  border: 0;
+  border-radius: 0;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: none;
+}
+
+.enrollmentCompactTable thead th {
+  padding: 9px 14px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+}
+
+.enrollmentCompactTable tbody td {
+  padding: 9px 14px;
+}
+
+.enrollmentStudentLink {
+  padding: 3px 0;
+  box-shadow: none;
+}
+
+.enrollmentCompactPrice {
+  text-align: right;
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+}
+
+.enrollmentMaterialsFlag {
+  display: inline-flex;
+  min-width: 38px;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  color: var(--muted-strong);
+  background: rgba(133, 102, 69, 0.09);
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+
+.enrollmentMaterialsFlag--charged {
+  color: var(--good);
+  background: var(--good-soft);
+}
+
+.enrollmentCompactNote {
+  display: block;
+  max-width: 190px;
+  overflow: hidden;
+  color: var(--muted-strong);
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.enrollmentCompactActions {
+  width: 50px;
+  text-align: right;
+}
+
+.enrollmentCompactTable tbody .enrollmentRowAction {
+  width: 34px;
+  min-width: 34px;
+  height: 30px;
+  padding: 0;
+  border-radius: 9px;
+  box-shadow: none;
+  line-height: 1;
+}
+
 .empty {
   padding: 28px 24px;
   border-radius: 24px;
@@ -2780,6 +2965,24 @@ tfoot td {
 
   .studentAdvancedFilters {
     width: 100%;
+  }
+
+  .enrollmentGroupControls {
+    width: 100%;
+  }
+
+  .enrollmentGroupControls .secondaryActionButton {
+    flex: 1 1 auto;
+  }
+
+  .enrollmentGroupHeader {
+    min-height: 62px;
+    padding: 10px 12px;
+  }
+
+  .enrollmentGroupCount {
+    padding: 5px 8px;
+    font-size: 0.74rem;
   }
 
   .invoiceRowActions {
