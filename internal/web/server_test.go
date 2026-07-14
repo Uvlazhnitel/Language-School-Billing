@@ -2395,7 +2395,7 @@ func TestAuthLoginProtectsAPIAndLogout(t *testing.T) {
 	}
 }
 
-func TestUserManagementAndStaffRestrictions(t *testing.T) {
+func TestUserManagementAndStaffOperationalPermissions(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
 
@@ -2412,6 +2412,20 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 	if len(users) < 2 {
 		t.Fatalf("users count = %d, want at least 2", len(users))
 	}
+	adminSession := getJSON[backend.SessionDTO](t, env.Client, env.Server.URL, "/api/auth/session")
+	for _, capability := range []string{
+		"backups",
+		"manageSettings",
+		"manageUsers",
+		"viewAuditLog",
+		"deletePayments",
+		"deleteStudents",
+		"deleteCourses",
+	} {
+		if !adminSession.Capabilities[capability] {
+			t.Fatalf("admin %s capability = false, want true", capability)
+		}
+	}
 
 	jar, err := cookiejar.New(nil)
 	if err != nil {
@@ -2425,8 +2439,22 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 	if !login.Authenticated || login.User == nil || login.User.Role != "staff" {
 		t.Fatalf("unexpected staff session: %+v", login)
 	}
-	if !login.Capabilities["invoiceArchive"] {
-		t.Fatalf("staff invoiceArchive capability = false, want true")
+	for _, capability := range []string{
+		"backups",
+		"manageSettings",
+		"invoiceArchive",
+		"deletePayments",
+		"deleteStudents",
+		"deleteCourses",
+	} {
+		if !login.Capabilities[capability] {
+			t.Fatalf("staff %s capability = false, want true", capability)
+		}
+	}
+	for _, capability := range []string{"manageUsers", "viewAuditLog"} {
+		if login.Capabilities[capability] {
+			t.Fatalf("staff %s capability = true, want false", capability)
+		}
 	}
 
 	staffStudent := postJSON[backend.StudentDTO](t, staffClient, env.Server.URL, "/api/students", map[string]any{
@@ -2436,19 +2464,38 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 		t.Fatalf("staff student fullName = %q", staffStudent.FullName)
 	}
 
-	resp, _ := rawRequest(t, staffClient, http.MethodGet, env.Server.URL+"/api/users", nil)
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("staff users status = %d, want 403", resp.StatusCode)
+	resp, _ := rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/students/"+strconv.Itoa(staffStudent.ID)+"?version="+strconv.Itoa(staffStudent.Version), nil)
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("staff delete active student status = %d, want 409", resp.StatusCode)
 	}
 
-	resp, _ = rawRequest(t, staffClient, http.MethodPost, env.Server.URL+"/api/backups", bytes.NewReader([]byte(`{}`)))
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("staff backups status = %d, want 403", resp.StatusCode)
+	postJSON[map[string]bool](t, staffClient, env.Server.URL, "/api/students/"+strconv.Itoa(staffStudent.ID)+"/active", map[string]any{
+		"version": staffStudent.Version,
+		"active":  false,
+	})
+	staffStudent = getJSON[backend.StudentDTO](t, staffClient, env.Server.URL, "/api/students/"+strconv.Itoa(staffStudent.ID))
+	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/students/"+strconv.Itoa(staffStudent.ID)+"?version="+strconv.Itoa(staffStudent.Version), nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("staff delete inactive student status = %d, want 204", resp.StatusCode)
 	}
 
-	resp, _ = rawRequest(t, staffClient, http.MethodGet, env.Server.URL+"/api/settings/invoice-email", nil)
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("staff invoice email settings get status = %d, want 403", resp.StatusCode)
+	backup := postJSON[map[string]string](t, staffClient, env.Server.URL, "/api/backups", map[string]any{})
+	if backup["filename"] == "" {
+		t.Fatal("staff backup filename is empty")
+	}
+
+	postJSON[map[string]string](t, staffClient, env.Server.URL, "/api/settings/locale", map[string]any{"locale": "ru-RU"})
+	settings := getJSON[backend.InvoiceEmailSettingsDTO](t, staffClient, env.Server.URL, "/api/settings/invoice-email")
+	if settings.SubjectTemplate == "" {
+		t.Fatal("staff invoice email settings subject is empty")
+	}
+	settings = postJSON[backend.InvoiceEmailSettingsDTO](t, staffClient, env.Server.URL, "/api/settings/invoice-email", map[string]any{
+		"subjectTemplate": "Staff subject {invoice_number}",
+		"bodyTemplate":    "Staff body",
+		"replyTo":         "staff@example.com",
+	})
+	if settings.SubjectTemplate != "Staff subject {invoice_number}" || settings.ReplyTo != "staff@example.com" {
+		t.Fatalf("unexpected staff invoice email settings: %+v", settings)
 	}
 
 	resp, _ = rawRequest(t, staffClient, http.MethodGet, env.Server.URL+"/api/invoice-archive", nil)
@@ -2456,25 +2503,82 @@ func TestUserManagementAndStaffRestrictions(t *testing.T) {
 		t.Fatalf("staff invoice archive status = %d, want 200", resp.StatusCode)
 	}
 
-	resp, _ = rawRequest(
-		t,
-		staffClient,
-		http.MethodPost,
-		env.Server.URL+"/api/settings/invoice-email",
-		bytes.NewReader([]byte(`{"subjectTemplate":"x","bodyTemplate":"y","replyTo":""}`)),
-	)
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("staff invoice email settings post status = %d, want 403", resp.StatusCode)
+	freeCourse := postJSON[backend.CourseDTO](t, staffClient, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Staff Deletable Course",
+		"type":              "group",
+		"lessonPrice":       15,
+		"subscriptionPrice": 60,
+	})
+	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/courses/"+strconv.Itoa(freeCourse.ID)+"?version="+strconv.Itoa(freeCourse.Version), nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("staff delete free course status = %d, want 204", resp.StatusCode)
 	}
 
-	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/students/"+strconv.Itoa(staffStudent.ID)+"?version="+strconv.Itoa(staffStudent.Version), nil)
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("staff delete student status = %d, want 403", resp.StatusCode)
+	financeStudent := postJSON[backend.StudentDTO](t, staffClient, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "Staff Finance Student",
+	})
+	protectedCourse := postJSON[backend.CourseDTO](t, staffClient, env.Server.URL, "/api/courses", map[string]any{
+		"name":              "Staff Protected Course",
+		"type":              "individual",
+		"lessonPrice":       25,
+		"subscriptionPrice": 100,
+	})
+	postJSON[backend.EnrollmentDTO](t, staffClient, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":           financeStudent.ID,
+		"courseId":            protectedCourse.ID,
+		"billingMode":         "per_lesson",
+		"chargeMaterials":     false,
+		"lessonPriceOverride": 25,
+	})
+	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/courses/"+strconv.Itoa(protectedCourse.ID)+"?version="+strconv.Itoa(protectedCourse.Version), nil)
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("staff delete enrolled course status = %d, want 409", resp.StatusCode)
 	}
 
-	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/users/"+strconv.Itoa(created.ID), nil)
-	if resp.StatusCode != http.StatusForbidden {
-		t.Fatalf("staff delete user status = %d, want 403", resp.StatusCode)
+	payment := postJSON[backend.PaymentDTO](t, staffClient, env.Server.URL, "/api/payments", map[string]any{
+		"studentId": financeStudent.ID,
+		"amount":    35,
+		"method":    "cash",
+		"paidAt":    "2026-07-14",
+		"note":      "staff payment",
+	})
+	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/payments/"+strconv.Itoa(payment.ID), nil)
+	if resp.StatusCode != http.StatusNoContent {
+		t.Fatalf("staff delete payment status = %d, want 204", resp.StatusCode)
+	}
+	balance := getJSON[backend.BalanceDTO](t, staffClient, env.Server.URL, "/api/payments/student/"+strconv.Itoa(financeStudent.ID)+"/balance")
+	if balance.TotalPaid != 0 || balance.Balance != 0 {
+		t.Fatalf("balance after staff payment delete = %+v, want zero paid and balance", balance)
+	}
+
+	audit := getJSON[backend.AuditLogListResult](t, env.Client, env.Server.URL, "/api/audit-logs?action=payment.delete&page=1&pageSize=20")
+	foundStaffDelete := false
+	for _, item := range audit.Items {
+		if item.EntityID != nil && *item.EntityID == payment.ID && item.ActorLabel == "staff" {
+			foundStaffDelete = true
+			break
+		}
+	}
+	if !foundStaffDelete {
+		t.Fatal("expected staff payment.delete audit entry")
+	}
+
+	userRequests := []struct {
+		method string
+		path   string
+	}{
+		{method: http.MethodGet, path: "/api/users"},
+		{method: http.MethodPost, path: "/api/users"},
+		{method: http.MethodPut, path: "/api/users/" + strconv.Itoa(created.ID)},
+		{method: http.MethodPost, path: "/api/users/" + strconv.Itoa(created.ID) + "/password"},
+		{method: http.MethodPost, path: "/api/users/" + strconv.Itoa(created.ID) + "/active"},
+		{method: http.MethodDelete, path: "/api/users/" + strconv.Itoa(created.ID)},
+	}
+	for _, request := range userRequests {
+		resp, _ = rawRequest(t, staffClient, request.method, env.Server.URL+request.path, bytes.NewReader([]byte(`{}`)))
+		if resp.StatusCode != http.StatusForbidden {
+			t.Fatalf("staff %s %s status = %d, want 403", request.method, request.path, resp.StatusCode)
+		}
 	}
 
 	resp, _ = rawRequest(t, staffClient, http.MethodGet, env.Server.URL+"/api/audit-logs", nil)

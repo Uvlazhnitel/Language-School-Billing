@@ -145,4 +145,25 @@ describe("StudentWorkspace", () => {
     expect(markup).toContain("<td>No</td>");
     expect(markup.match(/aria-label="Edit lesson price"/g)).toHaveLength(2);
   });
+
+  it("shows payment deletion only when the capability is enabled", () => {
+    const payment = {
+      id: 10,
+      studentId: 1,
+      paidAt: "2026-07-14T10:00:00Z",
+      amount: 25,
+      method: "cash" as const,
+      note: "Lesson payment",
+      createdAt: "2026-07-14T10:00:00Z",
+    };
+    const enabledMarkup = renderToStaticMarkup(
+      <StudentWorkspace {...buildProps()} detailPayments={[payment]} canDeletePayment />
+    );
+    const disabledMarkup = renderToStaticMarkup(
+      <StudentWorkspace {...buildProps()} detailPayments={[payment]} canDeletePayment={false} />
+    );
+
+    expect(enabledMarkup).toContain(">Delete</button>");
+    expect(disabledMarkup).not.toContain(">Delete</button>");
+  });
 });

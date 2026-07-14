@@ -18,7 +18,7 @@ func (s *Service) Meta(ctx context.Context) (*Meta, error) {
 	return &Meta{
 		Ready:        s.Ready(),
 		Locale:       locale,
-		Capabilities: capabilitiesForRole(auth.RoleAdmin),
+		Capabilities: CapabilitiesForRole(auth.RoleAdmin),
 	}, nil
 }
 

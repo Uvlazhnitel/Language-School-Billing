@@ -198,8 +198,9 @@ func (s *Server) serveAPI(w http.ResponseWriter, r *http.Request) {
 		writeUnauthorized(w, "authentication required")
 		return
 	}
-	if isAdminOnlyAPIPath(r.Method, r.URL.Path) && currentUser.Role != auth.RoleAdmin {
-		writeJSON(w, http.StatusForbidden, map[string]string{"error": "admin access required"})
+	if capability := requiredCapabilityForAPIPath(r.Method, r.URL.Path); capability != "" &&
+		!backend.CapabilitiesForRole(currentUser.Role)[capability] {
+		writeJSON(w, http.StatusForbidden, map[string]string{"error": "insufficient permissions"})
 		return
 	}
 
@@ -458,26 +459,26 @@ func isPublicAPIPath(path string) bool {
 	}
 }
 
-func isAdminOnlyAPIPath(method, path string) bool {
+func requiredCapabilityForAPIPath(method, path string) string {
 	switch {
 	case method == http.MethodPost && path == "/api/backups":
-		return true
+		return backend.CapabilityBackups
 	case method == http.MethodPost && path == "/api/settings/locale":
-		return true
+		return backend.CapabilityManageSettings
 	case (method == http.MethodGet || method == http.MethodPost) && path == "/api/settings/invoice-email":
-		return true
+		return backend.CapabilityManageSettings
 	case method == http.MethodGet && path == "/api/audit-logs":
-		return true
-	case strings.HasPrefix(path, "/api/users"):
-		return true
+		return backend.CapabilityViewAuditLog
+	case path == "/api/users" || strings.HasPrefix(path, "/api/users/"):
+		return backend.CapabilityManageUsers
 	case method == http.MethodDelete && strings.HasPrefix(path, "/api/payments/"):
-		return true
+		return backend.CapabilityDeletePayments
 	case method == http.MethodDelete && strings.HasPrefix(path, "/api/students/"):
-		return true
+		return backend.CapabilityDeleteStudents
 	case method == http.MethodDelete && strings.HasPrefix(path, "/api/courses/"):
-		return true
+		return backend.CapabilityDeleteCourses
 	default:
-		return false
+		return ""
 	}
 }
 

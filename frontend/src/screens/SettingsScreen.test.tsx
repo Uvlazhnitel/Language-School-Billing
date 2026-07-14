@@ -5,7 +5,7 @@ import { SettingsScreen } from "./SettingsScreen";
 import { createTranslator } from "../lib/i18n";
 
 describe("SettingsScreen", () => {
-  it("shows invoice email settings block for admins", () => {
+  it("shows operational settings but hides user management without permission", () => {
     const markup = renderToStaticMarkup(
       <SettingsScreen
         uiLocale="lv-LV"
@@ -134,6 +134,7 @@ describe("SettingsScreen", () => {
     );
 
     expect(markup).toContain("Invoice email templates");
+    expect(markup).toContain("Create backup");
     expect(markup).toContain("Invoice archive");
     expect(markup).toContain("LS-202606-001");
     expect(markup).toContain("Archive Student");
@@ -153,5 +154,7 @@ describe("SettingsScreen", () => {
     expect(markup).not.toContain("/api/invoice-archive/2026/06/LS-202606-003.pdf/open");
     expect(markup).toContain("{invoice_number}");
     expect(markup).toContain("Reset to default");
+    expect(markup).not.toContain("Create user");
+    expect(markup).not.toContain("Password reset");
   });
 });

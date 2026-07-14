@@ -489,25 +489,36 @@ func normalizePayerRole(role string) string {
 
 func capabilitiesForCurrentUser(currentUser *auth.UserInfo) map[string]bool {
 	if currentUser == nil {
-		return capabilitiesForRole("")
+		return CapabilitiesForRole("")
 	}
-	return capabilitiesForRole(currentUser.Role)
+	return CapabilitiesForRole(currentUser.Role)
 }
 
-func capabilitiesForRole(role string) map[string]bool {
+const (
+	CapabilityBackups        = "backups"
+	CapabilityManageUsers    = "manageUsers"
+	CapabilityManageSettings = "manageSettings"
+	CapabilityViewAuditLog   = "viewAuditLog"
+	CapabilityDeletePayments = "deletePayments"
+	CapabilityDeleteStudents = "deleteStudents"
+	CapabilityDeleteCourses  = "deleteCourses"
+)
+
+func CapabilitiesForRole(role string) map[string]bool {
 	isAdmin := role == auth.RoleAdmin
+	isOperationalUser := isAdmin || role == auth.RoleStaff
 	return map[string]bool{
-		"backups":        isAdmin,
-		"emailSend":      true,
-		"invoiceArchive": true,
-		"pdfDownload":    true,
-		"pdfGenerate":    true,
-		"manageUsers":    isAdmin,
-		"manageSettings": isAdmin,
-		"viewAuditLog":   isAdmin,
-		"deletePayments": isAdmin,
-		"deleteStudents": isAdmin,
-		"deleteCourses":  isAdmin,
+		CapabilityBackups:        isOperationalUser,
+		"emailSend":              true,
+		"invoiceArchive":         true,
+		"pdfDownload":            true,
+		"pdfGenerate":            true,
+		CapabilityManageUsers:    isAdmin,
+		CapabilityManageSettings: isOperationalUser,
+		CapabilityViewAuditLog:   isAdmin,
+		CapabilityDeletePayments: isOperationalUser,
+		CapabilityDeleteStudents: isOperationalUser,
+		CapabilityDeleteCourses:  isOperationalUser,
 	}
 }
 
