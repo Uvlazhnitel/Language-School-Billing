@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 
 import { StudentWorkspace } from "./StudentWorkspace";
 import { createTranslator } from "../lib/i18n";
+import type { EnrollmentDTO } from "../lib/enrollments";
 import type { StudentDTO } from "../lib/students";
 
 const students: StudentDTO[] = [
@@ -21,6 +22,41 @@ const students: StudentDTO[] = [
     isActive: true,
     balance: 0,
     debt: 0,
+  },
+];
+
+const enrollments: EnrollmentDTO[] = [
+  {
+    id: 1,
+    version: 1,
+    studentId: 1,
+    studentName: "Anna Student",
+    courseId: 1,
+    courseName: "English",
+    courseType: "group",
+    teacherName: "Teacher One",
+    billingMode: "per_lesson",
+    chargeMaterials: true,
+    lessonPriceOverride: 25,
+    subscriptionLessonPrice: 0,
+    note: "",
+    createdAt: "2026-07-01T10:00:00Z",
+  },
+  {
+    id: 2,
+    version: 1,
+    studentId: 1,
+    studentName: "Anna Student",
+    courseId: 2,
+    courseName: "Latvian",
+    courseType: "individual",
+    teacherName: "Teacher Two",
+    billingMode: "per_lesson",
+    chargeMaterials: false,
+    lessonPriceOverride: 25,
+    subscriptionLessonPrice: 0,
+    note: "",
+    createdAt: "2026-07-01T10:00:00Z",
   },
 ];
 
@@ -96,5 +132,15 @@ describe("StudentWorkspace", () => {
     expect(markup).toContain("Credit only");
     expect(markup).toContain("Zero or debt");
     expect(markup).toContain("Clear filters");
+  });
+
+  it("shows whether materials are charged for each enrollment", () => {
+    const markup = renderToStaticMarkup(
+      <StudentWorkspace {...buildProps()} detailEnrollments={enrollments} />
+    );
+
+    expect(markup).toContain("<th>Materials</th>");
+    expect(markup).toContain("<td>Yes</td>");
+    expect(markup).toContain("<td>No</td>");
   });
 });

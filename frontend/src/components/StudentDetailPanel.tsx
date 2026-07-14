@@ -305,6 +305,7 @@ export function StudentDetailPanel({
                     <th>{t("field.teacher")}</th>
                     <th>{t("field.billing")}</th>
                     <th style={{ textAlign: "right" }}>{t("field.lessonPriceOverride")}</th>
+                    <th>{t("field.materials")}</th>
                     <th>{t("field.note")}</th>
                   </tr>
                 </thead>
@@ -319,6 +320,7 @@ export function StudentDetailPanel({
                           ? `€${enrollment.lessonPriceOverride.toFixed(2)}`
                           : `€${enrollment.subscriptionLessonPrice.toFixed(2)}`}
                       </td>
+                      <td>{enrollment.chargeMaterials ? t("label.yes") : t("label.no")}</td>
                       <td>{enrollment.note || "—"}</td>
                     </tr>
                   ))}
