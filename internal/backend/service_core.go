@@ -114,8 +114,14 @@ type EnrollmentCreateInput struct {
 }
 
 type StudentOnboardingResult struct {
-	Student    StudentDTO     `json:"student"`
-	Enrollment *EnrollmentDTO `json:"enrollment,omitempty"`
+	Student     StudentDTO      `json:"student"`
+	Enrollments []EnrollmentDTO `json:"enrollments"`
+	Enrollment  *EnrollmentDTO  `json:"enrollment,omitempty"`
+}
+
+type EnrollmentBulkCreateResult struct {
+	Enrollments      []EnrollmentDTO `json:"enrollments"`
+	SkippedCourseIDs []int           `json:"skippedCourseIds"`
 }
 
 type CourseMonthSubscriptionDTO struct {

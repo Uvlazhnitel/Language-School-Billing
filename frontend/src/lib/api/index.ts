@@ -12,6 +12,7 @@ export type {
   DebtInvoiceDTO,
   DebtorDTO,
   EnrollmentDTO,
+  EnrollmentBulkCreateResult,
   EnrollmentCreateInput,
   EnsurePdfResult,
   EnsureAllPDFsItemResult,

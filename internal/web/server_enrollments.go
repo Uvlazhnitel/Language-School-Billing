@@ -1,6 +1,10 @@
 package web
 
-import "net/http"
+import (
+	"net/http"
+
+	"langschool/internal/backend"
+)
 
 func (s *Server) handleEnrollmentsList(w http.ResponseWriter, r *http.Request) {
 	studentID, err := parseOptionalInt(r.URL.Query().Get("studentId"))
@@ -32,6 +36,23 @@ func (s *Server) handleEnrollmentsCreate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	writeJSON(w, http.StatusCreated, item)
+}
+
+func (s *Server) handleEnrollmentsBulkCreate(w http.ResponseWriter, r *http.Request) {
+	var req enrollmentBulkCreateRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	inputs := make([]backend.EnrollmentCreateInput, 0, len(req.Enrollments))
+	for _, enrollment := range req.Enrollments {
+		inputs = append(inputs, toEnrollmentCreateInput(enrollment))
+	}
+	result, err := s.svc.EnrollmentCreateMany(r.Context(), req.StudentID, inputs)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, result)
 }
 
 func (s *Server) handleEnrollmentsUpdate(w http.ResponseWriter, r *http.Request) {

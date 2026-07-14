@@ -232,6 +232,12 @@ export const httpTransport: AppTransport = {
       ...body({ student, enrollment }),
     });
   },
+  async createStudentWithEnrollments(student, enrollments) {
+    return request("/students/onboard", {
+      method: "POST",
+      ...body({ student, enrollments }),
+    });
+  },
   async updateStudent(id, version, fullName, personalCode, phone, email, note, isMinor, payerName, payerRole) {
     return request<StudentDTO>(`/students/${id}`, {
       method: "PUT",
@@ -293,6 +299,12 @@ export const httpTransport: AppTransport = {
         subscriptionLessonPrice,
         note,
       }),
+    });
+  },
+  async createEnrollmentsBulk(studentId, enrollments) {
+    return request("/enrollments/bulk", {
+      method: "POST",
+      ...body({ studentId, enrollments }),
     });
   },
   async updateEnrollment(enrollmentId, version, billingMode, chargeMaterials, lessonPriceOverride, subscriptionLessonPrice, note) {

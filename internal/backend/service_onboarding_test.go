@@ -53,6 +53,196 @@ func TestStudentOnboardCreatesStudentAndEnrollmentAtomically(t *testing.T) {
 	}
 }
 
+func TestStudentOnboardManyCreatesAllEnrollmentsInOrder(t *testing.T) {
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+	firstCourse, err := svc.rt.DB.Ent.Course.Create().
+		SetName("First Onboarding Course").
+		SetType("group").
+		SetLessonPriceCents(1500).
+		SetSubscriptionPriceCents(0).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create first: %v", err)
+	}
+	secondCourse, err := svc.rt.DB.Ent.Course.Create().
+		SetName("Second Onboarding Course").
+		SetType("individual").
+		SetLessonPriceCents(2500).
+		SetSubscriptionPriceCents(0).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create second: %v", err)
+	}
+
+	result, err := svc.StudentOnboardMany(ctx, testOnboardingStudentInput("Multi-course Student"), []EnrollmentCreateInput{
+		{CourseID: firstCourse.ID, BillingMode: BillingModePerLesson, ChargeMaterials: true, LessonPriceOverride: 15},
+		{CourseID: secondCourse.ID, BillingMode: BillingModePerLesson, ChargeMaterials: false, LessonPriceOverride: 25},
+	})
+	if err != nil {
+		t.Fatalf("StudentOnboardMany: %v", err)
+	}
+	if len(result.Enrollments) != 2 {
+		t.Fatalf("enrollments = %+v, want 2", result.Enrollments)
+	}
+	if result.Enrollments[0].CourseID != firstCourse.ID || result.Enrollments[1].CourseID != secondCourse.ID {
+		t.Fatalf("enrollment order = %+v", result.Enrollments)
+	}
+	if result.Enrollment == nil || result.Enrollment.CourseID != firstCourse.ID {
+		t.Fatalf("legacy enrollment = %+v, want first course", result.Enrollment)
+	}
+}
+
+func TestStudentOnboardManyRollsBackWhenLaterEnrollmentFails(t *testing.T) {
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+	course, err := svc.rt.DB.Ent.Course.Create().
+		SetName("Valid Course Before Failure").
+		SetType("group").
+		SetLessonPriceCents(1500).
+		SetSubscriptionPriceCents(0).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	_, err = svc.StudentOnboardMany(ctx, testOnboardingStudentInput("Fully Rolled Back Student"), []EnrollmentCreateInput{
+		{CourseID: course.ID, BillingMode: BillingModePerLesson, LessonPriceOverride: 15},
+		{CourseID: 999999, BillingMode: BillingModePerLesson, LessonPriceOverride: 25},
+	})
+	if err == nil {
+		t.Fatal("expected second enrollment to fail")
+	}
+	studentExists, err := svc.rt.DB.Ent.Student.Query().
+		Where(student.FullNameEQ("Fully Rolled Back Student")).
+		Exist(ctx)
+	if err != nil {
+		t.Fatalf("Student.Exist: %v", err)
+	}
+	if studentExists {
+		t.Fatal("student persisted after multi-enrollment failure")
+	}
+	enrollmentCount, err := svc.rt.DB.Ent.Enrollment.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Count: %v", err)
+	}
+	if enrollmentCount != 0 {
+		t.Fatalf("enrollment count = %d, want 0", enrollmentCount)
+	}
+}
+
+func TestStudentOnboardManyRejectsDuplicateCourseIDs(t *testing.T) {
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+	input := EnrollmentCreateInput{CourseID: 10, BillingMode: BillingModePerLesson, LessonPriceOverride: 15}
+
+	if _, err := svc.StudentOnboardMany(ctx, testOnboardingStudentInput("Duplicate Course Student"), []EnrollmentCreateInput{input, input}); err == nil {
+		t.Fatal("expected duplicate courseID error")
+	}
+	studentCount, err := svc.rt.DB.Ent.Student.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("Student.Count: %v", err)
+	}
+	if studentCount != 0 {
+		t.Fatalf("student count = %d, want 0", studentCount)
+	}
+}
+
+func TestEnrollmentCreateManySkipsExistingAndCreatesMissing(t *testing.T) {
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+	st, err := svc.rt.DB.Ent.Student.Create().SetFullName("Existing Multi-course Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+	firstCourse, err := svc.rt.DB.Ent.Course.Create().SetName("Existing Course").SetType("group").SetLessonPriceCents(1500).SetSubscriptionPriceCents(0).Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create first: %v", err)
+	}
+	secondCourse, err := svc.rt.DB.Ent.Course.Create().SetName("Missing Course").SetType("individual").SetLessonPriceCents(2500).SetSubscriptionPriceCents(0).Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create second: %v", err)
+	}
+	if _, err := svc.EnrollmentCreate(ctx, st.ID, firstCourse.ID, BillingModePerLesson, true, 15, 0, ""); err != nil {
+		t.Fatalf("EnrollmentCreate existing: %v", err)
+	}
+
+	result, err := svc.EnrollmentCreateMany(ctx, st.ID, []EnrollmentCreateInput{
+		{CourseID: firstCourse.ID, BillingMode: BillingModePerLesson, ChargeMaterials: true, LessonPriceOverride: 15},
+		{CourseID: secondCourse.ID, BillingMode: BillingModePerLesson, ChargeMaterials: false, LessonPriceOverride: 25},
+	})
+	if err != nil {
+		t.Fatalf("EnrollmentCreateMany: %v", err)
+	}
+	if len(result.Enrollments) != 1 || result.Enrollments[0].CourseID != secondCourse.ID {
+		t.Fatalf("created enrollments = %+v", result.Enrollments)
+	}
+	if len(result.SkippedCourseIDs) != 1 || result.SkippedCourseIDs[0] != firstCourse.ID {
+		t.Fatalf("skipped course IDs = %+v", result.SkippedCourseIDs)
+	}
+}
+
+func TestEnrollmentCreateManyRollsBackAllMissingCoursesOnFailure(t *testing.T) {
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+	st, err := svc.rt.DB.Ent.Student.Create().SetFullName("Bulk Rollback Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+	course, err := svc.rt.DB.Ent.Course.Create().SetName("Bulk Valid Course").SetType("group").SetLessonPriceCents(1500).SetSubscriptionPriceCents(0).Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	_, err = svc.EnrollmentCreateMany(ctx, st.ID, []EnrollmentCreateInput{
+		{CourseID: course.ID, BillingMode: BillingModePerLesson, LessonPriceOverride: 15},
+		{CourseID: 999999, BillingMode: BillingModePerLesson, LessonPriceOverride: 25},
+	})
+	if err == nil {
+		t.Fatal("expected bulk enrollment failure")
+	}
+	enrollmentCount, err := svc.rt.DB.Ent.Enrollment.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Count: %v", err)
+	}
+	if enrollmentCount != 0 {
+		t.Fatalf("enrollment count = %d, want 0", enrollmentCount)
+	}
+}
+
+func TestEnrollmentCreateManyRejectsInactiveStudentWithoutChanges(t *testing.T) {
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+	st, err := svc.rt.DB.Ent.Student.Create().SetFullName("Inactive Bulk Student").SetIsActive(false).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+	course, err := svc.rt.DB.Ent.Course.Create().SetName("Inactive Bulk Course").SetType("group").SetLessonPriceCents(1500).SetSubscriptionPriceCents(0).Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	if _, err := svc.EnrollmentCreateMany(ctx, st.ID, []EnrollmentCreateInput{{
+		CourseID: course.ID, BillingMode: BillingModePerLesson, LessonPriceOverride: 15,
+	}}); err == nil {
+		t.Fatal("expected inactive student error")
+	}
+	enrollmentCount, err := svc.rt.DB.Ent.Enrollment.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Count: %v", err)
+	}
+	if enrollmentCount != 0 {
+		t.Fatalf("enrollment count = %d, want 0", enrollmentCount)
+	}
+	freshStudent, err := svc.rt.DB.Ent.Student.Get(ctx, st.ID)
+	if err != nil {
+		t.Fatalf("Student.Get: %v", err)
+	}
+	if freshStudent.IsActive {
+		t.Fatal("inactive student was activated")
+	}
+}
+
 func TestStudentOnboardWithoutEnrollmentCreatesOnlyStudent(t *testing.T) {
 	svc := newTestEnrollmentService(t)
 	ctx := context.Background()

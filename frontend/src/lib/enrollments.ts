@@ -1,5 +1,10 @@
-import { getTransport, type EnrollmentDTO } from "./api";
-export type { EnrollmentDTO } from "./api";
+import {
+  getTransport,
+  type EnrollmentBulkCreateResult,
+  type EnrollmentCreateInput,
+  type EnrollmentDTO,
+} from "./api";
+export type { EnrollmentBulkCreateResult, EnrollmentDTO } from "./api";
 
 function toNullableId(id?: number): number | null {
   return typeof id === "number" && id > 0 ? id : null;
@@ -32,6 +37,14 @@ export async function createEnrollment(
     subscriptionLessonPrice,
     note
   );
+}
+
+export async function createEnrollmentsBulk(
+  studentId: number,
+  enrollments: EnrollmentCreateInput[]
+): Promise<EnrollmentBulkCreateResult> {
+  const transport = await getTransport();
+  return transport.createEnrollmentsBulk(studentId, enrollments);
 }
 
 export async function updateEnrollment(

@@ -133,6 +133,78 @@ func TestStudentCourseEnrollmentCRUD(t *testing.T) {
 	}
 }
 
+func TestStudentOnboardingSupportsMultipleAndLegacyEnrollments(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	firstCourse := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name": "Onboarding First", "type": "group", "lessonPrice": 15, "subscriptionPrice": 0,
+	})
+	secondCourse := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name": "Onboarding Second", "type": "individual", "lessonPrice": 25, "subscriptionPrice": 0,
+	})
+	thirdCourse := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name": "Onboarding Third", "type": "group", "lessonPrice": 15, "subscriptionPrice": 0,
+	})
+
+	multi := postJSON[backend.StudentOnboardingResult](t, env.Client, env.Server.URL, "/api/students/onboard", map[string]any{
+		"student": map[string]any{"fullName": "Multi API Student"},
+		"enrollments": []map[string]any{
+			{"courseId": firstCourse.ID, "billingMode": "per_lesson", "chargeMaterials": true, "lessonPriceOverride": 15},
+			{"courseId": secondCourse.ID, "billingMode": "per_lesson", "chargeMaterials": false, "lessonPriceOverride": 25},
+		},
+	})
+	if len(multi.Enrollments) != 2 || multi.Enrollment == nil || multi.Enrollment.CourseID != firstCourse.ID {
+		t.Fatalf("multi onboarding result = %+v", multi)
+	}
+
+	bulk := postJSON[backend.EnrollmentBulkCreateResult](t, env.Client, env.Server.URL, "/api/enrollments/bulk", map[string]any{
+		"studentId": multi.Student.ID,
+		"enrollments": []map[string]any{
+			{"courseId": firstCourse.ID, "billingMode": "per_lesson", "lessonPriceOverride": 15},
+			{"courseId": thirdCourse.ID, "billingMode": "per_lesson", "lessonPriceOverride": 15},
+		},
+	})
+	if len(bulk.Enrollments) != 1 || bulk.Enrollments[0].CourseID != thirdCourse.ID {
+		t.Fatalf("bulk created enrollments = %+v", bulk.Enrollments)
+	}
+	if len(bulk.SkippedCourseIDs) != 1 || bulk.SkippedCourseIDs[0] != firstCourse.ID {
+		t.Fatalf("bulk skipped course IDs = %+v", bulk.SkippedCourseIDs)
+	}
+
+	legacy := postJSON[backend.StudentOnboardingResult](t, env.Client, env.Server.URL, "/api/students/onboard", map[string]any{
+		"student": map[string]any{"fullName": "Legacy API Student"},
+		"enrollment": map[string]any{
+			"courseId": firstCourse.ID, "billingMode": "per_lesson", "lessonPriceOverride": 15,
+		},
+	})
+	if len(legacy.Enrollments) != 1 || legacy.Enrollment == nil || legacy.Enrollment.CourseID != firstCourse.ID {
+		t.Fatalf("legacy onboarding result = %+v", legacy)
+	}
+
+	resp, body := rawRequest(t, env.Client, http.MethodPost, env.Server.URL+"/api/students/onboard", bytes.NewReader(mustJSON(t, map[string]any{
+		"student":    map[string]any{"fullName": "Ambiguous API Student"},
+		"enrollment": map[string]any{"courseId": firstCourse.ID, "billingMode": "per_lesson"},
+		"enrollments": []map[string]any{
+			{"courseId": secondCourse.ID, "billingMode": "per_lesson"},
+		},
+	})))
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("mixed onboarding status = %d body=%s, want 400", resp.StatusCode, body)
+	}
+
+	resp, body = rawRequest(t, env.Client, http.MethodPost, env.Server.URL+"/api/students/onboard", bytes.NewReader(mustJSON(t, map[string]any{
+		"student": map[string]any{"fullName": "Duplicate Course API Student"},
+		"enrollments": []map[string]any{
+			{"courseId": firstCourse.ID, "billingMode": "per_lesson"},
+			{"courseId": firstCourse.ID, "billingMode": "per_lesson"},
+		},
+	})))
+	if resp.StatusCode != http.StatusBadRequest {
+		t.Fatalf("duplicate course onboarding status = %d body=%s, want 400", resp.StatusCode, body)
+	}
+}
+
 func TestStudentDuplicateProtectionAPI(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()

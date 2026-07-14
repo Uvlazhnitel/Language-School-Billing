@@ -62,24 +62,35 @@ func (s *Server) handleStudentsOnboard(w http.ResponseWriter, r *http.Request) {
 		PayerName:    req.Student.PayerName,
 		PayerRole:    req.Student.PayerRole,
 	}
-	var enrollmentInput *backend.EnrollmentCreateInput
+	if req.Enrollment != nil && req.Enrollments != nil {
+		writeBadRequest(w, "use either enrollment or enrollments, not both")
+		return
+	}
+	enrollmentInputs := make([]backend.EnrollmentCreateInput, 0, len(req.Enrollments)+1)
 	if req.Enrollment != nil {
-		enrollmentInput = &backend.EnrollmentCreateInput{
-			CourseID:                req.Enrollment.CourseID,
-			BillingMode:             req.Enrollment.BillingMode,
-			ChargeMaterials:         req.Enrollment.ChargeMaterials,
-			LessonPriceOverride:     req.Enrollment.LessonPriceOverride,
-			SubscriptionLessonPrice: req.Enrollment.SubscriptionLessonPrice,
-			Note:                    req.Enrollment.Note,
-		}
+		enrollmentInputs = append(enrollmentInputs, toEnrollmentCreateInput(*req.Enrollment))
+	}
+	for _, enrollment := range req.Enrollments {
+		enrollmentInputs = append(enrollmentInputs, toEnrollmentCreateInput(enrollment))
 	}
 
-	result, err := s.svc.StudentOnboard(r.Context(), studentInput, enrollmentInput)
+	result, err := s.svc.StudentOnboardMany(r.Context(), studentInput, enrollmentInputs)
 	if err != nil {
 		writeError(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, result)
+}
+
+func toEnrollmentCreateInput(req enrollmentCreateRequest) backend.EnrollmentCreateInput {
+	return backend.EnrollmentCreateInput{
+		CourseID:                req.CourseID,
+		BillingMode:             req.BillingMode,
+		ChargeMaterials:         req.ChargeMaterials,
+		LessonPriceOverride:     req.LessonPriceOverride,
+		SubscriptionLessonPrice: req.SubscriptionLessonPrice,
+		Note:                    req.Note,
+	}
 }
 
 func (s *Server) handleStudentsDuplicateCheck(w http.ResponseWriter, r *http.Request) {

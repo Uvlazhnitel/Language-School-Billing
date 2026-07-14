@@ -8,6 +8,10 @@ import type { StudentActivityItem, StudentNextAction } from "../lib/studentActiv
 import type { TranslateFn } from "../lib/i18n";
 import type { CourseDTO } from "../lib/courses";
 import type {
+  StudentOnboardingEnrollmentRow,
+  StudentOnboardingEnrollmentRowPatch,
+} from "../lib/studentOnboarding";
+import type {
   StudentAgeFilter,
   StudentBalanceFilter,
   StudentDebtFilter,
@@ -74,13 +78,7 @@ type StudentsScreenProps = {
   studentDuplicateCheckResult: StudentDuplicateCheckResult | null;
   payerRoleOptions: readonly string[];
   allCourses: CourseDTO[];
-  onboardingCourseId: number;
-  onboardingMode: EnrollmentDTO["billingMode"];
-  onboardingChargeMaterials: boolean;
-  onboardingLessonPrice: string;
-  onboardingSubscriptionPrice: string;
-  onboardingNote: string;
-  onboardingSettingsOpen: boolean;
+  onboardingRows: StudentOnboardingEnrollmentRow[];
   onSfNameChange: (value: string) => void;
   onSfPersonalCodeChange: (value: string) => void;
   onSfPhoneChange: (value: string) => void;
@@ -89,13 +87,14 @@ type StudentsScreenProps = {
   onSfIsMinorChange: (value: boolean) => void;
   onSfPayerNameChange: (value: string) => void;
   onSfPayerRoleChange: (value: string) => void;
-  onOnboardingCourseIdChange: (value: number) => void;
-  onOnboardingModeChange: (value: EnrollmentDTO["billingMode"]) => void;
-  onOnboardingChargeMaterialsChange: (value: boolean) => void;
-  onOnboardingLessonPriceChange: (value: string) => void;
-  onOnboardingSubscriptionPriceChange: (value: string) => void;
-  onOnboardingNoteChange: (value: string) => void;
-  onOnboardingSettingsOpenChange: (value: boolean) => void;
+  onAddOnboardingRow: () => void;
+  onRemoveOnboardingRow: (rowId: number) => void;
+  onOnboardingCourseChange: (rowId: number, courseId: number) => void;
+  onOnboardingModeChange: (rowId: number, value: EnrollmentDTO["billingMode"]) => void;
+  onOnboardingRowChange: (
+    rowId: number,
+    patch: StudentOnboardingEnrollmentRowPatch
+  ) => void;
   onSaveStudent: () => void;
   onSaveStudentAndAddAnother: () => void;
   onOpenExistingDuplicateStudent: (studentId: number) => void;
@@ -119,13 +118,7 @@ export function StudentsScreen({
   studentDuplicateCheckResult,
   payerRoleOptions,
   allCourses,
-  onboardingCourseId,
-  onboardingMode,
-  onboardingChargeMaterials,
-  onboardingLessonPrice,
-  onboardingSubscriptionPrice,
-  onboardingNote,
-  onboardingSettingsOpen,
+  onboardingRows,
   onSfNameChange,
   onSfPersonalCodeChange,
   onSfPhoneChange,
@@ -134,13 +127,11 @@ export function StudentsScreen({
   onSfIsMinorChange,
   onSfPayerNameChange,
   onSfPayerRoleChange,
-  onOnboardingCourseIdChange,
+  onAddOnboardingRow,
+  onRemoveOnboardingRow,
+  onOnboardingCourseChange,
   onOnboardingModeChange,
-  onOnboardingChargeMaterialsChange,
-  onOnboardingLessonPriceChange,
-  onOnboardingSubscriptionPriceChange,
-  onOnboardingNoteChange,
-  onOnboardingSettingsOpenChange,
+  onOnboardingRowChange,
   onSaveStudent,
   onSaveStudentAndAddAnother,
   onOpenExistingDuplicateStudent,
@@ -167,13 +158,7 @@ export function StudentsScreen({
           payerRoleOptions={payerRoleOptions}
           payerRoleLabel={workspaceProps.payerRoleLabel}
           allCourses={allCourses}
-          courseId={onboardingCourseId}
-          enrollmentMode={onboardingMode}
-          enrollmentChargeMaterials={onboardingChargeMaterials}
-          enrollmentLessonPrice={onboardingLessonPrice}
-          enrollmentSubscriptionPrice={onboardingSubscriptionPrice}
-          enrollmentNote={onboardingNote}
-          enrollmentSettingsOpen={onboardingSettingsOpen}
+          enrollmentRows={onboardingRows}
           formatEUR={workspaceProps.formatEUR}
           onNameChange={onSfNameChange}
           onPersonalCodeChange={onSfPersonalCodeChange}
@@ -183,13 +168,11 @@ export function StudentsScreen({
           onIsMinorChange={onSfIsMinorChange}
           onPayerNameChange={onSfPayerNameChange}
           onPayerRoleChange={onSfPayerRoleChange}
-          onCourseIdChange={onOnboardingCourseIdChange}
+          onAddEnrollmentRow={onAddOnboardingRow}
+          onRemoveEnrollmentRow={onRemoveOnboardingRow}
+          onEnrollmentCourseChange={onOnboardingCourseChange}
           onEnrollmentModeChange={onOnboardingModeChange}
-          onEnrollmentChargeMaterialsChange={onOnboardingChargeMaterialsChange}
-          onEnrollmentLessonPriceChange={onOnboardingLessonPriceChange}
-          onEnrollmentSubscriptionPriceChange={onOnboardingSubscriptionPriceChange}
-          onEnrollmentNoteChange={onOnboardingNoteChange}
-          onEnrollmentSettingsOpenChange={onOnboardingSettingsOpenChange}
+          onEnrollmentRowChange={onOnboardingRowChange}
           onSave={onSaveStudent}
           onSaveAndAddAnother={onSaveStudentAndAddAnother}
           onCancel={onCloseStudentModal}

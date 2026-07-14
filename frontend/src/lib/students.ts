@@ -56,6 +56,14 @@ export async function createStudentWithEnrollment(
   return transport.createStudentWithEnrollment(student, enrollment);
 }
 
+export async function createStudentWithEnrollments(
+  student: StudentCreateInput,
+  enrollments: EnrollmentCreateInput[]
+): Promise<StudentOnboardingResult> {
+  const transport = await getTransport();
+  return transport.createStudentWithEnrollments(student, enrollments);
+}
+
 export async function updateStudent(
   id: number,
   version: number,

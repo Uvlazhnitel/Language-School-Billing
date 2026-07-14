@@ -159,6 +159,7 @@ describe("httpTransport", () => {
       });
       return jsonResponse({
         student: { id: 7, fullName: "Anna Student" },
+        enrollments: [{ id: 9, studentId: 7, courseId: 4 }],
         enrollment: { id: 9, studentId: 7, courseId: 4 },
       }, 201);
     });
@@ -187,7 +188,68 @@ describe("httpTransport", () => {
       )
     ).resolves.toEqual({
       student: expect.objectContaining({ id: 7 }),
+      enrollments: [expect.objectContaining({ id: 9 })],
       enrollment: expect.objectContaining({ id: 9 }),
+    });
+  });
+
+  it("maps multi-course student onboarding and bulk enrollment endpoints", async () => {
+    const enrollments = [
+      {
+        courseId: 4,
+        billingMode: "per_lesson" as const,
+        chargeMaterials: true,
+        lessonPriceOverride: 15,
+        subscriptionLessonPrice: 0,
+        note: "",
+      },
+      {
+        courseId: 5,
+        billingMode: "per_lesson" as const,
+        chargeMaterials: false,
+        lessonPriceOverride: 25,
+        subscriptionLessonPrice: 0,
+        note: "",
+      },
+    ];
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      const payload = JSON.parse(String(init?.body));
+      if (url.endsWith("/api/students/onboard")) {
+        expect(payload.enrollments).toEqual(enrollments);
+        return jsonResponse({
+          student: { id: 7, fullName: "Anna Student" },
+          enrollments: enrollments.map((item, index) => ({ id: index + 10, ...item })),
+          enrollment: { id: 10, ...enrollments[0] },
+        }, 201);
+      }
+      if (url.endsWith("/api/enrollments/bulk")) {
+        expect(payload).toEqual({ studentId: 7, enrollments });
+        return jsonResponse({
+          enrollments: [{ id: 11, ...enrollments[1] }],
+          skippedCourseIds: [4],
+        }, 201);
+      }
+      throw new Error(`unexpected url ${url}`);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const student = {
+      fullName: "Anna Student",
+      personalCode: "",
+      phone: "",
+      email: "",
+      note: "",
+      isMinor: false,
+      payerName: "",
+      payerRole: "",
+    };
+    await expect(httpTransport.createStudentWithEnrollments(student, enrollments)).resolves.toEqual(
+      expect.objectContaining({ enrollments: expect.arrayContaining([expect.objectContaining({ id: 10 })]) })
+    );
+    await expect(httpTransport.createEnrollmentsBulk(7, enrollments)).resolves.toEqual({
+      enrollments: [expect.objectContaining({ id: 11 })],
+      skippedCourseIds: [4],
     });
   });
 

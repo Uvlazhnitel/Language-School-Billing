@@ -3,8 +3,20 @@ import { describe, expect, it, vi } from "vitest";
 
 import { StudentFormModal } from "./StudentFormModal";
 import { createTranslator } from "../../lib/i18n";
+import type { StudentOnboardingEnrollmentRow } from "../../lib/studentOnboarding";
 
 describe("StudentFormModal", () => {
+  const emptyEnrollmentRow: StudentOnboardingEnrollmentRow = {
+    id: 1,
+    courseId: 0,
+    billingMode: "per_lesson",
+    chargeMaterials: true,
+    lessonPrice: "0",
+    subscriptionPrice: "0",
+    note: "",
+    settingsOpen: false,
+  };
+
   const baseProps = {
     editing: false,
     name: "",
@@ -18,13 +30,7 @@ describe("StudentFormModal", () => {
     payerRoleOptions: [] as const,
     payerRoleLabel: (role: string) => role,
     allCourses: [],
-    courseId: 0,
-    enrollmentMode: "per_lesson" as const,
-    enrollmentChargeMaterials: true,
-    enrollmentLessonPrice: "0",
-    enrollmentSubscriptionPrice: "0",
-    enrollmentNote: "",
-    enrollmentSettingsOpen: false,
+    enrollmentRows: [emptyEnrollmentRow],
     formatEUR: (value: number) => `€${value.toFixed(2)}`,
     onNameChange: vi.fn(),
     onPersonalCodeChange: vi.fn(),
@@ -34,13 +40,11 @@ describe("StudentFormModal", () => {
     onIsMinorChange: vi.fn(),
     onPayerNameChange: vi.fn(),
     onPayerRoleChange: vi.fn(),
-    onCourseIdChange: vi.fn(),
+    onAddEnrollmentRow: vi.fn(),
+    onRemoveEnrollmentRow: vi.fn(),
+    onEnrollmentCourseChange: vi.fn(),
     onEnrollmentModeChange: vi.fn(),
-    onEnrollmentChargeMaterialsChange: vi.fn(),
-    onEnrollmentLessonPriceChange: vi.fn(),
-    onEnrollmentSubscriptionPriceChange: vi.fn(),
-    onEnrollmentNoteChange: vi.fn(),
-    onEnrollmentSettingsOpenChange: vi.fn(),
+    onEnrollmentRowChange: vi.fn(),
     onSave: vi.fn(),
     onSaveAndAddAnother: vi.fn(),
     onCancel: vi.fn(),
@@ -84,8 +88,7 @@ describe("StudentFormModal", () => {
             subscriptionPrice: 0,
           },
         ]}
-        courseId={4}
-        enrollmentLessonPrice="15"
+        enrollmentRows={[{ ...emptyEnrollmentRow, courseId: 4, lessonPrice: "15" }]}
       />
     );
 
@@ -110,9 +113,9 @@ describe("StudentFormModal", () => {
             subscriptionPrice: 0,
           },
         ]}
-        courseId={4}
-        enrollmentLessonPrice="15"
-        enrollmentSettingsOpen
+        enrollmentRows={[
+          { ...emptyEnrollmentRow, courseId: 4, lessonPrice: "15", settingsOpen: true },
+        ]}
       />
     );
 
@@ -199,8 +202,7 @@ describe("StudentFormModal", () => {
             subscriptionPrice: 0,
           },
         ]}
-        courseId={4}
-        enrollmentLessonPrice="15"
+        enrollmentRows={[{ ...emptyEnrollmentRow, courseId: 4, lessonPrice: "15" }]}
         duplicateCheckResult={{
           possibleMatches: [
             {
@@ -226,5 +228,59 @@ describe("StudentFormModal", () => {
 
     expect(markup).toContain("Enroll existing student");
     expect(markup).not.toContain(">Open student<");
+  });
+
+  it("renders multiple independent course rows with add and remove actions", () => {
+    const markup = renderToStaticMarkup(
+      <StudentFormModal
+        {...baseProps}
+        allCourses={[
+          {
+            id: 4,
+            version: 1,
+            name: "Evening Group",
+            teacherName: "",
+            type: "group",
+            lessonPrice: 15,
+            subscriptionPrice: 0,
+          },
+          {
+            id: 5,
+            version: 1,
+            name: "Private Lesson",
+            teacherName: "",
+            type: "individual",
+            lessonPrice: 25,
+            subscriptionPrice: 0,
+          },
+          {
+            id: 6,
+            version: 1,
+            name: "Conversation Club",
+            teacherName: "",
+            type: "group",
+            lessonPrice: 15,
+            subscriptionPrice: 0,
+          },
+        ]}
+        enrollmentRows={[
+          { ...emptyEnrollmentRow, courseId: 4, lessonPrice: "15" },
+          {
+            ...emptyEnrollmentRow,
+            id: 2,
+            courseId: 5,
+            lessonPrice: "25",
+            chargeMaterials: false,
+          },
+        ]}
+      />
+    );
+
+    expect(markup).toContain("Course 1");
+    expect(markup).toContain("Course 2");
+    expect(markup).toContain("Remove course");
+    expect(markup).toContain("Add another course");
+    expect(markup).toContain('option value="4" disabled=""');
+    expect(markup).toContain('option value="5" disabled=""');
   });
 });

@@ -3,6 +3,10 @@ import type { CourseDTO } from "../../lib/courses";
 import type { EnrollmentDTO } from "../../lib/enrollments";
 import type { StudentDTO, StudentDuplicateCheckResult } from "../../lib/students";
 import { courseTypeLabel } from "../../lib/appUi";
+import type {
+  StudentOnboardingEnrollmentRow,
+  StudentOnboardingEnrollmentRowPatch,
+} from "../../lib/studentOnboarding";
 
 type StudentFormModalProps = {
   editing: boolean;
@@ -17,13 +21,7 @@ type StudentFormModalProps = {
   payerRoleOptions: readonly string[];
   payerRoleLabel: (role: string) => string;
   allCourses: CourseDTO[];
-  courseId: number;
-  enrollmentMode: EnrollmentDTO["billingMode"];
-  enrollmentChargeMaterials: boolean;
-  enrollmentLessonPrice: string;
-  enrollmentSubscriptionPrice: string;
-  enrollmentNote: string;
-  enrollmentSettingsOpen: boolean;
+  enrollmentRows: StudentOnboardingEnrollmentRow[];
   formatEUR: (value: number) => string;
   onNameChange: (value: string) => void;
   onPersonalCodeChange: (value: string) => void;
@@ -33,13 +31,14 @@ type StudentFormModalProps = {
   onIsMinorChange: (value: boolean) => void;
   onPayerNameChange: (value: string) => void;
   onPayerRoleChange: (value: string) => void;
-  onCourseIdChange: (value: number) => void;
-  onEnrollmentModeChange: (value: EnrollmentDTO["billingMode"]) => void;
-  onEnrollmentChargeMaterialsChange: (value: boolean) => void;
-  onEnrollmentLessonPriceChange: (value: string) => void;
-  onEnrollmentSubscriptionPriceChange: (value: string) => void;
-  onEnrollmentNoteChange: (value: string) => void;
-  onEnrollmentSettingsOpenChange: (value: boolean) => void;
+  onAddEnrollmentRow: () => void;
+  onRemoveEnrollmentRow: (rowId: number) => void;
+  onEnrollmentCourseChange: (rowId: number, courseId: number) => void;
+  onEnrollmentModeChange: (rowId: number, value: EnrollmentDTO["billingMode"]) => void;
+  onEnrollmentRowChange: (
+    rowId: number,
+    patch: StudentOnboardingEnrollmentRowPatch
+  ) => void;
   onSave: () => void;
   onSaveAndAddAnother?: () => void;
   onCancel: () => void;
@@ -63,13 +62,7 @@ export function StudentFormModal({
   payerRoleOptions,
   payerRoleLabel,
   allCourses,
-  courseId,
-  enrollmentMode,
-  enrollmentChargeMaterials,
-  enrollmentLessonPrice,
-  enrollmentSubscriptionPrice,
-  enrollmentNote,
-  enrollmentSettingsOpen,
+  enrollmentRows,
   formatEUR,
   onNameChange,
   onPersonalCodeChange,
@@ -79,13 +72,11 @@ export function StudentFormModal({
   onIsMinorChange,
   onPayerNameChange,
   onPayerRoleChange,
-  onCourseIdChange,
+  onAddEnrollmentRow,
+  onRemoveEnrollmentRow,
+  onEnrollmentCourseChange,
   onEnrollmentModeChange,
-  onEnrollmentChargeMaterialsChange,
-  onEnrollmentLessonPriceChange,
-  onEnrollmentSubscriptionPriceChange,
-  onEnrollmentNoteChange,
-  onEnrollmentSettingsOpenChange,
+  onEnrollmentRowChange,
   onSave,
   onSaveAndAddAnother,
   onCancel,
@@ -97,12 +88,12 @@ export function StudentFormModal({
 }: StudentFormModalProps) {
   const exactMatch = duplicateCheckResult?.exactMatch;
   const possibleMatches = duplicateCheckResult?.possibleMatches ?? [];
-  const selectedCourse = allCourses.find((course) => course.id === courseId);
-  const effectivePrice = Number(
-    enrollmentMode === "per_lesson"
-      ? enrollmentLessonPrice
-      : enrollmentSubscriptionPrice
-  );
+  const selectedCourseIds = enrollmentRows
+    .map((row) => row.courseId)
+    .filter((courseId) => courseId > 0);
+  const hasSelectedCourses = selectedCourseIds.length > 0;
+  const canAddEnrollmentRow =
+    enrollmentRows.length < allCourses.length && enrollmentRows.every((row) => row.courseId > 0);
 
   function courseOptionLabel(course: CourseDTO): string {
     const typeLabel = courseTypeLabel(course.type, t);
@@ -177,100 +168,165 @@ export function StudentFormModal({
               </div>
               <span>{t("label.optional")}</span>
             </div>
-            <div className="formRow">
-              <label>{t("field.course")}</label>
-              <select value={courseId || ""} onChange={(e) => onCourseIdChange(Number(e.target.value))}>
-                <option value="">{t("filter.noCourseYet")}</option>
-                {allCourses.map((course) => (
-                  <option key={course.id} value={course.id}>
-                    {courseOptionLabel(course)}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {selectedCourse && (
-              <>
-                <div className="studentOnboardingSummary">
-                  <div>
-                    <span>{t("field.billing")}</span>
-                    <strong>
-                      {enrollmentMode === "per_lesson"
-                        ? t("billing.perLesson")
-                        : t("billing.subscription")}
-                    </strong>
-                  </div>
-                  <div>
-                    <span>{t("field.price")}</span>
-                    <strong>{formatEUR(Number.isFinite(effectivePrice) ? effectivePrice : 0)}</strong>
-                  </div>
-                  <div>
-                    <span>{t("field.chargeMaterials")}</span>
-                    <strong>{enrollmentChargeMaterials ? t("label.yes") : t("label.no")}</strong>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="secondaryActionButton studentOnboardingToggle"
-                  onClick={() => onEnrollmentSettingsOpenChange(!enrollmentSettingsOpen)}
-                >
-                  {enrollmentSettingsOpen
-                    ? t("button.hideEnrollmentSettings")
-                    : t("button.changeEnrollmentSettings")}
-                </button>
-                {enrollmentSettingsOpen && (
-                  <div className="studentOnboardingAdvanced">
+            <div className="studentOnboardingRows">
+              {enrollmentRows.map((row, index) => {
+                const selectedCourse = allCourses.find((course) => course.id === row.courseId);
+                const effectivePrice = Number(
+                  row.billingMode === "per_lesson" ? row.lessonPrice : row.subscriptionPrice
+                );
+                return (
+                  <div className="studentOnboardingRow" key={row.id}>
+                    <div className="studentOnboardingRowHeader">
+                      <strong>{t("label.courseNumber", { number: index + 1 })}</strong>
+                      {index > 0 && (
+                        <button
+                          type="button"
+                          className="secondaryActionButton studentOnboardingRemove"
+                          onClick={() => onRemoveEnrollmentRow(row.id)}
+                        >
+                          {t("button.removeCourse")}
+                        </button>
+                      )}
+                    </div>
                     <div className="formRow">
-                      <label>{t("field.billing")}</label>
+                      <label>{t("field.course")}</label>
                       <select
-                        value={enrollmentMode}
+                        value={row.courseId || ""}
                         onChange={(e) =>
-                          onEnrollmentModeChange(e.target.value as EnrollmentDTO["billingMode"])
+                          onEnrollmentCourseChange(row.id, Number(e.target.value))
                         }
                       >
-                        <option value="per_lesson">{t("billing.perLesson")}</option>
-                        <option value="subscription">{t("billing.subscription")}</option>
+                        <option value="">{t("filter.noCourseYet")}</option>
+                        {allCourses.map((course) => (
+                          <option
+                            key={course.id}
+                            value={course.id}
+                            disabled={
+                              course.id !== row.courseId && selectedCourseIds.includes(course.id)
+                            }
+                          >
+                            {courseOptionLabel(course)}
+                          </option>
+                        ))}
                       </select>
                     </div>
-                    <div className="formRow">
-                      <label>
-                        {enrollmentMode === "per_lesson"
-                          ? t("field.lessonPriceOverride")
-                          : t("field.subscriptionLessonPrice")} (EUR)
-                      </label>
-                      <input
-                        type="number"
-                        min={0}
-                        step="0.1"
-                        value={
-                          enrollmentMode === "per_lesson"
-                            ? enrollmentLessonPrice
-                            : enrollmentSubscriptionPrice
-                        }
-                        onFocus={(e) => e.currentTarget.select()}
-                        onChange={(e) =>
-                          enrollmentMode === "per_lesson"
-                            ? onEnrollmentLessonPriceChange(e.target.value)
-                            : onEnrollmentSubscriptionPriceChange(e.target.value)
-                        }
-                      />
-                    </div>
-                    <div className="formRow">
-                      <label>{t("field.chargeMaterials")}</label>
-                      <input
-                        className="formCheckbox"
-                        type="checkbox"
-                        checked={enrollmentChargeMaterials}
-                        onChange={(e) => onEnrollmentChargeMaterialsChange(e.target.checked)}
-                      />
-                    </div>
-                    <div className="formRow">
-                      <label>{t("field.enrollmentNote")}</label>
-                      <input value={enrollmentNote} onChange={(e) => onEnrollmentNoteChange(e.target.value)} />
-                    </div>
+
+                    {selectedCourse && (
+                      <>
+                        <div className="studentOnboardingSummary">
+                          <div>
+                            <span>{t("field.billing")}</span>
+                            <strong>
+                              {row.billingMode === "per_lesson"
+                                ? t("billing.perLesson")
+                                : t("billing.subscription")}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>{t("field.price")}</span>
+                            <strong>
+                              {formatEUR(Number.isFinite(effectivePrice) ? effectivePrice : 0)}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>{t("field.chargeMaterials")}</span>
+                            <strong>{row.chargeMaterials ? t("label.yes") : t("label.no")}</strong>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="secondaryActionButton studentOnboardingToggle"
+                          onClick={() =>
+                            onEnrollmentRowChange(row.id, {
+                              settingsOpen: !row.settingsOpen,
+                            })
+                          }
+                        >
+                          {row.settingsOpen
+                            ? t("button.hideEnrollmentSettings")
+                            : t("button.changeEnrollmentSettings")}
+                        </button>
+                        {row.settingsOpen && (
+                          <div className="studentOnboardingAdvanced">
+                            <div className="formRow">
+                              <label>{t("field.billing")}</label>
+                              <select
+                                value={row.billingMode}
+                                onChange={(e) =>
+                                  onEnrollmentModeChange(
+                                    row.id,
+                                    e.target.value as EnrollmentDTO["billingMode"]
+                                  )
+                                }
+                              >
+                                <option value="per_lesson">{t("billing.perLesson")}</option>
+                                <option value="subscription">{t("billing.subscription")}</option>
+                              </select>
+                            </div>
+                            <div className="formRow">
+                              <label>
+                                {row.billingMode === "per_lesson"
+                                  ? t("field.lessonPriceOverride")
+                                  : t("field.subscriptionLessonPrice")} (EUR)
+                              </label>
+                              <input
+                                type="number"
+                                min={0}
+                                step="0.1"
+                                value={
+                                  row.billingMode === "per_lesson"
+                                    ? row.lessonPrice
+                                    : row.subscriptionPrice
+                                }
+                                onFocus={(e) => e.currentTarget.select()}
+                                onChange={(e) =>
+                                  onEnrollmentRowChange(
+                                    row.id,
+                                    row.billingMode === "per_lesson"
+                                      ? { lessonPrice: e.target.value }
+                                      : { subscriptionPrice: e.target.value }
+                                  )
+                                }
+                              />
+                            </div>
+                            <div className="formRow">
+                              <label>{t("field.chargeMaterials")}</label>
+                              <input
+                                className="formCheckbox"
+                                type="checkbox"
+                                checked={row.chargeMaterials}
+                                onChange={(e) =>
+                                  onEnrollmentRowChange(row.id, {
+                                    chargeMaterials: e.target.checked,
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="formRow">
+                              <label>{t("field.enrollmentNote")}</label>
+                              <input
+                                value={row.note}
+                                onChange={(e) =>
+                                  onEnrollmentRowChange(row.id, { note: e.target.value })
+                                }
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
                   </div>
-                )}
-              </>
+                );
+              })}
+            </div>
+            {canAddEnrollmentRow && (
+              <button
+                type="button"
+                className="secondaryActionButton studentOnboardingAdd"
+                onClick={onAddEnrollmentRow}
+              >
+                {t("button.addAnotherCourse")}
+              </button>
             )}
           </section>
         )}
@@ -303,12 +359,12 @@ export function StudentFormModal({
                     <button
                       type="button"
                       onClick={() =>
-                        courseId && onEnrollExistingStudent
+                        hasSelectedCourses && onEnrollExistingStudent
                           ? onEnrollExistingStudent(student)
                           : onOpenExistingStudent(student.id)
                       }
                     >
-                      {courseId && onEnrollExistingStudent
+                      {hasSelectedCourses && onEnrollExistingStudent
                         ? t("button.enrollExistingStudent")
                         : t("button.openStudent")}
                     </button>
@@ -329,7 +385,9 @@ export function StudentFormModal({
 
         <div className="modalActions">
           <button onClick={onSave}>
-            {!editing && courseId ? t("button.createAndOpenAttendance") : t("button.save")}
+            {!editing && hasSelectedCourses
+              ? t("button.createAndOpenAttendance")
+              : t("button.save")}
           </button>
           {!editing && onSaveAndAddAnother && (
             <button onClick={onSaveAndAddAnother}>{t("button.saveAndAddAnother")}</button>

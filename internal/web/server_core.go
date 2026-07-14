@@ -91,6 +91,7 @@ func (s *Server) registerCourseRoutes() {
 func (s *Server) registerEnrollmentRoutes() {
 	s.mux.HandleFunc("GET /api/enrollments", s.handleEnrollmentsList)
 	s.mux.HandleFunc("POST /api/enrollments", s.handleEnrollmentsCreate)
+	s.mux.HandleFunc("POST /api/enrollments/bulk", s.handleEnrollmentsBulkCreate)
 	s.mux.HandleFunc("PUT /api/enrollments/{id}", s.handleEnrollmentsUpdate)
 	s.mux.HandleFunc("DELETE /api/enrollments/{id}", s.handleEnrollmentsDelete)
 }
@@ -248,8 +249,14 @@ type enrollmentUpdateRequest struct {
 }
 
 type studentOnboardRequest struct {
-	Student    studentUpsertRequest     `json:"student"`
-	Enrollment *enrollmentCreateRequest `json:"enrollment"`
+	Student     studentUpsertRequest      `json:"student"`
+	Enrollment  *enrollmentCreateRequest  `json:"enrollment"`
+	Enrollments []enrollmentCreateRequest `json:"enrollments"`
+}
+
+type enrollmentBulkCreateRequest struct {
+	StudentID   int                       `json:"studentId"`
+	Enrollments []enrollmentCreateRequest `json:"enrollments"`
 }
 
 type periodRequest struct {

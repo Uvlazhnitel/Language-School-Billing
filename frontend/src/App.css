@@ -2171,6 +2171,38 @@ tfoot td {
   font-weight: 800;
 }
 
+.studentOnboardingRows {
+  display: grid;
+  gap: 12px;
+}
+
+.studentOnboardingRow {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid rgba(42, 117, 99, 0.14);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.studentOnboardingRowHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.studentOnboardingRowHeader > strong {
+  color: #246b5a;
+  font-size: 0.84rem;
+}
+
+.studentOnboardingRemove {
+  min-height: 32px;
+  padding: 6px 10px;
+  font-size: 0.78rem;
+}
+
 .studentOnboardingSummary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2195,6 +2227,10 @@ tfoot td {
 }
 
 .studentOnboardingToggle {
+  justify-self: start;
+}
+
+.studentOnboardingAdd {
   justify-self: start;
 }
 
@@ -2795,6 +2831,10 @@ tfoot td {
 
   .studentOnboardingSection {
     padding: 14px;
+  }
+
+  .studentOnboardingRow {
+    padding: 12px;
   }
 
   .studentFormModalBody .modalActions {

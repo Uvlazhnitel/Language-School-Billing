@@ -25,7 +25,7 @@ import {
   listStudents,
   getStudent,
   checkStudentDuplicates,
-  createStudentWithEnrollment,
+  createStudentWithEnrollments,
   updateStudent,
   setStudentActive,
   deleteStudent,
@@ -41,9 +41,17 @@ import { BillingModePerLesson, BillingModeSubscription } from "./lib/constants";
 import {
   listEnrollments,
   createEnrollment,
+  createEnrollmentsBulk,
   updateEnrollment,
   EnrollmentDTO,
 } from "./lib/enrollments";
+import {
+  buildOnboardingEnrollmentInputs,
+  changeOnboardingBillingMode,
+  createEmptyOnboardingEnrollmentRow,
+  selectOnboardingCourse,
+  type StudentOnboardingEnrollmentRowPatch,
+} from "./lib/studentOnboarding";
 
 import {
   listDebtors,
@@ -308,14 +316,9 @@ export default function App() {
   const [sfIsMinor, setSfIsMinor] = useState(false);
   const [sfPayerName, setSfPayerName] = useState("");
   const [sfPayerRole, setSfPayerRole] = useState("");
-  const [sfCourseId, setSfCourseId] = useState(0);
-  const [sfEnrollmentMode, setSfEnrollmentMode] =
-    useState<EnrollmentDTO["billingMode"]>(BillingModePerLesson);
-  const [sfEnrollmentChargeMaterials, setSfEnrollmentChargeMaterials] = useState(true);
-  const [sfEnrollmentLessonPrice, setSfEnrollmentLessonPrice] = useState("0");
-  const [sfEnrollmentSubscriptionPrice, setSfEnrollmentSubscriptionPrice] = useState("0");
-  const [sfEnrollmentNote, setSfEnrollmentNote] = useState("");
-  const [sfEnrollmentSettingsOpen, setSfEnrollmentSettingsOpen] = useState(false);
+  const [sfEnrollmentRows, setSfEnrollmentRows] = useState(() => [
+    createEmptyOnboardingEnrollmentRow(),
+  ]);
   const [studentDuplicateCheckResult, setStudentDuplicateCheckResult] =
     useState<StudentDuplicateCheckResult | null>(null);
   const [studentCreateFlow, setStudentCreateFlow] = useState<StudentCreateFlow>("save");
@@ -489,13 +492,7 @@ export default function App() {
     setSfIsMinor(false);
     setSfPayerName("");
     setSfPayerRole("");
-    setSfCourseId(0);
-    setSfEnrollmentMode(BillingModePerLesson);
-    setSfEnrollmentChargeMaterials(true);
-    setSfEnrollmentLessonPrice("0");
-    setSfEnrollmentSubscriptionPrice("0");
-    setSfEnrollmentNote("");
-    setSfEnrollmentSettingsOpen(false);
+    setSfEnrollmentRows([createEmptyOnboardingEnrollmentRow()]);
     setStudentModalOpen(true);
   }
 
@@ -511,56 +508,63 @@ export default function App() {
     setSfIsMinor(s.isMinor);
     setSfPayerName(s.payerName ?? "");
     setSfPayerRole(s.payerRole ?? "");
-    setSfCourseId(0);
-    setSfEnrollmentSettingsOpen(false);
+    setSfEnrollmentRows([createEmptyOnboardingEnrollmentRow()]);
     setStudentModalOpen(true);
   }
 
-  function handleStudentOnboardingCourseChange(courseId: number) {
+  function updateStudentOnboardingRow(
+    rowId: number,
+    patch: StudentOnboardingEnrollmentRowPatch
+  ) {
     resetStudentDuplicateCheck();
-    setSfCourseId(courseId);
-    setSfEnrollmentMode(BillingModePerLesson);
-    setSfEnrollmentChargeMaterials(true);
-    setSfEnrollmentNote("");
-    setSfEnrollmentSettingsOpen(false);
-    const course = allCourses.find((item) => item.id === courseId);
-    setSfEnrollmentLessonPrice(String(course?.lessonPrice ?? 0));
-    setSfEnrollmentSubscriptionPrice(String(course?.subscriptionPrice ?? 0));
+    setSfEnrollmentRows((rows) =>
+      rows.map((row) => (row.id === rowId ? { ...row, ...patch } : row))
+    );
   }
 
-  function handleStudentOnboardingModeChange(mode: EnrollmentDTO["billingMode"]) {
-    setSfEnrollmentMode(mode);
-    const course = allCourses.find((item) => item.id === sfCourseId);
-    if (mode === BillingModePerLesson && Number(sfEnrollmentLessonPrice) === 0) {
-      setSfEnrollmentLessonPrice(String(course?.lessonPrice ?? 0));
-    }
-    if (mode === BillingModeSubscription && Number(sfEnrollmentSubscriptionPrice) === 0) {
-      setSfEnrollmentSubscriptionPrice(String(course?.subscriptionPrice ?? 0));
-    }
+  function handleStudentOnboardingCourseChange(rowId: number, courseId: number) {
+    resetStudentDuplicateCheck();
+    setSfEnrollmentRows((rows) =>
+      rows.map((row) =>
+        row.id === rowId ? selectOnboardingCourse(row, courseId, allCourses) : row
+      )
+    );
   }
 
-  function getStudentOnboardingEnrollmentInput(): EnrollmentCreateInput | undefined {
-    if (sfCourseId <= 0) return undefined;
-    const lessonPrice = sfEnrollmentLessonPrice.trim() === "" ? 0 : Number(sfEnrollmentLessonPrice);
-    const subscriptionPrice =
-      sfEnrollmentSubscriptionPrice.trim() === "" ? 0 : Number(sfEnrollmentSubscriptionPrice);
-    if (!Number.isFinite(lessonPrice) || lessonPrice < 0) {
-      showMessage(t("msg.lessonPriceOverrideRange"), "error");
+  function handleStudentOnboardingModeChange(
+    rowId: number,
+    mode: EnrollmentDTO["billingMode"]
+  ) {
+    resetStudentDuplicateCheck();
+    setSfEnrollmentRows((rows) =>
+      rows.map((row) =>
+        row.id === rowId ? changeOnboardingBillingMode(row, mode, allCourses) : row
+      )
+    );
+  }
+
+  function addStudentOnboardingRow() {
+    resetStudentDuplicateCheck();
+    setSfEnrollmentRows((rows) => {
+      if (rows.length >= allCourses.length || rows.some((row) => row.courseId <= 0)) return rows;
+      return [...rows, createEmptyOnboardingEnrollmentRow()];
+    });
+  }
+
+  function removeStudentOnboardingRow(rowId: number) {
+    resetStudentDuplicateCheck();
+    setSfEnrollmentRows((rows) =>
+      rows.length > 1 ? rows.filter((row) => row.id !== rowId) : rows
+    );
+  }
+
+  function getStudentOnboardingEnrollmentInputs(): EnrollmentCreateInput[] | undefined {
+    const result = buildOnboardingEnrollmentInputs(sfEnrollmentRows);
+    if (result.errorKey) {
+      showMessage(t(result.errorKey), "error");
       return undefined;
     }
-    if (!Number.isFinite(subscriptionPrice) || subscriptionPrice < 0) {
-      showMessage(t("msg.subscriptionLessonPriceRange"), "error");
-      return undefined;
-    }
-    return {
-      courseId: sfCourseId,
-      billingMode: sfEnrollmentMode,
-      chargeMaterials: sfEnrollmentChargeMaterials,
-      lessonPriceOverride: sfEnrollmentMode === BillingModePerLesson ? lessonPrice : 0,
-      subscriptionLessonPrice:
-        sfEnrollmentMode === BillingModeSubscription ? subscriptionPrice : 0,
-      note: sfEnrollmentNote,
-    };
+    return result.inputs;
   }
 
   function resetStudentFieldsForNextEntry() {
@@ -592,14 +596,12 @@ export default function App() {
       showMessage(t(validationError), "error");
       return;
     }
-    const onboardingEnrollment = editingStudent
-      ? undefined
-      : getStudentOnboardingEnrollmentInput();
-    if (!editingStudent && sfCourseId > 0 && !onboardingEnrollment) return;
+    const onboardingEnrollments = editingStudent ? [] : getStudentOnboardingEnrollmentInputs();
+    if (!editingStudent && !onboardingEnrollments) return;
     setStudentCreateFlow(createFlow);
     try {
       let savedStudent: StudentDTO;
-      let savedEnrollment: EnrollmentDTO | undefined;
+      let savedEnrollments: EnrollmentDTO[] = [];
       if (editingStudent) {
         savedStudent = await updateStudent(
           editingStudent.id,
@@ -626,7 +628,7 @@ export default function App() {
             return;
           }
         }
-        const onboardingResult = await createStudentWithEnrollment(
+        const onboardingResult = await createStudentWithEnrollments(
           {
             fullName: sfName,
             personalCode: sfPersonalCode,
@@ -637,10 +639,11 @@ export default function App() {
             payerName: sfPayerName,
             payerRole: sfPayerRole,
           },
-          onboardingEnrollment
+          onboardingEnrollments ?? []
         );
         savedStudent = onboardingResult.student;
-        savedEnrollment = onboardingResult.enrollment;
+        savedEnrollments = onboardingResult.enrollments ??
+          (onboardingResult.enrollment ? [onboardingResult.enrollment] : []);
       }
       resetStudentDuplicateCheck();
       if (!editingStudent) {
@@ -655,9 +658,9 @@ export default function App() {
       await Promise.all([loadStudents(), loadAllStudents()]);
       if (!editingStudent && createFlow === "save_and_add_another") {
         resetStudentFieldsForNextEntry();
-      } else if (!editingStudent && savedEnrollment) {
+      } else if (!editingStudent && savedEnrollments.length > 0) {
         setStudentModalOpen(false);
-        openAttendanceForStudentCourse(savedStudent.id, savedEnrollment.courseId);
+        openAttendanceForStudentCourse(savedStudent.id, savedEnrollments[0].courseId);
       } else if (!editingStudent) {
         setStudentModalOpen(false);
         await openStudentCard(savedStudent, { inline: true });
@@ -831,8 +834,8 @@ export default function App() {
   }
 
   async function enrollExistingDuplicateStudent(student: StudentDTO) {
-    const enrollmentInput = getStudentOnboardingEnrollmentInput();
-    if (!enrollmentInput) return;
+    const enrollmentInputs = getStudentOnboardingEnrollmentInputs();
+    if (!enrollmentInputs || enrollmentInputs.length === 0) return;
     if (!student.isActive) {
       resetStudentDuplicateCheck();
       setStudentModalOpen(false);
@@ -842,28 +845,29 @@ export default function App() {
     }
 
     try {
-      const existing = await listEnrollments(student.id, enrollmentInput.courseId);
-      if (existing.length === 0) {
-        await createEnrollment(
-          student.id,
-          enrollmentInput.courseId,
-          enrollmentInput.billingMode,
-          enrollmentInput.chargeMaterials,
-          enrollmentInput.lessonPriceOverride,
-          enrollmentInput.subscriptionLessonPrice,
-          enrollmentInput.note
-        );
-      }
+      const result = await createEnrollmentsBulk(student.id, enrollmentInputs);
       resetStudentDuplicateCheck();
       await Promise.all([loadStudents(), loadAllStudents()]);
       if (studentCreateFlow === "save_and_add_another") {
         resetStudentFieldsForNextEntry();
-        showMessage(t(existing.length > 0 ? "msg.studentAlreadyEnrolled" : "msg.enrollmentCreatedExisting"));
+        showMessage(
+          t(
+            result.enrollments.length > 0
+              ? "msg.enrollmentsCreatedExisting"
+              : "msg.studentAlreadyEnrolled"
+          )
+        );
         return;
       }
       setStudentModalOpen(false);
-      openAttendanceForStudentCourse(student.id, enrollmentInput.courseId);
-      showMessage(t(existing.length > 0 ? "msg.studentAlreadyEnrolled" : "msg.enrollmentCreatedExisting"));
+      openAttendanceForStudentCourse(student.id, enrollmentInputs[0].courseId);
+      showMessage(
+        t(
+          result.enrollments.length > 0
+            ? "msg.enrollmentsCreatedExisting"
+            : "msg.studentAlreadyEnrolled"
+        )
+      );
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
     }
@@ -2652,13 +2656,7 @@ export default function App() {
                 studentDuplicateCheckResult={studentDuplicateCheckResult}
                 payerRoleOptions={payerRoleOptions}
                 allCourses={allCourses}
-                onboardingCourseId={sfCourseId}
-                onboardingMode={sfEnrollmentMode}
-                onboardingChargeMaterials={sfEnrollmentChargeMaterials}
-                onboardingLessonPrice={sfEnrollmentLessonPrice}
-                onboardingSubscriptionPrice={sfEnrollmentSubscriptionPrice}
-                onboardingNote={sfEnrollmentNote}
-                onboardingSettingsOpen={sfEnrollmentSettingsOpen}
+                onboardingRows={sfEnrollmentRows}
                 onSfNameChange={(value) => {
                   resetStudentDuplicateCheck();
                   setSfName(value);
@@ -2691,13 +2689,11 @@ export default function App() {
                   resetStudentDuplicateCheck();
                   setSfPayerRole(value);
                 }}
-                onOnboardingCourseIdChange={handleStudentOnboardingCourseChange}
+                onAddOnboardingRow={addStudentOnboardingRow}
+                onRemoveOnboardingRow={removeStudentOnboardingRow}
+                onOnboardingCourseChange={handleStudentOnboardingCourseChange}
                 onOnboardingModeChange={handleStudentOnboardingModeChange}
-                onOnboardingChargeMaterialsChange={setSfEnrollmentChargeMaterials}
-                onOnboardingLessonPriceChange={setSfEnrollmentLessonPrice}
-                onOnboardingSubscriptionPriceChange={setSfEnrollmentSubscriptionPrice}
-                onOnboardingNoteChange={setSfEnrollmentNote}
-                onOnboardingSettingsOpenChange={setSfEnrollmentSettingsOpen}
+                onOnboardingRowChange={updateStudentOnboardingRow}
                 onSaveStudent={() => void saveStudent()}
                 onSaveStudentAndAddAnother={() => void saveStudent(false, "save_and_add_another")}
                 onOpenExistingDuplicateStudent={(studentId) =>

@@ -218,7 +218,13 @@ export type EnrollmentCreateInput = {
 
 export type StudentOnboardingResult = {
   student: StudentDTO;
+  enrollments: EnrollmentDTO[];
   enrollment?: EnrollmentDTO;
+};
+
+export type EnrollmentBulkCreateResult = {
+  enrollments: EnrollmentDTO[];
+  skippedCourseIds: number[];
 };
 
 export type CourseMonthSubscriptionDTO = {
@@ -476,6 +482,10 @@ export interface AppTransport {
     student: StudentCreateInput,
     enrollment?: EnrollmentCreateInput
   ): Promise<StudentOnboardingResult>;
+  createStudentWithEnrollments(
+    student: StudentCreateInput,
+    enrollments: EnrollmentCreateInput[]
+  ): Promise<StudentOnboardingResult>;
   updateStudent(
     id: number,
     version: number,
@@ -524,6 +534,10 @@ export interface AppTransport {
     subscriptionLessonPrice: number,
     note: string
   ): Promise<EnrollmentDTO>;
+  createEnrollmentsBulk(
+    studentId: number,
+    enrollments: EnrollmentCreateInput[]
+  ): Promise<EnrollmentBulkCreateResult>;
   updateEnrollment(
     enrollmentId: number,
     version: number,
