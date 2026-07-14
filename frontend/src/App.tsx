@@ -125,6 +125,7 @@ import {
 import { validatePersonName, validateStudentForm } from "./lib/inputValidation";
 import { buildNextStudentDraft } from "./lib/studentFormState";
 import { defaultLessonPriceForCourseType } from "./lib/courseDefaults";
+import { enrollmentPriceUpdateValues } from "./lib/enrollmentPrice";
 
 const staleRevisionMessage = "record was changed or deleted by another user";
 type StudentCreateFlow = "save" | "save_and_add_another";
@@ -1533,6 +1534,47 @@ export default function App() {
     }
   }
 
+  async function updateEnrollmentPriceFromStudentCard(
+    enrollment: EnrollmentDTO,
+    price: number
+  ): Promise<boolean> {
+    if (!Number.isFinite(price) || price < 0) {
+      showMessage(t("msg.lessonPriceOverrideRange"), "error");
+      return false;
+    }
+
+    try {
+      const values = enrollmentPriceUpdateValues(enrollment, price);
+      const result = await updateEnrollment(
+        enrollment.id,
+        enrollment.version,
+        values.billingMode,
+        values.chargeMaterials,
+        values.lessonPriceOverride,
+        values.subscriptionLessonPrice,
+        values.note
+      );
+      await Promise.all([
+        loadEnrollments(),
+        loadInvoices({ syncDrafts: false }),
+        loadStudents(),
+        loadAllStudents(),
+        loadDebtors(),
+        refreshStudentCardData(result.studentId),
+      ]);
+      showMessage(t("msg.enrollmentPriceUpdated"));
+      return true;
+    } catch (e: any) {
+      if (isStaleRevisionError(e)) {
+        await Promise.all([loadEnrollments(), refreshStudentCardData(enrollment.studentId)]);
+        showMessage(t("msg.recordConflict"), "error");
+        return false;
+      }
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+      return false;
+    }
+  }
+
   // ---------------- Attendance ----------------
   const [rows, setRows] = useState<Row[]>([]);
   const [loadingAtt, setLoadingAtt] = useState(false);
@@ -2631,6 +2673,7 @@ export default function App() {
                 onCopyDebtRu={() => void copyStudentCardDebtMessage("ru")}
                 onCopyDebtLv={() => void copyStudentCardDebtMessage("lv")}
                 onDeletePayment={deleteStudentPayment}
+                onUpdateEnrollmentPrice={updateEnrollmentPriceFromStudentCard}
                 onManageEnrollments={() =>
                   selectedStudentCard && openAddEnrollmentForStudent(selectedStudentCard)
                 }
@@ -3117,6 +3160,7 @@ export default function App() {
               onCopyDebtRu={() => void copyStudentCardDebtMessage("ru")}
               onCopyDebtLv={() => void copyStudentCardDebtMessage("lv")}
               onDeletePayment={deleteStudentPayment}
+              onUpdateEnrollmentPrice={updateEnrollmentPriceFromStudentCard}
               onManageEnrollments={() => {
                 openAddEnrollmentForStudent(selectedStudentCard);
               }}

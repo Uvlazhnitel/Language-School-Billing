@@ -29,6 +29,7 @@ type StudentCardModalProps = {
   onCopyDebtRu: () => void | Promise<void>;
   onCopyDebtLv: () => void | Promise<void>;
   onDeletePayment: (payment: PaymentDTO) => void | Promise<void>;
+  onUpdateEnrollmentPrice: (enrollment: EnrollmentDTO, price: number) => Promise<boolean>;
   onManageEnrollments: () => void;
   onOpenInvoices: () => void;
   onClose: () => void;
@@ -58,6 +59,7 @@ export function StudentCardModal({
   onCopyDebtRu,
   onCopyDebtLv,
   onDeletePayment,
+  onUpdateEnrollmentPrice,
   onManageEnrollments,
   onOpenInvoices,
   onClose,
@@ -90,6 +92,7 @@ export function StudentCardModal({
           onCopyDebtRu={() => void onCopyDebtRu()}
           onCopyDebtLv={() => void onCopyDebtLv()}
           onDeletePayment={(payment) => void onDeletePayment(payment)}
+          onUpdateEnrollmentPrice={onUpdateEnrollmentPrice}
           onManageEnrollments={onManageEnrollments}
           onOpenInvoices={onOpenInvoices}
           footer={

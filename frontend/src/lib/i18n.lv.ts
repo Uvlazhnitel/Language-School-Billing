@@ -28,6 +28,9 @@ export const lvTranslations: Record<string, string> = {
   "button.cancel": "Atcelt",
   "button.close": "Aizvērt",
   "button.save": "Saglabāt",
+  "button.editLessonPrice": "Mainīt nodarbības cenu",
+  "button.savePrice": "Saglabāt cenu",
+  "button.cancelPriceEdit": "Atcelt cenas maiņu",
   "button.saveAndAddAnother": "Saglabāt un pievienot nākamo",
   "button.createAndOpenAttendance": "Izveidot un doties uz apmeklējumu",
   "button.changeEnrollmentSettings": "Mainīt nosacījumus",
@@ -430,6 +433,7 @@ export const lvTranslations: Record<string, string> = {
   "msg.lessonPriceOverrideRange": "Nodarbības cenai jābūt 0 vai lielākai",
   "msg.subscriptionLessonPriceRange": "Abonementa nodarbības cenai jābūt 0 vai lielākai",
   "msg.enrollmentUpdated": "Uzņemšana atjaunināta",
+  "msg.enrollmentPriceUpdated": "Nodarbības cena atjaunināta. Izrakstītie rēķini netika mainīti.",
   "msg.enrollmentCreated": "Uzņemšana izveidota: {student} -> {course}",
   "msg.enrollmentCreatedFiltered":
     "Uzņemšana izveidota: {student} -> {course}. Notīriet filtrus, lai redzētu to sarakstā.",

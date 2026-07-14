@@ -1445,6 +1445,90 @@ a {
   overflow-x: auto;
 }
 
+.enrollmentPriceCell {
+  min-width: 210px;
+  text-align: right;
+}
+
+.inlinePriceButton {
+  padding: 4px 6px;
+  border: 0;
+  border-bottom: 1px dashed currentColor;
+  border-radius: 0;
+  color: var(--accent-strong);
+  background: transparent;
+  font: inherit;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.inlinePriceButton:hover,
+.inlinePriceButton:focus-visible {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 8px;
+}
+
+.inlinePriceButton:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.enrollmentPriceEditBlock {
+  display: grid;
+  justify-items: end;
+  gap: 5px;
+}
+
+.enrollmentPriceEditor {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.enrollmentPriceEditor input {
+  width: 76px;
+  min-width: 0;
+  padding: 7px 8px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.enrollmentPriceEditor input.inputInvalid {
+  border-color: var(--bad);
+}
+
+.enrollmentPriceEditor span {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+}
+
+.enrollmentPriceEditorAction {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  padding: 0;
+  place-items: center;
+  border-radius: 9px;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.enrollmentPriceEditorSave {
+  color: var(--good);
+}
+
+.enrollmentPriceError {
+  max-width: 210px;
+  color: var(--bad);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
 .crmTimeline {
   display: grid;
   gap: 12px;

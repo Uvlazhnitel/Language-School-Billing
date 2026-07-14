@@ -63,6 +63,7 @@ type StudentsScreenProps = {
   onCopyDebtRu: () => void | Promise<void>;
   onCopyDebtLv: () => void | Promise<void>;
   onDeletePayment: (payment: PaymentDTO) => void | Promise<void>;
+  onUpdateEnrollmentPrice: (enrollment: EnrollmentDTO, price: number) => Promise<boolean>;
   onManageEnrollments: () => void;
   onOpenInvoices: () => void;
   studentModalOpen: boolean;

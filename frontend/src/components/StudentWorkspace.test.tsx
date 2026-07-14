@@ -98,6 +98,7 @@ function buildProps() {
     onCopyDebtRu: vi.fn(),
     onCopyDebtLv: vi.fn(),
     onDeletePayment: vi.fn(),
+    onUpdateEnrollmentPrice: vi.fn(async () => true),
     canDeleteStudent: true,
     canDeletePayment: true,
     onManageEnrollments: vi.fn(),
@@ -142,5 +143,6 @@ describe("StudentWorkspace", () => {
     expect(markup).toContain("<th>Materials</th>");
     expect(markup).toContain("<td>Yes</td>");
     expect(markup).toContain("<td>No</td>");
+    expect(markup.match(/aria-label="Edit lesson price"/g)).toHaveLength(2);
   });
 });

@@ -60,6 +60,7 @@ type StudentWorkspaceProps = {
   onCopyDebtRu: () => void;
   onCopyDebtLv: () => void;
   onDeletePayment: (payment: PaymentDTO) => void;
+  onUpdateEnrollmentPrice: (enrollment: EnrollmentDTO, price: number) => Promise<boolean>;
   canDeleteStudent: boolean;
   canDeletePayment: boolean;
   onManageEnrollments: () => void;
@@ -109,6 +110,7 @@ export function StudentWorkspace({
   onCopyDebtRu,
   onCopyDebtLv,
   onDeletePayment,
+  onUpdateEnrollmentPrice,
   canDeleteStudent,
   canDeletePayment,
   onManageEnrollments,
@@ -359,6 +361,7 @@ export function StudentWorkspace({
           onCopyDebtRu={onCopyDebtRu}
           onCopyDebtLv={onCopyDebtLv}
           onDeletePayment={onDeletePayment}
+          onUpdateEnrollmentPrice={onUpdateEnrollmentPrice}
           onManageEnrollments={onManageEnrollments}
           onOpenInvoices={onOpenInvoices}
         />

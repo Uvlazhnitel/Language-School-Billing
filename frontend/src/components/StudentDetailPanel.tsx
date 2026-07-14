@@ -1,5 +1,7 @@
+import { useState } from "react";
 import { BalanceDTO, DebtInvoiceDTO, PaymentDTO } from "../lib/payments";
 import { EnrollmentDTO } from "../lib/enrollments";
+import { enrollmentPrice, parseEnrollmentPrice } from "../lib/enrollmentPrice";
 import { TranslateFn } from "../lib/i18n";
 import { StudentDTO } from "../lib/students";
 import { InvoiceListItemView } from "../lib/invoices";
@@ -32,6 +34,7 @@ type StudentDetailPanelProps = {
   onCopyDebtRu: () => void;
   onCopyDebtLv: () => void;
   onDeletePayment: (payment: PaymentDTO) => void;
+  onUpdateEnrollmentPrice?: (enrollment: EnrollmentDTO, price: number) => Promise<boolean>;
   onManageEnrollments: () => void;
   onOpenInvoices: () => void;
   footer?: React.ReactNode;
@@ -64,10 +67,16 @@ export function StudentDetailPanel({
   onCopyDebtRu,
   onCopyDebtLv,
   onDeletePayment,
+  onUpdateEnrollmentPrice,
   onManageEnrollments,
   onOpenInvoices,
   footer,
 }: StudentDetailPanelProps) {
+  const [editingPriceEnrollmentId, setEditingPriceEnrollmentId] = useState<number | null>(null);
+  const [savingPriceEnrollmentId, setSavingPriceEnrollmentId] = useState<number | null>(null);
+  const [priceDraft, setPriceDraft] = useState("");
+  const [priceInvalid, setPriceInvalid] = useState(false);
+
   if (!student) {
     return <div className="empty">{t("msg.noStudentSelected")}</div>;
   }
@@ -83,6 +92,41 @@ export function StudentDetailPanel({
   const balanceValue = balance?.balance ?? 0;
   const balanceToneClass =
     balanceValue > 0 ? "metricSuccess" : balanceValue < 0 ? "metricDanger" : "";
+
+  const startPriceEdit = (enrollment: EnrollmentDTO) => {
+    if (editingPriceEnrollmentId !== null || savingPriceEnrollmentId !== null) return;
+    setEditingPriceEnrollmentId(enrollment.id);
+    setPriceDraft(enrollmentPrice(enrollment).toFixed(2));
+    setPriceInvalid(false);
+  };
+
+  const cancelPriceEdit = () => {
+    if (savingPriceEnrollmentId !== null) return;
+    setEditingPriceEnrollmentId(null);
+    setPriceDraft("");
+    setPriceInvalid(false);
+  };
+
+  const savePrice = async (enrollment: EnrollmentDTO) => {
+    if (!onUpdateEnrollmentPrice || savingPriceEnrollmentId !== null) return;
+    const price = parseEnrollmentPrice(priceDraft);
+    if (price === null) {
+      setPriceInvalid(true);
+      return;
+    }
+
+    setSavingPriceEnrollmentId(enrollment.id);
+    try {
+      const saved = await onUpdateEnrollmentPrice(enrollment, price);
+      if (saved) {
+        setEditingPriceEnrollmentId(null);
+        setPriceDraft("");
+        setPriceInvalid(false);
+      }
+    } finally {
+      setSavingPriceEnrollmentId(null);
+    }
+  };
 
   const handlePrimaryAction = () => {
     switch (nextAction?.action) {
@@ -315,10 +359,78 @@ export function StudentDetailPanel({
                       <td>{enrollment.courseName}</td>
                       <td>{enrollment.teacherName || "—"}</td>
                       <td>{billingModeLabel(enrollment.billingMode)}</td>
-                      <td style={{ textAlign: "right" }}>
-                        {enrollment.billingMode === "per_lesson"
-                          ? `€${enrollment.lessonPriceOverride.toFixed(2)}`
-                          : `€${enrollment.subscriptionLessonPrice.toFixed(2)}`}
+                      <td className="enrollmentPriceCell">
+                        {editingPriceEnrollmentId === enrollment.id ? (
+                          <div className="enrollmentPriceEditBlock">
+                            <div className="enrollmentPriceEditor">
+                              <input
+                                className={priceInvalid ? "inputInvalid" : undefined}
+                                type="text"
+                                inputMode="decimal"
+                                value={priceDraft}
+                                disabled={savingPriceEnrollmentId === enrollment.id}
+                                autoFocus
+                                aria-label={t("field.lessonPriceOverride")}
+                                aria-invalid={priceInvalid}
+                                onFocus={(event) => event.currentTarget.select()}
+                                onChange={(event) => {
+                                  setPriceDraft(event.target.value);
+                                  setPriceInvalid(false);
+                                }}
+                                onKeyDown={(event) => {
+                                  if (event.key === "Enter") {
+                                    event.preventDefault();
+                                    void savePrice(enrollment);
+                                  } else if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    cancelPriceEdit();
+                                  }
+                                }}
+                              />
+                              <span>EUR</span>
+                              <button
+                                className="enrollmentPriceEditorAction enrollmentPriceEditorSave"
+                                type="button"
+                                disabled={savingPriceEnrollmentId === enrollment.id}
+                                aria-label={t("button.savePrice")}
+                                title={t("button.savePrice")}
+                                onClick={() => void savePrice(enrollment)}
+                              >
+                                ✓
+                              </button>
+                              <button
+                                className="enrollmentPriceEditorAction"
+                                type="button"
+                                disabled={savingPriceEnrollmentId === enrollment.id}
+                                aria-label={t("button.cancelPriceEdit")}
+                                title={t("button.cancelPriceEdit")}
+                                onClick={cancelPriceEdit}
+                              >
+                                ×
+                              </button>
+                            </div>
+                            {priceInvalid && (
+                              <span className="enrollmentPriceError">
+                                {t("msg.lessonPriceOverrideRange")}
+                              </span>
+                            )}
+                          </div>
+                        ) : onUpdateEnrollmentPrice ? (
+                          <button
+                            className="inlinePriceButton"
+                            type="button"
+                            disabled={
+                              editingPriceEnrollmentId !== null || savingPriceEnrollmentId !== null
+                            }
+                            aria-label={t("button.editLessonPrice")}
+                            title={t("button.editLessonPrice")}
+                            onClick={() => startPriceEdit(enrollment)}
+                          >
+                            €{enrollmentPrice(enrollment).toFixed(2)}
+                          </button>
+                        ) : (
+                          `€${enrollmentPrice(enrollment).toFixed(2)}`
+                        )}
                       </td>
                       <td>{enrollment.chargeMaterials ? t("label.yes") : t("label.no")}</td>
                       <td>{enrollment.note || "—"}</td>
