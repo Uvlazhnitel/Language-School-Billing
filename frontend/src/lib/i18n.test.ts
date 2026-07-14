@@ -19,5 +19,13 @@ describe("i18n", () => {
     expect(t("tabs.students")).toBe("Skolēni");
     expect(t("settings.languageLatvian")).toBe("Latviešu");
     expect(t("msg.invoiceIssued", { number: "42" })).toBe("Rēķins izrakstīts: #42");
+    expect(t("button.createAndOpenAttendance")).toBe("Izveidot un doties uz apmeklējumu");
+  });
+
+  it("translates onboarding actions in English and Russian", () => {
+    expect(createTranslator("en-US")("button.enrollExistingStudent")).toBe(
+      "Enroll existing student"
+    );
+    expect(createTranslator("ru-RU")("button.addToCourse")).toBe("Добавить в курс");
   });
 });

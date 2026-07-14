@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 	"testing"
-	"time"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
@@ -19,15 +18,6 @@ import (
 	invsvc "langschool/internal/app/invoice"
 	"langschool/internal/money"
 )
-
-func setAttendanceCurrentTime(t *testing.T, ts time.Time) {
-	t.Helper()
-	previous := currentTime
-	currentTime = func() time.Time { return ts }
-	t.Cleanup(func() {
-		currentTime = previous
-	})
-}
 
 func TestListPerLessonIncludesSubscriptionRows(t *testing.T) {
 	ctx := context.Background()
@@ -118,8 +108,6 @@ func TestListPerLessonIncludesSubscriptionRows(t *testing.T) {
 }
 
 func TestListPerLessonLocksNonDraftInvoiceMonths(t *testing.T) {
-	setAttendanceCurrentTime(t, time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC))
-
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:attendance-locks?mode=memory&_fk=1")
 	defer client.Close()
@@ -188,9 +176,7 @@ func TestListPerLessonLocksNonDraftInvoiceMonths(t *testing.T) {
 	}
 }
 
-func TestListPerLessonAllowsCurrentMonthIssuedInvoice(t *testing.T) {
-	setAttendanceCurrentTime(t, time.Date(2026, 5, 10, 0, 0, 0, 0, time.UTC))
-
+func TestListPerLessonLocksCurrentMonthIssuedInvoice(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:attendance-current-issued?mode=memory&_fk=1")
 	defer client.Close()
@@ -240,14 +226,12 @@ func TestListPerLessonAllowsCurrentMonthIssuedInvoice(t *testing.T) {
 	if len(rows) != 1 {
 		t.Fatalf("row count = %d, want 1", len(rows))
 	}
-	if rows[0].AttendanceLocked {
-		t.Fatalf("expected current-month issued invoice to stay editable, got %+v", rows[0])
+	if !rows[0].AttendanceLocked {
+		t.Fatalf("expected current-month issued invoice to be locked, got %+v", rows[0])
 	}
 }
 
 func TestUpsertRejectsNonDraftInvoiceMonths(t *testing.T) {
-	setAttendanceCurrentTime(t, time.Date(2026, 7, 1, 0, 0, 0, 0, time.UTC))
-
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:attendance-upsert-lock?mode=memory&_fk=1")
 	defer client.Close()
@@ -324,9 +308,7 @@ func TestUpsertRejectsNonDraftInvoiceMonths(t *testing.T) {
 	}
 }
 
-func TestUpsertAllowsCurrentMonthPaidInvoice(t *testing.T) {
-	setAttendanceCurrentTime(t, time.Date(2026, 6, 15, 0, 0, 0, 0, time.UTC))
-
+func TestUpsertRejectsCurrentMonthPaidInvoice(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:attendance-upsert-current-paid?mode=memory&_fk=1")
 	defer client.Close()
@@ -379,8 +361,8 @@ func TestUpsertAllowsCurrentMonthPaidInvoice(t *testing.T) {
 		t.Fatalf("Invoice.Create: %v", err)
 	}
 
-	if err := svc.Upsert(ctx, st.ID, crs.ID, 2026, 6, 4); err != nil {
-		t.Fatalf("Upsert current paid month: %v", err)
+	if err := svc.Upsert(ctx, st.ID, crs.ID, 2026, 6, 4); err == nil {
+		t.Fatal("expected current paid month to remain locked")
 	}
 
 	am, err := client.AttendanceMonth.Query().
@@ -394,8 +376,8 @@ func TestUpsertAllowsCurrentMonthPaidInvoice(t *testing.T) {
 	if err != nil {
 		t.Fatalf("AttendanceMonth.Query: %v", err)
 	}
-	if am.Hours != 4 {
-		t.Fatalf("hours = %v, want 4", am.Hours)
+	if am.Hours != 1 {
+		t.Fatalf("hours = %v, want 1", am.Hours)
 	}
 }
 
@@ -557,6 +539,70 @@ func TestUpsertSubscriptionRebuildsOnlyEditedStudentDraft(t *testing.T) {
 	}
 	if len(linesTwo) != 1 || linesTwo[0].Qty != 1 {
 		t.Fatalf("student two lines = %+v, want one line with qty 1", linesTwo)
+	}
+}
+
+func TestUpsertCourseMonthSubscriptionRejectsNonDraftInvoice(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:attendance-subscription-issued-lock?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().SetFullName("Protected Subscription Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	crs, err := client.Course.Create().
+		SetName("Protected Subscription Group").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(money.EurosToCents(0)).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	if _, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModeSubscription).
+		SetChargeMaterials(false).
+		SetSubscriptionLessonPriceCents(money.EurosToCents(10)).
+		Save(ctx); err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+
+	if _, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(7).
+		SetStatus(app.InvoiceStatusIssued).
+		SetNumber("LS-202607-001").
+		SetTotalAmountCents(money.EurosToCents(40)).
+		Save(ctx); err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+
+	if _, err := svc.UpsertCourseMonthSubscription(ctx, crs.ID, 2026, 7, 4); err == nil || !strings.Contains(err.Error(), "заблокированы") {
+		t.Fatalf("UpsertCourseMonthSubscription error = %v, want locked error", err)
+	}
+
+	attendanceCount, err := client.AttendanceMonth.Query().
+		Where(
+			attendancemonth.StudentIDEQ(st.ID),
+			attendancemonth.CourseIDEQ(crs.ID),
+			attendancemonth.YearEQ(2026),
+			attendancemonth.MonthEQ(7),
+		).
+		Count(ctx)
+	if err != nil {
+		t.Fatalf("AttendanceMonth.Count: %v", err)
+	}
+	if attendanceCount != 0 {
+		t.Fatalf("attendance count = %d, want 0", attendanceCount)
 	}
 }
 

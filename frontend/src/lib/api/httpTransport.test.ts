@@ -147,6 +147,50 @@ describe("httpTransport", () => {
     });
   });
 
+  it("maps atomic student onboarding endpoint", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (!url.endsWith("/api/students/onboard")) {
+        throw new Error(`unexpected url ${url}`);
+      }
+      expect(JSON.parse(String(init?.body))).toEqual({
+        student: expect.objectContaining({ fullName: "Anna Student" }),
+        enrollment: expect.objectContaining({ courseId: 4, billingMode: "per_lesson" }),
+      });
+      return jsonResponse({
+        student: { id: 7, fullName: "Anna Student" },
+        enrollment: { id: 9, studentId: 7, courseId: 4 },
+      }, 201);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      httpTransport.createStudentWithEnrollment(
+        {
+          fullName: "Anna Student",
+          personalCode: "",
+          phone: "",
+          email: "",
+          note: "",
+          isMinor: false,
+          payerName: "",
+          payerRole: "",
+        },
+        {
+          courseId: 4,
+          billingMode: "per_lesson",
+          chargeMaterials: true,
+          lessonPriceOverride: 15,
+          subscriptionLessonPrice: 0,
+          note: "",
+        }
+      )
+    ).resolves.toEqual({
+      student: expect.objectContaining({ id: 7 }),
+      enrollment: expect.objectContaining({ id: 9 }),
+    });
+  });
+
   it("maps invoice pdf endpoints", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

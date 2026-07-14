@@ -69,6 +69,7 @@ func (s *Server) registerMetaRoutes() {
 func (s *Server) registerStudentRoutes() {
 	s.mux.HandleFunc("GET /api/students", s.handleStudentsList)
 	s.mux.HandleFunc("POST /api/students", s.handleStudentsCreate)
+	s.mux.HandleFunc("POST /api/students/onboard", s.handleStudentsOnboard)
 	s.mux.HandleFunc("POST /api/students/duplicate-check", s.handleStudentsDuplicateCheck)
 	s.mux.HandleFunc("GET /api/students/{id}", s.handleStudentsGet)
 	s.mux.HandleFunc("PUT /api/students/{id}", s.handleStudentsUpdate)
@@ -246,6 +247,11 @@ type enrollmentUpdateRequest struct {
 	Note                    string  `json:"note"`
 }
 
+type studentOnboardRequest struct {
+	Student    studentUpsertRequest     `json:"student"`
+	Enrollment *enrollmentCreateRequest `json:"enrollment"`
+}
+
 type periodRequest struct {
 	Year  int `json:"year"`
 	Month int `json:"month"`
@@ -308,7 +314,7 @@ func isConflictError(err error) bool {
 	return strings.Contains(msg, "cannot ") ||
 		strings.Contains(msg, "already exists") ||
 		strings.Contains(msg, "already") ||
-		strings.Contains(msg, "заблокирована") ||
+		strings.Contains(msg, "заблокирован") ||
 		strings.Contains(msg, "нельзя")
 }
 

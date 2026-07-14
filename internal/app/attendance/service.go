@@ -6,7 +6,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"langschool/ent"
 	"langschool/ent/attendancemonth"
@@ -29,8 +28,6 @@ type Service struct {
 	db          *ent.Client
 	invoicesDir string
 }
-
-var currentTime = time.Now
 
 // New creates a new attendance service with the given database client.
 func New(db *ent.Client) *Service { return &Service{db: db} }
@@ -86,19 +83,14 @@ func (s *Service) getMonthInvoiceStatus(ctx context.Context, studentID, y, m int
 	return string(iv.Status), true, nil
 }
 
-func isCurrentEditableMonth(y, m int) bool {
-	now := currentTime()
-	return now.Year() == y && int(now.Month()) == m
-}
-
-func lockReason(y, m int, invoiceStatus string) bool {
+func lockReason(_, _ int, invoiceStatus string) bool {
 	switch invoiceStatus {
 	case "", app.InvoiceStatusDraft:
 		return false
 	case app.InvoiceStatusCanceled:
 		return true
 	case app.InvoiceStatusIssuedPendingPDF, app.InvoiceStatusIssued, app.InvoiceStatusPaidPendingPDF, app.InvoiceStatusPaid:
-		return !isCurrentEditableMonth(y, m)
+		return true
 	default:
 		return invoiceStatus != ""
 	}
@@ -343,25 +335,23 @@ func (s *Service) UpsertCourseMonthSubscription(ctx context.Context, courseID, y
 	if lessonsHeld < 0 {
 		return nil, errors.New("lessonsHeld must be >= 0")
 	}
-	if !isCurrentEditableMonth(y, m) {
-		locked, err := s.db.Invoice.Query().
-			Where(
-				invoice.PeriodYearEQ(y),
-				invoice.PeriodMonthEQ(m),
-				invoice.StatusNEQ(app.InvoiceStatusDraft),
-				invoice.StatusNEQ(app.InvoiceStatusCanceled),
-				invoice.HasStudentWith(student.HasEnrollmentsWith(
-					enrollment.CourseIDEQ(courseID),
-					enrollment.BillingModeEQ(enrollment.BillingModeSubscription),
-				)),
-			).
-			Exist(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if locked {
-			return nil, fmt.Errorf("занятия по абонементу за %04d-%02d заблокированы выставленным или оплаченным счётом", y, m)
-		}
+	locked, err := s.db.Invoice.Query().
+		Where(
+			invoice.PeriodYearEQ(y),
+			invoice.PeriodMonthEQ(m),
+			invoice.StatusNEQ(app.InvoiceStatusDraft),
+			invoice.StatusNEQ(app.InvoiceStatusCanceled),
+			invoice.HasStudentWith(student.HasEnrollmentsWith(
+				enrollment.CourseIDEQ(courseID),
+				enrollment.BillingModeEQ(enrollment.BillingModeSubscription),
+			)),
+		).
+		Exist(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if locked {
+		return nil, fmt.Errorf("занятия по абонементу за %04d-%02d заблокированы выставленным или оплаченным счётом", y, m)
 	}
 	lessonsHeld = utils.Round2(lessonsHeld)
 	if _, err := s.db.Course.Get(ctx, courseID); err != nil {

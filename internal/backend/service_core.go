@@ -93,6 +93,31 @@ type EnrollmentDTO struct {
 	CreatedAt               string  `json:"createdAt"`
 }
 
+type StudentCreateInput struct {
+	FullName     string
+	PersonalCode string
+	Phone        string
+	Email        string
+	Note         string
+	IsMinor      bool
+	PayerName    string
+	PayerRole    string
+}
+
+type EnrollmentCreateInput struct {
+	CourseID                int
+	BillingMode             string
+	ChargeMaterials         bool
+	LessonPriceOverride     float64
+	SubscriptionLessonPrice float64
+	Note                    string
+}
+
+type StudentOnboardingResult struct {
+	Student    StudentDTO     `json:"student"`
+	Enrollment *EnrollmentDTO `json:"enrollment,omitempty"`
+}
+
 type CourseMonthSubscriptionDTO struct {
 	CourseID    int     `json:"courseId"`
 	Year        int     `json:"year"`

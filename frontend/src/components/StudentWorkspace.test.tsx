@@ -79,6 +79,7 @@ describe("StudentWorkspace", () => {
   it("shows quick chips and keeps advanced filters collapsed by default", () => {
     const markup = renderToStaticMarkup(<StudentWorkspace {...buildProps()} />);
 
+    expect(markup).toContain("Add student");
     expect(markup).toContain("Active");
     expect(markup).toContain("Has debt");
     expect(markup).toContain("Recently added");

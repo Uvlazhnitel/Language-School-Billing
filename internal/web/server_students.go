@@ -1,6 +1,10 @@
 package web
 
-import "net/http"
+import (
+	"net/http"
+
+	"langschool/internal/backend"
+)
 
 func (s *Server) handleStudentsList(w http.ResponseWriter, r *http.Request) {
 	includeInactive, err := parseBoolDefault(r.URL.Query().Get("includeInactive"), false)
@@ -40,6 +44,42 @@ func (s *Server) handleStudentsCreate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusCreated, item)
+}
+
+func (s *Server) handleStudentsOnboard(w http.ResponseWriter, r *http.Request) {
+	var req studentOnboardRequest
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+
+	studentInput := backend.StudentCreateInput{
+		FullName:     req.Student.FullName,
+		PersonalCode: req.Student.PersonalCode,
+		Phone:        req.Student.Phone,
+		Email:        req.Student.Email,
+		Note:         req.Student.Note,
+		IsMinor:      req.Student.IsMinor,
+		PayerName:    req.Student.PayerName,
+		PayerRole:    req.Student.PayerRole,
+	}
+	var enrollmentInput *backend.EnrollmentCreateInput
+	if req.Enrollment != nil {
+		enrollmentInput = &backend.EnrollmentCreateInput{
+			CourseID:                req.Enrollment.CourseID,
+			BillingMode:             req.Enrollment.BillingMode,
+			ChargeMaterials:         req.Enrollment.ChargeMaterials,
+			LessonPriceOverride:     req.Enrollment.LessonPriceOverride,
+			SubscriptionLessonPrice: req.Enrollment.SubscriptionLessonPrice,
+			Note:                    req.Enrollment.Note,
+		}
+	}
+
+	result, err := s.svc.StudentOnboard(r.Context(), studentInput, enrollmentInput)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusCreated, result)
 }
 
 func (s *Server) handleStudentsDuplicateCheck(w http.ResponseWriter, r *http.Request) {

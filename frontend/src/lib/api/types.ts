@@ -161,6 +161,17 @@ export type StudentDuplicateCheckResult = {
   possibleMatches: StudentDTO[];
 };
 
+export type StudentCreateInput = {
+  fullName: string;
+  personalCode: string;
+  phone: string;
+  email: string;
+  note: string;
+  isMinor: boolean;
+  payerName: string;
+  payerRole: string;
+};
+
 export type TeacherDTO = {
   id: number;
   fullName: string;
@@ -194,6 +205,20 @@ export type EnrollmentDTO = {
   subscriptionLessonPrice: number;
   note: string;
   createdAt: string;
+};
+
+export type EnrollmentCreateInput = {
+  courseId: number;
+  billingMode: EnrollmentDTO["billingMode"];
+  chargeMaterials: boolean;
+  lessonPriceOverride: number;
+  subscriptionLessonPrice: number;
+  note: string;
+};
+
+export type StudentOnboardingResult = {
+  student: StudentDTO;
+  enrollment?: EnrollmentDTO;
 };
 
 export type CourseMonthSubscriptionDTO = {
@@ -447,6 +472,10 @@ export interface AppTransport {
     payerName: string,
     payerRole: string
   ): Promise<StudentDTO>;
+  createStudentWithEnrollment(
+    student: StudentCreateInput,
+    enrollment?: EnrollmentCreateInput
+  ): Promise<StudentOnboardingResult>;
   updateStudent(
     id: number,
     version: number,

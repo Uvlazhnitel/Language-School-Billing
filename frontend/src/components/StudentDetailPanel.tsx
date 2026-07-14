@@ -152,7 +152,7 @@ export function StudentDetailPanel({
             {t("button.edit")}
           </button>
           <button className="workspaceActionButton" onClick={onManageEnrollments}>
-            {t("button.manageEnrollments")}
+            {t("button.addToCourse")}
           </button>
           {onToggleActive && (
             <button className="secondaryActionButton" onClick={onToggleActive}>

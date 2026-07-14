@@ -38,6 +38,10 @@ func (s *Service) EnrollmentList(ctx context.Context, studentID *int, courseID *
 }
 
 func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int, billingMode string, chargeMaterials bool, lessonPriceOverride, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
+	return enrollmentCreateInStore(ctx, s.rt.DB.Ent, studentID, courseID, billingMode, chargeMaterials, lessonPriceOverride, subscriptionLessonPrice, note)
+}
+
+func enrollmentCreateInStore(ctx context.Context, client *ent.Client, studentID, courseID int, billingMode string, chargeMaterials bool, lessonPriceOverride, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {
 	if studentID <= 0 || courseID <= 0 {
 		return nil, errors.New("studentID and courseID must be > 0")
 	}
@@ -59,17 +63,17 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 	if billingMode != BillingModeSubscription {
 		subscriptionLessonPrice = 0
 	}
-	st, err := s.rt.DB.Ent.Student.Get(ctx, studentID)
+	st, err := client.Student.Get(ctx, studentID)
 	if err != nil {
 		return nil, err
 	}
 	if !st.IsActive {
 		return nil, errors.New("cannot enroll a deactivated student")
 	}
-	if _, err := s.rt.DB.Ent.Course.Get(ctx, courseID); err != nil {
+	if _, err := client.Course.Get(ctx, courseID); err != nil {
 		return nil, err
 	}
-	exists, err := s.rt.DB.Ent.Enrollment.Query().
+	exists, err := client.Enrollment.Query().
 		Where(enrollment.StudentIDEQ(studentID), enrollment.CourseIDEQ(courseID)).
 		Exist(ctx)
 	if err != nil {
@@ -78,7 +82,7 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 	if exists {
 		return nil, errors.New("an enrollment for this student and course already exists")
 	}
-	item, err := s.rt.DB.Ent.Enrollment.Create().
+	item, err := client.Enrollment.Create().
 		SetStudentID(studentID).
 		SetCourseID(courseID).
 		SetBillingMode(enrollment.BillingMode(billingMode)).
@@ -90,7 +94,7 @@ func (s *Service) EnrollmentCreate(ctx context.Context, studentID, courseID int,
 	if err != nil {
 		return nil, err
 	}
-	item, err = s.rt.DB.Ent.Enrollment.Query().
+	item, err = client.Enrollment.Query().
 		Where(enrollment.IDEQ(item.ID)).
 		WithStudent().
 		WithCourse(func(cq *ent.CourseQuery) { cq.WithTeacher() }).

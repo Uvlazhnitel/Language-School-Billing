@@ -12,6 +12,7 @@ type EnrollmentFormModalProps = {
   studentPickerOpen: boolean;
   filteredStudents: StudentDTO[];
   selectedStudent?: StudentDTO | null;
+  studentLocked?: boolean;
   courseId: number;
   mode: "per_lesson" | "subscription";
   chargeMaterials: boolean;
@@ -30,6 +31,7 @@ type EnrollmentFormModalProps = {
   onSubscriptionLessonPriceChange: (value: string) => void;
   onNoteChange: (value: string) => void;
   onSave: () => void;
+  saveLabel?: string;
   onCancel: () => void;
   t: TranslateFn;
 };
@@ -41,6 +43,7 @@ export function EnrollmentFormModal({
   studentPickerOpen,
   filteredStudents,
   selectedStudent,
+  studentLocked = false,
   courseId,
   mode,
   chargeMaterials,
@@ -59,6 +62,7 @@ export function EnrollmentFormModal({
   onSubscriptionLessonPriceChange,
   onNoteChange,
   onSave,
+  saveLabel,
   onCancel,
   t,
 }: EnrollmentFormModalProps) {
@@ -76,7 +80,7 @@ export function EnrollmentFormModal({
 
         <div className="formRow">
           <label>{t("field.student")}</label>
-          {editing ? (
+          {editing || studentLocked ? (
             <input value={selectedStudent?.fullName ?? studentSearch} disabled />
           ) : (
             <div className="comboBox" ref={studentComboRef}>
@@ -190,7 +194,7 @@ export function EnrollmentFormModal({
         </div>
 
         <div className="modalActions">
-          <button onClick={onSave}>{t("button.save")}</button>
+          <button onClick={onSave}>{saveLabel ?? t("button.save")}</button>
           <button onClick={onCancel}>{t("button.cancel")}</button>
         </div>
       </div>

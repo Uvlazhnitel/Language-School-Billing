@@ -911,7 +911,7 @@ func TestGenerateDraftsDeletesExistingZeroDraft(t *testing.T) {
 	}
 }
 
-func TestGenerateDraftsReopensCurrentMonthZeroIssuedInvoiceToDraft(t *testing.T) {
+func TestGenerateDraftsPreservesCurrentMonthNonDraftInvoiceWithoutAttendance(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:invoice-zero-issued-to-draft?mode=memory&_fk=1")
 	defer client.Close()
@@ -994,7 +994,7 @@ func TestGenerateDraftsReopensCurrentMonthZeroIssuedInvoiceToDraft(t *testing.T)
 	if err != nil {
 		t.Fatalf("GenerateDrafts: %v", err)
 	}
-	if res.Created != 0 || res.Updated != 1 || res.SkippedNoLines != 1 || res.SkippedHasInvoice != 0 {
+	if res.Created != 0 || res.Updated != 0 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 1 {
 		t.Fatalf("unexpected GenerateDrafts result: %+v", res)
 	}
 
@@ -1002,40 +1002,33 @@ func TestGenerateDraftsReopensCurrentMonthZeroIssuedInvoiceToDraft(t *testing.T)
 	if err != nil {
 		t.Fatalf("Invoice.Get: %v", err)
 	}
-	if got.Status != StatusDraft {
-		t.Fatalf("Status = %q, want %q", got.Status, StatusDraft)
+	if got.Status != StatusPaidPendingPDF {
+		t.Fatalf("Status = %q, want %q", got.Status, StatusPaidPendingPDF)
 	}
-	if got.Number != nil {
-		t.Fatalf("Number = %v, want nil", got.Number)
+	if got.Number == nil || *got.Number != number {
+		t.Fatalf("Number = %v, want %q", got.Number, number)
 	}
-	if got.PdfFilename != nil || got.PdfRevision != nil || got.PdfGeneratedAt != nil {
-		t.Fatalf("expected PDF metadata cleared, got filename=%v revision=%v generatedAt=%v", got.PdfFilename, got.PdfRevision, got.PdfGeneratedAt)
+	if got.PdfFilename == nil || got.PdfRevision == nil || got.PdfGeneratedAt == nil {
+		t.Fatalf("expected PDF metadata preserved, got filename=%v revision=%v generatedAt=%v", got.PdfFilename, got.PdfRevision, got.PdfGeneratedAt)
 	}
-	if got.EmailDeliveryStatus != invoice.EmailDeliveryStatusNotSent {
-		t.Fatalf("EmailDeliveryStatus = %q, want %q", got.EmailDeliveryStatus, invoice.EmailDeliveryStatusNotSent)
+	if got.EmailDeliveryStatus != invoice.EmailDeliveryStatusSent {
+		t.Fatalf("EmailDeliveryStatus = %q, want %q", got.EmailDeliveryStatus, invoice.EmailDeliveryStatusSent)
 	}
-	if got.LastEmailedAt != nil || got.LastEmailedTo != nil || got.LastEmailedRevision != nil || got.LastEmailError != nil || got.LastEmailFailedAt != nil {
-		t.Fatalf(
-			"expected email metadata cleared, got lastEmailedAt=%v lastEmailedTo=%v lastEmailedRevision=%v lastEmailError=%v lastEmailFailedAt=%v",
-			got.LastEmailedAt,
-			got.LastEmailedTo,
-			got.LastEmailedRevision,
-			got.LastEmailError,
-			got.LastEmailFailedAt,
-		)
+	if got.LastEmailedAt == nil || got.LastEmailedTo == nil || got.LastEmailedRevision == nil {
+		t.Fatalf("expected email metadata preserved, got emailedAt=%v emailedTo=%v revision=%v", got.LastEmailedAt, got.LastEmailedTo, got.LastEmailedRevision)
 	}
-	if got.TotalAmountCents != 0 {
-		t.Fatalf("TotalAmountCents = %d, want 0", got.TotalAmountCents)
+	if got.TotalAmountCents != money.EurosToCents(25) {
+		t.Fatalf("TotalAmountCents = %d, want 2500", got.TotalAmountCents)
 	}
 	lineCount, err := client.InvoiceLine.Query().Where(invoiceline.InvoiceIDEQ(iv.ID)).Count(ctx)
 	if err != nil {
 		t.Fatalf("InvoiceLine.Count: %v", err)
 	}
-	if lineCount != 0 {
-		t.Fatalf("invoice line count = %d, want 0", lineCount)
+	if lineCount != 1 {
+		t.Fatalf("invoice line count = %d, want 1", lineCount)
 	}
-	if _, err := os.Stat(pdfPath); !os.IsNotExist(err) {
-		t.Fatalf("expected pdf removed, stat err=%v", err)
+	if _, err := os.Stat(pdfPath); err != nil {
+		t.Fatalf("expected pdf preserved, stat err=%v", err)
 	}
 }
 
@@ -1516,7 +1509,7 @@ func TestRebuildStudentDraftSkipsIssuedInvoice(t *testing.T) {
 	}
 }
 
-func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T) {
+func TestRebuildStudentDraftPreservesCurrentPaidInvoice(t *testing.T) {
 	setInvoiceCurrentTime(t, time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC))
 
 	ctx := context.Background()
@@ -1620,7 +1613,7 @@ func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T
 	if err != nil {
 		t.Fatalf("RebuildStudentDraft: %v", err)
 	}
-	if res.Created != 0 || res.Updated != 1 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
+	if res.Created != 0 || res.Updated != 0 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 1 {
 		t.Fatalf("unexpected rebuild result: %+v", res)
 	}
 
@@ -1631,17 +1624,17 @@ func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T
 	if got.Number == nil || *got.Number != "LS-202609-001" {
 		t.Fatalf("number = %v, want LS-202609-001", got.Number)
 	}
-	if got.TotalAmountCents != money.EurosToCents(120) {
-		t.Fatalf("total = %v, want 120", money.CentsToEuros(got.TotalAmountCents))
+	if got.TotalAmountCents != money.EurosToCents(30) {
+		t.Fatalf("total = %v, want 30", money.CentsToEuros(got.TotalAmountCents))
 	}
-	if got.Status != StatusIssuedPendingPDF {
-		t.Fatalf("status = %q, want %q", got.Status, StatusIssuedPendingPDF)
+	if got.Status != StatusPaid {
+		t.Fatalf("status = %q, want %q", got.Status, StatusPaid)
 	}
-	if got.PdfRevision != nil || got.PdfGeneratedAt != nil {
-		t.Fatalf("expected PDF metadata cleared, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
+	if got.PdfRevision == nil || got.PdfGeneratedAt == nil {
+		t.Fatalf("expected PDF metadata preserved, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
 	}
-	if _, err := os.Stat(pdfPath); !os.IsNotExist(err) {
-		t.Fatalf("expected pdf to be invalidated, stat err=%v", err)
+	if _, err := os.Stat(pdfPath); err != nil {
+		t.Fatalf("expected pdf preserved, stat err=%v", err)
 	}
 
 	paymentCount, err := client.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).Count(ctx)
@@ -1653,7 +1646,7 @@ func TestRebuildStudentDraftUpdatesCurrentPaidInvoiceAndKeepsNumber(t *testing.T
 	}
 }
 
-func TestRebuildStudentDraftUpdatesCurrentIssuedInvoiceAndInvalidatesPDF(t *testing.T) {
+func TestRebuildStudentDraftPreservesCurrentIssuedInvoiceAndPDF(t *testing.T) {
 	setInvoiceCurrentTime(t, time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC))
 
 	ctx := context.Background()
@@ -1746,7 +1739,7 @@ func TestRebuildStudentDraftUpdatesCurrentIssuedInvoiceAndInvalidatesPDF(t *test
 	if err != nil {
 		t.Fatalf("RebuildStudentDraft: %v", err)
 	}
-	if res.Created != 0 || res.Updated != 1 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
+	if res.Created != 0 || res.Updated != 0 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 1 {
 		t.Fatalf("unexpected rebuild result: %+v", res)
 	}
 
@@ -1754,21 +1747,21 @@ func TestRebuildStudentDraftUpdatesCurrentIssuedInvoiceAndInvalidatesPDF(t *test
 	if err != nil {
 		t.Fatalf("Invoice.Get: %v", err)
 	}
-	if got.TotalAmountCents != money.EurosToCents(60) {
-		t.Fatalf("total = %v, want 60", money.CentsToEuros(got.TotalAmountCents))
+	if got.TotalAmountCents != money.EurosToCents(120) {
+		t.Fatalf("total = %v, want 120", money.CentsToEuros(got.TotalAmountCents))
 	}
-	if got.Status != StatusIssuedPendingPDF {
-		t.Fatalf("status = %q, want %q", got.Status, StatusIssuedPendingPDF)
+	if got.Status != StatusIssued {
+		t.Fatalf("status = %q, want %q", got.Status, StatusIssued)
 	}
-	if got.PdfRevision != nil || got.PdfGeneratedAt != nil {
-		t.Fatalf("expected PDF metadata cleared, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
+	if got.PdfRevision == nil || got.PdfGeneratedAt == nil {
+		t.Fatalf("expected PDF metadata preserved, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
 	}
-	if _, err := os.Stat(pdfPath); !os.IsNotExist(err) {
-		t.Fatalf("expected pdf to be invalidated, stat err=%v", err)
+	if _, err := os.Stat(pdfPath); err != nil {
+		t.Fatalf("expected pdf preserved, stat err=%v", err)
 	}
 }
 
-func TestRebuildStudentDraftKeepsCurrentPaidInvoicePaidWhenAmountDropsBelowPayments(t *testing.T) {
+func TestRebuildStudentDraftDoesNotReduceCurrentPaidInvoice(t *testing.T) {
 	setInvoiceCurrentTime(t, time.Date(2026, 9, 20, 0, 0, 0, 0, time.UTC))
 
 	ctx := context.Background()
@@ -1872,7 +1865,7 @@ func TestRebuildStudentDraftKeepsCurrentPaidInvoicePaidWhenAmountDropsBelowPayme
 	if err != nil {
 		t.Fatalf("RebuildStudentDraft: %v", err)
 	}
-	if res.Created != 0 || res.Updated != 1 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
+	if res.Created != 0 || res.Updated != 0 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 1 {
 		t.Fatalf("unexpected rebuild result: %+v", res)
 	}
 
@@ -1880,17 +1873,17 @@ func TestRebuildStudentDraftKeepsCurrentPaidInvoicePaidWhenAmountDropsBelowPayme
 	if err != nil {
 		t.Fatalf("Invoice.Get: %v", err)
 	}
-	if got.TotalAmountCents != money.EurosToCents(60) {
-		t.Fatalf("total = %v, want 60", money.CentsToEuros(got.TotalAmountCents))
+	if got.TotalAmountCents != money.EurosToCents(120) {
+		t.Fatalf("total = %v, want 120", money.CentsToEuros(got.TotalAmountCents))
 	}
-	if got.Status != StatusPaidPendingPDF {
-		t.Fatalf("status = %q, want %q", got.Status, StatusPaidPendingPDF)
+	if got.Status != StatusPaid {
+		t.Fatalf("status = %q, want %q", got.Status, StatusPaid)
 	}
-	if got.PdfRevision != nil || got.PdfGeneratedAt != nil {
-		t.Fatalf("expected PDF metadata cleared, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
+	if got.PdfRevision == nil || got.PdfGeneratedAt == nil {
+		t.Fatalf("expected PDF metadata preserved, got revision=%v generatedAt=%v", got.PdfRevision, got.PdfGeneratedAt)
 	}
-	if _, err := os.Stat(pdfPath); !os.IsNotExist(err) {
-		t.Fatalf("expected pdf to be invalidated, stat err=%v", err)
+	if _, err := os.Stat(pdfPath); err != nil {
+		t.Fatalf("expected pdf preserved, stat err=%v", err)
 	}
 }
 

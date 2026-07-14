@@ -6,6 +6,7 @@ import type { BalanceDTO, DebtInvoiceDTO, PaymentDTO } from "../lib/payments";
 import type { StudentDTO, StudentDuplicateCheckResult } from "../lib/students";
 import type { StudentActivityItem, StudentNextAction } from "../lib/studentActivity";
 import type { TranslateFn } from "../lib/i18n";
+import type { CourseDTO } from "../lib/courses";
 import type {
   StudentAgeFilter,
   StudentBalanceFilter,
@@ -72,6 +73,14 @@ type StudentsScreenProps = {
   sfPayerRole: string;
   studentDuplicateCheckResult: StudentDuplicateCheckResult | null;
   payerRoleOptions: readonly string[];
+  allCourses: CourseDTO[];
+  onboardingCourseId: number;
+  onboardingMode: EnrollmentDTO["billingMode"];
+  onboardingChargeMaterials: boolean;
+  onboardingLessonPrice: string;
+  onboardingSubscriptionPrice: string;
+  onboardingNote: string;
+  onboardingSettingsOpen: boolean;
   onSfNameChange: (value: string) => void;
   onSfPersonalCodeChange: (value: string) => void;
   onSfPhoneChange: (value: string) => void;
@@ -80,9 +89,17 @@ type StudentsScreenProps = {
   onSfIsMinorChange: (value: boolean) => void;
   onSfPayerNameChange: (value: string) => void;
   onSfPayerRoleChange: (value: string) => void;
+  onOnboardingCourseIdChange: (value: number) => void;
+  onOnboardingModeChange: (value: EnrollmentDTO["billingMode"]) => void;
+  onOnboardingChargeMaterialsChange: (value: boolean) => void;
+  onOnboardingLessonPriceChange: (value: string) => void;
+  onOnboardingSubscriptionPriceChange: (value: string) => void;
+  onOnboardingNoteChange: (value: string) => void;
+  onOnboardingSettingsOpenChange: (value: boolean) => void;
   onSaveStudent: () => void;
   onSaveStudentAndAddAnother: () => void;
   onOpenExistingDuplicateStudent: (studentId: number) => void;
+  onEnrollExistingDuplicateStudent: (student: StudentDTO) => void;
   onCreateStudentAnyway: () => void;
   onCloseStudentModal: () => void;
   t: TranslateFn;
@@ -101,6 +118,14 @@ export function StudentsScreen({
   sfPayerRole,
   studentDuplicateCheckResult,
   payerRoleOptions,
+  allCourses,
+  onboardingCourseId,
+  onboardingMode,
+  onboardingChargeMaterials,
+  onboardingLessonPrice,
+  onboardingSubscriptionPrice,
+  onboardingNote,
+  onboardingSettingsOpen,
   onSfNameChange,
   onSfPersonalCodeChange,
   onSfPhoneChange,
@@ -109,9 +134,17 @@ export function StudentsScreen({
   onSfIsMinorChange,
   onSfPayerNameChange,
   onSfPayerRoleChange,
+  onOnboardingCourseIdChange,
+  onOnboardingModeChange,
+  onOnboardingChargeMaterialsChange,
+  onOnboardingLessonPriceChange,
+  onOnboardingSubscriptionPriceChange,
+  onOnboardingNoteChange,
+  onOnboardingSettingsOpenChange,
   onSaveStudent,
   onSaveStudentAndAddAnother,
   onOpenExistingDuplicateStudent,
+  onEnrollExistingDuplicateStudent,
   onCreateStudentAnyway,
   onCloseStudentModal,
   t,
@@ -133,6 +166,15 @@ export function StudentsScreen({
           payerRole={sfPayerRole}
           payerRoleOptions={payerRoleOptions}
           payerRoleLabel={workspaceProps.payerRoleLabel}
+          allCourses={allCourses}
+          courseId={onboardingCourseId}
+          enrollmentMode={onboardingMode}
+          enrollmentChargeMaterials={onboardingChargeMaterials}
+          enrollmentLessonPrice={onboardingLessonPrice}
+          enrollmentSubscriptionPrice={onboardingSubscriptionPrice}
+          enrollmentNote={onboardingNote}
+          enrollmentSettingsOpen={onboardingSettingsOpen}
+          formatEUR={workspaceProps.formatEUR}
           onNameChange={onSfNameChange}
           onPersonalCodeChange={onSfPersonalCodeChange}
           onPhoneChange={onSfPhoneChange}
@@ -141,11 +183,19 @@ export function StudentsScreen({
           onIsMinorChange={onSfIsMinorChange}
           onPayerNameChange={onSfPayerNameChange}
           onPayerRoleChange={onSfPayerRoleChange}
+          onCourseIdChange={onOnboardingCourseIdChange}
+          onEnrollmentModeChange={onOnboardingModeChange}
+          onEnrollmentChargeMaterialsChange={onOnboardingChargeMaterialsChange}
+          onEnrollmentLessonPriceChange={onOnboardingLessonPriceChange}
+          onEnrollmentSubscriptionPriceChange={onOnboardingSubscriptionPriceChange}
+          onEnrollmentNoteChange={onOnboardingNoteChange}
+          onEnrollmentSettingsOpenChange={onOnboardingSettingsOpenChange}
           onSave={onSaveStudent}
           onSaveAndAddAnother={onSaveStudentAndAddAnother}
           onCancel={onCloseStudentModal}
           duplicateCheckResult={studentDuplicateCheckResult}
           onOpenExistingStudent={onOpenExistingDuplicateStudent}
+          onEnrollExistingStudent={onEnrollExistingDuplicateStudent}
           onCreateAnyway={onCreateStudentAnyway}
           t={t}
         />

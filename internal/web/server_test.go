@@ -417,7 +417,7 @@ func TestInvoiceIssueAllReportsGeneratedAndPendingCounts(t *testing.T) {
 	}
 }
 
-func TestCurrentIssuedInvoiceLessonChangeInvalidatesPDFStatus(t *testing.T) {
+func TestCurrentIssuedInvoiceLocksSubscriptionLessonsAndPreservesPDF(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
 
@@ -474,21 +474,29 @@ func TestCurrentIssuedInvoiceLessonChangeInvalidatesPDFStatus(t *testing.T) {
 		t.Fatal("expected initial pdf-status ready=true")
 	}
 
-	putJSON[backend.CourseMonthSubscriptionDTO](t, env.Client, env.Server.URL, "/api/attendance/subscription-month", map[string]any{
+	resp, body := rawRequest(t, env.Client, http.MethodPut, env.Server.URL+"/api/attendance/subscription-month", bytes.NewReader(mustJSON(t, map[string]any{
 		"courseId":    course.ID,
 		"year":        year,
 		"month":       month,
 		"lessonsHeld": 2,
-	})
-
-	status = getJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf-status")
-	if status["ready"] {
-		t.Fatal("expected pdf-status ready=false after invoice rebuild")
+	})))
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("subscription attendance update status = %d body=%s, want 409", resp.StatusCode, body)
 	}
 
-	pdfMeta = postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf", map[string]any{})
-	if pdfMeta["downloadUrl"] == "" {
-		t.Fatal("missing pdf downloadUrl after regeneration")
+	status = getJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf-status")
+	if !status["ready"] {
+		t.Fatal("expected pdf-status to remain ready after rejected attendance update")
+	}
+
+	items := getJSON[[]backend.CourseMonthSubscriptionDTO](t, env.Client, env.Server.URL, "/api/attendance/subscription-month?year="+strconv.Itoa(year)+"&month="+strconv.Itoa(month)+"&courseId="+strconv.Itoa(course.ID))
+	if len(items) != 1 || items[0].LessonsHeld != 4 {
+		t.Fatalf("subscription attendance = %+v, want lessonsHeld 4", items)
+	}
+
+	invoiceDetails := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID))
+	if invoiceDetails.Total != 120 || invoiceDetails.Status != "issued" {
+		t.Fatalf("invoice after rejected update = %+v, want issued total 120", invoiceDetails)
 	}
 }
 
@@ -987,7 +995,7 @@ func TestIssuedInvoiceCanReopenAfterEnsuringPDF(t *testing.T) {
 	}
 }
 
-func TestCurrentMonthInvoiceStaysLiveAfterFullPayment(t *testing.T) {
+func TestCurrentMonthPaidInvoiceLocksAttendanceAndRebuildPreservesInvoice(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
 
@@ -1043,13 +1051,16 @@ func TestCurrentMonthInvoiceStaysLiveAfterFullPayment(t *testing.T) {
 		"note":      "full payment before extra lesson",
 	})
 
-	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+	resp, body := rawRequest(t, env.Client, http.MethodPut, env.Server.URL+"/api/attendance", bytes.NewReader(mustJSON(t, map[string]any{
 		"studentId": st.ID,
 		"courseId":  course.ID,
 		"year":      year,
 		"month":     month,
 		"hours":     2.0,
-	})
+	})))
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("attendance update status = %d body=%s, want 409", resp.StatusCode, body)
+	}
 	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/rebuild-student-draft", map[string]any{
 		"studentId": st.ID,
 		"year":      year,
@@ -1060,22 +1071,27 @@ func TestCurrentMonthInvoiceStaysLiveAfterFullPayment(t *testing.T) {
 	if invoiceDetails.Number == nil || *invoiceDetails.Number != issue.Number {
 		t.Fatalf("invoice number = %v, want %q", invoiceDetails.Number, issue.Number)
 	}
-	if invoiceDetails.Total != 55 {
-		t.Fatalf("invoice total = %v, want 55", invoiceDetails.Total)
+	if invoiceDetails.Total != 30 {
+		t.Fatalf("invoice total = %v, want 30", invoiceDetails.Total)
 	}
-	if invoiceDetails.Status != "issued_pending_pdf" {
-		t.Fatalf("invoice status = %q, want issued_pending_pdf", invoiceDetails.Status)
+	if invoiceDetails.Status != "paid" {
+		t.Fatalf("invoice status = %q, want paid", invoiceDetails.Status)
+	}
+
+	rows := getJSON[[]backend.AttendanceRow](t, env.Client, env.Server.URL, "/api/attendance/per-lesson?year="+strconv.Itoa(year)+"&month="+strconv.Itoa(month)+"&courseId="+strconv.Itoa(course.ID))
+	if len(rows) != 1 || rows[0].Hours != 1 || !rows[0].AttendanceLocked {
+		t.Fatalf("attendance rows = %+v, want one locked row with 1 hour", rows)
 	}
 
 	summary := getJSON[backend.InvoiceSummaryDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/payment-summary")
 	if summary.Paid != 30 {
 		t.Fatalf("paid = %v, want 30", summary.Paid)
 	}
-	if summary.Remaining != 25 {
-		t.Fatalf("remaining = %v, want 25", summary.Remaining)
+	if summary.Remaining != 0 {
+		t.Fatalf("remaining = %v, want 0", summary.Remaining)
 	}
-	if summary.Status != "issued_pending_pdf" {
-		t.Fatalf("summary status = %q, want issued_pending_pdf", summary.Status)
+	if summary.Status != "paid" {
+		t.Fatalf("summary status = %q, want paid", summary.Status)
 	}
 
 	pdfMeta := postJSON[map[string]string](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoices[0].ID)+"/pdf", map[string]any{})

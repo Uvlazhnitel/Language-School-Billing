@@ -226,6 +226,12 @@ export const httpTransport: AppTransport = {
       ...body({ fullName, personalCode, phone, email, note, isMinor, payerName, payerRole }),
     });
   },
+  async createStudentWithEnrollment(student, enrollment) {
+    return request("/students/onboard", {
+      method: "POST",
+      ...body({ student, enrollment }),
+    });
+  },
   async updateStudent(id, version, fullName, personalCode, phone, email, note, isMinor, payerName, payerRole) {
     return request<StudentDTO>(`/students/${id}`, {
       method: "PUT",

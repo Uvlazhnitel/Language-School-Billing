@@ -400,6 +400,10 @@ a {
   align-items: center;
 }
 
+.filterToolbarTopRow {
+  justify-content: space-between;
+}
+
 .filterToolbarTopRow .filterToolbarTrailing {
   margin-left: auto;
 }
@@ -407,6 +411,18 @@ a {
 .filterToolbarAdvancedRow {
   padding-top: 14px;
   border-top: 1px solid rgba(133, 102, 69, 0.1);
+}
+
+.studentAdvancedFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+}
+
+.studentAdvancedFilters select {
+  flex: 1 1 180px;
 }
 
 .quickFilterChips {
@@ -438,7 +454,7 @@ a {
 .quickFilterChip:hover,
 .filterToggleButton:hover {
   border-color: rgba(212, 109, 53, 0.25);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-md);
 }
 
 .quickFilterChip.active,
@@ -968,6 +984,243 @@ a {
 .dashboardActions {
   display: flex;
   justify-content: flex-start;
+}
+
+.dashboard--compact {
+  gap: 16px;
+}
+
+.dashboardKpiGrid,
+.dashboardOperationalGrid {
+  grid-column: 1 / -1;
+}
+
+.dashboardKpiGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.dashboardKpi {
+  min-width: 0;
+  min-height: 92px;
+  padding: 16px 18px;
+  text-align: left;
+  color: var(--text);
+  border: 1px solid rgba(133, 102, 69, 0.12);
+  border-radius: 20px;
+  background: linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(255, 248, 240, 0.9));
+  box-shadow: var(--shadow-md);
+}
+
+.dashboardKpi--action {
+  appearance: none;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    transform 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.dashboardKpi--action:hover {
+  transform: translateY(-2px);
+  border-color: rgba(212, 109, 53, 0.28);
+  box-shadow: var(--shadow-md);
+}
+
+.dashboardKpi--action:focus-visible,
+.dashboardPaymentItem:focus-visible {
+  outline: 3px solid rgba(42, 117, 99, 0.22);
+  outline-offset: 2px;
+}
+
+.dashboardKpi--positive {
+  background: linear-gradient(150deg, rgba(246, 253, 249, 0.98), rgba(255, 255, 255, 0.92));
+  border-color: rgba(42, 117, 99, 0.16);
+}
+
+.dashboardKpi--danger {
+  background: linear-gradient(150deg, rgba(255, 245, 241, 0.98), rgba(255, 255, 255, 0.92));
+  border-color: rgba(181, 68, 52, 0.18);
+}
+
+.dashboardKpi span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.86rem;
+  font-weight: 750;
+}
+
+.dashboardKpi strong {
+  display: block;
+  margin-top: 8px;
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  line-height: 1;
+}
+
+.dashboardOperationalGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.dashboardCompactPanel {
+  min-width: 0;
+  padding: 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(133, 102, 69, 0.12);
+  box-shadow: var(--shadow-md);
+}
+
+.dashboardCompactHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.dashboardCompactHeader h3 {
+  margin: 5px 0 0;
+}
+
+.dashboardTaskList,
+.dashboardPaymentList {
+  display: grid;
+  gap: 8px;
+}
+
+.dashboardTask {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(212, 109, 53, 0.14);
+  border-radius: 17px;
+  background: rgba(255, 249, 243, 0.88);
+}
+
+.dashboardTask--danger {
+  border-color: rgba(181, 68, 52, 0.16);
+  background: rgba(255, 245, 241, 0.9);
+}
+
+.dashboardTaskContent {
+  min-width: 0;
+}
+
+.dashboardTaskContent strong,
+.dashboardTaskContent span {
+  display: block;
+}
+
+.dashboardTaskContent span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.35;
+}
+
+.dashboardTaskValue {
+  white-space: nowrap;
+  font-size: 1.05rem;
+}
+
+.dashboardAllDone {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid rgba(42, 117, 99, 0.16);
+  border-radius: 17px;
+  background: rgba(242, 251, 246, 0.92);
+}
+
+.dashboardAllDone strong {
+  color: #246b5a;
+}
+
+.dashboardAllDone span {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.dashboardPaymentItem {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 12px;
+  text-align: left;
+  color: var(--text);
+  border: 1px solid rgba(133, 102, 69, 0.1);
+  border-radius: 16px;
+  background: rgba(255, 252, 248, 0.82);
+  cursor: pointer;
+  font: inherit;
+}
+
+.dashboardPaymentItem:hover {
+  border-color: rgba(212, 109, 53, 0.2);
+  background: rgba(255, 248, 240, 0.95);
+}
+
+.dashboardPaymentItem div {
+  min-width: 0;
+}
+
+.dashboardPaymentItem div strong,
+.dashboardPaymentItem span {
+  display: block;
+}
+
+.dashboardPaymentItem span {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.dashboardPaymentItem > strong {
+  white-space: nowrap;
+}
+
+@media (max-width: 1100px) {
+  .dashboardOperationalGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .dashboardKpiGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .dashboardKpi {
+    min-height: 82px;
+    padding: 14px;
+    border-radius: 17px;
+  }
+
+  .dashboardCompactPanel {
+    padding: 14px;
+    border-radius: 19px;
+  }
+
+  .dashboardTask {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+  }
+
+  .dashboardTask .secondaryActionButton {
+    grid-column: 1 / -1;
+    justify-self: start;
+    padding-block: 8px;
+  }
 }
 
 .activityFeed {
@@ -1859,6 +2112,97 @@ tfoot td {
   color: var(--bad);
 }
 
+.studentFormModalBody {
+  width: min(760px, 100%);
+}
+
+.studentFormGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px 16px;
+}
+
+.studentFormGrid .formRow {
+  grid-template-columns: 1fr;
+  align-content: start;
+  gap: 6px;
+  margin: 0;
+}
+
+.studentFormFieldWide {
+  grid-column: 1 / -1;
+}
+
+.studentPayerGrid {
+  margin-top: 12px;
+}
+
+.studentOnboardingSection {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 6px;
+  padding: 18px;
+  border: 1px solid rgba(42, 117, 99, 0.18);
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at top right, rgba(42, 117, 99, 0.12), transparent 36%),
+    rgba(244, 251, 247, 0.88);
+}
+
+.studentOnboardingHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.studentOnboardingHeader > div {
+  display: grid;
+  gap: 4px;
+}
+
+.studentOnboardingHeader .duplicateAlertEyebrow {
+  color: #246b5a;
+}
+
+.studentOnboardingHeader > span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+.studentOnboardingSummary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.studentOnboardingSummary > div {
+  display: grid;
+  gap: 4px;
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(42, 117, 99, 0.12);
+}
+
+.studentOnboardingSummary span {
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.studentOnboardingToggle {
+  justify-self: start;
+}
+
+.studentOnboardingAdvanced {
+  padding-top: 4px;
+  border-top: 1px solid rgba(42, 117, 99, 0.12);
+}
+
 .duplicateAlert {
   margin: 18px 0 8px;
   padding: 18px;
@@ -2073,6 +2417,14 @@ tfoot td {
   flex-direction: column;
   align-items: flex-end;
   gap: 4px;
+}
+
+.attendanceFocusRow td {
+  background: rgba(42, 117, 99, 0.1);
+}
+
+.attendanceFocusRow .attendanceStepperInput {
+  box-shadow: 0 0 0 3px rgba(42, 117, 99, 0.2);
 }
 
 .modalActions {
@@ -2306,6 +2658,10 @@ tfoot td {
     margin-left: 0;
   }
 
+  .studentAdvancedFilters {
+    width: 100%;
+  }
+
   .invoiceRowActions {
     min-width: max-content;
   }
@@ -2421,6 +2777,33 @@ tfoot td {
 }
 
 @media (max-width: 720px) {
+  .studentFormGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .studentFormFieldWide {
+    grid-column: auto;
+  }
+
+  .studentOnboardingSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .studentOnboardingSummary > div:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .studentOnboardingSection {
+    padding: 14px;
+  }
+
+  .studentFormModalBody .modalActions {
+    position: static;
+    bottom: auto;
+    margin-top: 16px;
+    background: transparent;
+  }
+
   .duplicateAlert {
     padding: 16px;
     border-radius: 18px;

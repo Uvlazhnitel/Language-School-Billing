@@ -14,6 +14,7 @@ type EnrollmentsScreenProps = {
   courseFilter?: number;
   allStudents: StudentDTO[];
   allCourses: CourseDTO[];
+  enrollmentCourseOptions: CourseDTO[];
   billingModeLabel: (mode: string) => string;
   courseTypeLabel: (type: string) => string;
   onStudentFilterChange: (value: number | undefined) => void;
@@ -30,6 +31,8 @@ type EnrollmentsScreenProps = {
   studentPickerOpen: boolean;
   filteredStudents: StudentDTO[];
   selectedStudent?: StudentDTO | null;
+  enrollmentStudentLocked: boolean;
+  enrollmentSaveLabel?: string;
   enrollmentCourseId: number;
   enrollmentMode: "per_lesson" | "subscription";
   enrollmentChargeMaterials: boolean;
@@ -58,6 +61,7 @@ export function EnrollmentsScreen({
   courseFilter,
   allStudents,
   allCourses,
+  enrollmentCourseOptions,
   billingModeLabel,
   courseTypeLabel,
   onStudentFilterChange,
@@ -74,6 +78,8 @@ export function EnrollmentsScreen({
   studentPickerOpen,
   filteredStudents,
   selectedStudent,
+  enrollmentStudentLocked,
+  enrollmentSaveLabel,
   enrollmentCourseId,
   enrollmentMode,
   enrollmentChargeMaterials,
@@ -230,13 +236,14 @@ export function EnrollmentsScreen({
           studentPickerOpen={studentPickerOpen}
           filteredStudents={filteredStudents}
           selectedStudent={selectedStudent}
+          studentLocked={enrollmentStudentLocked}
           courseId={enrollmentCourseId}
           mode={enrollmentMode}
           chargeMaterials={enrollmentChargeMaterials}
           lessonPriceOverride={enrollmentLessonPriceOverride}
           subscriptionLessonPrice={enrollmentSubscriptionLessonPrice}
           note={enrollmentNote}
-          allCourses={allCourses}
+          allCourses={enrollmentCourseOptions}
           studentComboRef={studentComboRef as Ref<HTMLDivElement>}
           onStudentSearchChange={onStudentSearchChange}
           onStudentIdChange={onStudentIdChange}
@@ -248,6 +255,7 @@ export function EnrollmentsScreen({
           onSubscriptionLessonPriceChange={onEnrollmentSubscriptionLessonPriceChange}
           onNoteChange={onEnrollmentNoteChange}
           onSave={onSaveEnrollment}
+          saveLabel={enrollmentSaveLabel}
           onCancel={onCloseEnrollmentModal}
           t={t}
         />

@@ -25,12 +25,13 @@ import {
   listStudents,
   getStudent,
   checkStudentDuplicates,
-  createStudent,
+  createStudentWithEnrollment,
   updateStudent,
   setStudentActive,
   deleteStudent,
   StudentDTO,
   StudentDuplicateCheckResult,
+  type EnrollmentCreateInput,
 } from "./lib/students";
 
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
@@ -129,7 +130,7 @@ function isStaleRevisionError(error: unknown): boolean {
     message.includes(staleRevisionMessage)
   );
 }
-import { AttendanceScreen } from "./screens/AttendanceScreen";
+import { AttendanceScreen, type AttendanceFocusTarget } from "./screens/AttendanceScreen";
 import { AuditScreen } from "./screens/AuditScreen";
 import { CoursesScreen } from "./screens/CoursesScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
@@ -307,6 +308,14 @@ export default function App() {
   const [sfIsMinor, setSfIsMinor] = useState(false);
   const [sfPayerName, setSfPayerName] = useState("");
   const [sfPayerRole, setSfPayerRole] = useState("");
+  const [sfCourseId, setSfCourseId] = useState(0);
+  const [sfEnrollmentMode, setSfEnrollmentMode] =
+    useState<EnrollmentDTO["billingMode"]>(BillingModePerLesson);
+  const [sfEnrollmentChargeMaterials, setSfEnrollmentChargeMaterials] = useState(true);
+  const [sfEnrollmentLessonPrice, setSfEnrollmentLessonPrice] = useState("0");
+  const [sfEnrollmentSubscriptionPrice, setSfEnrollmentSubscriptionPrice] = useState("0");
+  const [sfEnrollmentNote, setSfEnrollmentNote] = useState("");
+  const [sfEnrollmentSettingsOpen, setSfEnrollmentSettingsOpen] = useState(false);
   const [studentDuplicateCheckResult, setStudentDuplicateCheckResult] =
     useState<StudentDuplicateCheckResult | null>(null);
   const [studentCreateFlow, setStudentCreateFlow] = useState<StudentCreateFlow>("save");
@@ -480,6 +489,13 @@ export default function App() {
     setSfIsMinor(false);
     setSfPayerName("");
     setSfPayerRole("");
+    setSfCourseId(0);
+    setSfEnrollmentMode(BillingModePerLesson);
+    setSfEnrollmentChargeMaterials(true);
+    setSfEnrollmentLessonPrice("0");
+    setSfEnrollmentSubscriptionPrice("0");
+    setSfEnrollmentNote("");
+    setSfEnrollmentSettingsOpen(false);
     setStudentModalOpen(true);
   }
 
@@ -495,7 +511,68 @@ export default function App() {
     setSfIsMinor(s.isMinor);
     setSfPayerName(s.payerName ?? "");
     setSfPayerRole(s.payerRole ?? "");
+    setSfCourseId(0);
+    setSfEnrollmentSettingsOpen(false);
     setStudentModalOpen(true);
+  }
+
+  function handleStudentOnboardingCourseChange(courseId: number) {
+    resetStudentDuplicateCheck();
+    setSfCourseId(courseId);
+    setSfEnrollmentMode(BillingModePerLesson);
+    setSfEnrollmentChargeMaterials(true);
+    setSfEnrollmentNote("");
+    setSfEnrollmentSettingsOpen(false);
+    const course = allCourses.find((item) => item.id === courseId);
+    setSfEnrollmentLessonPrice(String(course?.lessonPrice ?? 0));
+    setSfEnrollmentSubscriptionPrice(String(course?.subscriptionPrice ?? 0));
+  }
+
+  function handleStudentOnboardingModeChange(mode: EnrollmentDTO["billingMode"]) {
+    setSfEnrollmentMode(mode);
+    const course = allCourses.find((item) => item.id === sfCourseId);
+    if (mode === BillingModePerLesson && Number(sfEnrollmentLessonPrice) === 0) {
+      setSfEnrollmentLessonPrice(String(course?.lessonPrice ?? 0));
+    }
+    if (mode === BillingModeSubscription && Number(sfEnrollmentSubscriptionPrice) === 0) {
+      setSfEnrollmentSubscriptionPrice(String(course?.subscriptionPrice ?? 0));
+    }
+  }
+
+  function getStudentOnboardingEnrollmentInput(): EnrollmentCreateInput | undefined {
+    if (sfCourseId <= 0) return undefined;
+    const lessonPrice = sfEnrollmentLessonPrice.trim() === "" ? 0 : Number(sfEnrollmentLessonPrice);
+    const subscriptionPrice =
+      sfEnrollmentSubscriptionPrice.trim() === "" ? 0 : Number(sfEnrollmentSubscriptionPrice);
+    if (!Number.isFinite(lessonPrice) || lessonPrice < 0) {
+      showMessage(t("msg.lessonPriceOverrideRange"), "error");
+      return undefined;
+    }
+    if (!Number.isFinite(subscriptionPrice) || subscriptionPrice < 0) {
+      showMessage(t("msg.subscriptionLessonPriceRange"), "error");
+      return undefined;
+    }
+    return {
+      courseId: sfCourseId,
+      billingMode: sfEnrollmentMode,
+      chargeMaterials: sfEnrollmentChargeMaterials,
+      lessonPriceOverride: sfEnrollmentMode === BillingModePerLesson ? lessonPrice : 0,
+      subscriptionLessonPrice:
+        sfEnrollmentMode === BillingModeSubscription ? subscriptionPrice : 0,
+      note: sfEnrollmentNote,
+    };
+  }
+
+  function resetStudentFieldsForNextEntry() {
+    const nextDraft = buildNextStudentDraft(sfIsMinor);
+    setSfName(nextDraft.name);
+    setSfPersonalCode(nextDraft.personalCode);
+    setSfPhone(nextDraft.phone);
+    setSfEmail(nextDraft.email);
+    setSfNote(nextDraft.note);
+    setSfIsMinor(nextDraft.isMinor);
+    setSfPayerName(nextDraft.payerName);
+    setSfPayerRole(nextDraft.payerRole);
   }
 
   async function saveStudent(
@@ -515,9 +592,14 @@ export default function App() {
       showMessage(t(validationError), "error");
       return;
     }
+    const onboardingEnrollment = editingStudent
+      ? undefined
+      : getStudentOnboardingEnrollmentInput();
+    if (!editingStudent && sfCourseId > 0 && !onboardingEnrollment) return;
     setStudentCreateFlow(createFlow);
     try {
       let savedStudent: StudentDTO;
+      let savedEnrollment: EnrollmentDTO | undefined;
       if (editingStudent) {
         savedStudent = await updateStudent(
           editingStudent.id,
@@ -544,16 +626,21 @@ export default function App() {
             return;
           }
         }
-        savedStudent = await createStudent(
-          sfName,
-          sfPersonalCode,
-          sfPhone,
-          sfEmail,
-          sfNote,
-          sfIsMinor,
-          sfPayerName,
-          sfPayerRole
+        const onboardingResult = await createStudentWithEnrollment(
+          {
+            fullName: sfName,
+            personalCode: sfPersonalCode,
+            phone: sfPhone,
+            email: sfEmail,
+            note: sfNote,
+            isMinor: sfIsMinor,
+            payerName: sfPayerName,
+            payerRole: sfPayerRole,
+          },
+          onboardingEnrollment
         );
+        savedStudent = onboardingResult.student;
+        savedEnrollment = onboardingResult.enrollment;
       }
       resetStudentDuplicateCheck();
       if (!editingStudent) {
@@ -567,16 +654,10 @@ export default function App() {
       }
       await Promise.all([loadStudents(), loadAllStudents()]);
       if (!editingStudent && createFlow === "save_and_add_another") {
-        const nextDraft = buildNextStudentDraft(sfIsMinor);
-        setSfName(nextDraft.name);
-        setSfPersonalCode(nextDraft.personalCode);
-        setSfPhone(nextDraft.phone);
-        setSfEmail(nextDraft.email);
-        setSfNote(nextDraft.note);
-        setSfIsMinor(nextDraft.isMinor);
-        setSfPayerName(nextDraft.payerName);
-        setSfPayerRole(nextDraft.payerRole);
-        await openStudentCard(savedStudent, { inline: true });
+        resetStudentFieldsForNextEntry();
+      } else if (!editingStudent && savedEnrollment) {
+        setStudentModalOpen(false);
+        openAttendanceForStudentCourse(savedStudent.id, savedEnrollment.courseId);
       } else if (!editingStudent) {
         setStudentModalOpen(false);
         await openStudentCard(savedStudent, { inline: true });
@@ -747,6 +828,45 @@ export default function App() {
     resetStudentDuplicateCheck();
     setStudentModalOpen(false);
     await openStudentInWorkspaceById(studentId);
+  }
+
+  async function enrollExistingDuplicateStudent(student: StudentDTO) {
+    const enrollmentInput = getStudentOnboardingEnrollmentInput();
+    if (!enrollmentInput) return;
+    if (!student.isActive) {
+      resetStudentDuplicateCheck();
+      setStudentModalOpen(false);
+      await openStudentInWorkspaceById(student.id);
+      showMessage(t("msg.inactiveStudentCannotEnroll"), "error");
+      return;
+    }
+
+    try {
+      const existing = await listEnrollments(student.id, enrollmentInput.courseId);
+      if (existing.length === 0) {
+        await createEnrollment(
+          student.id,
+          enrollmentInput.courseId,
+          enrollmentInput.billingMode,
+          enrollmentInput.chargeMaterials,
+          enrollmentInput.lessonPriceOverride,
+          enrollmentInput.subscriptionLessonPrice,
+          enrollmentInput.note
+        );
+      }
+      resetStudentDuplicateCheck();
+      await Promise.all([loadStudents(), loadAllStudents()]);
+      if (studentCreateFlow === "save_and_add_another") {
+        resetStudentFieldsForNextEntry();
+        showMessage(t(existing.length > 0 ? "msg.studentAlreadyEnrolled" : "msg.enrollmentCreatedExisting"));
+        return;
+      }
+      setStudentModalOpen(false);
+      openAttendanceForStudentCourse(student.id, enrollmentInput.courseId);
+      showMessage(t(existing.length > 0 ? "msg.studentAlreadyEnrolled" : "msg.enrollmentCreatedExisting"));
+    } catch (e: any) {
+      showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    }
   }
 
   useEffect(() => {
@@ -1119,6 +1239,8 @@ export default function App() {
 
   const [enrModalOpen, setEnrModalOpen] = useState(false);
   const [editingEnr, setEditingEnr] = useState<EnrollmentDTO | null>(null);
+  const [enrollmentStudentLocked, setEnrollmentStudentLocked] = useState(false);
+  const [enrollmentOpenAttendanceAfterSave, setEnrollmentOpenAttendanceAfterSave] = useState(false);
   const [efStudentId, setEfStudentId] = useState<number>(0);
   const [efStudentSearch, setEfStudentSearch] = useState("");
   const [efStudentPickerOpen, setEfStudentPickerOpen] = useState(false);
@@ -1163,6 +1285,22 @@ export default function App() {
     () => allCourses.find((course) => course.id === efCourseId) ?? null,
     [allCourses, efCourseId]
   );
+  const enrollmentCourseOptions = useMemo(() => {
+    if (!enrollmentStudentLocked || editingEnr || selectedStudentCard?.id !== efStudentId) {
+      return allCourses;
+    }
+    const enrolledCourseIds = new Set(
+      studentCardEnrollments.map((enrollment) => enrollment.courseId)
+    );
+    return allCourses.filter((course) => !enrolledCourseIds.has(course.id));
+  }, [
+    allCourses,
+    editingEnr,
+    efStudentId,
+    enrollmentStudentLocked,
+    selectedStudentCard?.id,
+    studentCardEnrollments,
+  ]);
 
   const loadEnrollments = useCallback(async () => {
     setEnrLoading(true);
@@ -1204,6 +1342,8 @@ export default function App() {
     const initialCourseId = allCourses[0]?.id ?? 0;
 
     setEditingEnr(null);
+    setEnrollmentStudentLocked(false);
+    setEnrollmentOpenAttendanceAfterSave(false);
     setEfStudentId(0);
     setEfStudentSearch("");
     setEfStudentPickerOpen(false);
@@ -1216,8 +1356,50 @@ export default function App() {
     setEnrModalOpen(true);
   }
 
+  function openAddEnrollmentForStudent(student: StudentDTO) {
+    if (!student.isActive) {
+      showMessage(t("msg.inactiveStudentCannotEnroll"), "error");
+      return;
+    }
+    if (allCourses.length === 0) {
+      showMessage(t("msg.noAvailableCourses"), "error");
+      setTab("courses");
+      return;
+    }
+
+    const enrolledCourseIds = new Set(
+      selectedStudentCard?.id === student.id
+        ? studentCardEnrollments.map((enrollment) => enrollment.courseId)
+        : []
+    );
+    const availableCourses = allCourses.filter((course) => !enrolledCourseIds.has(course.id));
+    if (availableCourses.length === 0) {
+      showMessage(t("msg.studentEnrolledInAllCourses"), "error");
+      return;
+    }
+
+    const initialCourse = availableCourses[0];
+    setEditingEnr(null);
+    setEnrollmentStudentLocked(true);
+    setEnrollmentOpenAttendanceAfterSave(true);
+    setEfStudentId(student.id);
+    setEfStudentSearch(student.fullName);
+    setEfStudentPickerOpen(false);
+    setEfCourseId(initialCourse.id);
+    setEfMode(BillingModePerLesson);
+    setEfChargeMaterials(true);
+    setEfLessonPriceOverride(String(initialCourse.lessonPrice ?? 0));
+    setEfSubscriptionLessonPrice(String(initialCourse.subscriptionPrice ?? 0));
+    setEfNote("");
+    setStudentCardOpen(false);
+    setTab("enrollments");
+    setEnrModalOpen(true);
+  }
+
   function openEditEnrollment(e: EnrollmentDTO) {
     setEditingEnr(e);
+    setEnrollmentStudentLocked(true);
+    setEnrollmentOpenAttendanceAfterSave(false);
     setEfStudentId(e.studentId);
     setEfStudentSearch(e.studentName);
     setEfStudentPickerOpen(false);
@@ -1332,6 +1514,12 @@ export default function App() {
         loadDebtors(),
         shouldRefreshStudentCard ? refreshStudentCardData(result.studentId) : Promise.resolve(),
       ]);
+      const shouldOpenAttendance = !editingEnr && enrollmentOpenAttendanceAfterSave;
+      setEnrollmentStudentLocked(false);
+      setEnrollmentOpenAttendanceAfterSave(false);
+      if (shouldOpenAttendance) {
+        openAttendanceForStudentCourse(result.studentId, result.courseId);
+      }
     } catch (e: any) {
       if (isStaleRevisionError(e)) {
         showMessage(t("msg.recordConflict"), "error");
@@ -1351,6 +1539,16 @@ export default function App() {
   const attendanceSavingRowsRef = useRef<Record<number, boolean>>({});
   const [attendanceInputDrafts, setAttendanceInputDrafts] = useState<Record<number, string>>({});
   const attendancePendingSelectRef = useRef<number | null>(null);
+  const [attendanceFocusTarget, setAttendanceFocusTarget] =
+    useState<AttendanceFocusTarget | null>(null);
+
+  function openAttendanceForStudentCourse(studentId: number, targetCourseId: number) {
+    setCourseFilter(targetCourseId);
+    setAttQ("");
+    setAttFilter("all");
+    setAttendanceFocusTarget({ studentId, courseId: targetCourseId });
+    setTab("attendance");
+  }
 
   // For search by phone we need students list (shared with invoices and attendance)
   const studentIndex = useMemo(() => {
@@ -2386,13 +2584,8 @@ export default function App() {
                 onOpenAttendance={() => setTab("attendance")}
                 onOpenInvoices={() => setTab("invoice")}
                 onOpenDebtors={() => setTab("debtors")}
-                onOpenStudents={() => setTab("students")}
                 onOpenStudent={(studentId) => void openStudentInWorkspaceById(studentId)}
-                onOpenPaymentQueueStudent={openDebtorPaymentModalByStudentId}
-                onCopyDebtQueueRu={(studentId) => void copyDebtMessageForStudentId(studentId, "ru")}
-                onCopyDebtQueueLv={(studentId) => void copyDebtMessageForStudentId(studentId, "lv")}
                 recentPayments={recentPayments}
-                actionQueue={debtorActionQueue}
               />
             )}
 
@@ -2434,7 +2627,9 @@ export default function App() {
                 onCopyDebtRu={() => void copyStudentCardDebtMessage("ru")}
                 onCopyDebtLv={() => void copyStudentCardDebtMessage("lv")}
                 onDeletePayment={deleteStudentPayment}
-                onManageEnrollments={() => setTab("enrollments")}
+                onManageEnrollments={() =>
+                  selectedStudentCard && openAddEnrollmentForStudent(selectedStudentCard)
+                }
                 onOpenInvoices={() => setTab("invoice")}
                 canDeleteStudent={canDeleteStudents}
                 canDeletePayment={canDeletePayments}
@@ -2456,6 +2651,14 @@ export default function App() {
                 sfPayerRole={sfPayerRole}
                 studentDuplicateCheckResult={studentDuplicateCheckResult}
                 payerRoleOptions={payerRoleOptions}
+                allCourses={allCourses}
+                onboardingCourseId={sfCourseId}
+                onboardingMode={sfEnrollmentMode}
+                onboardingChargeMaterials={sfEnrollmentChargeMaterials}
+                onboardingLessonPrice={sfEnrollmentLessonPrice}
+                onboardingSubscriptionPrice={sfEnrollmentSubscriptionPrice}
+                onboardingNote={sfEnrollmentNote}
+                onboardingSettingsOpen={sfEnrollmentSettingsOpen}
                 onSfNameChange={(value) => {
                   resetStudentDuplicateCheck();
                   setSfName(value);
@@ -2488,10 +2691,20 @@ export default function App() {
                   resetStudentDuplicateCheck();
                   setSfPayerRole(value);
                 }}
+                onOnboardingCourseIdChange={handleStudentOnboardingCourseChange}
+                onOnboardingModeChange={handleStudentOnboardingModeChange}
+                onOnboardingChargeMaterialsChange={setSfEnrollmentChargeMaterials}
+                onOnboardingLessonPriceChange={setSfEnrollmentLessonPrice}
+                onOnboardingSubscriptionPriceChange={setSfEnrollmentSubscriptionPrice}
+                onOnboardingNoteChange={setSfEnrollmentNote}
+                onOnboardingSettingsOpenChange={setSfEnrollmentSettingsOpen}
                 onSaveStudent={() => void saveStudent()}
                 onSaveStudentAndAddAnother={() => void saveStudent(false, "save_and_add_another")}
                 onOpenExistingDuplicateStudent={(studentId) =>
                   void openExistingDuplicateStudent(studentId)
+                }
+                onEnrollExistingDuplicateStudent={(student) =>
+                  void enrollExistingDuplicateStudent(student)
                 }
                 onCreateStudentAnyway={() => void saveStudent(true, studentCreateFlow)}
                 onCloseStudentModal={() => {
@@ -2561,6 +2774,7 @@ export default function App() {
                 courseFilter={enrCourseFilter}
                 allStudents={allStudents}
                 allCourses={allCourses}
+                enrollmentCourseOptions={enrollmentCourseOptions}
                 billingModeLabel={localizedBillingModeLabel}
                 courseTypeLabel={localizedCourseTypeLabel}
                 onStudentFilterChange={setEnrStudentFilter}
@@ -2577,6 +2791,12 @@ export default function App() {
                 studentPickerOpen={efStudentPickerOpen}
                 filteredStudents={filteredEnrollmentStudents}
                 selectedStudent={selectedEnrollmentStudent}
+                enrollmentStudentLocked={enrollmentStudentLocked}
+                enrollmentSaveLabel={
+                  enrollmentOpenAttendanceAfterSave
+                    ? t("button.saveAndOpenAttendance")
+                    : undefined
+                }
                 enrollmentCourseId={efCourseId}
                 enrollmentMode={efMode}
                 enrollmentChargeMaterials={efChargeMaterials}
@@ -2594,7 +2814,11 @@ export default function App() {
                 onEnrollmentSubscriptionLessonPriceChange={setEfSubscriptionLessonPrice}
                 onEnrollmentNoteChange={setEfNote}
                 onSaveEnrollment={() => void saveEnrollment()}
-                onCloseEnrollmentModal={() => setEnrModalOpen(false)}
+                onCloseEnrollmentModal={() => {
+                  setEnrModalOpen(false);
+                  setEnrollmentStudentLocked(false);
+                  setEnrollmentOpenAttendanceAfterSave(false);
+                }}
                 t={t}
               />
             )}
@@ -2633,6 +2857,8 @@ export default function App() {
                 onDeleteEnrollmentFromSheet={(enrollmentId, enrollmentVersion) =>
                   void onDeleteEnrollmentFromSheet(enrollmentId, enrollmentVersion)
                 }
+                focusTarget={attendanceFocusTarget}
+                onFocusTargetHandled={() => setAttendanceFocusTarget(null)}
                 t={t}
               />
             )}
@@ -2896,8 +3122,7 @@ export default function App() {
               onCopyDebtLv={() => void copyStudentCardDebtMessage("lv")}
               onDeletePayment={deleteStudentPayment}
               onManageEnrollments={() => {
-                setStudentCardOpen(false);
-                setTab("enrollments");
+                openAddEnrollmentForStudent(selectedStudentCard);
               }}
               onOpenInvoices={() => {
                 setStudentCardOpen(false);

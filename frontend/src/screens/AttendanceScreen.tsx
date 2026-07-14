@@ -1,4 +1,4 @@
-import type { MutableRefObject } from "react";
+import { useEffect, useRef, type MutableRefObject } from "react";
 import {
   BillingModePerLesson,
   BillingModeSubscription,
@@ -13,8 +13,13 @@ import type { CourseDTO } from "../lib/courses";
 import type { TranslateFn } from "../lib/i18n";
 import { EmptyState } from "../components/EmptyState";
 import { FilterToolbar } from "../components/FilterToolbar";
+import {
+  findAttendanceFocusEnrollmentId,
+  type AttendanceFocusTarget,
+} from "../lib/attendanceFocus";
 
 type AttendanceFilter = "all" | "missing" | "filled" | "zero";
+export type { AttendanceFocusTarget } from "../lib/attendanceFocus";
 
 type AttendanceScreenProps = {
   attendanceSummary: { missing: number; total: number; filled: number; zero: number };
@@ -50,6 +55,8 @@ type AttendanceScreenProps = {
     enrollmentId: number,
     enrollmentVersion: number
   ) => void | Promise<void>;
+  focusTarget?: AttendanceFocusTarget | null;
+  onFocusTargetHandled?: () => void;
   t: TranslateFn;
 };
 
@@ -84,9 +91,23 @@ export function AttendanceScreen({
   onFilterChange,
   onOpenStudent,
   onDeleteEnrollmentFromSheet,
+  focusTarget,
+  onFocusTargetHandled,
   t,
 }: AttendanceScreenProps) {
   const hasActiveFilters = Boolean(query.trim() || filter !== "all" || courseFilter);
+  const quantityInputRefs = useRef(new Map<number, HTMLInputElement>());
+
+  useEffect(() => {
+    const enrollmentId = findAttendanceFocusEnrollmentId(rows, focusTarget);
+    if (enrollmentId === null) return;
+    const input = quantityInputRefs.current.get(enrollmentId);
+    if (!input) return;
+    input.scrollIntoView({ behavior: "smooth", block: "center" });
+    input.focus();
+    input.select();
+    onFocusTargetHandled?.();
+  }, [focusTarget, onFocusTargetHandled, rows]);
 
   function courseOptionLabel(course: CourseDTO): string {
     const typeLabel = courseTypeLabel(course.type);
@@ -212,7 +233,14 @@ export function AttendanceScreen({
           </thead>
           <tbody>
             {filteredRows.map((row) => (
-              <tr key={row.enrollmentId}>
+              <tr
+                key={row.enrollmentId}
+                className={
+                  focusTarget?.studentId === row.studentId && focusTarget.courseId === row.courseId
+                    ? "attendanceFocusRow"
+                    : undefined
+                }
+              >
                 <td>
                   <button className="linkButton" onClick={() => void onOpenStudent(row.studentId)}>
                     {row.studentName}
@@ -261,6 +289,10 @@ export function AttendanceScreen({
                         −
                       </button>
                       <input
+                        ref={(node) => {
+                          if (node) quantityInputRefs.current.set(row.enrollmentId, node);
+                          else quantityInputRefs.current.delete(row.enrollmentId);
+                        }}
                         type="text"
                         inputMode="decimal"
                         value={getAttendanceInputValue(row)}

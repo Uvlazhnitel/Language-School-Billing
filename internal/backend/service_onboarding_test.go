@@ -1,0 +1,160 @@
+package backend
+
+import (
+	"context"
+	"testing"
+
+	"langschool/ent/student"
+)
+
+func testOnboardingStudentInput(name string) StudentCreateInput {
+	return StudentCreateInput{FullName: name}
+}
+
+func TestStudentOnboardCreatesStudentAndEnrollmentAtomically(t *testing.T) {
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+	course, err := svc.rt.DB.Ent.Course.Create().
+		SetName("Onboarding Group").
+		SetType("group").
+		SetLessonPriceCents(1500).
+		SetSubscriptionPriceCents(0).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	result, err := svc.StudentOnboard(ctx, testOnboardingStudentInput("New Student"), &EnrollmentCreateInput{
+		CourseID:            course.ID,
+		BillingMode:         BillingModePerLesson,
+		ChargeMaterials:     true,
+		LessonPriceOverride: 15,
+	})
+	if err != nil {
+		t.Fatalf("StudentOnboard: %v", err)
+	}
+	if result.Enrollment == nil {
+		t.Fatal("expected enrollment in result")
+	}
+	if result.Enrollment.StudentID != result.Student.ID || result.Enrollment.CourseID != course.ID {
+		t.Fatalf("unexpected onboarding result: %+v", result)
+	}
+
+	studentCount, err := svc.rt.DB.Ent.Student.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("Student.Count: %v", err)
+	}
+	enrollmentCount, err := svc.rt.DB.Ent.Enrollment.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Count: %v", err)
+	}
+	if studentCount != 1 || enrollmentCount != 1 {
+		t.Fatalf("counts = students %d, enrollments %d; want 1 and 1", studentCount, enrollmentCount)
+	}
+}
+
+func TestStudentOnboardWithoutEnrollmentCreatesOnlyStudent(t *testing.T) {
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+
+	result, err := svc.StudentOnboard(ctx, testOnboardingStudentInput("Student Only"), nil)
+	if err != nil {
+		t.Fatalf("StudentOnboard: %v", err)
+	}
+	if result.Enrollment != nil {
+		t.Fatalf("unexpected enrollment: %+v", result.Enrollment)
+	}
+
+	enrollmentCount, err := svc.rt.DB.Ent.Enrollment.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("Enrollment.Count: %v", err)
+	}
+	if enrollmentCount != 0 {
+		t.Fatalf("enrollment count = %d, want 0", enrollmentCount)
+	}
+}
+
+func TestStudentOnboardRollsBackStudentWhenEnrollmentFails(t *testing.T) {
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+
+	_, err := svc.StudentOnboard(ctx, testOnboardingStudentInput("Rolled Back Student"), &EnrollmentCreateInput{
+		CourseID:            999999,
+		BillingMode:         BillingModePerLesson,
+		ChargeMaterials:     true,
+		LessonPriceOverride: 15,
+	})
+	if err == nil {
+		t.Fatal("expected onboarding to fail")
+	}
+
+	exists, err := svc.rt.DB.Ent.Student.Query().
+		Where(student.FullNameEQ("Rolled Back Student")).
+		Exist(ctx)
+	if err != nil {
+		t.Fatalf("Student.Exist: %v", err)
+	}
+	if exists {
+		t.Fatal("student persisted after enrollment failure")
+	}
+}
+
+func TestStudentOnboardRollsBackStudentWhenEnrollmentTermsAreInvalid(t *testing.T) {
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+	course, err := svc.rt.DB.Ent.Course.Create().
+		SetName("Invalid Terms Group").
+		SetType("group").
+		SetLessonPriceCents(1500).
+		SetSubscriptionPriceCents(0).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+
+	_, err = svc.StudentOnboard(ctx, testOnboardingStudentInput("Invalid Terms Student"), &EnrollmentCreateInput{
+		CourseID:            course.ID,
+		BillingMode:         "invalid",
+		ChargeMaterials:     true,
+		LessonPriceOverride: 15,
+	})
+	if err == nil {
+		t.Fatal("expected invalid enrollment terms to fail")
+	}
+
+	exists, err := svc.rt.DB.Ent.Student.Query().
+		Where(student.FullNameEQ("Invalid Terms Student")).
+		Exist(ctx)
+	if err != nil {
+		t.Fatalf("Student.Exist: %v", err)
+	}
+	if exists {
+		t.Fatal("student persisted after invalid enrollment terms")
+	}
+}
+
+func TestStudentOnboardRejectsDuplicatePersonalCodeWithoutPartialRecords(t *testing.T) {
+	svc := newTestEnrollmentService(t)
+	ctx := context.Background()
+	if _, err := svc.rt.DB.Ent.Student.Create().
+		SetFullName("Existing Student").
+		SetPersonalCode("010101-12345").
+		SetIsActive(true).
+		Save(ctx); err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	input := testOnboardingStudentInput("Duplicate Student")
+	input.PersonalCode = "010101-12345"
+	if _, err := svc.StudentOnboard(ctx, input, nil); err == nil {
+		t.Fatal("expected duplicate personal code error")
+	}
+
+	studentCount, err := svc.rt.DB.Ent.Student.Query().Count(ctx)
+	if err != nil {
+		t.Fatalf("Student.Count: %v", err)
+	}
+	if studentCount != 1 {
+		t.Fatalf("student count = %d, want 1", studentCount)
+	}
+}

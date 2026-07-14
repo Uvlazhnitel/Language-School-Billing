@@ -221,7 +221,7 @@ export function StudentWorkspace({
             </div>
           }
           advancedFilters={
-            <>
+            <div className="studentAdvancedFilters">
               <select
                 value={statusFilter}
                 onChange={(e) => onStatusFilterChange(e.target.value as StudentStatusFilter)}
@@ -265,7 +265,7 @@ export function StudentWorkspace({
                 <option value="debt_desc">{t("filter.studentSortDebtDesc")}</option>
                 <option value="balance_desc">{t("filter.studentSortBalanceDesc")}</option>
               </select>
-            </>
+            </div>
           }
           advancedFiltersOpen={advancedFiltersOpen}
           onToggleAdvancedFilters={() => setAdvancedFiltersOpen((value) => !value)}

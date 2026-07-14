@@ -366,11 +366,6 @@ type invoicePDFRef struct {
 	month     int
 }
 
-func isCurrentEditableMonth(y, m int) bool {
-	now := currentTime()
-	return now.Year() == y && int(now.Month()) == m
-}
-
 func (s *Service) rebuildDraftForStudent(ctx context.Context, studentID, y, m int) (GenerateResult, error) {
 	tx, err := s.db.Tx(ctx)
 	if err != nil {
@@ -456,6 +451,10 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 	if err != nil && !ent.IsNotFound(err) {
 		return res, err
 	}
+	if err == nil && existing.Status != StatusDraft {
+		res.stats.SkippedHasInvoice++
+		return res, nil
+	}
 
 	if totalCents <= 0 {
 		if err == nil && existing.Status == StatusDraft {
@@ -465,35 +464,6 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 			if err := s.db.Invoice.DeleteOneID(existing.ID).Exec(ctx); err != nil {
 				return res, err
 			}
-		} else if err == nil && isCurrentEditableMonth(y, m) && existing.Status != StatusCanceled {
-			pdfRef, err := s.invoicePDFRef(existing)
-			if err != nil {
-				return res, err
-			}
-			if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx); err != nil {
-				return res, err
-			}
-			update := existing.Update().
-				SetTotalAmountCents(0).
-				SetEmailDeliveryStatus(invoice.EmailDeliveryStatusNotSent).
-				ClearPdfFilename().
-				ClearPdfRevision().
-				ClearPdfGeneratedAt().
-				ClearLastEmailedAt().
-				ClearLastEmailedTo().
-				ClearLastEmailedRevision().
-				ClearLastEmailError().
-				ClearLastEmailFailedAt()
-			if existing.Status != StatusDraft {
-				update = update.SetStatus(StatusDraft).ClearNumber()
-			}
-			if _, err := update.Save(ctx); err != nil {
-				return res, err
-			}
-			if existing.Status != StatusDraft && pdfRef != nil {
-				res.pdfsToInvalidate = append(res.pdfsToInvalidate, *pdfRef)
-			}
-			res.stats.Updated++
 		}
 		res.stats.SkippedNoLines++
 		return res, nil
@@ -518,12 +488,7 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 		}
 		res.stats.Created++
 
-	case existing.Status == StatusDraft || (isCurrentEditableMonth(y, m) &&
-		(existing.Status == StatusIssuedPendingPDF || existing.Status == StatusIssued || existing.Status == StatusPaidPendingPDF || existing.Status == StatusPaid)):
-		pdfRef, err := s.invoicePDFRef(existing)
-		if err != nil {
-			return res, err
-		}
+	case existing.Status == StatusDraft:
 		if _, err := s.db.InvoiceLine.Delete().Where(invoiceline.InvoiceIDEQ(existing.ID)).Exec(ctx); err != nil {
 			return res, err
 		}
@@ -532,20 +497,8 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 				return res, saveErr
 			}
 		}
-		update := existing.Update().SetTotalAmountCents(totalCents)
-		if existing.Status != StatusDraft {
-			update = update.ClearPdfRevision().ClearPdfGeneratedAt()
-		}
-		if _, err := update.Save(ctx); err != nil {
+		if _, err := existing.Update().SetTotalAmountCents(totalCents).Save(ctx); err != nil {
 			return res, err
-		}
-		if existing.Status != StatusDraft {
-			if err := paysvc.New(s.db).RecomputeInvoiceStatus(ctx, existing.ID); err != nil {
-				return res, err
-			}
-			if pdfRef != nil {
-				res.pdfsToInvalidate = append(res.pdfsToInvalidate, *pdfRef)
-			}
 		}
 		res.stats.Updated++
 

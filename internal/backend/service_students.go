@@ -216,6 +216,10 @@ func (s *Service) aggregatePaymentTotalsByStudent(ctx context.Context, studentID
 }
 
 func (s *Service) StudentCreate(ctx context.Context, fullName, personalCode, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
+	return studentCreateInStore(ctx, s.rt.DB.Ent, fullName, personalCode, phone, email, note, isMinor, payerName, payerRole)
+}
+
+func studentCreateInStore(ctx context.Context, client *ent.Client, fullName, personalCode, phone, email, note string, isMinor bool, payerName, payerRole string) (*StudentDTO, error) {
 	fullName = sanitizeInput(normalizePersonNameInput(fullName))
 	if err := validatePersonName(fullName, "fullName", true); err != nil {
 		return nil, err
@@ -241,10 +245,10 @@ func (s *Service) StudentCreate(ctx context.Context, fullName, personalCode, pho
 	if err := validateMinorPayer(isMinor, payerName, payerRole); err != nil {
 		return nil, err
 	}
-	if err := s.ensureStudentPersonalCodeUnique(ctx, 0, personalCode); err != nil {
+	if err := ensureStudentPersonalCodeUniqueInStore(ctx, client, 0, personalCode); err != nil {
 		return nil, err
 	}
-	item, err := s.rt.DB.Ent.Student.Create().
+	item, err := client.Student.Create().
 		SetFullName(fullName).
 		SetPersonalCode(personalCode).
 		SetPhone(phone).
@@ -438,11 +442,15 @@ func (s *Service) StudentDelete(ctx context.Context, id int) error {
 }
 
 func (s *Service) ensureStudentPersonalCodeUnique(ctx context.Context, studentID int, personalCode string) error {
+	return ensureStudentPersonalCodeUniqueInStore(ctx, s.rt.DB.Ent, studentID, personalCode)
+}
+
+func ensureStudentPersonalCodeUniqueInStore(ctx context.Context, client *ent.Client, studentID int, personalCode string) error {
 	if personalCode == "" {
 		return nil
 	}
 
-	query := s.rt.DB.Ent.Student.Query().Where(student.PersonalCodeEqualFold(personalCode))
+	query := client.Student.Query().Where(student.PersonalCodeEqualFold(personalCode))
 	if studentID > 0 {
 		query = query.Where(student.IDNEQ(studentID))
 	}
