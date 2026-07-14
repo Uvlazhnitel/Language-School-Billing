@@ -12,6 +12,7 @@ const courses: CourseDTO[] = [
     id: 1,
     version: 1,
     name: "Alpha Course",
+    teacherId: 1,
     teacherName: "Alice Teacher",
     type: "group",
     lessonPrice: 15,
@@ -21,7 +22,18 @@ const courses: CourseDTO[] = [
     id: 2,
     version: 1,
     name: "Beta Course",
+    teacherId: 2,
     teacherName: "Bob Teacher",
+    type: "individual",
+    lessonPrice: 25,
+    subscriptionPrice: 100,
+  },
+  {
+    id: 3,
+    version: 1,
+    name: "Gamma Course",
+    teacherId: 1,
+    teacherName: "Alice Teacher",
     type: "individual",
     lessonPrice: 25,
     subscriptionPrice: 100,
@@ -37,6 +49,7 @@ const enrollments: EnrollmentDTO[] = [
     courseId: 2,
     courseName: "Beta Course",
     courseType: "individual",
+    teacherId: 2,
     teacherName: "Bob Teacher",
     billingMode: "subscription",
     chargeMaterials: false,
@@ -53,6 +66,7 @@ const enrollments: EnrollmentDTO[] = [
     courseId: 1,
     courseName: "Alpha Course",
     courseType: "group",
+    teacherId: 1,
     teacherName: "Alice Teacher",
     billingMode: "per_lesson",
     chargeMaterials: true,
@@ -69,12 +83,30 @@ const enrollments: EnrollmentDTO[] = [
     courseId: 1,
     courseName: "Alpha Course",
     courseType: "group",
+    teacherId: 1,
     teacherName: "Alice Teacher",
     billingMode: "per_lesson",
     chargeMaterials: false,
     lessonPriceOverride: 15,
     subscriptionLessonPrice: 0,
     note: "",
+    createdAt: "2026-07-01T10:00:00Z",
+  },
+  {
+    id: 4,
+    version: 1,
+    studentId: 4,
+    studentName: "Gamma Student",
+    courseId: 3,
+    courseName: "Gamma Course",
+    courseType: "individual",
+    teacherId: 1,
+    teacherName: "Alice Teacher",
+    billingMode: "per_lesson",
+    chargeMaterials: true,
+    lessonPriceOverride: 25,
+    subscriptionLessonPrice: 0,
+    note: "Second course student",
     createdAt: "2026-07-01T10:00:00Z",
   },
 ];
@@ -129,18 +161,24 @@ function buildProps() {
 }
 
 describe("EnrollmentsScreen", () => {
-  it("groups enrollments by course and opens only the first group by default", () => {
+  it("groups enrollments by teacher and opens only the first course by default", () => {
     const markup = renderToStaticMarkup(<EnrollmentsScreen {...buildProps()} />);
 
     expect(markup).toContain("Alpha Course");
     expect(markup).toContain("Search student in enrollments...");
-    expect(markup).toContain("group · Alice Teacher");
+    expect(markup).toContain("Alice Teacher");
+    expect(markup).toContain("Bob Teacher");
+    expect(markup).toContain("Courses: 2 · Students: 3");
+    expect(markup).toContain("group · 2 students");
+    expect(markup).toContain("Gamma Course");
+    expect(markup).toContain("individual · 1 students");
     expect(markup).toContain("2 students");
     expect(markup).toContain("Alpha Student One");
     expect(markup).toContain("Needs printed materials");
+    expect(markup).not.toContain("Gamma Student");
     expect(markup).not.toContain("Beta Student");
-    expect(markup).toContain("Expand all");
-    expect(markup).toContain("Collapse all");
+    expect(markup).not.toContain("Expand all");
+    expect(markup).not.toContain("Collapse all");
   });
 
   it("opens the visible course immediately when a course filter is active", () => {

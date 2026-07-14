@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type Ref, type RefObject } from "react";
+import { useEffect, useState, type Ref, type RefObject } from "react";
 import { EnrollmentFormModal } from "../components/modals/EnrollmentFormModal";
 import { EmptyState } from "../components/EmptyState";
 import type { CourseDTO } from "../lib/courses";
@@ -6,6 +6,14 @@ import type { EnrollmentDTO } from "../lib/enrollments";
 import type { StudentDTO } from "../lib/students";
 import type { TranslateFn } from "../lib/i18n";
 import { FilterToolbar } from "../components/FilterToolbar";
+import {
+  ENROLLMENT_SELECTION_STORAGE_KEY,
+  groupEnrollmentsByTeacher,
+  normalizeEnrollmentSelectionPreferences,
+  parseEnrollmentSelectionPreferences,
+  resolveEnrollmentSelection,
+  type EnrollmentSelectionPreferences,
+} from "../lib/enrollmentTeacherGroups";
 
 type EnrollmentsScreenProps = {
   loading: boolean;
@@ -54,13 +62,31 @@ type EnrollmentsScreenProps = {
   t: TranslateFn;
 };
 
-type EnrollmentGroup = {
-  courseId: number;
-  courseName: string;
-  courseType: string;
-  teacherName: string;
-  enrollments: EnrollmentDTO[];
+type AutomaticSelection = {
+  context: string;
+  teacherKey: string | null;
+  courseId?: number;
 };
+
+function readSelectionPreferences(): EnrollmentSelectionPreferences {
+  if (typeof window === "undefined") return { courseByTeacher: {} };
+  try {
+    return parseEnrollmentSelectionPreferences(
+      window.localStorage.getItem(ENROLLMENT_SELECTION_STORAGE_KEY)
+    );
+  } catch {
+    return { courseByTeacher: {} };
+  }
+}
+
+function saveSelectionPreferences(preferences: EnrollmentSelectionPreferences) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(ENROLLMENT_SELECTION_STORAGE_KEY, JSON.stringify(preferences));
+  } catch {
+    // Persistence is an enhancement; selection still works for the current session.
+  }
+}
 
 export function EnrollmentsScreen({
   loading,
@@ -109,6 +135,10 @@ export function EnrollmentsScreen({
   t,
 }: EnrollmentsScreenProps) {
   const [query, setQuery] = useState("");
+  const [selectionPreferences, setSelectionPreferences] =
+    useState<EnrollmentSelectionPreferences>(readSelectionPreferences);
+  const [manualOpenTeacherKey, setManualOpenTeacherKey] = useState<string | null>();
+  const [automaticSelection, setAutomaticSelection] = useState<AutomaticSelection>();
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const visibleEnrollments = normalizedQuery
     ? enrollments.filter((enrollment) =>
@@ -117,74 +147,92 @@ export function EnrollmentsScreen({
     : enrollments;
   const hasActiveFilters =
     normalizedQuery !== "" || studentFilter !== undefined || courseFilter !== undefined;
-  const groupedEnrollments = new Map<number, EnrollmentGroup>();
-  for (const enrollment of visibleEnrollments) {
-    const existing = groupedEnrollments.get(enrollment.courseId);
-    if (existing) {
-      existing.enrollments.push(enrollment);
-      continue;
-    }
-    groupedEnrollments.set(enrollment.courseId, {
-      courseId: enrollment.courseId,
-      courseName: enrollment.courseName,
-      courseType: enrollment.courseType,
-      teacherName: enrollment.teacherName,
-      enrollments: [enrollment],
-    });
-  }
-  const enrollmentGroups = Array.from(groupedEnrollments.values()).sort((left, right) =>
-    left.courseName.localeCompare(right.courseName)
+  const automaticMode = hasActiveFilters;
+  const selectionContext = `${normalizedQuery}|${studentFilter ?? ""}|${courseFilter ?? ""}`;
+  const teacherGroups = groupEnrollmentsByTeacher(visibleEnrollments, t("filter.withoutTeacher"));
+  const normalizedPreferences = normalizeEnrollmentSelectionPreferences(
+    teacherGroups,
+    selectionPreferences
   );
-  for (const group of enrollmentGroups) {
-    group.enrollments.sort((left, right) => left.studentName.localeCompare(right.studentName));
-  }
-  const visibleCourseIdsKey = enrollmentGroups.map((group) => group.courseId).join(",");
-  const [expandedCourseIds, setExpandedCourseIds] = useState<Set<number>>(
-    () =>
-      new Set(
-        courseFilter !== undefined || studentFilter !== undefined
-          ? enrollmentGroups.map((group) => group.courseId)
-          : enrollmentGroups[0]
-            ? [enrollmentGroups[0].courseId]
-            : []
-      )
-  );
-  const initializedExpansion = useRef(visibleEnrollments.length > 0);
+  const manualSelection = resolveEnrollmentSelection(teacherGroups, normalizedPreferences);
+  const defaultAutomaticTeacher = teacherGroups[0];
+  const currentAutomaticSelection =
+    automaticSelection?.context === selectionContext ? automaticSelection : undefined;
+  const automaticTeacherKey =
+    currentAutomaticSelection?.teacherKey === null
+      ? null
+      : teacherGroups.some((teacher) => teacher.key === currentAutomaticSelection?.teacherKey)
+        ? currentAutomaticSelection?.teacherKey
+        : defaultAutomaticTeacher?.key;
+  const openTeacherKey = automaticMode
+    ? automaticTeacherKey
+    : manualOpenTeacherKey === null
+      ? null
+      : teacherGroups.some((teacher) => teacher.key === manualOpenTeacherKey)
+        ? manualOpenTeacherKey
+        : manualSelection.teacherKey;
+  const openTeacher = teacherGroups.find((teacher) => teacher.key === openTeacherKey);
+  const preferredCourseId = automaticMode
+    ? currentAutomaticSelection?.courseId
+    : openTeacher
+      ? normalizedPreferences.courseByTeacher[openTeacher.key]
+      : undefined;
+  const selectedCourse =
+    openTeacher?.courses.find((course) => course.courseId === preferredCourseId) ??
+    openTeacher?.courses[0];
 
   useEffect(() => {
-    const visibleCourseIds = visibleCourseIdsKey.split(",").filter(Boolean).map(Number);
-    if (visibleCourseIds.length === 0) return;
+    if (automaticMode || teacherGroups.length === 0) return;
+    if (JSON.stringify(normalizedPreferences) === JSON.stringify(selectionPreferences)) return;
 
-    if (normalizedQuery !== "" || courseFilter !== undefined || studentFilter !== undefined) {
-      setExpandedCourseIds((current) => {
-        const next = new Set(current);
-        for (const id of visibleCourseIds) next.add(id);
-        return next;
+    setSelectionPreferences(normalizedPreferences);
+    saveSelectionPreferences(normalizedPreferences);
+  }, [automaticMode, normalizedPreferences, selectionPreferences, teacherGroups.length]);
+
+  function updateManualSelection(teacherKey: string, courseId?: number) {
+    const teacher = teacherGroups.find((candidate) => candidate.key === teacherKey);
+    if (!teacher) return;
+    const savedCourseId = selectionPreferences.courseByTeacher[teacherKey];
+    const nextCourseId =
+      teacher.courses.find((course) => course.courseId === courseId)?.courseId ??
+      teacher.courses.find((course) => course.courseId === savedCourseId)?.courseId ??
+      teacher.courses[0].courseId;
+    const next = {
+      activeTeacherKey: teacherKey,
+      courseByTeacher: {
+        ...selectionPreferences.courseByTeacher,
+        [teacherKey]: nextCourseId,
+      },
+    };
+    setSelectionPreferences(next);
+    saveSelectionPreferences(next);
+  }
+
+  function toggleTeacher(teacherKey: string) {
+    const isOpen = openTeacherKey === teacherKey;
+    if (automaticMode) {
+      setAutomaticSelection({
+        context: selectionContext,
+        teacherKey: isOpen ? null : teacherKey,
       });
-      initializedExpansion.current = true;
       return;
     }
 
-    if (!initializedExpansion.current) {
-      setExpandedCourseIds(new Set([visibleCourseIds[0]]));
-      initializedExpansion.current = true;
+    if (isOpen) {
+      setManualOpenTeacherKey(null);
+      return;
     }
-  }, [courseFilter, normalizedQuery, studentFilter, visibleCourseIdsKey]);
+    setManualOpenTeacherKey(teacherKey);
+    updateManualSelection(teacherKey);
+  }
 
-  const allVisibleGroupsExpanded =
-    enrollmentGroups.length > 0 &&
-    enrollmentGroups.every((group) => expandedCourseIds.has(group.courseId));
-  const hasVisibleExpandedGroup = enrollmentGroups.some((group) =>
-    expandedCourseIds.has(group.courseId)
-  );
-
-  function toggleGroup(courseId: number) {
-    setExpandedCourseIds((current) => {
-      const next = new Set(current);
-      if (next.has(courseId)) next.delete(courseId);
-      else next.add(courseId);
-      return next;
-    });
+  function selectCourse(teacherKey: string, courseId: number) {
+    if (automaticMode) {
+      setAutomaticSelection({ context: selectionContext, teacherKey, courseId });
+      return;
+    }
+    setManualOpenTeacherKey(teacherKey);
+    updateManualSelection(teacherKey, courseId);
   }
 
   function courseOptionLabel(course: CourseDTO): string {
@@ -244,30 +292,6 @@ export function EnrollmentsScreen({
           onCourseFilterChange(undefined);
         }}
         clearLabel={t("button.clearFilters")}
-        secondaryActions={
-          enrollmentGroups.length > 1 ? (
-            <div className="enrollmentGroupControls">
-              <button
-                type="button"
-                className="secondaryActionButton"
-                disabled={allVisibleGroupsExpanded}
-                onClick={() =>
-                  setExpandedCourseIds(new Set(enrollmentGroups.map((group) => group.courseId)))
-                }
-              >
-                {t("button.expandAll")}
-              </button>
-              <button
-                type="button"
-                className="secondaryActionButton"
-                disabled={!hasVisibleExpandedGroup}
-                onClick={() => setExpandedCourseIds(new Set())}
-              >
-                {t("button.collapseAll")}
-              </button>
-            </div>
-          ) : undefined
-        }
       />
 
       {loading ? (
@@ -307,95 +331,129 @@ export function EnrollmentsScreen({
           />
         )
       ) : (
-        <div className="enrollmentGroupList">
-          {enrollmentGroups.map((group) => {
-            const expanded = expandedCourseIds.has(group.courseId);
+        <div className="enrollmentTeacherList">
+          {teacherGroups.map((teacher) => {
+            const expanded = openTeacherKey === teacher.key;
             return (
               <section
-                key={group.courseId}
-                className={`enrollmentGroup ${expanded ? "enrollmentGroup--expanded" : ""}`}
+                key={teacher.key}
+                className={`enrollmentTeacherGroup ${
+                  expanded ? "enrollmentTeacherGroup--expanded" : ""
+                }`}
               >
                 <button
                   type="button"
-                  className="enrollmentGroupHeader"
+                  className="enrollmentTeacherHeader"
                   aria-expanded={expanded}
-                  onClick={() => toggleGroup(group.courseId)}
+                  onClick={() => toggleTeacher(teacher.key)}
                 >
-                  <span className="enrollmentGroupChevron" aria-hidden="true">
+                  <span className="enrollmentTeacherChevron" aria-hidden="true">
                     {expanded ? "▾" : "▸"}
                   </span>
-                  <span className="enrollmentGroupTitle">
-                    <strong>{group.courseName}</strong>
+                  <span className="enrollmentTeacherTitle">
+                    <strong>{teacher.teacherName}</strong>
                     <span>
-                      {courseTypeLabel(group.courseType)} · {group.teacherName || "—"}
+                      {t("msg.teacherEnrollmentSummary", {
+                        courses: teacher.courses.length,
+                        students: teacher.studentCount,
+                      })}
                     </span>
-                  </span>
-                  <span className="enrollmentGroupCount">
-                    {t("msg.studentsCount", { count: group.enrollments.length })}
                   </span>
                 </button>
 
                 {expanded && (
-                  <div className="tableWrap enrollmentGroupTableWrap">
-                    <table className="enrollmentCompactTable">
-                      <thead>
-                        <tr>
-                          <th>{t("field.student")}</th>
-                          <th>{t("field.billing")}</th>
-                          <th style={{ textAlign: "right" }}>{t("field.lessonPriceOverride")}</th>
-                          <th>{t("field.materials")}</th>
-                          <th>{t("field.note")}</th>
-                          <th aria-label={t("field.actions")}></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {group.enrollments.map((enrollment) => (
-                          <tr key={enrollment.id}>
-                            <td>
-                              <button
-                                className="linkButton enrollmentStudentLink"
-                                onClick={() => void onOpenStudent(enrollment.studentId)}
-                              >
-                                {enrollment.studentName}
-                              </button>
-                            </td>
-                            <td>{billingModeLabel(enrollment.billingMode)}</td>
-                            <td className="enrollmentCompactPrice">
-                              {enrollment.billingMode === "per_lesson"
-                                ? `€${enrollment.lessonPriceOverride.toFixed(2)}`
-                                : `€${enrollment.subscriptionLessonPrice.toFixed(2)}`}
-                            </td>
-                            <td>
-                              <span
-                                className={`enrollmentMaterialsFlag ${
-                                  enrollment.chargeMaterials
-                                    ? "enrollmentMaterialsFlag--charged"
-                                    : ""
-                                }`}
-                              >
-                                {enrollment.chargeMaterials ? t("label.yes") : t("label.no")}
-                              </span>
-                            </td>
-                            <td>
-                              <span className="enrollmentCompactNote" title={enrollment.note}>
-                                {enrollment.note || "—"}
-                              </span>
-                            </td>
-                            <td className="enrollmentCompactActions">
-                              <button
-                                type="button"
-                                className="enrollmentRowAction"
-                                aria-label={`${t("button.edit")}: ${enrollment.studentName}`}
-                                title={t("button.edit")}
-                                onClick={() => onEditEnrollment(enrollment)}
-                              >
-                                ...
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="enrollmentTeacherContent">
+                    <div className="enrollmentCourseChips" role="tablist">
+                      {teacher.courses.map((course) => {
+                        const selected = selectedCourse?.courseId === course.courseId;
+                        return (
+                          <button
+                            key={course.courseId}
+                            type="button"
+                            role="tab"
+                            aria-selected={selected}
+                            className={`enrollmentCourseChip ${
+                              selected ? "enrollmentCourseChip--active" : ""
+                            }`}
+                            onClick={() => selectCourse(teacher.key, course.courseId)}
+                          >
+                            <strong>{course.courseName}</strong>
+                            <span>
+                              {courseTypeLabel(course.courseType)} ·{" "}
+                              {t("msg.studentsCount", {
+                                count: course.enrollments.length,
+                              })}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {selectedCourse && (
+                      <div className="tableWrap enrollmentGroupTableWrap">
+                        <table className="enrollmentCompactTable">
+                          <thead>
+                            <tr>
+                              <th>{t("field.student")}</th>
+                              <th>{t("field.billing")}</th>
+                              <th style={{ textAlign: "right" }}>
+                                {t("field.lessonPriceOverride")}
+                              </th>
+                              <th>{t("field.materials")}</th>
+                              <th>{t("field.note")}</th>
+                              <th aria-label={t("field.actions")}></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {selectedCourse.enrollments.map((enrollment) => (
+                              <tr key={enrollment.id}>
+                                <td>
+                                  <button
+                                    className="linkButton enrollmentStudentLink"
+                                    onClick={() => void onOpenStudent(enrollment.studentId)}
+                                  >
+                                    {enrollment.studentName}
+                                  </button>
+                                </td>
+                                <td>{billingModeLabel(enrollment.billingMode)}</td>
+                                <td className="enrollmentCompactPrice">
+                                  {enrollment.billingMode === "per_lesson"
+                                    ? `€${enrollment.lessonPriceOverride.toFixed(2)}`
+                                    : `€${enrollment.subscriptionLessonPrice.toFixed(2)}`}
+                                </td>
+                                <td>
+                                  <span
+                                    className={`enrollmentMaterialsFlag ${
+                                      enrollment.chargeMaterials
+                                        ? "enrollmentMaterialsFlag--charged"
+                                        : ""
+                                    }`}
+                                  >
+                                    {enrollment.chargeMaterials ? t("label.yes") : t("label.no")}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="enrollmentCompactNote" title={enrollment.note}>
+                                    {enrollment.note || "—"}
+                                  </span>
+                                </td>
+                                <td className="enrollmentCompactActions">
+                                  <button
+                                    type="button"
+                                    className="enrollmentRowAction"
+                                    aria-label={`${t("button.edit")}: ${enrollment.studentName}`}
+                                    title={t("button.edit")}
+                                    onClick={() => onEditEnrollment(enrollment)}
+                                  >
+                                    ...
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
               </section>

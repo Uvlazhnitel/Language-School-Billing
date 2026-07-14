@@ -1985,31 +1985,12 @@ tfoot td {
   background: linear-gradient(180deg, #fffdfb, #fff8f1);
 }
 
-.enrollmentGroupControls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.enrollmentGroupControls .secondaryActionButton,
-.enrollmentGroupControls .secondaryActionButton:first-child {
-  color: var(--muted-strong);
-  background: rgba(255, 255, 255, 0.84);
-  border-color: rgba(133, 102, 69, 0.14);
-  box-shadow: none;
-}
-
-.enrollmentGroupControls .secondaryActionButton:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.enrollmentGroupList {
+.enrollmentTeacherList {
   display: grid;
   gap: 10px;
 }
 
-.enrollmentGroup {
+.enrollmentTeacherGroup {
   overflow: hidden;
   border: 1px solid rgba(133, 102, 69, 0.12);
   border-radius: 18px;
@@ -2020,18 +2001,18 @@ tfoot td {
     box-shadow 0.18s ease;
 }
 
-.enrollmentGroup--expanded {
+.enrollmentTeacherGroup--expanded {
   border-color: rgba(212, 109, 53, 0.22);
   box-shadow: var(--shadow-md);
 }
 
-.enrollmentGroupHeader {
+.enrollmentTeacherHeader {
   display: flex;
   width: 100%;
-  min-height: 66px;
+  min-height: 58px;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 10px 16px;
   border: 0;
   color: var(--text);
   background: linear-gradient(110deg, rgba(255, 249, 242, 0.96), rgba(255, 255, 255, 0.94));
@@ -2039,17 +2020,17 @@ tfoot td {
   cursor: pointer;
 }
 
-.enrollmentGroupHeader:hover,
-.enrollmentGroupHeader:focus-visible {
+.enrollmentTeacherHeader:hover,
+.enrollmentTeacherHeader:focus-visible {
   background: linear-gradient(110deg, rgba(255, 241, 227, 0.98), rgba(255, 255, 255, 0.96));
 }
 
-.enrollmentGroupHeader:focus-visible {
+.enrollmentTeacherHeader:focus-visible {
   outline: 3px solid rgba(42, 117, 99, 0.22);
   outline-offset: -3px;
 }
 
-.enrollmentGroupChevron {
+.enrollmentTeacherChevron {
   display: inline-grid;
   width: 30px;
   height: 30px;
@@ -2062,20 +2043,20 @@ tfoot td {
   font-weight: 900;
 }
 
-.enrollmentGroupTitle {
+.enrollmentTeacherTitle {
   display: grid;
   min-width: 0;
   gap: 3px;
 }
 
-.enrollmentGroupTitle strong {
+.enrollmentTeacherTitle strong {
   overflow: hidden;
   font-size: 1rem;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.enrollmentGroupTitle span {
+.enrollmentTeacherTitle span {
   overflow: hidden;
   color: var(--muted);
   font-size: 0.82rem;
@@ -2084,19 +2065,62 @@ tfoot td {
   white-space: nowrap;
 }
 
-.enrollmentGroupCount {
-  margin-left: auto;
-  padding: 6px 10px;
-  border-radius: 999px;
+.enrollmentTeacherContent {
+  display: grid;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(133, 102, 69, 0.1);
+  background: rgba(255, 252, 248, 0.62);
+}
+
+.enrollmentCourseChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0 12px;
+}
+
+.enrollmentCourseChip {
+  display: grid;
+  min-width: 150px;
+  gap: 2px;
+  padding: 8px 12px;
+  border: 1px solid rgba(133, 102, 69, 0.14);
+  border-radius: 13px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.86);
+  box-shadow: none;
+  text-align: left;
+}
+
+.enrollmentCourseChip:hover,
+.enrollmentCourseChip:focus-visible {
+  border-color: rgba(212, 109, 53, 0.32);
+  background: #fff;
+}
+
+.enrollmentCourseChip--active {
+  border-color: rgba(212, 109, 53, 0.42);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.enrollmentCourseChip strong {
+  overflow: hidden;
+  font-size: 0.84rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.enrollmentCourseChip span {
   color: var(--muted-strong);
-  background: rgba(133, 102, 69, 0.09);
-  font-size: 0.8rem;
-  font-weight: 850;
+  font-size: 0.72rem;
+  font-weight: 750;
   white-space: nowrap;
 }
 
 .enrollmentGroupTableWrap {
-  border-top: 1px solid rgba(133, 102, 69, 0.1);
+  border-top: 0;
 }
 
 .enrollmentCompactTable {
@@ -2967,22 +2991,18 @@ tfoot td {
     width: 100%;
   }
 
-  .enrollmentGroupControls {
-    width: 100%;
-  }
-
-  .enrollmentGroupControls .secondaryActionButton {
-    flex: 1 1 auto;
-  }
-
-  .enrollmentGroupHeader {
-    min-height: 62px;
+  .enrollmentTeacherHeader {
+    min-height: 56px;
     padding: 10px 12px;
   }
 
-  .enrollmentGroupCount {
-    padding: 5px 8px;
-    font-size: 0.74rem;
+  .enrollmentCourseChips {
+    padding: 0 10px;
+  }
+
+  .enrollmentCourseChip {
+    min-width: min(160px, 100%);
+    flex: 1 1 145px;
   }
 
   .invoiceRowActions {
