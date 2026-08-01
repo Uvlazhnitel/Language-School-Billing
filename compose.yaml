@@ -15,7 +15,7 @@ services:
       APP_DATA_DIR: /var/lib/langschool/data
       INVOICES_DIR: /var/lib/langschool/invoices
       BACKUPS_DIR: /var/lib/langschool/backups
-      LS_FONTS_DIR: /app/Fonts
+      LS_FONTS_DIR: /app/fonts
     volumes:
       - /home/ilya/langschool-data/data:/var/lib/langschool/data
       - /home/ilya/langschool-data/invoices:/var/lib/langschool/invoices

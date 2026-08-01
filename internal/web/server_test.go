@@ -2990,7 +2990,7 @@ func writeTestDist(t *testing.T) string {
 
 func makeTestFontsDir(t *testing.T) (string, error) {
 	t.Helper()
-	sourceDir, err := filepath.Abs(filepath.Join("..", "..", "Fonts"))
+	sourceDir, err := filepath.Abs(filepath.Join("..", "..", "fonts"))
 	if err != nil {
 		return "", err
 	}

@@ -53,7 +53,7 @@ The included Docker setup uses these paths:
 - `/var/lib/langschool/data`
 - `/var/lib/langschool/invoices`
 - `/var/lib/langschool/backups`
-- `/app/Fonts`
+- `/app/fonts`
 
 The SQLite database file is stored at `${APP_DATA_DIR}/app.sqlite`.
 
@@ -107,11 +107,32 @@ Vite proxies `/api` and `/healthz` to `http://127.0.0.1:8080` by default.
 Create `.env` from [.env.example](/Users/uvlazhnitel/Documents/coding/langschool/langschool/.env.example), then start the app:
 
 ```bash
+docker build -t langschool:local .
 docker compose build
 docker compose up -d
 ```
 
 The compose file publishes the app on `http://localhost:8082`.
+
+## Published Docker Images
+
+Release tags publish multi-platform images for `linux/amd64` and `linux/arm64` to GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/uvlazhnitel/language-school-billing:1.2.3
+```
+
+Run a published image with persistent storage:
+
+```bash
+docker run -d --name langschool --restart unless-stopped -p 8082:8080 --env-file .env \
+  -v langschool-data:/var/lib/langschool/data \
+  -v langschool-invoices:/var/lib/langschool/invoices \
+  -v langschool-backups:/var/lib/langschool/backups \
+  ghcr.io/uvlazhnitel/language-school-billing:1.2.3
+```
+
+A stable Git tag such as `v1.2.3` publishes image tags `1.2.3`, `1.2`, `1`, and `latest`. A prerelease such as `v1.2.3-beta.1` publishes only `1.2.3-beta.1` and never updates `latest`.
 
 ## Testing
 

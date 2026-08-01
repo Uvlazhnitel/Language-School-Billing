@@ -1,4 +1,4 @@
-FROM node:22-bookworm-slim AS frontend-builder
+FROM --platform=$BUILDPLATFORM node:22-bookworm-slim AS frontend-builder
 
 WORKDIR /app/frontend
 
@@ -8,7 +8,10 @@ RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM golang:1.24-bookworm AS backend-builder
+FROM --platform=$BUILDPLATFORM golang:1.24-bookworm AS backend-builder
+
+ARG TARGETOS
+ARG TARGETARCH
 
 WORKDIR /app
 
@@ -18,12 +21,15 @@ RUN go mod download
 COPY . ./
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/langschool-web ./cmd/web
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /out/langschool-backupctl ./cmd/backupctl
+RUN CGO_ENABLED=0 GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build -o /out/langschool-web ./cmd/web
+RUN CGO_ENABLED=0 GOOS="$TARGETOS" GOARCH="$TARGETARCH" go build -o /out/langschool-backupctl ./cmd/backupctl
 
 FROM debian:bookworm-slim AS runtime
 
 WORKDIR /app
+
+ENV WEB_DIST_DIR=/app/frontend/dist \
+  LS_FONTS_DIR=/app/fonts
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends ca-certificates \
@@ -32,7 +38,7 @@ RUN apt-get update \
 COPY --from=backend-builder /out/langschool-web /usr/local/bin/langschool-web
 COPY --from=backend-builder /out/langschool-backupctl /usr/local/bin/langschool-backupctl
 COPY --from=backend-builder /app/frontend/dist ./frontend/dist
-COPY --from=backend-builder /app/Fonts ./Fonts
+COPY fonts ./fonts
 
 EXPOSE 8080
 

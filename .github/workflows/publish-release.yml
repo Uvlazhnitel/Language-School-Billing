@@ -1,139 +1,56 @@
-name: Publish release
+name: Publish web release
 
 on:
   push:
     tags:
       - "v*"
-      - "ru-v*"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: uvlazhnitel/language-school-billing
 
 jobs:
-  create-release:
-    name: Create GitHub release
+  verify:
+    name: Verify release source
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Create release
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if gh release view "${{ github.ref_name }}" --repo "${{ github.repository }}" >/dev/null 2>&1; then
-            echo "Release for ${{ github.ref_name }} already exists."
-          else
-            gh release create "${{ github.ref_name }}" \
-              --repo "${{ github.repository }}" \
-              --title "StudentDesk ${{ github.ref_name }}" \
-              --generate-notes
-          fi
-
-  windows-release:
-    name: Build Windows installer
-    needs: create-release
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: actions/setup-go@v7
         with:
-          go-version: "1.24.x"
+          go-version-file: go.mod
+          cache-dependency-path: go.sum
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version: "24.x"
+          node-version: "22"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
-
-      - name: Install NSIS
-        shell: pwsh
-        run: |
-          choco install nsis -y --no-progress
-          'C:\Program Files (x86)\NSIS' | Out-File -FilePath $env:GITHUB_PATH -Append
-          & 'C:\Program Files (x86)\NSIS\makensis.exe' /VERSION
-
-      - name: Install Wails CLI
-        shell: pwsh
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
 
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
-      - name: Build frontend
+      - name: Lint frontend
         working-directory: frontend
-        run: npm run build
+        run: npm run lint
 
-      - name: Test Go packages
-        shell: pwsh
-        env:
-          CGO_ENABLED: "0"
-        run: |
-          $packages = go list ./... | Where-Object { $_ -notlike 'langschool/frontend/node_modules/*' }
-          go test $packages
-
-      - name: Build Windows installer
-        shell: pwsh
-        env:
-          CGO_ENABLED: "0"
-        run: |
-          wails build -clean -nsis -webview2 download
-          $installer = Get-ChildItem build\bin -Filter '*installer.exe' -ErrorAction Stop | Select-Object -First 1
-          if (-not $installer) {
-            throw 'Windows installer was not created.'
-          }
-
-      - name: Prepare release asset
-        id: asset
-        shell: pwsh
-        run: |
-          $tag = "${{ github.ref_name }}"
-          $installer = Get-ChildItem build\bin -Filter '*installer.exe' -ErrorAction Stop | Select-Object -First 1
-          $assetName = if ($tag.StartsWith('ru-v')) { "studentdesk-ru-windows-installer-$tag.exe" } else { "studentdesk-windows-installer-$tag.exe" }
-          Copy-Item $installer.FullName "build\bin\$assetName" -Force
-          "asset_path=build\bin\$assetName" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-
-      - name: Upload asset to release
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release upload "${{ github.ref_name }}" "${{ steps.asset.outputs.asset_path }}" --repo "${{ github.repository }}" --clobber
-
-  macos-release:
-    name: Build macOS app
-    needs: create-release
-    runs-on: macos-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: "1.24.x"
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: "24.x"
-          cache: npm
-          cache-dependency-path: frontend/package-lock.json
-
-      - name: Install Wails CLI
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@v2.12.0
-
-      - name: Install frontend dependencies
+      - name: Test frontend
         working-directory: frontend
-        run: npm ci
+        run: npm test
 
       - name: Build frontend
         working-directory: frontend
@@ -142,23 +59,114 @@ jobs:
       - name: Test Go packages
         run: go test ./...
 
-      - name: Build macOS app bundle
-        run: wails build -clean
+      - name: Build web server
+        run: go build -o /tmp/langschool-web ./cmd/web
 
-      - name: Prepare release asset
-        id: asset
+      - name: Build Docker image
+        run: docker build --tag langschool:release-check .
+
+  publish:
+    name: Publish Docker image and GitHub Release
+    needs: verify
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Generate Docker metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=auto
+          tags: |
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+          labels: |
+            org.opencontainers.image.title=${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+
+      - name: Validate release tag
+        env:
+          GENERATED_TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          tag="${{ github.ref_name }}"
-          if [[ "$tag" == ru-v* ]]; then
-            asset_name="studentdesk-ru-macos-${tag}.zip"
-          else
-            asset_name="studentdesk-macos-${tag}.zip"
+          if [[ -z "$GENERATED_TAGS" ]]; then
+            echo "The release tag is not valid semantic versioning." >&2
+            exit 1
           fi
-          ditto -c -k --sequesterRsrc --keepParent "build/bin/studentdesk.app" "build/bin/${asset_name}"
-          echo "asset_path=build/bin/${asset_name}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload asset to release
+      - name: Login to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build and publish Docker image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Create or update GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_IMAGE: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         run: |
-          gh release upload "${{ github.ref_name }}" "${{ steps.asset.outputs.asset_path }}" --repo "${{ github.repository }}" --clobber
+          version="${RELEASE_TAG#v}"
+          prerelease=false
+          if [[ "$version" == *-* ]]; then
+            prerelease=true
+          fi
+
+          notes_file="${RUNNER_TEMP}/release-notes.md"
+          payload_file="${RUNNER_TEMP}/release-payload.json"
+          cat >"$notes_file" <<EOF
+          Web-only LangSchool release.
+
+          Docker image: \`${RELEASE_IMAGE}:${version}\`
+
+          \`\`\`bash
+          docker pull ${RELEASE_IMAGE}:${version}
+          docker run -d --name langschool --restart unless-stopped -p 8082:8080 --env-file .env \\
+            -v langschool-data:/var/lib/langschool/data \\
+            -v langschool-invoices:/var/lib/langschool/invoices \\
+            -v langschool-backups:/var/lib/langschool/backups \\
+            ${RELEASE_IMAGE}:${version}
+          \`\`\`
+          EOF
+
+          jq -n \
+            --arg tag "$RELEASE_TAG" \
+            --arg name "LangSchool $RELEASE_TAG" \
+            --rawfile body "$notes_file" \
+            --argjson prerelease "$prerelease" \
+            '{tag_name: $tag, name: $name, body: $body, draft: false, prerelease: $prerelease}' \
+            >"$payload_file"
+
+          if release_id="$(gh api "repos/${RELEASE_REPOSITORY}/releases/tags/${RELEASE_TAG}" --jq .id 2>/dev/null)"; then
+            gh api --method PATCH "repos/${RELEASE_REPOSITORY}/releases/${release_id}" --input "$payload_file" >/dev/null
+          else
+            gh api --method POST "repos/${RELEASE_REPOSITORY}/releases" --input "$payload_file" >/dev/null
+          fi

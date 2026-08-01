@@ -1,9 +1,12 @@
 name: Deploy server
 
 on:
-  push:
-    branches:
-      - main
+  workflow_call:
+    secrets:
+      TAILSCALE_AUTHKEY:
+        required: true
+      DEPLOY_SSH_PRIVATE_KEY:
+        required: true
 
 permissions:
   contents: read
@@ -20,7 +23,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
