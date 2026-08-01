@@ -36,7 +36,7 @@ import {
 
 import { listCourses, createCourse, updateCourse, deleteCourse, CourseDTO } from "./lib/courses";
 import { listTeachers, createTeacher, TeacherDTO } from "./lib/teachers";
-import { BillingModePerLesson, BillingModeSubscription } from "./lib/constants";
+import { BillingModePerLesson } from "./lib/constants";
 
 import {
   listEnrollments,
@@ -104,6 +104,14 @@ import {
   type StudentSortOption,
   type StudentStatusFilter,
 } from "./lib/studentListControls";
+import {
+  defaultAttendanceQuickFilters,
+  filterAndSortAttendanceRows,
+  hasActiveAttendanceQuickFilters,
+  toggleAttendanceQuickFilter,
+  type AttendanceQuickFilterKey,
+  type AttendanceQuickFilters,
+} from "./lib/attendanceList";
 import {
   AppTabId,
   billingModeLabel,
@@ -1581,6 +1589,9 @@ export default function App() {
   const [courseFilter, setCourseFilter] = useState<number | undefined>(undefined);
   const [attQ, setAttQ] = useState("");
   const [attFilter, setAttFilter] = useState<"all" | "missing" | "filled" | "zero">("all");
+  const [attendanceQuickFilters, setAttendanceQuickFilters] = useState<AttendanceQuickFilters>(
+    defaultAttendanceQuickFilters
+  );
   const [attendanceSavingRows, setAttendanceSavingRows] = useState<Record<number, boolean>>({});
   const attendanceSavingRowsRef = useRef<Record<number, boolean>>({});
   const [attendanceInputDrafts, setAttendanceInputDrafts] = useState<Record<number, string>>({});
@@ -1592,6 +1603,7 @@ export default function App() {
     setCourseFilter(targetCourseId);
     setAttQ("");
     setAttFilter("all");
+    setAttendanceQuickFilters(defaultAttendanceQuickFilters);
     setAttendanceFocusTarget({ studentId, courseId: targetCourseId });
     setTab("attendance");
   }
@@ -1647,44 +1659,26 @@ export default function App() {
     [rows]
   );
 
-  const filteredAttendanceRows = useMemo(() => {
-    const q = attQ.trim().toLowerCase();
-    let filtered = rows;
+  const filteredAttendanceRows = useMemo(
+    () => filterAndSortAttendanceRows(rows, attQ, attFilter, attendanceQuickFilters, studentIndex),
+    [rows, attQ, attFilter, attendanceQuickFilters, studentIndex]
+  );
 
-    if (q) {
-      filtered = filtered.filter((r) => {
-        const s = studentIndex.get(r.studentId);
-        const studentName = (r.studentName ?? "").toLowerCase();
-        const courseName = (r.courseName ?? "").toLowerCase();
-        const phone = (s?.phone ?? "").toLowerCase();
-        return studentName.includes(q) || courseName.includes(q) || phone.includes(q);
-      });
-    }
+  const attendanceHasActiveQuickFilters = useMemo(
+    () => hasActiveAttendanceQuickFilters(attendanceQuickFilters),
+    [attendanceQuickFilters]
+  );
 
-    if (attFilter === "missing") {
-      filtered = filtered.filter((r) => !r.hasRecord);
-    } else if (attFilter === "filled") {
-      filtered = filtered.filter((r) => r.hasRecord);
-    } else if (attFilter === "zero") {
-      filtered = filtered.filter((r) => r.hasRecord && r.hours === 0);
-    }
+  const toggleAttendanceQuickChip = useCallback((key: AttendanceQuickFilterKey) => {
+    setAttendanceQuickFilters((prev) => toggleAttendanceQuickFilter(key, prev));
+  }, []);
 
-    return [...filtered].sort((a, b) => {
-      const aSubscription = a.billingMode === BillingModeSubscription;
-      const bSubscription = b.billingMode === BillingModeSubscription;
-      if (aSubscription !== bSubscription) {
-        return aSubscription ? 1 : -1;
-      }
-
-      const studentCompare = a.studentName.localeCompare(b.studentName);
-      if (studentCompare !== 0) return studentCompare;
-
-      const courseCompare = a.courseName.localeCompare(b.courseName);
-      if (courseCompare !== 0) return courseCompare;
-
-      return a.enrollmentId - b.enrollmentId;
-    });
-  }, [rows, attQ, attFilter, studentIndex]);
+  const resetAttendanceFilters = useCallback(() => {
+    setCourseFilter(undefined);
+    setAttQ("");
+    setAttFilter("all");
+    setAttendanceQuickFilters(defaultAttendanceQuickFilters);
+  }, []);
 
   const attendanceSummary = useMemo(() => {
     const editableRows = rows;
@@ -2869,6 +2863,8 @@ export default function App() {
                 allCourses={allCourses}
                 query={attQ}
                 filter={attFilter}
+                quickFilters={attendanceQuickFilters}
+                hasActiveQuickFilters={attendanceHasActiveQuickFilters}
                 rows={rows}
                 filteredRows={filteredAttendanceRows}
                 loading={loadingAtt}
@@ -2892,6 +2888,8 @@ export default function App() {
                 onCourseFilterChange={setCourseFilter}
                 onQueryChange={setAttQ}
                 onFilterChange={setAttFilter}
+                onToggleQuickFilter={toggleAttendanceQuickChip}
+                onResetFilters={resetAttendanceFilters}
                 onOpenStudent={(studentId) => void openStudentCardById(studentId)}
                 onDeleteEnrollmentFromSheet={(enrollmentId, enrollmentVersion) =>
                   void onDeleteEnrollmentFromSheet(enrollmentId, enrollmentVersion)

@@ -173,8 +173,8 @@ func buildCourseLineDescription(courseName string) string {
 	return fmt.Sprintf("Dalības maksa par %s", courseName)
 }
 
-// buildPerLessonLine creates an invoice line for per-lesson billing
-func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPriceCents int64) (*ent.InvoiceLineCreate, int64) {
+// buildPerLessonLine creates an invoice line for per-lesson billing.
+func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPriceCents int64) (*ent.InvoiceLineCreate, float64, int64) {
 	// Query attendance for the month
 	am, err := s.db.AttendanceMonth.Query().Where(
 		attendancemonth.StudentIDEQ(en.StudentID),
@@ -208,7 +208,7 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 		SetUnitPriceCents(lessonPriceCents).
 		SetAmountCents(amountCents)
 
-	return line, amountCents
+	return line, qty, amountCents
 }
 
 // buildSubscriptionLine creates an invoice line for subscription billing
@@ -314,30 +314,37 @@ func (s *Service) subscriptionLessonsHeld(ctx context.Context, studentID, course
 
 func (s *Service) hasAnyLessonsInMonth(ctx context.Context, ens []*ent.Enrollment, y, m int) bool {
 	for _, en := range ens {
-		switch en.BillingMode {
-		case BillingSubscription:
-			if s.subscriptionLessonsHeld(ctx, en.StudentID, en.CourseID, y, m) > 0 {
-				return true
-			}
-		default:
-			count, err := s.db.AttendanceMonth.Query().
-				Where(
-					attendancemonth.StudentIDEQ(en.StudentID),
-					attendancemonth.CourseIDEQ(en.CourseID),
-					attendancemonth.YearEQ(y),
-					attendancemonth.MonthEQ(m),
-					attendancemonth.HoursGT(0),
-				).
-				Count(ctx)
-			if err == nil && count > 0 {
-				return true
-			}
+		if s.enrollmentHasLessonsInMonth(ctx, en, y, m) {
+			return true
 		}
 	}
 	return false
 }
 
-func firstMaterialsEnrollment(ens []*ent.Enrollment) *ent.Enrollment {
+func (s *Service) enrollmentHasLessonsInMonth(ctx context.Context, en *ent.Enrollment, y, m int) bool {
+	switch en.BillingMode {
+	case BillingSubscription:
+		return s.subscriptionLessonsHeld(ctx, en.StudentID, en.CourseID, y, m) > 0
+	default:
+		count, err := s.db.AttendanceMonth.Query().
+			Where(
+				attendancemonth.StudentIDEQ(en.StudentID),
+				attendancemonth.CourseIDEQ(en.CourseID),
+				attendancemonth.YearEQ(y),
+				attendancemonth.MonthEQ(m),
+				attendancemonth.HoursGT(0),
+			).
+			Count(ctx)
+		return err == nil && count > 0
+	}
+}
+
+func (s *Service) firstMaterialsEnrollmentForMonth(ctx context.Context, ens []*ent.Enrollment, y, m int) *ent.Enrollment {
+	for _, en := range ens {
+		if en.ChargeMaterials && s.enrollmentHasLessonsInMonth(ctx, en, y, m) {
+			return en
+		}
+	}
 	for _, en := range ens {
 		if en.ChargeMaterials {
 			return en
@@ -419,7 +426,10 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 
 		switch en.BillingMode {
 		case BillingPerLesson:
-			line, amount := s.buildPerLessonLine(ctx, en, y, m, lp)
+			line, qty, amount := s.buildPerLessonLine(ctx, en, y, m, lp)
+			if qty <= 0 || amount <= 0 {
+				continue
+			}
 			lines = append(lines, line)
 			totalCents += amount
 
@@ -437,7 +447,7 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 		}
 	}
 
-	if materialsEnrollment := firstMaterialsEnrollment(ens); materialsEnrollment != nil && s.hasAnyLessonsInMonth(ctx, ens, y, m) {
+	if materialsEnrollment := s.firstMaterialsEnrollmentForMonth(ctx, ens, y, m); materialsEnrollment != nil && s.hasAnyLessonsInMonth(ctx, ens, y, m) {
 		materialsLine, materialsAmount := s.buildMaterialsLine(materialsEnrollment.ID)
 		lines = append(lines, materialsLine)
 		totalCents += materialsAmount

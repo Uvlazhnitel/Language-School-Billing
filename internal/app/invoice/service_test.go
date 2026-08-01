@@ -825,6 +825,107 @@ func TestGenerateDraftsPerLessonZeroLessonsDoesNotAddMaterials(t *testing.T) {
 	}
 }
 
+func TestGenerateDraftsSkipsZeroUsageEnrollmentWhenStudentMovesGroups(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-student-moves-groups?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+
+	st, err := client.Student.Create().
+		SetFullName("Moved Group Student").
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+
+	oldCourse, err := client.Course.Create().
+		SetName("Latviešu valoda").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("old Course.Create: %v", err)
+	}
+	newCourse, err := client.Course.Create().
+		SetName("Latviešu valoda").
+		SetType(course.TypeGroup).
+		SetLessonPriceCents(money.EurosToCents(20)).
+		SetSubscriptionPriceCents(0).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("new Course.Create: %v", err)
+	}
+
+	oldEnrollment, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(oldCourse.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetChargeMaterials(true).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("old Enrollment.Create: %v", err)
+	}
+	newEnrollment, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(newCourse.ID).
+		SetBillingMode(enrollment.BillingModePerLesson).
+		SetChargeMaterials(true).
+		SetDiscountPct(0).
+		SetNote("").
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("new Enrollment.Create: %v", err)
+	}
+
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(newCourse.ID).
+		SetYear(2026).
+		SetMonth(7).
+		SetHours(9).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	res, err := svc.GenerateDrafts(ctx, 2026, 7)
+	if err != nil {
+		t.Fatalf("GenerateDrafts: %v", err)
+	}
+	if res.Created != 1 || res.Updated != 0 || res.SkippedNoLines != 0 || res.SkippedHasInvoice != 0 {
+		t.Fatalf("unexpected GenerateDrafts result: %+v", res)
+	}
+
+	iv, err := client.Invoice.Query().
+		Where(invoice.StudentIDEQ(st.ID), invoice.PeriodYearEQ(2026), invoice.PeriodMonthEQ(7)).
+		Only(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Query: %v", err)
+	}
+
+	lines, err := client.InvoiceLine.Query().
+		Where(invoiceline.InvoiceIDEQ(iv.ID)).
+		Order(ent.Asc(invoiceline.FieldID)).
+		All(ctx)
+	if err != nil {
+		t.Fatalf("InvoiceLine.Query: %v", err)
+	}
+	if len(lines) != 2 {
+		t.Fatalf("invoice line count = %d, want 2", len(lines))
+	}
+	for _, line := range lines {
+		if line.EnrollmentID != newEnrollment.ID {
+			t.Fatalf("line enrollment_id = %d, want %d; old enrollment %d should not be billed", line.EnrollmentID, newEnrollment.ID, oldEnrollment.ID)
+		}
+	}
+}
+
 func TestGenerateDraftsDeletesExistingZeroDraft(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:invoice-delete-zero-draft?mode=memory&_fk=1")

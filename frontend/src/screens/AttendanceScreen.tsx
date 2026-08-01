@@ -9,6 +9,11 @@ import {
   InvoiceStatusPaid,
 } from "../lib/constants";
 import type { Row } from "../lib/attendance";
+import type {
+  AttendanceQuickFilterKey,
+  AttendanceQuickFilters,
+  AttendanceFilter,
+} from "../lib/attendanceList";
 import type { CourseDTO } from "../lib/courses";
 import type { TranslateFn } from "../lib/i18n";
 import { EmptyState } from "../components/EmptyState";
@@ -18,7 +23,6 @@ import {
   type AttendanceFocusTarget,
 } from "../lib/attendanceFocus";
 
-type AttendanceFilter = "all" | "missing" | "filled" | "zero";
 export type { AttendanceFocusTarget } from "../lib/attendanceFocus";
 
 type AttendanceScreenProps = {
@@ -27,6 +31,8 @@ type AttendanceScreenProps = {
   allCourses: CourseDTO[];
   query: string;
   filter: AttendanceFilter;
+  quickFilters: AttendanceQuickFilters;
+  hasActiveQuickFilters: boolean;
   rows: Row[];
   filteredRows: Row[];
   loading: boolean;
@@ -50,6 +56,8 @@ type AttendanceScreenProps = {
   onCourseFilterChange: (value: number | undefined) => void;
   onQueryChange: (value: string) => void;
   onFilterChange: (value: AttendanceFilter) => void;
+  onToggleQuickFilter: (key: AttendanceQuickFilterKey) => void;
+  onResetFilters: () => void;
   onOpenStudent: (studentId: number) => void | Promise<void>;
   onDeleteEnrollmentFromSheet: (
     enrollmentId: number,
@@ -66,6 +74,8 @@ export function AttendanceScreen({
   allCourses,
   query,
   filter,
+  quickFilters,
+  hasActiveQuickFilters,
   rows,
   filteredRows,
   loading,
@@ -89,13 +99,15 @@ export function AttendanceScreen({
   onCourseFilterChange,
   onQueryChange,
   onFilterChange,
+  onToggleQuickFilter,
+  onResetFilters,
   onOpenStudent,
   onDeleteEnrollmentFromSheet,
   focusTarget,
   onFocusTargetHandled,
   t,
 }: AttendanceScreenProps) {
-  const hasActiveFilters = Boolean(query.trim() || filter !== "all" || courseFilter);
+  const hasActiveFilters = Boolean(query.trim() || filter !== "all" || courseFilter || hasActiveQuickFilters);
   const quantityInputRefs = useRef(new Map<number, HTMLInputElement>());
 
   useEffect(() => {
@@ -115,6 +127,13 @@ export function AttendanceScreen({
       ? `${course.name} — ${typeLabel} — ${course.teacherName}`
       : `${course.name} — ${typeLabel}`;
   }
+
+  const quickFilterChips: Array<[AttendanceQuickFilterKey, string]> = [
+    ["missing", t("chip.attendanceMissing")],
+    ["zero", t("chip.attendanceZero")],
+    ["locked", t("chip.attendanceLocked")],
+    ["subscription", t("chip.attendanceSubscription")],
+  ];
 
   return (
     <>
@@ -139,6 +158,20 @@ export function AttendanceScreen({
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
           />
+        }
+        quickFilters={
+          <div className="quickFilterChips">
+            {quickFilterChips.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={`quickFilterChip ${quickFilters[key] ? "active" : ""}`}
+                onClick={() => onToggleQuickFilter(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         }
         filters={
           <>
@@ -167,11 +200,7 @@ export function AttendanceScreen({
           </>
         }
         hasActiveFilters={hasActiveFilters}
-        onClearFilters={() => {
-          onCourseFilterChange(undefined);
-          onQueryChange("");
-          onFilterChange("all");
-        }}
+        onClearFilters={onResetFilters}
         clearLabel={t("button.clearFilters")}
         secondaryActions={
           <>
@@ -205,11 +234,7 @@ export function AttendanceScreen({
             title={t("msg.noAttendanceSearchTitle")}
             description={t("msg.noAttendanceSearchDescription")}
             actionLabel={t("button.clearFilters")}
-            onAction={() => {
-              onCourseFilterChange(undefined);
-              onQueryChange("");
-              onFilterChange("all");
-            }}
+            onAction={onResetFilters}
           />
         ) : (
           <EmptyState
