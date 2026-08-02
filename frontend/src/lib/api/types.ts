@@ -606,7 +606,6 @@ export interface AppTransport {
   studentDebtDetails(studentId: number): Promise<DebtInvoiceDTO[]>;
   studentBalance(studentId: number): Promise<BalanceDTO>;
   paymentListForStudent(studentId: number): Promise<PaymentDTO[]>;
-  quickCash(studentId: number, amount: number, note: string): Promise<PaymentDTO>;
   listAuditLogs(filters: {
     q?: string;
     actorLabel?: string;

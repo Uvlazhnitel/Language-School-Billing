@@ -41,6 +41,26 @@ func TestCreateDirectPaymentUpdatesInvoiceSummaryAndStatus(t *testing.T) {
 	assertFloatEqual(t, summary.Remaining, 70)
 	assertEqual(t, summary.Status, app.InvoiceStatusIssued)
 
+	balance, err := svc.StudentBalance(ctx, st.ID)
+	if err != nil {
+		t.Fatalf("student balance after partial payment: %v", err)
+	}
+	assertFloatEqual(t, balance.TotalInvoiced, 100)
+	assertFloatEqual(t, balance.TotalPaid, 30)
+	assertFloatEqual(t, balance.Balance, -70)
+	assertFloatEqual(t, balance.Debt, 70)
+
+	debts, err := svc.StudentDebtDetails(ctx, st.ID)
+	if err != nil {
+		t.Fatalf("student debt details after partial payment: %v", err)
+	}
+	if len(debts) != 1 {
+		t.Fatalf("debt details after partial payment = %d rows, want 1", len(debts))
+	}
+	assertEqual(t, debts[0].InvoiceID, inv.ID)
+	assertFloatEqual(t, debts[0].Paid, 30)
+	assertFloatEqual(t, debts[0].Remaining, 70)
+
 	if _, err := svc.Create(ctx, st.ID, &invoiceID, 70, app.PaymentMethodBank, "2026-03-15", "final"); err != nil {
 		t.Fatalf("create final payment: %v", err)
 	}
@@ -52,6 +72,23 @@ func TestCreateDirectPaymentUpdatesInvoiceSummaryAndStatus(t *testing.T) {
 	assertFloatEqual(t, summary.Paid, 100)
 	assertFloatEqual(t, summary.Remaining, 0)
 	assertEqual(t, summary.Status, app.InvoiceStatusPaid)
+
+	balance, err = svc.StudentBalance(ctx, st.ID)
+	if err != nil {
+		t.Fatalf("student balance after final payment: %v", err)
+	}
+	assertFloatEqual(t, balance.TotalInvoiced, 100)
+	assertFloatEqual(t, balance.TotalPaid, 100)
+	assertFloatEqual(t, balance.Balance, 0)
+	assertFloatEqual(t, balance.Debt, 0)
+
+	debts, err = svc.StudentDebtDetails(ctx, st.ID)
+	if err != nil {
+		t.Fatalf("student debt details after final payment: %v", err)
+	}
+	if len(debts) != 0 {
+		t.Fatalf("debt details after final payment = %d rows, want 0", len(debts))
+	}
 }
 
 func TestCreateGlobalPaymentAllocatesToOldestInvoices(t *testing.T) {
@@ -108,7 +145,19 @@ func TestCreateGlobalPaymentAllocatesToOldestInvoices(t *testing.T) {
 	}
 	assertFloatEqual(t, balance.TotalInvoiced, 80)
 	assertFloatEqual(t, balance.TotalPaid, 60)
+	assertFloatEqual(t, balance.Balance, -20)
 	assertFloatEqual(t, balance.Debt, 20)
+
+	debts, err := svc.StudentDebtDetails(ctx, st.ID)
+	if err != nil {
+		t.Fatalf("student debt details: %v", err)
+	}
+	if len(debts) != 1 {
+		t.Fatalf("debt details = %d rows, want 1", len(debts))
+	}
+	assertEqual(t, debts[0].InvoiceID, newer.ID)
+	assertFloatEqual(t, debts[0].Paid, 10)
+	assertFloatEqual(t, debts[0].Remaining, 20)
 }
 
 func TestCreateGlobalPaymentLeavesExtraAsCredit(t *testing.T) {
@@ -157,6 +206,14 @@ func TestCreateGlobalPaymentLeavesExtraAsCredit(t *testing.T) {
 	assertFloatEqual(t, balance.TotalPaid, 80)
 	assertFloatEqual(t, balance.Balance, 30)
 	assertFloatEqual(t, balance.Debt, 0)
+
+	debts, err := svc.StudentDebtDetails(ctx, st.ID)
+	if err != nil {
+		t.Fatalf("student debt details: %v", err)
+	}
+	if len(debts) != 0 {
+		t.Fatalf("debt details after overpayment = %d rows, want 0", len(debts))
+	}
 }
 
 func TestApplyCreditPartialCoversFutureInvoice(t *testing.T) {

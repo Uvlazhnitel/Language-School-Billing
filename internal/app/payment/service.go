@@ -1098,31 +1098,6 @@ func (s *Service) ListDebtors(ctx context.Context) ([]DebtorDTO, error) {
 	return out, nil
 }
 
-// QuickCash creates an unlinked cash payment for "lesson now".
-// If you want exact price-per-student later, we can resolve it via Enrollment/Course and overrides.
-// For this session we accept a direct amount from UI, but this helper exists for convenience.
-func (s *Service) QuickCash(ctx context.Context, studentID int, amount float64, note string) (*PaymentDTO, error) {
-	t := time.Now()
-	if amount <= 0 {
-		return nil, errors.New("сумма должна быть больше 0")
-	}
-	if _, err := s.db.Student.Get(ctx, studentID); err != nil {
-		return nil, err
-	}
-
-	p, err := s.db.Payment.Create().
-		SetStudentID(studentID).
-		SetAmountCents(money.EurosToCents(amount)).
-		SetMethod(payment.Method(app.PaymentMethodCash)).
-		SetPaidAt(t).
-		SetNote(note).
-		Save(ctx)
-	if err != nil {
-		return nil, err
-	}
-	return toDTO(p), nil
-}
-
 // RecomputeInvoiceStatus recalculates the invoice status against its linked
 // payments after external changes such as invoice total rebuilds.
 func (s *Service) RecomputeInvoiceStatus(ctx context.Context, invoiceID int) error {

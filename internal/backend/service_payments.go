@@ -93,7 +93,3 @@ func (s *Service) StudentDebtDetails(ctx context.Context, studentID int) ([]Debt
 func (s *Service) InvoicePaymentSummary(ctx context.Context, invoiceID int) (*InvoiceSummaryDTO, error) {
 	return s.rt.Payment.InvoiceSummary(ctx, invoiceID)
 }
-
-func (s *Service) PaymentQuickCash(ctx context.Context, studentID int, amount float64, note string) (*PaymentDTO, error) {
-	return s.rt.Payment.QuickCash(ctx, studentID, amount, note)
-}

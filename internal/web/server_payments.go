@@ -34,23 +34,6 @@ func (s *Server) handlePaymentsDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (s *Server) handlePaymentsQuickCash(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		StudentID int     `json:"studentId"`
-		Amount    float64 `json:"amount"`
-		Note      string  `json:"note"`
-	}
-	if !decodeJSON(w, r, &req) {
-		return
-	}
-	item, err := s.svc.PaymentQuickCash(r.Context(), req.StudentID, req.Amount, req.Note)
-	if err != nil {
-		writeError(w, err)
-		return
-	}
-	writeJSON(w, http.StatusCreated, item)
-}
-
 func (s *Server) handlePaymentsListForStudent(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathInt(w, r, "studentId")
 	if !ok {

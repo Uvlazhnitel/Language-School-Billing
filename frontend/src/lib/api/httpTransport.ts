@@ -450,12 +450,6 @@ export const httpTransport: AppTransport = {
   async paymentListForStudent(studentId) {
     return request<PaymentDTO[]>(`/payments/student/${studentId}`);
   },
-  async quickCash(studentId, amount, note) {
-    return request<PaymentDTO>("/payments/quick-cash", {
-      method: "POST",
-      ...body({ studentId, amount, note }),
-    });
-  },
 
   async listAuditLogs(filters) {
     const params = new URLSearchParams();

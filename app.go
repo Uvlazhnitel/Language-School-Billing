@@ -540,15 +540,6 @@ func (a *App) InvoicePaymentSummary(invoiceID int) (*InvoiceSummaryDTO, error) {
 	return a.pay.InvoiceSummary(a.ctx, invoiceID)
 }
 
-// PaymentQuickCash creates an unlinked cash payment for immediate payment scenarios
-// (e.g., "cash for lesson now"). The payment is not linked to any invoice.
-func (a *App) PaymentQuickCash(studentID int, amount float64, note string) (*PaymentDTO, error) {
-	if a.svc != nil {
-		return a.svc.PaymentQuickCash(a.ctx, studentID, amount, note)
-	}
-	return a.pay.QuickCash(a.ctx, studentID, amount, note)
-}
-
 func (a *App) AuditLogList(q, actorLabel, entityType, action, dateFrom, dateTo string, page, pageSize int) (*AuditLogListResult, error) {
 	if a.svc == nil {
 		return &AuditLogListResult{Items: []AuditLogListItem{}, Total: 0, Page: 1, PageSize: 50}, nil

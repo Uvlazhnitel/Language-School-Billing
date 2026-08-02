@@ -271,6 +271,40 @@ describe("httpTransport", () => {
     });
   });
 
+  it("creates payments through the standard endpoint with all fields", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (!url.endsWith("/api/payments")) {
+        throw new Error(`unexpected url ${url}`);
+      }
+      expect(init?.method).toBe("POST");
+      expect(JSON.parse(String(init?.body))).toEqual({
+        studentId: 7,
+        invoiceId: 12,
+        amount: 45.5,
+        method: "bank",
+        paidAt: "2026-06-02",
+        note: "invoice payment",
+      });
+      return jsonResponse({
+        id: 21,
+        studentId: 7,
+        invoiceId: 12,
+        amount: 45.5,
+        method: "bank",
+        paidAt: "2026-06-02T00:00:00Z",
+        note: "invoice payment",
+        createdAt: "2026-06-02T12:00:00Z",
+      }, 201);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      httpTransport.createPayment(7, 12, 45.5, "bank", "2026-06-02", "invoice payment")
+    ).resolves.toEqual(expect.objectContaining({ id: 21, invoiceId: 12 }));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("maps invoice issue endpoints with pdf status", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

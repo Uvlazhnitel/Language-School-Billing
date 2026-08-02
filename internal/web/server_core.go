@@ -147,7 +147,6 @@ func (s *Server) registerUserRoutes() {
 func (s *Server) registerPaymentRoutes() {
 	s.mux.HandleFunc("POST /api/payments", s.handlePaymentsCreate)
 	s.mux.HandleFunc("DELETE /api/payments/{id}", s.handlePaymentsDelete)
-	s.mux.HandleFunc("POST /api/payments/quick-cash", s.handlePaymentsQuickCash)
 	s.mux.HandleFunc("GET /api/payments/student/{studentId}", s.handlePaymentsListForStudent)
 	s.mux.HandleFunc("GET /api/payments/student/{studentId}/balance", s.handleStudentBalance)
 	s.mux.HandleFunc("GET /api/debtors", s.handleDebtorsList)

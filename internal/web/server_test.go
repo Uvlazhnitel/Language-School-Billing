@@ -366,6 +366,65 @@ func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 	}
 }
 
+func TestQuickCashEndpointIsRemoved(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	student := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{
+		"fullName": "Removed Payment Endpoint Student",
+	})
+	postJSON[backend.UserDTO](t, env.Client, env.Server.URL, "/api/users", map[string]any{
+		"username": "payment-staff",
+		"password": "staff-pass-123",
+		"role":     "staff",
+	})
+
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staffClient := &http.Client{Jar: jar}
+	login := postJSON[backend.SessionDTO](t, staffClient, env.Server.URL, "/api/auth/login", map[string]any{
+		"username": "payment-staff",
+		"password": "staff-pass-123",
+	})
+	if !login.Authenticated || login.User == nil || login.User.Role != "staff" {
+		t.Fatalf("unexpected staff session: %+v", login)
+	}
+
+	initialCount, err := env.Runtime.DB.Ent.Payment.Query().Count(context.Background())
+	if err != nil {
+		t.Fatalf("count payments before removed endpoint requests: %v", err)
+	}
+	payload := mustJSON(t, map[string]any{
+		"studentId": student.ID,
+		"amount":    25,
+		"note":      "must not be created",
+	})
+
+	clients := []struct {
+		role   string
+		client *http.Client
+	}{
+		{role: "admin", client: env.Client},
+		{role: "staff", client: staffClient},
+	}
+	for _, tc := range clients {
+		resp, body := rawRequest(t, tc.client, http.MethodPost, env.Server.URL+"/api/payments/quick-cash", bytes.NewReader(payload))
+		if resp.StatusCode != http.StatusNotFound && resp.StatusCode != http.StatusMethodNotAllowed {
+			t.Fatalf("%s removed endpoint status = %d body=%s, want 404 or 405", tc.role, resp.StatusCode, body)
+		}
+
+		count, err := env.Runtime.DB.Ent.Payment.Query().Count(context.Background())
+		if err != nil {
+			t.Fatalf("count payments after %s request: %v", tc.role, err)
+		}
+		if count != initialCount {
+			t.Fatalf("payments after %s request = %d, want %d", tc.role, count, initialCount)
+		}
+	}
+}
+
 func TestInvoiceIssueReturnsPendingWhenPDFFails(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
