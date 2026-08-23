@@ -148,6 +148,34 @@ func (_u *PaymentUpdate) SetNillableNote(v *string) *PaymentUpdate {
 	return _u
 }
 
+// SetAllocationSource sets the "allocation_source" field.
+func (_u *PaymentUpdate) SetAllocationSource(v payment.AllocationSource) *PaymentUpdate {
+	_u.mutation.SetAllocationSource(v)
+	return _u
+}
+
+// SetNillableAllocationSource sets the "allocation_source" field if the given value is not nil.
+func (_u *PaymentUpdate) SetNillableAllocationSource(v *payment.AllocationSource) *PaymentUpdate {
+	if v != nil {
+		_u.SetAllocationSource(*v)
+	}
+	return _u
+}
+
+// SetCreditOriginNote sets the "credit_origin_note" field.
+func (_u *PaymentUpdate) SetCreditOriginNote(v string) *PaymentUpdate {
+	_u.mutation.SetCreditOriginNote(v)
+	return _u
+}
+
+// SetNillableCreditOriginNote sets the "credit_origin_note" field if the given value is not nil.
+func (_u *PaymentUpdate) SetNillableCreditOriginNote(v *string) *PaymentUpdate {
+	if v != nil {
+		_u.SetCreditOriginNote(*v)
+	}
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *PaymentUpdate) SetCreatedAt(v time.Time) *PaymentUpdate {
 	_u.mutation.SetCreatedAt(v)
@@ -223,6 +251,11 @@ func (_u *PaymentUpdate) check() error {
 			return &ValidationError{Name: "method", err: fmt.Errorf(`ent: validator failed for field "Payment.method": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.AllocationSource(); ok {
+		if err := payment.AllocationSourceValidator(v); err != nil {
+			return &ValidationError{Name: "allocation_source", err: fmt.Errorf(`ent: validator failed for field "Payment.allocation_source": %w`, err)}
+		}
+	}
 	if _u.mutation.StudentCleared() && len(_u.mutation.StudentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Payment.student"`)
 	}
@@ -261,6 +294,12 @@ func (_u *PaymentUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(payment.FieldNote, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.AllocationSource(); ok {
+		_spec.SetField(payment.FieldAllocationSource, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.CreditOriginNote(); ok {
+		_spec.SetField(payment.FieldCreditOriginNote, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(payment.FieldCreatedAt, field.TypeTime, value)
@@ -461,6 +500,34 @@ func (_u *PaymentUpdateOne) SetNillableNote(v *string) *PaymentUpdateOne {
 	return _u
 }
 
+// SetAllocationSource sets the "allocation_source" field.
+func (_u *PaymentUpdateOne) SetAllocationSource(v payment.AllocationSource) *PaymentUpdateOne {
+	_u.mutation.SetAllocationSource(v)
+	return _u
+}
+
+// SetNillableAllocationSource sets the "allocation_source" field if the given value is not nil.
+func (_u *PaymentUpdateOne) SetNillableAllocationSource(v *payment.AllocationSource) *PaymentUpdateOne {
+	if v != nil {
+		_u.SetAllocationSource(*v)
+	}
+	return _u
+}
+
+// SetCreditOriginNote sets the "credit_origin_note" field.
+func (_u *PaymentUpdateOne) SetCreditOriginNote(v string) *PaymentUpdateOne {
+	_u.mutation.SetCreditOriginNote(v)
+	return _u
+}
+
+// SetNillableCreditOriginNote sets the "credit_origin_note" field if the given value is not nil.
+func (_u *PaymentUpdateOne) SetNillableCreditOriginNote(v *string) *PaymentUpdateOne {
+	if v != nil {
+		_u.SetCreditOriginNote(*v)
+	}
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *PaymentUpdateOne) SetCreatedAt(v time.Time) *PaymentUpdateOne {
 	_u.mutation.SetCreatedAt(v)
@@ -549,6 +616,11 @@ func (_u *PaymentUpdateOne) check() error {
 			return &ValidationError{Name: "method", err: fmt.Errorf(`ent: validator failed for field "Payment.method": %w`, err)}
 		}
 	}
+	if v, ok := _u.mutation.AllocationSource(); ok {
+		if err := payment.AllocationSourceValidator(v); err != nil {
+			return &ValidationError{Name: "allocation_source", err: fmt.Errorf(`ent: validator failed for field "Payment.allocation_source": %w`, err)}
+		}
+	}
 	if _u.mutation.StudentCleared() && len(_u.mutation.StudentIDs()) > 0 {
 		return errors.New(`ent: clearing a required unique edge "Payment.student"`)
 	}
@@ -604,6 +676,12 @@ func (_u *PaymentUpdateOne) sqlSave(ctx context.Context) (_node *Payment, err er
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(payment.FieldNote, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.AllocationSource(); ok {
+		_spec.SetField(payment.FieldAllocationSource, field.TypeEnum, value)
+	}
+	if value, ok := _u.mutation.CreditOriginNote(); ok {
+		_spec.SetField(payment.FieldCreditOriginNote, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(payment.FieldCreatedAt, field.TypeTime, value)

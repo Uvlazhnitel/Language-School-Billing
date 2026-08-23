@@ -117,14 +117,14 @@ func (s *Service) InvoiceDeleteDraftWithVersion(ctx context.Context, id, version
 }
 
 func (s *Service) InvoiceReopenDraft(ctx context.Context, id int) error {
-	before, meta, err := s.auditInvoiceSnapshot(ctx, id)
+	before, meta, err := s.auditStudentFinanceSnapshotByInvoice(ctx, id)
 	if err != nil {
 		return err
 	}
 	if err := s.rt.Invoice.ReopenDraft(ctx, id, s.rt.Dirs.Invoices); err != nil {
 		return err
 	}
-	after, _, err := s.auditInvoiceSnapshot(ctx, id)
+	after, _, err := s.auditStudentFinanceSnapshotByInvoice(ctx, id)
 	if err != nil {
 		return err
 	}
@@ -141,32 +141,37 @@ func (s *Service) InvoiceReopenDraft(ctx context.Context, id int) error {
 	return nil
 }
 
-func (s *Service) InvoiceReopenDraftWithVersion(ctx context.Context, id, version int) error {
+func (s *Service) InvoiceReopenDraftWithVersion(ctx context.Context, id, version int) (*invsvc.ReopenDraftResult, error) {
 	if err := validateVersion(version); err != nil {
-		return err
+		return nil, err
 	}
-	before, meta, err := s.auditInvoiceSnapshot(ctx, id)
+	before, meta, err := s.auditStudentFinanceSnapshotByInvoice(ctx, id)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if err := s.rt.Invoice.ReopenDraftWithVersion(ctx, id, version, s.rt.Dirs.Invoices); err != nil {
-		return err
-	}
-	after, _, err := s.auditInvoiceSnapshot(ctx, id)
+	result, err := s.rt.Invoice.ReopenDraftWithVersionResult(ctx, id, version, s.rt.Dirs.Invoices)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	after, _, err := s.auditStudentFinanceSnapshotByInvoice(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	summary := fmt.Sprintf("Returned invoice %s to draft", invoiceLabel(meta.Number, id))
+	if result.RestoredCredit > 0 {
+		summary = fmt.Sprintf("%s and restored %.2f as student credit", summary, result.RestoredCredit)
 	}
 	s.recordAudit(ctx, auditsvc.RecordEvent{
 		EntityType: "invoice",
 		EntityID:   intPtr(id),
 		Action:     "invoice.reopen_draft",
-		Summary:    fmt.Sprintf("Returned invoice %s to draft", invoiceLabel(meta.Number, id)),
+		Summary:    summary,
 		Before:     before,
 		After:      after,
 		StudentID:  meta.StudentID,
 		InvoiceID:  intPtr(id),
 	})
-	return nil
+	return result, nil
 }
 
 func (s *Service) InvoiceList(ctx context.Context, year, month int, status string) ([]invsvc.ListItem, error) {

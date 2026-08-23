@@ -131,6 +131,55 @@ func TestStudentCourseEnrollmentCRUD(t *testing.T) {
 	if updated.LessonPriceOverride != 12.5 {
 		t.Fatalf("updated lessonPriceOverride = %v, want 12.5", updated.LessonPriceOverride)
 	}
+
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID,
+		"courseId":  course.ID,
+		"year":      2026,
+		"month":     6,
+		"hours":     2,
+	})
+	attendance := getJSON[[]backend.AttendanceRow](t, env.Client, env.Server.URL, "/api/attendance/per-lesson?year=2026&month=6&courseId="+strconv.Itoa(course.ID))
+	if len(attendance) != 1 || attendance[0].TeacherName != teacher.FullName {
+		t.Fatalf("attendance rows = %+v, want teacher %q", attendance, teacher.FullName)
+	}
+
+	postJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/enrollments/"+strconv.Itoa(updated.ID)+"/active", map[string]any{
+		"version": updated.Version,
+		"active":  false,
+	})
+	items = getJSON[[]backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments?studentId="+strconv.Itoa(st.ID))
+	if len(items) != 0 {
+		t.Fatalf("active enrollment count after finish = %d, want 0", len(items))
+	}
+	history := getJSON[[]backend.AttendanceRow](t, env.Client, env.Server.URL, "/api/attendance/per-lesson?year=2026&month=6&courseId="+strconv.Itoa(course.ID))
+	if len(history) != 1 || history[0].Hours != 2 {
+		t.Fatalf("historical attendance after finish = %+v", history)
+	}
+	future := getJSON[[]backend.AttendanceRow](t, env.Client, env.Server.URL, "/api/attendance/per-lesson?year=2026&month=7&courseId="+strconv.Itoa(course.ID))
+	if len(future) != 0 {
+		t.Fatalf("future attendance after finish = %+v, want none", future)
+	}
+
+	resp, body := rawRequest(t, env.Client, http.MethodPost, env.Server.URL+"/api/enrollments/"+strconv.Itoa(updated.ID)+"/active", bytes.NewReader(mustJSON(t, map[string]any{
+		"version": updated.Version,
+		"active":  false,
+	})))
+	if resp.StatusCode != http.StatusConflict {
+		t.Fatalf("stale enrollment finish status = %d body=%s, want 409", resp.StatusCode, body)
+	}
+
+	reactivated := postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId":           st.ID,
+		"courseId":            course.ID,
+		"billingMode":         "per_lesson",
+		"chargeMaterials":     false,
+		"lessonPriceOverride": 18,
+		"note":                "reactivated",
+	})
+	if reactivated.ID != updated.ID || reactivated.Version != updated.Version+2 {
+		t.Fatalf("reactivated enrollment = %+v, want id=%d version=%d", reactivated, updated.ID, updated.Version+2)
+	}
 }
 
 func TestStudentOnboardingSupportsMultipleAndLegacyEnrollments(t *testing.T) {
@@ -2796,6 +2845,73 @@ func TestStudentUpdateRejectsStaleVersion(t *testing.T) {
 	}
 }
 
+func TestInvoiceCreditReopenRestoresBalanceAndAudit(t *testing.T) {
+	env := newTestServer(t)
+	defer env.Close()
+
+	st := postJSON[backend.StudentDTO](t, env.Client, env.Server.URL, "/api/students", map[string]any{"fullName": "Credit Reopen Student"})
+	course := postJSON[backend.CourseDTO](t, env.Client, env.Server.URL, "/api/courses", map[string]any{
+		"name": "Credit Reopen Course", "type": "group", "lessonPrice": 40, "subscriptionPrice": 100,
+	})
+	postJSON[backend.EnrollmentDTO](t, env.Client, env.Server.URL, "/api/enrollments", map[string]any{
+		"studentId": st.ID, "courseId": course.ID, "billingMode": "per_lesson", "lessonPriceOverride": 40,
+	})
+	putJSON[map[string]bool](t, env.Client, env.Server.URL, "/api/attendance", map[string]any{
+		"studentId": st.ID, "courseId": course.ID, "year": 2026, "month": 8, "hours": 1,
+	})
+	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{"year": 2026, "month": 8})
+	credit := postJSON[backend.PaymentDTO](t, env.Client, env.Server.URL, "/api/payments", map[string]any{
+		"studentId": st.ID, "amount": 25, "method": "cash", "paidAt": "2026-08-05", "note": "advance",
+	})
+	if credit.InvoiceID != nil {
+		t.Fatalf("credit invoice ID = %v, want nil", credit.InvoiceID)
+	}
+
+	items := getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=8&status=all")
+	if len(items) != 1 {
+		t.Fatalf("invoice count = %d, want 1", len(items))
+	}
+	postJSON[backend.IssueResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(items[0].ID)+"/issue", map[string]any{
+		"version": items[0].Version,
+	})
+	items = getJSON[[]backend.InvoiceListItem](t, env.Client, env.Server.URL, "/api/invoices?year=2026&month=8&status=all")
+	if len(items) != 1 || !items[0].CanReopenDraft || items[0].ReopenCreditAmount != 25 || items[0].ReopenBlockedAmount != 0 {
+		t.Fatalf("issued invoice reopen capability = %+v", items)
+	}
+
+	result := postJSON[invsvc.ReopenDraftResult](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(items[0].ID)+"/reopen-draft", map[string]any{
+		"version": items[0].Version,
+	})
+	if result.RestoredCredit != 25 {
+		t.Fatalf("restored credit = %v, want 25", result.RestoredCredit)
+	}
+	reopened := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(items[0].ID))
+	if reopened.Status != "draft" || reopened.Number != nil {
+		t.Fatalf("reopened invoice = %+v", reopened)
+	}
+	payments := getJSON[[]backend.PaymentDTO](t, env.Client, env.Server.URL, "/api/payments/student/"+strconv.Itoa(st.ID))
+	if len(payments) != 1 || payments[0].InvoiceID != nil || payments[0].Amount != 25 || payments[0].Note != "advance" {
+		t.Fatalf("restored payments = %+v", payments)
+	}
+	balance := getJSON[backend.BalanceDTO](t, env.Client, env.Server.URL, "/api/payments/student/"+strconv.Itoa(st.ID)+"/balance")
+	if balance.TotalPaid != 25 || balance.TotalInvoiced != 0 || balance.Balance != 25 || balance.Debt != 0 {
+		t.Fatalf("balance after reopen = %+v", balance)
+	}
+	audit := getJSON[backend.AuditLogListResult](t, env.Client, env.Server.URL, "/api/audit-logs?action=invoice.reopen_draft&page=1&pageSize=20")
+	found := false
+	for _, item := range audit.Items {
+		if item.InvoiceID != nil && *item.InvoiceID == reopened.ID && strings.Contains(item.Summary, "restored 25.00") {
+			found = true
+			if !strings.Contains(item.AfterJSON, `"balance": 25`) || !strings.Contains(item.AfterJSON, `"payments"`) {
+				t.Fatalf("audit after snapshot = %s", item.AfterJSON)
+			}
+		}
+	}
+	if !found {
+		t.Fatal("expected invoice.reopen_draft audit with restored credit")
+	}
+}
+
 func TestInvoicePaymentDeleteThenReopenWorkflow(t *testing.T) {
 	env := newTestServer(t)
 	defer env.Close()
@@ -2844,6 +2960,9 @@ func TestInvoicePaymentDeleteThenReopenWorkflow(t *testing.T) {
 	})
 
 	invoiceDetails := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceItem.ID))
+	if invoiceDetails.CanReopenDraft || invoiceDetails.ReopenBlockedAmount != 40 {
+		t.Fatalf("ordinary payment reopen capability = %+v", invoiceDetails)
+	}
 	resp, _ := rawRequest(
 		t,
 		env.Client,

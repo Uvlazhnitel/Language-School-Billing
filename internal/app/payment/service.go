@@ -470,6 +470,8 @@ func (s *Service) applyCreditToOldestInvoicesInStore(ctx context.Context, studen
 				SetMethod(cr.Method).
 				SetPaidAt(cr.PaidAt).
 				SetNote(note).
+				SetAllocationSource(payment.AllocationSourceStudentCredit).
+				SetCreditOriginNote(cr.Note).
 				SetNillableInvoiceID(&invoiceID).
 				Save(ctx); err != nil {
 				return err
@@ -689,6 +691,7 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 
 	totalEnrollments, err := s.db.Enrollment.Query().
 		Where(
+			enrollment.IsActiveEQ(true),
 			enrollment.HasStudentWith(student.IsActiveEQ(true)),
 			enrollment.HasCourseWith(course.IsActiveEQ(true)),
 		).
@@ -699,6 +702,7 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 
 	perLessonEnrollments, err := s.db.Enrollment.Query().
 		Where(
+			enrollment.IsActiveEQ(true),
 			enrollment.BillingModeEQ(enrollment.BillingModePerLesson),
 			enrollment.HasStudentWith(student.IsActiveEQ(true)),
 			enrollment.HasCourseWith(course.IsActiveEQ(true)),
@@ -715,6 +719,7 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 
 	subscriptionEnrollments, err := s.db.Enrollment.Query().
 		Where(
+			enrollment.IsActiveEQ(true),
 			enrollment.BillingModeEQ(enrollment.BillingModeSubscription),
 			enrollment.HasStudentWith(student.IsActiveEQ(true)),
 			enrollment.HasCourseWith(course.IsActiveEQ(true)),

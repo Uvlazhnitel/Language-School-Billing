@@ -43,6 +43,7 @@ import {
   createEnrollment,
   createEnrollmentsBulk,
   updateEnrollment,
+  setEnrollmentActive,
   EnrollmentDTO,
 } from "./lib/enrollments";
 import {
@@ -346,6 +347,7 @@ export default function App() {
   const [studentCardDeletingPaymentId, setStudentCardDeletingPaymentId] = useState<number | null>(
     null
   );
+  const [endingEnrollmentId, setEndingEnrollmentId] = useState<number | null>(null);
   const [studentNextAction, setStudentNextAction] = useState<StudentNextAction | null>(null);
   const [studentActivity, setStudentActivity] = useState<StudentActivityItem[]>([]);
   const [debtorActionQueue, setDebtorActionQueue] = useState<DebtorActionQueueItem[]>([]);
@@ -1583,6 +1585,40 @@ export default function App() {
     }
   }
 
+  function endEnrollmentFromStudentCard(enrollment: EnrollmentDTO) {
+    showConfirm(
+      t("msg.enrollmentEndConfirm", { course: enrollment.courseName }),
+      async () => {
+        if (endingEnrollmentId !== null) return;
+        setEndingEnrollmentId(enrollment.id);
+        try {
+          await setEnrollmentActive(enrollment.id, enrollment.version, false);
+          await Promise.all([
+            refreshStudentCardData(enrollment.studentId),
+            loadEnrollments(),
+            loadAttendance(),
+            loadInvoices({ syncDrafts: false }),
+            loadDashboard(),
+          ]);
+          showMessage(t("msg.enrollmentEnded"));
+        } catch (e: any) {
+          if (isStaleRevisionError(e)) {
+            await Promise.all([
+              refreshStudentCardData(enrollment.studentId),
+              loadEnrollments(),
+              loadAttendance(),
+            ]);
+            showMessage(t("msg.recordConflict"), "error");
+            return;
+          }
+          showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+        } finally {
+          setEndingEnrollmentId(null);
+        }
+      }
+    );
+  }
+
   // ---------------- Attendance ----------------
   const [rows, setRows] = useState<Row[]>([]);
   const [loadingAtt, setLoadingAtt] = useState(false);
@@ -2177,22 +2213,30 @@ export default function App() {
   const onReopenToDraft = useCallback(
     async (id: number) => {
       closeInvoiceMenu();
+      const currentInvoice =
+        invItems.find((item) => item.id === id) ??
+        (selectedInv?.id === id ? selectedInv : undefined);
+      if (!currentInvoice) {
+        showMessage(t("msg.invoiceNotFound"), "error");
+        return;
+      }
+      const creditAmount = currentInvoice.reopenCreditAmount ?? 0;
       showConfirm(
-        t("msg.invoiceReopenConfirm"),
+        creditAmount > 0
+          ? t("msg.invoiceReopenCreditConfirm", { amount: formatEUR(creditAmount) })
+          : t("msg.invoiceReopenConfirm"),
         async () => {
           try {
-            const currentInvoice =
-              invItems.find((item) => item.id === id) ??
-              (selectedInv?.id === id ? selectedInv : undefined);
-            if (!currentInvoice) {
-              throw new Error(t("msg.invoiceNotFound"));
-            }
-            await reopenToDraft(id, currentInvoice.version);
+            const result = await reopenToDraft(id, currentInvoice.version);
             await loadInvoices({ syncDrafts: false });
             if (invoiceDetailsOpen && selectedInv?.id === id) {
               await loadInvoiceDetails(id);
             }
-            showMessage(t("msg.invoiceReopened"));
+            showMessage(
+              result.restoredCredit > 0
+                ? t("msg.invoiceReopenedCredit", { amount: formatEUR(result.restoredCredit) })
+                : t("msg.invoiceReopened")
+            );
           } catch (e: any) {
             if (isStaleRevisionError(e)) {
               showMessage(t("msg.recordConflict"), "error");
@@ -2359,7 +2403,11 @@ export default function App() {
   ]);
 
   const buildInvoiceMenuItems = useCallback(
-    (invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean }) => {
+    (
+      invoice: Pick<InvoiceDTO, "id" | "status" | "canReopenDraft"> & {
+        pdfReady?: boolean;
+      }
+    ) => {
       const menuItems: Array<{ label: string; onClick: () => void }> = [];
 
       for (const action of getInvoiceMenuActions(invoice)) {
@@ -2386,7 +2434,9 @@ export default function App() {
   const openInvoiceMenuAtTrigger = useCallback(
     (
       kind: InvoiceMenuTarget["kind"],
-      invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
+      invoice: Pick<InvoiceDTO, "id" | "status" | "canReopenDraft"> & {
+        pdfReady?: boolean;
+      },
       trigger: HTMLButtonElement
     ) => {
       const menuItems = buildInvoiceMenuItems(invoice);
@@ -2650,6 +2700,7 @@ export default function App() {
                 detailNextAction={studentNextAction}
                 detailActivity={studentActivity}
                 deletingPaymentId={studentCardDeletingPaymentId}
+                endingEnrollmentId={endingEnrollmentId}
                 t={t}
                 onQueryChange={setStudentQ}
                 onStatusFilterChange={setStudentStatusFilter}
@@ -2668,6 +2719,7 @@ export default function App() {
                 onCopyDebtLv={() => void copyStudentCardDebtMessage("lv")}
                 onDeletePayment={deleteStudentPayment}
                 onUpdateEnrollmentPrice={updateEnrollmentPriceFromStudentCard}
+                onEndEnrollment={endEnrollmentFromStudentCard}
                 onManageEnrollments={() =>
                   selectedStudentCard && openAddEnrollmentForStudent(selectedStudentCard)
                 }
@@ -3143,6 +3195,7 @@ export default function App() {
               nextAction={studentNextAction}
               activity={studentActivity}
               deletingPaymentId={studentCardDeletingPaymentId}
+              endingEnrollmentId={endingEnrollmentId}
               canDeletePayment={canDeletePayments}
               payerRoleLabel={localizedPayerRoleLabel}
               billingModeLabel={localizedBillingModeLabel}
@@ -3159,6 +3212,7 @@ export default function App() {
               onCopyDebtLv={() => void copyStudentCardDebtMessage("lv")}
               onDeletePayment={deleteStudentPayment}
               onUpdateEnrollmentPrice={updateEnrollmentPriceFromStudentCard}
+              onEndEnrollment={endEnrollmentFromStudentCard}
               onManageEnrollments={() => {
                 openAddEnrollmentForStudent(selectedStudentCard);
               }}

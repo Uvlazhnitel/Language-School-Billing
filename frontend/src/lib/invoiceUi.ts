@@ -3,11 +3,14 @@ import type { InvoiceStatus } from "./api";
 export type InvoiceMenuAction = "reopenDraft";
 
 export function getInvoiceMenuActions(
-  invoice: Pick<{ status: InvoiceStatus; pdfReady?: boolean }, "status" | "pdfReady">
+  invoice: Pick<
+    { status: InvoiceStatus; pdfReady?: boolean; canReopenDraft?: boolean },
+    "status" | "pdfReady" | "canReopenDraft"
+  >
 ): InvoiceMenuAction[] {
   const actions: InvoiceMenuAction[] = [];
 
-  if (invoice.status === "issued" || invoice.status === "issued_pending_pdf") {
+  if (invoice.canReopenDraft === true) {
     actions.push("reopenDraft");
   }
 

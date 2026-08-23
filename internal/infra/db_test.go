@@ -9,6 +9,7 @@ import (
 
 	"langschool/ent/attendancemonth"
 	"langschool/ent/enrollment"
+	"langschool/ent/payment"
 
 	_ "github.com/ncruces/go-sqlite3/driver"
 	_ "github.com/ncruces/go-sqlite3/embed"
@@ -69,6 +70,9 @@ func TestOpenBackfillsSubscriptionLessonPriceFromLegacyDiscount(t *testing.T) {
 	if item.SubscriptionLessonPriceCents != 1050 {
 		t.Fatalf("subscription lesson price cents = %d, want 1050", item.SubscriptionLessonPriceCents)
 	}
+	if !item.IsActive {
+		t.Fatal("legacy enrollment is_active = false, want migration default true")
+	}
 }
 
 func TestOpenMigratesPerLessonDiscountToLessonPriceOverride(t *testing.T) {
@@ -124,6 +128,65 @@ func TestOpenMigratesPerLessonDiscountToLessonPriceOverride(t *testing.T) {
 	}
 	if item.LessonPriceOverrideCents != 1500 {
 		t.Fatalf("lesson price override cents = %d, want 1500", item.LessonPriceOverrideCents)
+	}
+}
+
+func TestOpenBackfillsStudentCreditPaymentAllocationSources(t *testing.T) {
+	ctx := context.Background()
+	dbPath := filepath.Join(t.TempDir(), "legacy-payment-allocation.sqlite")
+
+	legacyDB, err := sql.Open("sqlite3", buildDSN(dbPath))
+	if err != nil {
+		t.Fatalf("sql.Open: %v", err)
+	}
+	defer legacyDB.Close()
+
+	for _, stmt := range []string{
+		`CREATE TABLE students (id INTEGER PRIMARY KEY, full_name TEXT, is_active BOOLEAN)`,
+		`CREATE TABLE invoices (id INTEGER PRIMARY KEY, version INTEGER DEFAULT 1, student_id INTEGER, period_year INTEGER, period_month INTEGER, total_amount_cents INTEGER DEFAULT 0, status TEXT DEFAULT 'issued')`,
+		`CREATE TABLE payments (
+			id INTEGER PRIMARY KEY,
+			student_id INTEGER,
+			invoice_id INTEGER,
+			paid_at datetime,
+			amount REAL DEFAULT 0,
+			amount_cents INTEGER DEFAULT 0,
+			method TEXT,
+			note TEXT DEFAULT '',
+			created_at datetime
+		)`,
+		`INSERT INTO students (id, full_name, is_active) VALUES (1, 'Credit Student', 1)`,
+		`INSERT INTO invoices (id, student_id, period_year, period_month, total_amount_cents, status) VALUES (1, 1, 2026, 7, 10000, 'issued')`,
+		`INSERT INTO payments (id, student_id, invoice_id, paid_at, amount_cents, method, note, created_at) VALUES (1, 1, 1, CURRENT_TIMESTAMP, 2500, 'cash', 'Applied from student credit', CURRENT_TIMESTAMP)`,
+		`INSERT INTO payments (id, student_id, invoice_id, paid_at, amount_cents, method, note, created_at) VALUES (2, 1, 1, CURRENT_TIMESTAMP, 3000, 'cash', 'course payment (applied from credit)', CURRENT_TIMESTAMP)`,
+		`INSERT INTO payments (id, student_id, invoice_id, paid_at, amount_cents, method, note, created_at) VALUES (3, 1, 1, CURRENT_TIMESTAMP, 1000, 'cash', 'ordinary payment', CURRENT_TIMESTAMP)`,
+	} {
+		if _, err := legacyDB.ExecContext(ctx, stmt); err != nil {
+			t.Fatalf("legacy schema setup failed for %q: %v", stmt, err)
+		}
+	}
+
+	db, err := Open(ctx, dbPath)
+	if err != nil {
+		t.Fatalf("Open: %v", err)
+	}
+	defer db.Ent.Close()
+
+	items, err := db.Ent.Payment.Query().Order(payment.ByID()).All(ctx)
+	if err != nil {
+		t.Fatalf("Payment.Query: %v", err)
+	}
+	if len(items) != 3 {
+		t.Fatalf("payment count = %d, want 3", len(items))
+	}
+	if items[0].AllocationSource != payment.AllocationSourceStudentCredit || items[0].CreditOriginNote != "" {
+		t.Fatalf("first migrated payment = %+v", items[0])
+	}
+	if items[1].AllocationSource != payment.AllocationSourceStudentCredit || items[1].CreditOriginNote != "course payment" {
+		t.Fatalf("second migrated payment = %+v", items[1])
+	}
+	if items[2].AllocationSource != payment.AllocationSourceDirect || items[2].CreditOriginNote != "" {
+		t.Fatalf("ordinary payment changed = %+v", items[2])
 	}
 }
 

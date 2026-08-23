@@ -72,3 +72,12 @@ export async function deleteEnrollment(enrollmentId: number, version: number) {
   const transport = await getTransport();
   return transport.deleteEnrollment(enrollmentId, version);
 }
+
+export async function setEnrollmentActive(
+  enrollmentId: number,
+  version: number,
+  active: boolean
+) {
+  const transport = await getTransport();
+  return transport.setEnrollmentActive(enrollmentId, version, active);
+}

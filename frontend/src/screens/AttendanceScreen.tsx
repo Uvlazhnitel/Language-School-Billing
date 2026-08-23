@@ -273,6 +273,7 @@ export function AttendanceScreen({
                 </td>
                 <td>
                   {row.courseName} ({courseTypeLabel(row.courseType)})
+                  {row.teacherName ? ` — ${row.teacherName}` : ""}
                   {row.billingMode === BillingModeSubscription && (
                     <>
                       {" "}

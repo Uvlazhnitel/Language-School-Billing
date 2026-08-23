@@ -3750,6 +3750,7 @@ type EnrollmentMutation struct {
 	subscription_lesson_price_cents    *int64
 	addsubscription_lesson_price_cents *int64
 	note                               *string
+	is_active                          *bool
 	created_at                         *time.Time
 	updated_at                         *time.Time
 	clearedFields                      map[string]struct{}
@@ -4267,6 +4268,42 @@ func (m *EnrollmentMutation) ResetNote() {
 	m.note = nil
 }
 
+// SetIsActive sets the "is_active" field.
+func (m *EnrollmentMutation) SetIsActive(b bool) {
+	m.is_active = &b
+}
+
+// IsActive returns the value of the "is_active" field in the mutation.
+func (m *EnrollmentMutation) IsActive() (r bool, exists bool) {
+	v := m.is_active
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldIsActive returns the old "is_active" field's value of the Enrollment entity.
+// If the Enrollment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *EnrollmentMutation) OldIsActive(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldIsActive is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldIsActive requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldIsActive: %w", err)
+	}
+	return oldValue.IsActive, nil
+}
+
+// ResetIsActive resets all changes to the "is_active" field.
+func (m *EnrollmentMutation) ResetIsActive() {
+	m.is_active = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *EnrollmentMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -4507,7 +4544,7 @@ func (m *EnrollmentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *EnrollmentMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.version != nil {
 		fields = append(fields, enrollment.FieldVersion)
 	}
@@ -4534,6 +4571,9 @@ func (m *EnrollmentMutation) Fields() []string {
 	}
 	if m.note != nil {
 		fields = append(fields, enrollment.FieldNote)
+	}
+	if m.is_active != nil {
+		fields = append(fields, enrollment.FieldIsActive)
 	}
 	if m.created_at != nil {
 		fields = append(fields, enrollment.FieldCreatedAt)
@@ -4567,6 +4607,8 @@ func (m *EnrollmentMutation) Field(name string) (ent.Value, bool) {
 		return m.SubscriptionLessonPriceCents()
 	case enrollment.FieldNote:
 		return m.Note()
+	case enrollment.FieldIsActive:
+		return m.IsActive()
 	case enrollment.FieldCreatedAt:
 		return m.CreatedAt()
 	case enrollment.FieldUpdatedAt:
@@ -4598,6 +4640,8 @@ func (m *EnrollmentMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldSubscriptionLessonPriceCents(ctx)
 	case enrollment.FieldNote:
 		return m.OldNote(ctx)
+	case enrollment.FieldIsActive:
+		return m.OldIsActive(ctx)
 	case enrollment.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case enrollment.FieldUpdatedAt:
@@ -4673,6 +4717,13 @@ func (m *EnrollmentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetNote(v)
+		return nil
+	case enrollment.FieldIsActive:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetIsActive(v)
 		return nil
 	case enrollment.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -4829,6 +4880,9 @@ func (m *EnrollmentMutation) ResetField(name string) error {
 		return nil
 	case enrollment.FieldNote:
 		m.ResetNote()
+		return nil
+	case enrollment.FieldIsActive:
+		m.ResetIsActive()
 		return nil
 	case enrollment.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -7903,25 +7957,27 @@ func (m *InvoiceLineMutation) ResetEdge(name string) error {
 // PaymentMutation represents an operation that mutates the Payment nodes in the graph.
 type PaymentMutation struct {
 	config
-	op               Op
-	typ              string
-	id               *int
-	paid_at          *time.Time
-	legacy_amount    *float64
-	addlegacy_amount *float64
-	amount_cents     *int64
-	addamount_cents  *int64
-	method           *payment.Method
-	note             *string
-	created_at       *time.Time
-	clearedFields    map[string]struct{}
-	student          *int
-	clearedstudent   bool
-	invoice          *int
-	clearedinvoice   bool
-	done             bool
-	oldValue         func(context.Context) (*Payment, error)
-	predicates       []predicate.Payment
+	op                 Op
+	typ                string
+	id                 *int
+	paid_at            *time.Time
+	legacy_amount      *float64
+	addlegacy_amount   *float64
+	amount_cents       *int64
+	addamount_cents    *int64
+	method             *payment.Method
+	note               *string
+	allocation_source  *payment.AllocationSource
+	credit_origin_note *string
+	created_at         *time.Time
+	clearedFields      map[string]struct{}
+	student            *int
+	clearedstudent     bool
+	invoice            *int
+	clearedinvoice     bool
+	done               bool
+	oldValue           func(context.Context) (*Payment, error)
+	predicates         []predicate.Payment
 }
 
 var _ ent.Mutation = (*PaymentMutation)(nil)
@@ -8327,6 +8383,78 @@ func (m *PaymentMutation) ResetNote() {
 	m.note = nil
 }
 
+// SetAllocationSource sets the "allocation_source" field.
+func (m *PaymentMutation) SetAllocationSource(ps payment.AllocationSource) {
+	m.allocation_source = &ps
+}
+
+// AllocationSource returns the value of the "allocation_source" field in the mutation.
+func (m *PaymentMutation) AllocationSource() (r payment.AllocationSource, exists bool) {
+	v := m.allocation_source
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldAllocationSource returns the old "allocation_source" field's value of the Payment entity.
+// If the Payment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentMutation) OldAllocationSource(ctx context.Context) (v payment.AllocationSource, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldAllocationSource is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldAllocationSource requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldAllocationSource: %w", err)
+	}
+	return oldValue.AllocationSource, nil
+}
+
+// ResetAllocationSource resets all changes to the "allocation_source" field.
+func (m *PaymentMutation) ResetAllocationSource() {
+	m.allocation_source = nil
+}
+
+// SetCreditOriginNote sets the "credit_origin_note" field.
+func (m *PaymentMutation) SetCreditOriginNote(s string) {
+	m.credit_origin_note = &s
+}
+
+// CreditOriginNote returns the value of the "credit_origin_note" field in the mutation.
+func (m *PaymentMutation) CreditOriginNote() (r string, exists bool) {
+	v := m.credit_origin_note
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreditOriginNote returns the old "credit_origin_note" field's value of the Payment entity.
+// If the Payment object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *PaymentMutation) OldCreditOriginNote(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreditOriginNote is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreditOriginNote requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreditOriginNote: %w", err)
+	}
+	return oldValue.CreditOriginNote, nil
+}
+
+// ResetCreditOriginNote resets all changes to the "credit_origin_note" field.
+func (m *PaymentMutation) ResetCreditOriginNote() {
+	m.credit_origin_note = nil
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *PaymentMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -8451,7 +8579,7 @@ func (m *PaymentMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *PaymentMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 10)
 	if m.student != nil {
 		fields = append(fields, payment.FieldStudentID)
 	}
@@ -8472,6 +8600,12 @@ func (m *PaymentMutation) Fields() []string {
 	}
 	if m.note != nil {
 		fields = append(fields, payment.FieldNote)
+	}
+	if m.allocation_source != nil {
+		fields = append(fields, payment.FieldAllocationSource)
+	}
+	if m.credit_origin_note != nil {
+		fields = append(fields, payment.FieldCreditOriginNote)
 	}
 	if m.created_at != nil {
 		fields = append(fields, payment.FieldCreatedAt)
@@ -8498,6 +8632,10 @@ func (m *PaymentMutation) Field(name string) (ent.Value, bool) {
 		return m.Method()
 	case payment.FieldNote:
 		return m.Note()
+	case payment.FieldAllocationSource:
+		return m.AllocationSource()
+	case payment.FieldCreditOriginNote:
+		return m.CreditOriginNote()
 	case payment.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -8523,6 +8661,10 @@ func (m *PaymentMutation) OldField(ctx context.Context, name string) (ent.Value,
 		return m.OldMethod(ctx)
 	case payment.FieldNote:
 		return m.OldNote(ctx)
+	case payment.FieldAllocationSource:
+		return m.OldAllocationSource(ctx)
+	case payment.FieldCreditOriginNote:
+		return m.OldCreditOriginNote(ctx)
 	case payment.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -8582,6 +8724,20 @@ func (m *PaymentMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetNote(v)
+		return nil
+	case payment.FieldAllocationSource:
+		v, ok := value.(payment.AllocationSource)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetAllocationSource(v)
+		return nil
+	case payment.FieldCreditOriginNote:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreditOriginNote(v)
 		return nil
 	case payment.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -8695,6 +8851,12 @@ func (m *PaymentMutation) ResetField(name string) error {
 		return nil
 	case payment.FieldNote:
 		m.ResetNote()
+		return nil
+	case payment.FieldAllocationSource:
+		m.ResetAllocationSource()
+		return nil
+	case payment.FieldCreditOriginNote:
+		m.ResetCreditOriginNote()
 		return nil
 	case payment.FieldCreatedAt:
 		m.ResetCreatedAt()

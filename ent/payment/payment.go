@@ -29,6 +29,10 @@ const (
 	FieldMethod = "method"
 	// FieldNote holds the string denoting the note field in the database.
 	FieldNote = "note"
+	// FieldAllocationSource holds the string denoting the allocation_source field in the database.
+	FieldAllocationSource = "allocation_source"
+	// FieldCreditOriginNote holds the string denoting the credit_origin_note field in the database.
+	FieldCreditOriginNote = "credit_origin_note"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeStudent holds the string denoting the student edge name in mutations.
@@ -63,6 +67,8 @@ var Columns = []string{
 	FieldAmountCents,
 	FieldMethod,
 	FieldNote,
+	FieldAllocationSource,
+	FieldCreditOriginNote,
 	FieldCreatedAt,
 }
 
@@ -85,6 +91,8 @@ var (
 	DefaultAmountCents int64
 	// DefaultNote holds the default value on creation for the "note" field.
 	DefaultNote string
+	// DefaultCreditOriginNote holds the default value on creation for the "credit_origin_note" field.
+	DefaultCreditOriginNote string
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 )
@@ -109,6 +117,32 @@ func MethodValidator(m Method) error {
 		return nil
 	default:
 		return fmt.Errorf("payment: invalid enum value for method field: %q", m)
+	}
+}
+
+// AllocationSource defines the type for the "allocation_source" enum field.
+type AllocationSource string
+
+// AllocationSourceDirect is the default value of the AllocationSource enum.
+const DefaultAllocationSource = AllocationSourceDirect
+
+// AllocationSource values.
+const (
+	AllocationSourceDirect        AllocationSource = "direct"
+	AllocationSourceStudentCredit AllocationSource = "student_credit"
+)
+
+func (as AllocationSource) String() string {
+	return string(as)
+}
+
+// AllocationSourceValidator is a validator for the "allocation_source" field enum values. It is called by the builders before save.
+func AllocationSourceValidator(as AllocationSource) error {
+	switch as {
+	case AllocationSourceDirect, AllocationSourceStudentCredit:
+		return nil
+	default:
+		return fmt.Errorf("payment: invalid enum value for allocation_source field: %q", as)
 	}
 }
 
@@ -153,6 +187,16 @@ func ByMethod(opts ...sql.OrderTermOption) OrderOption {
 // ByNote orders the results by the note field.
 func ByNote(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldNote, opts...).ToFunc()
+}
+
+// ByAllocationSource orders the results by the allocation_source field.
+func ByAllocationSource(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldAllocationSource, opts...).ToFunc()
+}
+
+// ByCreditOriginNote orders the results by the credit_origin_note field.
+func ByCreditOriginNote(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCreditOriginNote, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

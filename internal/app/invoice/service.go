@@ -79,6 +79,9 @@ type ListItem struct {
 	LastEmailedTo            string  `json:"lastEmailedTo,omitempty"`
 	EmailCommunicationStatus string  `json:"emailCommunicationStatus"`
 	LastEmailError           string  `json:"lastEmailError,omitempty"`
+	CanReopenDraft           bool    `json:"canReopenDraft"`
+	ReopenCreditAmount       float64 `json:"reopenCreditAmount"`
+	ReopenBlockedAmount      float64 `json:"reopenBlockedPaymentAmount"`
 }
 
 // LineDTO represents a single line item in an invoice.
@@ -112,7 +115,46 @@ type InvoiceDTO struct {
 	LastEmailedTo            string    `json:"lastEmailedTo,omitempty"`
 	EmailCommunicationStatus string    `json:"emailCommunicationStatus"`
 	LastEmailError           string    `json:"lastEmailError,omitempty"`
+	CanReopenDraft           bool      `json:"canReopenDraft"`
+	ReopenCreditAmount       float64   `json:"reopenCreditAmount"`
+	ReopenBlockedAmount      float64   `json:"reopenBlockedPaymentAmount"`
 	Lines                    []LineDTO `json:"lines"` // All line items in the invoice
+}
+
+type ReopenDraftResult struct {
+	RestoredCredit float64 `json:"restoredCredit"`
+}
+
+type reopenDraftInfo struct {
+	canReopen    bool
+	creditCents  int64
+	blockedCents int64
+	blockedCount int
+}
+
+func reopenInfo(iv *ent.Invoice, payments []*ent.Payment) reopenDraftInfo {
+	info := reopenDraftInfo{}
+	for _, item := range payments {
+		if item.AllocationSource == payment.AllocationSourceStudentCredit {
+			info.creditCents += item.AmountCents
+		} else {
+			info.blockedCents += item.AmountCents
+			info.blockedCount++
+		}
+	}
+	switch iv.Status {
+	case invoice.StatusIssued, invoice.StatusIssuedPendingPdf:
+		info.canReopen = info.blockedCount == 0
+	case invoice.StatusPaid, invoice.StatusPaidPendingPdf:
+		info.canReopen = info.blockedCount == 0 && info.creditCents > 0
+	}
+	return info
+}
+
+func applyReopenInfo(info reopenDraftInfo, canReopen *bool, creditAmount, blockedAmount *float64) {
+	*canReopen = info.canReopen
+	*creditAmount = money.CentsToEuros(info.creditCents)
+	*blockedAmount = money.CentsToEuros(info.blockedCents)
 }
 
 // GenerateResult contains statistics about invoice generation.
@@ -647,6 +689,10 @@ func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 	if err != nil {
 		return nil, err
 	}
+	payments, err := s.db.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).All(ctx)
+	if err != nil {
+		return nil, err
+	}
 	recipientInfo, err := recipient.ResolveInvoiceRecipient(ctx, s.db, iv.StudentID)
 	if err != nil {
 		return nil, err
@@ -673,6 +719,7 @@ func (s *Service) Get(ctx context.Context, id int) (*InvoiceDTO, error) {
 		EmailCommunicationStatus: emailCommunicationStatus(iv),
 		LastEmailError:           optionalString(iv.LastEmailError),
 	}
+	applyReopenInfo(reopenInfo(iv, payments), &dto.CanReopenDraft, &dto.ReopenCreditAmount, &dto.ReopenBlockedAmount)
 	for _, l := range ls {
 		dto.Lines = append(dto.Lines, LineDTO{
 			EnrollmentID: l.EnrollmentID,
@@ -745,9 +792,14 @@ func (s *Service) ReopenDraft(ctx context.Context, id int, outBaseDir string) er
 }
 
 func (s *Service) ReopenDraftWithVersion(ctx context.Context, id, version int, outBaseDir string) error {
+	_, err := s.ReopenDraftWithVersionResult(ctx, id, version, outBaseDir)
+	return err
+}
+
+func (s *Service) ReopenDraftWithVersionResult(ctx context.Context, id, version int, outBaseDir string) (*ReopenDraftResult, error) {
 	tx, err := s.db.Tx(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	committed := false
 	defer func() {
@@ -758,21 +810,25 @@ func (s *Service) ReopenDraftWithVersion(ctx context.Context, id, version int, o
 
 	iv, err := tx.Invoice.Get(ctx, id)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if iv.Version != version {
-		return apperrors.StaleRevision()
+		return nil, apperrors.StaleRevision()
 	}
-	if iv.Status != StatusIssued && iv.Status != StatusIssuedPendingPDF {
-		return fmt.Errorf("вернуть в черновик можно только выставленные счета без оплат")
+	if iv.Status != StatusIssued && iv.Status != StatusIssuedPendingPDF && iv.Status != StatusPaid && iv.Status != StatusPaidPendingPDF {
+		return nil, fmt.Errorf("вернуть в черновик можно только выставленный или оплаченный кредитом счёт")
 	}
 
-	paymentCount, err := tx.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).Count(ctx)
+	linkedPayments, err := tx.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).All(ctx)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if paymentCount > 0 {
-		return fmt.Errorf("нельзя вернуть в черновик счёт, по которому уже есть оплаты")
+	info := reopenInfo(iv, linkedPayments)
+	if !info.canReopen {
+		if info.blockedCount > 0 {
+			return nil, fmt.Errorf("нельзя вернуть в черновик: по счёту есть обычные оплаты на %.2f EUR", money.CentsToEuros(info.blockedCents))
+		}
+		return nil, fmt.Errorf("нельзя вернуть этот счёт в черновик")
 	}
 
 	oldNumber := ""
@@ -781,7 +837,21 @@ func (s *Service) ReopenDraftWithVersion(ctx context.Context, id, version int, o
 	}
 	recipientInfo, err := recipient.ResolveInvoiceRecipient(ctx, tx.Client(), iv.StudentID)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	for _, item := range linkedPayments {
+		if item.AllocationSource != payment.AllocationSourceStudentCredit {
+			continue
+		}
+		if _, err := tx.Payment.UpdateOneID(item.ID).
+			ClearInvoiceID().
+			SetAllocationSource(payment.AllocationSourceDirect).
+			SetNote(item.CreditOriginNote).
+			SetCreditOriginNote("").
+			Save(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	if _, err := tx.Invoice.UpdateOneID(iv.ID).
@@ -800,12 +870,12 @@ func (s *Service) ReopenDraftWithVersion(ctx context.Context, id, version int, o
 		ClearLastEmailFailedAt().
 		Save(ctx); err != nil {
 		if ent.IsNotFound(err) {
-			return apperrors.StaleRevision()
+			return nil, apperrors.StaleRevision()
 		}
-		return err
+		return nil, err
 	}
 	if err := tx.Commit(); err != nil {
-		return err
+		return nil, err
 	}
 	committed = true
 
@@ -817,12 +887,12 @@ func (s *Service) ReopenDraftWithVersion(ctx context.Context, id, version int, o
 		}
 		for _, pdfPath := range paths {
 			if err := os.Remove(pdfPath); err != nil && !os.IsNotExist(err) {
-				return err
+				return nil, err
 			}
 		}
 	}
 
-	return nil
+	return &ReopenDraftResult{RestoredCredit: money.CentsToEuros(info.creditCents)}, nil
 }
 
 // ----- Issuing, numbering, PDF generation -----
@@ -1129,11 +1199,23 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 	for _, c := range counts {
 		countMap[c.InvoiceID] = c.Count
 	}
+	paymentMap := make(map[int][]*ent.Payment, len(invoiceIDs))
+	if len(invoiceIDs) > 0 {
+		linkedPayments, paymentErr := s.db.Payment.Query().Where(payment.InvoiceIDIn(invoiceIDs...)).All(ctx)
+		if paymentErr != nil {
+			return nil, paymentErr
+		}
+		for _, item := range linkedPayments {
+			if item.InvoiceID != nil {
+				paymentMap[*item.InvoiceID] = append(paymentMap[*item.InvoiceID], item)
+			}
+		}
+	}
 
 	out := make([]ListItem, 0, len(invs))
 	for _, iv := range invs {
 		cnt := countMap[iv.ID]
-		out = append(out, ListItem{
+		item := ListItem{
 			ID:                       iv.ID,
 			Version:                  iv.Version,
 			StudentID:                iv.StudentID,
@@ -1150,7 +1232,9 @@ func (s *Service) List(ctx context.Context, y, m int, status string) ([]ListItem
 			LastEmailedTo:            optionalString(iv.LastEmailedTo),
 			EmailCommunicationStatus: emailCommunicationStatus(iv),
 			LastEmailError:           optionalString(iv.LastEmailError),
-		})
+		}
+		applyReopenInfo(reopenInfo(iv, paymentMap[iv.ID]), &item.CanReopenDraft, &item.ReopenCreditAmount, &item.ReopenBlockedAmount)
+		out = append(out, item)
 	}
 	return out, nil
 }

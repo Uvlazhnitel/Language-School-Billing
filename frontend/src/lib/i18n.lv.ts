@@ -47,6 +47,8 @@ export const lvTranslations: Record<string, string> = {
   "button.openInvoices": "Atvērt rēķinus",
   "button.manageEnrollments": "Uzņemšana",
   "button.addToCourse": "Pievienot kursam",
+  "button.endEnrollment": "Pabeigt",
+  "button.endingEnrollment": "Pabeidz...",
   "button.saveAndOpenAttendance": "Saglabāt un doties uz apmeklējumu",
   "button.addStudent": "Pievienot skolēnu",
   "button.addCourse": "Pievienot kursu",
@@ -452,6 +454,9 @@ export const lvTranslations: Record<string, string> = {
   "msg.enrollmentDeleteConfirm":
     "Vai dzēst šo uzņemšanu? Tiks dzēsti arī saistītie apmeklējuma ieraksti. Šo darbību nevar atsaukt.",
   "msg.enrollmentDeleted": "Uzņemšana izdzēsta",
+  "msg.enrollmentEndConfirm":
+    "Vai pabeigt uzņemšanu kursā “{course}”? Esošie apmeklējumi, rēķini un maksājumi tiks saglabāti.",
+  "msg.enrollmentEnded": "Uzņemšana pabeigta",
   "msg.noOpenDebtsStudent": "Šim skolēnam vairs nav atvērtu parādu",
   "msg.paymentStudentMissing": "Maksājumam nav izvēlēts skolēns",
   "msg.paymentAmountInvalid": "Ievadiet korektu maksājuma summu",
@@ -462,8 +467,14 @@ export const lvTranslations: Record<string, string> = {
   "msg.invoiceIssuedPdfReady": "Rēķins izrakstīts un PDF izveidots: #{number}",
   "msg.invoiceIssuedPdfPending": "Rēķins izrakstīts, bet PDF vēl nav gatavs: #{number}",
   "msg.invoiceReopened": "Rēķins atgriezts melnrakstā",
+  "msg.invoiceReopenedCredit":
+    "Rēķins atgriezts melnrakstā; {amount} atgriezti skolēna kredītā",
   "msg.invoiceReopenConfirm":
-    "Vai atgriezt šo izrakstīto rēķinu melnrakstā? Tas ir atļauts tikai tad, ja nav maksājumu. Vecais rēķina numurs tiks notīrīts.",
+    "Vai atgriezt šo izrakstīto rēķinu melnrakstā? Vecais rēķina numurs tiks notīrīts.",
+  "msg.invoiceReopenCreditConfirm":
+    "Vai atgriezt rēķinu melnrakstā? No skolēna kredīta ieskaitītie {amount} tiks atgriezti bilancē. Vecais rēķina numurs tiks notīrīts.",
+  "msg.invoiceReopenBlockedPayment":
+    "Rēķinu nevar atgriezt melnrakstā, jo tam ir parastie maksājumi {amount} apmērā.",
   "msg.pdfReady": "PDF gatavs: {path}",
   "msg.ensureAllPdfsSummary":
     "Apstrādāti {processed}: izveidoti {generated}, jau gatavi {ready}, ar kļūdu {failed}",

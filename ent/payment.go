@@ -33,6 +33,10 @@ type Payment struct {
 	Method payment.Method `json:"method,omitempty"`
 	// Note holds the value of the "note" field.
 	Note string `json:"note,omitempty"`
+	// AllocationSource holds the value of the "allocation_source" field.
+	AllocationSource payment.AllocationSource `json:"allocation_source,omitempty"`
+	// CreditOriginNote holds the value of the "credit_origin_note" field.
+	CreditOriginNote string `json:"credit_origin_note,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -83,7 +87,7 @@ func (*Payment) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullFloat64)
 		case payment.FieldID, payment.FieldStudentID, payment.FieldInvoiceID, payment.FieldAmountCents:
 			values[i] = new(sql.NullInt64)
-		case payment.FieldMethod, payment.FieldNote:
+		case payment.FieldMethod, payment.FieldNote, payment.FieldAllocationSource, payment.FieldCreditOriginNote:
 			values[i] = new(sql.NullString)
 		case payment.FieldPaidAt, payment.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -150,6 +154,18 @@ func (_m *Payment) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field note", values[i])
 			} else if value.Valid {
 				_m.Note = value.String
+			}
+		case payment.FieldAllocationSource:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field allocation_source", values[i])
+			} else if value.Valid {
+				_m.AllocationSource = payment.AllocationSource(value.String)
+			}
+		case payment.FieldCreditOriginNote:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field credit_origin_note", values[i])
+			} else if value.Valid {
+				_m.CreditOriginNote = value.String
 			}
 		case payment.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -225,6 +241,12 @@ func (_m *Payment) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("note=")
 	builder.WriteString(_m.Note)
+	builder.WriteString(", ")
+	builder.WriteString("allocation_source=")
+	builder.WriteString(fmt.Sprintf("%v", _m.AllocationSource))
+	builder.WriteString(", ")
+	builder.WriteString("credit_origin_note=")
+	builder.WriteString(_m.CreditOriginNote)
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

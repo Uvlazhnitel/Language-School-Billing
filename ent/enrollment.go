@@ -37,6 +37,8 @@ type Enrollment struct {
 	SubscriptionLessonPriceCents int64 `json:"subscription_lesson_price_cents,omitempty"`
 	// Note holds the value of the "note" field.
 	Note string `json:"note,omitempty"`
+	// IsActive holds the value of the "is_active" field.
+	IsActive bool `json:"is_active,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt *time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -96,7 +98,7 @@ func (*Enrollment) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case enrollment.FieldChargeMaterials:
+		case enrollment.FieldChargeMaterials, enrollment.FieldIsActive:
 			values[i] = new(sql.NullBool)
 		case enrollment.FieldDiscountPct:
 			values[i] = new(sql.NullFloat64)
@@ -180,6 +182,12 @@ func (_m *Enrollment) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field note", values[i])
 			} else if value.Valid {
 				_m.Note = value.String
+			}
+		case enrollment.FieldIsActive:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field is_active", values[i])
+			} else if value.Valid {
+				_m.IsActive = value.Bool
 			}
 		case enrollment.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -272,6 +280,9 @@ func (_m *Enrollment) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("note=")
 	builder.WriteString(_m.Note)
+	builder.WriteString(", ")
+	builder.WriteString("is_active=")
+	builder.WriteString(fmt.Sprintf("%v", _m.IsActive))
 	builder.WriteString(", ")
 	if v := _m.CreatedAt; v != nil {
 		builder.WriteString("created_at=")

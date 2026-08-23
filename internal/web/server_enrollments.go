@@ -72,6 +72,25 @@ func (s *Server) handleEnrollmentsUpdate(w http.ResponseWriter, r *http.Request)
 	writeJSON(w, http.StatusOK, item)
 }
 
+func (s *Server) handleEnrollmentsActive(w http.ResponseWriter, r *http.Request) {
+	id, ok := pathInt(w, r, "id")
+	if !ok {
+		return
+	}
+	var req struct {
+		Active  bool `json:"active"`
+		Version int  `json:"version"`
+	}
+	if !decodeJSON(w, r, &req) {
+		return
+	}
+	if err := s.svc.EnrollmentSetActiveWithVersion(r.Context(), id, req.Version, req.Active); err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
 func (s *Server) handleEnrollmentsDelete(w http.ResponseWriter, r *http.Request) {
 	id, ok := pathInt(w, r, "id")
 	if !ok {

@@ -67,6 +67,10 @@ func Open(ctx context.Context, dbPath string) (*DB, error) {
 		_ = client.Close()
 		return nil, err
 	}
+	if err := backfillPaymentAllocationSources(ctx, dsn); err != nil {
+		_ = client.Close()
+		return nil, err
+	}
 	if err := ensureStudentPersonalCodeUniqueIndex(ctx, dsn); err != nil {
 		log.Printf("student personal_code unique index was not applied: %v", err)
 	}
@@ -268,6 +272,43 @@ UPDATE students
 SET created_at = CURRENT_TIMESTAMP
 WHERE created_at IS NULL
 `)
+	return err
+}
+
+func backfillPaymentAllocationSources(ctx context.Context, dsn string) error {
+	db, err := sql.Open("sqlite3", dsn)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+
+	hasSource, err := hasColumn(ctx, db, "payments", "allocation_source")
+	if err != nil {
+		return err
+	}
+	hasOriginNote, err := hasColumn(ctx, db, "payments", "credit_origin_note")
+	if err != nil {
+		return err
+	}
+	if !hasSource || !hasOriginNote {
+		return nil
+	}
+
+	const suffix = " (applied from credit)"
+	_, err = db.ExecContext(ctx, `
+UPDATE payments
+SET allocation_source = 'student_credit',
+    credit_origin_note = CASE
+        WHEN note = 'Applied from student credit' THEN ''
+        ELSE substr(note, 1, length(note) - length(?))
+    END
+WHERE invoice_id IS NOT NULL
+  AND allocation_source = 'direct'
+  AND (
+      note = 'Applied from student credit'
+      OR note LIKE '%' || ?
+  )
+`, suffix, suffix)
 	return err
 }
 

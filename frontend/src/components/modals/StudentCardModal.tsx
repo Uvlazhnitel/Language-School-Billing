@@ -17,6 +17,7 @@ type StudentCardModalProps = {
   nextAction: StudentNextAction | null;
   activity: StudentActivityItem[];
   deletingPaymentId: number | null;
+  endingEnrollmentId: number | null;
   canDeletePayment: boolean;
   payerRoleLabel: (role: string) => string;
   billingModeLabel: (mode: string) => string;
@@ -30,6 +31,7 @@ type StudentCardModalProps = {
   onCopyDebtLv: () => void | Promise<void>;
   onDeletePayment: (payment: PaymentDTO) => void | Promise<void>;
   onUpdateEnrollmentPrice: (enrollment: EnrollmentDTO, price: number) => Promise<boolean>;
+  onEndEnrollment: (enrollment: EnrollmentDTO) => void;
   onManageEnrollments: () => void;
   onOpenInvoices: () => void;
   onClose: () => void;
@@ -47,6 +49,7 @@ export function StudentCardModal({
   nextAction,
   activity,
   deletingPaymentId,
+  endingEnrollmentId,
   canDeletePayment,
   payerRoleLabel,
   billingModeLabel,
@@ -60,6 +63,7 @@ export function StudentCardModal({
   onCopyDebtLv,
   onDeletePayment,
   onUpdateEnrollmentPrice,
+  onEndEnrollment,
   onManageEnrollments,
   onOpenInvoices,
   onClose,
@@ -86,6 +90,7 @@ export function StudentCardModal({
           formatEUR={formatEUR}
           months={months}
           deletingPaymentId={deletingPaymentId}
+          endingEnrollmentId={endingEnrollmentId}
           canDeletePayment={canDeletePayment}
           onEditStudent={onEditStudent}
           onAddPayment={onAddPayment}
@@ -93,6 +98,7 @@ export function StudentCardModal({
           onCopyDebtLv={() => void onCopyDebtLv()}
           onDeletePayment={(payment) => void onDeletePayment(payment)}
           onUpdateEnrollmentPrice={onUpdateEnrollmentPrice}
+          onEndEnrollment={onEndEnrollment}
           onManageEnrollments={onManageEnrollments}
           onOpenInvoices={onOpenInvoices}
           footer={

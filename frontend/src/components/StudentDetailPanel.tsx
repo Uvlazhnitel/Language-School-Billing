@@ -25,6 +25,7 @@ type StudentDetailPanelProps = {
   formatEUR: (value: number) => string;
   months: string[];
   deletingPaymentId: number | null;
+  endingEnrollmentId: number | null;
   canDeletePayment: boolean;
   onEditStudent: () => void;
   onToggleActive?: () => void;
@@ -35,6 +36,7 @@ type StudentDetailPanelProps = {
   onCopyDebtLv: () => void;
   onDeletePayment: (payment: PaymentDTO) => void;
   onUpdateEnrollmentPrice?: (enrollment: EnrollmentDTO, price: number) => Promise<boolean>;
+  onEndEnrollment: (enrollment: EnrollmentDTO) => void;
   onManageEnrollments: () => void;
   onOpenInvoices: () => void;
   footer?: React.ReactNode;
@@ -58,6 +60,7 @@ export function StudentDetailPanel({
   formatEUR,
   months,
   deletingPaymentId,
+  endingEnrollmentId,
   canDeletePayment,
   onEditStudent,
   onToggleActive,
@@ -68,6 +71,7 @@ export function StudentDetailPanel({
   onCopyDebtLv,
   onDeletePayment,
   onUpdateEnrollmentPrice,
+  onEndEnrollment,
   onManageEnrollments,
   onOpenInvoices,
   footer,
@@ -351,6 +355,7 @@ export function StudentDetailPanel({
                     <th style={{ textAlign: "right" }}>{t("field.lessonPriceOverride")}</th>
                     <th>{t("field.materials")}</th>
                     <th>{t("field.note")}</th>
+                    <th>{t("field.actions")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -434,6 +439,18 @@ export function StudentDetailPanel({
                       </td>
                       <td>{enrollment.chargeMaterials ? t("label.yes") : t("label.no")}</td>
                       <td>{enrollment.note || "—"}</td>
+                      <td>
+                        <button
+                          className="secondaryActionButton"
+                          type="button"
+                          disabled={endingEnrollmentId !== null}
+                          onClick={() => onEndEnrollment(enrollment)}
+                        >
+                          {endingEnrollmentId === enrollment.id
+                            ? t("button.endingEnrollment")
+                            : t("button.endEnrollment")}
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>

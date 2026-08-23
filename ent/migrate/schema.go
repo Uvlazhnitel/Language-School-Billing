@@ -158,6 +158,7 @@ var (
 		{Name: "lesson_price_override_cents", Type: field.TypeInt64, Default: -1},
 		{Name: "subscription_lesson_price_cents", Type: field.TypeInt64, Default: -1},
 		{Name: "note", Type: field.TypeString, Default: ""},
+		{Name: "is_active", Type: field.TypeBool, Default: true},
 		{Name: "created_at", Type: field.TypeTime, Nullable: true},
 		{Name: "updated_at", Type: field.TypeTime, Nullable: true},
 		{Name: "course_id", Type: field.TypeInt},
@@ -171,13 +172,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "enrollments_courses_enrollments",
-				Columns:    []*schema.Column{EnrollmentsColumns[10]},
+				Columns:    []*schema.Column{EnrollmentsColumns[11]},
 				RefColumns: []*schema.Column{CoursesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 			{
 				Symbol:     "enrollments_students_enrollments",
-				Columns:    []*schema.Column{EnrollmentsColumns[11]},
+				Columns:    []*schema.Column{EnrollmentsColumns[12]},
 				RefColumns: []*schema.Column{StudentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -186,7 +187,7 @@ var (
 			{
 				Name:    "enrollment_student_id_course_id",
 				Unique:  true,
-				Columns: []*schema.Column{EnrollmentsColumns[11], EnrollmentsColumns[10]},
+				Columns: []*schema.Column{EnrollmentsColumns[12], EnrollmentsColumns[11]},
 			},
 		},
 	}
@@ -286,6 +287,8 @@ var (
 		{Name: "amount_cents", Type: field.TypeInt64, Default: 0},
 		{Name: "method", Type: field.TypeEnum, Enums: []string{"cash", "bank"}},
 		{Name: "note", Type: field.TypeString, Default: ""},
+		{Name: "allocation_source", Type: field.TypeEnum, Enums: []string{"direct", "student_credit"}, Default: "direct"},
+		{Name: "credit_origin_note", Type: field.TypeString, Default: ""},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "invoice_id", Type: field.TypeInt, Nullable: true},
 		{Name: "student_id", Type: field.TypeInt},
@@ -298,13 +301,13 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "payments_invoices_payments",
-				Columns:    []*schema.Column{PaymentsColumns[7]},
+				Columns:    []*schema.Column{PaymentsColumns[9]},
 				RefColumns: []*schema.Column{InvoicesColumns[0]},
 				OnDelete:   schema.SetNull,
 			},
 			{
 				Symbol:     "payments_students_payments",
-				Columns:    []*schema.Column{PaymentsColumns[8]},
+				Columns:    []*schema.Column{PaymentsColumns[10]},
 				RefColumns: []*schema.Column{StudentsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -313,12 +316,12 @@ var (
 			{
 				Name:    "payment_student_id_paid_at",
 				Unique:  false,
-				Columns: []*schema.Column{PaymentsColumns[8], PaymentsColumns[1]},
+				Columns: []*schema.Column{PaymentsColumns[10], PaymentsColumns[1]},
 			},
 			{
 				Name:    "payment_invoice_id",
 				Unique:  false,
-				Columns: []*schema.Column{PaymentsColumns[7]},
+				Columns: []*schema.Column{PaymentsColumns[9]},
 			},
 		},
 	}

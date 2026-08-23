@@ -43,8 +43,6 @@ export function InvoiceDetailsModal({
   canSendEmail,
   t,
 }: InvoiceDetailsModalProps) {
-  const isIssuedFamily =
-    invoice.status === "issued" || invoice.status === "issued_pending_pdf";
   const isFullyPaid =
     summary ? summary.remaining <= 0 : invoice.status === "paid" || invoice.status === "paid_pending_pdf";
   const emailStatusLabel =
@@ -157,6 +155,14 @@ export function InvoiceDetailsModal({
           </table>
         </div>
 
+        {(invoice.reopenBlockedPaymentAmount ?? 0) > 0 && (
+          <p style={{ margin: "0.75rem 0 0", color: "var(--danger, #9f2d20)" }}>
+            {t("msg.invoiceReopenBlockedPayment", {
+              amount: formatEUR(invoice.reopenBlockedPaymentAmount ?? 0),
+            })}
+          </p>
+        )}
+
         <div className="modalActions">
           {invoice.status === "draft" && (
             <button onClick={() => void onIssue(invoice.id)}>{t("button.issue")}</button>
@@ -173,7 +179,7 @@ export function InvoiceDetailsModal({
           {invoice.status !== "draft" && !isFullyPaid && (
             <button onClick={onAddPayment}>{t("button.recordPayment")}</button>
           )}
-          {isIssuedFamily && (
+          {invoice.canReopenDraft === true && (
             <button onClick={() => void onReopenToDraft(invoice.id)}>{t("button.reopenDraft")}</button>
           )}
           <button onClick={onClose}>{t("button.close")}</button>

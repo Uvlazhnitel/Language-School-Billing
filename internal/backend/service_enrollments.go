@@ -9,6 +9,8 @@ import (
 	"langschool/ent"
 	"langschool/ent/enrollment"
 	entinvoice "langschool/ent/invoice"
+	"langschool/ent/invoiceline"
+	"langschool/internal/apperrors"
 	"langschool/internal/money"
 )
 
@@ -16,6 +18,7 @@ var enrollmentCurrentTime = time.Now
 
 func (s *Service) EnrollmentList(ctx context.Context, studentID *int, courseID *int) ([]EnrollmentDTO, error) {
 	q := s.rt.DB.Ent.Enrollment.Query().
+		Where(enrollment.IsActiveEQ(true)).
 		WithStudent().
 		WithCourse(func(cq *ent.CourseQuery) {
 			cq.WithTeacher()
@@ -73,14 +76,38 @@ func enrollmentCreateInStore(ctx context.Context, client *ent.Client, studentID,
 	if _, err := client.Course.Get(ctx, courseID); err != nil {
 		return nil, err
 	}
-	exists, err := client.Enrollment.Query().
+	existing, err := client.Enrollment.Query().
 		Where(enrollment.StudentIDEQ(studentID), enrollment.CourseIDEQ(courseID)).
-		Exist(ctx)
-	if err != nil {
+		Only(ctx)
+	if err != nil && !ent.IsNotFound(err) {
 		return nil, err
 	}
-	if exists {
+	if existing != nil && existing.IsActive {
 		return nil, errors.New("an enrollment for this student and course already exists")
+	}
+	if existing != nil {
+		item, err := existing.Update().
+			AddVersion(1).
+			SetIsActive(true).
+			SetBillingMode(enrollment.BillingMode(billingMode)).
+			SetChargeMaterials(chargeMaterials).
+			SetLessonPriceOverrideCents(money.EurosToCents(lessonPriceOverride)).
+			SetSubscriptionLessonPriceCents(money.EurosToCents(subscriptionLessonPrice)).
+			SetNote(sanitizeInput(note)).
+			Save(ctx)
+		if err != nil {
+			return nil, err
+		}
+		item, err = client.Enrollment.Query().
+			Where(enrollment.IDEQ(item.ID)).
+			WithStudent().
+			WithCourse(func(cq *ent.CourseQuery) { cq.WithTeacher() }).
+			Only(ctx)
+		if err != nil {
+			return nil, err
+		}
+		dto := toEnrollmentDTO(item)
+		return &dto, nil
 	}
 	item, err := client.Enrollment.Create().
 		SetStudentID(studentID).
@@ -104,6 +131,77 @@ func enrollmentCreateInStore(ctx context.Context, client *ent.Client, studentID,
 	}
 	dto := toEnrollmentDTO(item)
 	return &dto, nil
+}
+
+func (s *Service) EnrollmentSetActiveWithVersion(ctx context.Context, enrollmentID, version int, active bool) error {
+	if err := validateVersion(version); err != nil {
+		return err
+	}
+	tx, err := s.rt.DB.Ent.Tx(ctx)
+	if err != nil {
+		return err
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	item, err := tx.Enrollment.Get(ctx, enrollmentID)
+	if err != nil {
+		return err
+	}
+	if item.Version != version {
+		return apperrors.StaleRevision()
+	}
+	if item.IsActive == active {
+		return nil
+	}
+
+	if !active {
+		zeroLines, err := tx.InvoiceLine.Query().
+			Where(
+				invoiceline.EnrollmentIDEQ(enrollmentID),
+				invoiceline.QtyLTE(0),
+				invoiceline.AmountCentsEQ(0),
+			).
+			All(ctx)
+		if err != nil {
+			return err
+		}
+		if len(zeroLines) > 0 {
+			lineIDs := make([]int, 0, len(zeroLines))
+			invoiceIDs := make(map[int]struct{}, len(zeroLines))
+			for _, line := range zeroLines {
+				lineIDs = append(lineIDs, line.ID)
+				invoiceIDs[line.InvoiceID] = struct{}{}
+			}
+			if _, err := tx.InvoiceLine.Delete().Where(invoiceline.IDIn(lineIDs...)).Exec(ctx); err != nil {
+				return err
+			}
+			ids := make([]int, 0, len(invoiceIDs))
+			for invoiceID := range invoiceIDs {
+				ids = append(ids, invoiceID)
+			}
+			if _, err := tx.Invoice.Update().Where(entinvoice.IDIn(ids...)).ClearPdfRevision().Save(ctx); err != nil {
+				return err
+			}
+		}
+	}
+
+	if _, err := tx.Enrollment.UpdateOneID(enrollmentID).
+		Where(enrollment.VersionEQ(version)).
+		SetVersion(version + 1).
+		SetIsActive(active).
+		Save(ctx); err != nil {
+		return staleOnNotFound(err)
+	}
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	committed = true
+	return nil
 }
 
 func (s *Service) EnrollmentUpdate(ctx context.Context, enrollmentID int, billingMode string, chargeMaterials bool, lessonPriceOverride, subscriptionLessonPrice float64, note string) (*EnrollmentDTO, error) {

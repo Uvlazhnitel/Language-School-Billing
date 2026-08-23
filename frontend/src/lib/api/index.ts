@@ -36,6 +36,7 @@ export type {
   PaymentDTO,
   PaymentMethod,
   RecentPaymentDTO,
+  ReopenDraftResult,
   Row,
   StudentDTO,
   StudentCreateInput,

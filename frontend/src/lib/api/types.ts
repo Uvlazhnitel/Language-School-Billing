@@ -129,6 +129,7 @@ export type Row = {
   courseId: number;
   courseName: string;
   courseType: CourseType;
+  teacherName: string;
   billingMode: BillingMode;
   lessonPrice: number;
   subscriptionLessonPrice: number;
@@ -251,6 +252,9 @@ export type InvoiceListItem = {
   lastEmailedTo?: string;
   emailCommunicationStatus: "not_sent" | "sent" | "failed" | "stale";
   lastEmailError?: string;
+  canReopenDraft?: boolean;
+  reopenCreditAmount?: number;
+  reopenBlockedPaymentAmount?: number;
 };
 
 export type InvoiceListItemView = InvoiceListItem;
@@ -284,7 +288,14 @@ export type InvoiceDTO = {
   lastEmailedTo?: string;
   emailCommunicationStatus: "not_sent" | "sent" | "failed" | "stale";
   lastEmailError?: string;
+  canReopenDraft?: boolean;
+  reopenCreditAmount?: number;
+  reopenBlockedPaymentAmount?: number;
   lines: InvoiceLine[];
+};
+
+export type ReopenDraftResult = {
+  restoredCredit: number;
 };
 
 export type GenerateResult = {
@@ -547,6 +558,7 @@ export interface AppTransport {
     subscriptionLessonPrice: number,
     note: string
   ): Promise<EnrollmentDTO>;
+  setEnrollmentActive(enrollmentId: number, version: number, active: boolean): Promise<void>;
   deleteEnrollment(enrollmentId: number, version: number): Promise<void>;
 
   fetchAttendanceRows(year: number, month: number, courseId?: number): Promise<Row[]>;
@@ -574,7 +586,7 @@ export interface AppTransport {
   getInvoice(id: number): Promise<InvoiceDTO>;
   generateDrafts(year: number, month: number): Promise<GenerateResult>;
   deleteDraft(id: number, version: number): Promise<void>;
-  reopenToDraft(id: number, version: number): Promise<void>;
+  reopenToDraft(id: number, version: number): Promise<ReopenDraftResult>;
   issueInvoice(id: number, version: number): Promise<IssueResult>;
   issueAllInvoices(year: number, month: number): Promise<IssueAllResult>;
   rebuildStudentDraft(studentId: number, year: number, month: number): Promise<GenerateResult>;

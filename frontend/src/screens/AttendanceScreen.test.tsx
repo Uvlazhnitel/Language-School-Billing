@@ -15,6 +15,7 @@ const rows: Row[] = [
     courseId: 10,
     courseName: "English",
     courseType: "group",
+    teacherName: "Teacher One",
     billingMode: "per_lesson",
     lessonPrice: 25,
     subscriptionLessonPrice: 0,
@@ -88,5 +89,11 @@ describe("AttendanceScreen", () => {
 
     expect(markup).toContain('quickFilterChip active');
     expect(markup).toContain("Clear filters");
+  });
+
+  it("shows the teacher next to the course", () => {
+    const markup = renderToStaticMarkup(<AttendanceScreen {...buildProps()} />);
+
+    expect(markup).toContain("English (group) — Teacher One");
   });
 });

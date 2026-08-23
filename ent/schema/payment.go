@@ -20,6 +20,8 @@ func (Payment) Fields() []ent.Field {
 		field.Int64("amount_cents").Default(0),
 		field.Enum("method").Values("cash", "bank"),
 		field.String("note").Default(""),
+		field.Enum("allocation_source").Values("direct", "student_credit").Default("direct"),
+		field.String("credit_origin_note").Default(""),
 		field.Time("created_at").Default(time.Now),
 	}
 }

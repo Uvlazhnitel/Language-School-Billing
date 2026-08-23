@@ -116,7 +116,7 @@ func (s *Service) EnrollmentCreateMany(ctx context.Context, studentID int, input
 	for _, input := range inputs {
 		courseIDs = append(courseIDs, input.CourseID)
 	}
-	existingCourseIDs := make(map[int]struct{}, len(inputs))
+	activeCourseIDs := make(map[int]struct{}, len(inputs))
 	if len(courseIDs) > 0 {
 		existing, err := client.Enrollment.Query().
 			Where(enrollment.StudentIDEQ(studentID), enrollment.CourseIDIn(courseIDs...)).
@@ -125,7 +125,9 @@ func (s *Service) EnrollmentCreateMany(ctx context.Context, studentID int, input
 			return nil, err
 		}
 		for _, item := range existing {
-			existingCourseIDs[item.CourseID] = struct{}{}
+			if item.IsActive {
+				activeCourseIDs[item.CourseID] = struct{}{}
+			}
 		}
 	}
 
@@ -134,7 +136,7 @@ func (s *Service) EnrollmentCreateMany(ctx context.Context, studentID int, input
 		SkippedCourseIDs: make([]int, 0),
 	}
 	for _, input := range inputs {
-		if _, exists := existingCourseIDs[input.CourseID]; exists {
+		if _, exists := activeCourseIDs[input.CourseID]; exists {
 			result.SkippedCourseIDs = append(result.SkippedCourseIDs, input.CourseID)
 			continue
 		}

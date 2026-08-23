@@ -23,6 +23,7 @@ import type {
   MonthOverviewDTO,
   PaymentDTO,
   RecentPaymentDTO,
+  ReopenDraftResult,
   Row,
   StudentDTO,
   StudentDuplicateCheckResult,
@@ -313,6 +314,12 @@ export const httpTransport: AppTransport = {
       ...body({ version, billingMode, chargeMaterials, lessonPriceOverride, subscriptionLessonPrice, note }),
     });
   },
+  async setEnrollmentActive(enrollmentId, version, active) {
+    await requestVoid(`/enrollments/${enrollmentId}/active`, {
+      method: "POST",
+      ...body({ version, active }),
+    });
+  },
   async deleteEnrollment(enrollmentId, version) {
     await requestVoid(`/enrollments/${enrollmentId}?version=${encodeURIComponent(String(version))}`, { method: "DELETE" });
   },
@@ -364,7 +371,10 @@ export const httpTransport: AppTransport = {
     await requestVoid(`/invoices/${id}/draft?version=${encodeURIComponent(String(version))}`, { method: "DELETE" });
   },
   async reopenToDraft(id, version) {
-    await requestVoid(`/invoices/${id}/reopen-draft`, { method: "POST", ...body({ version }) });
+    return request<ReopenDraftResult>(`/invoices/${id}/reopen-draft`, {
+      method: "POST",
+      ...body({ version }),
+    });
   },
   async issueInvoice(id, version) {
     return request<IssueResult>(`/invoices/${id}/issue`, { method: "POST", ...body({ version }) });

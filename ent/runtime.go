@@ -116,12 +116,16 @@ func init() {
 	enrollmentDescNote := enrollmentFields[7].Descriptor()
 	// enrollment.DefaultNote holds the default value on creation for the note field.
 	enrollment.DefaultNote = enrollmentDescNote.Default.(string)
+	// enrollmentDescIsActive is the schema descriptor for is_active field.
+	enrollmentDescIsActive := enrollmentFields[8].Descriptor()
+	// enrollment.DefaultIsActive holds the default value on creation for the is_active field.
+	enrollment.DefaultIsActive = enrollmentDescIsActive.Default.(bool)
 	// enrollmentDescCreatedAt is the schema descriptor for created_at field.
-	enrollmentDescCreatedAt := enrollmentFields[8].Descriptor()
+	enrollmentDescCreatedAt := enrollmentFields[9].Descriptor()
 	// enrollment.DefaultCreatedAt holds the default value on creation for the created_at field.
 	enrollment.DefaultCreatedAt = enrollmentDescCreatedAt.Default.(func() time.Time)
 	// enrollmentDescUpdatedAt is the schema descriptor for updated_at field.
-	enrollmentDescUpdatedAt := enrollmentFields[9].Descriptor()
+	enrollmentDescUpdatedAt := enrollmentFields[10].Descriptor()
 	// enrollment.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	enrollment.DefaultUpdatedAt = enrollmentDescUpdatedAt.Default.(func() time.Time)
 	// enrollment.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
@@ -189,8 +193,12 @@ func init() {
 	paymentDescNote := paymentFields[6].Descriptor()
 	// payment.DefaultNote holds the default value on creation for the note field.
 	payment.DefaultNote = paymentDescNote.Default.(string)
+	// paymentDescCreditOriginNote is the schema descriptor for credit_origin_note field.
+	paymentDescCreditOriginNote := paymentFields[8].Descriptor()
+	// payment.DefaultCreditOriginNote holds the default value on creation for the credit_origin_note field.
+	payment.DefaultCreditOriginNote = paymentDescCreditOriginNote.Default.(string)
 	// paymentDescCreatedAt is the schema descriptor for created_at field.
-	paymentDescCreatedAt := paymentFields[7].Descriptor()
+	paymentDescCreatedAt := paymentFields[9].Descriptor()
 	// payment.DefaultCreatedAt holds the default value on creation for the created_at field.
 	payment.DefaultCreatedAt = paymentDescCreatedAt.Default.(func() time.Time)
 	settingsFields := schema.Settings{}.Fields()

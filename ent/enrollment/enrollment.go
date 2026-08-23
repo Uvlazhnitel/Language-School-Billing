@@ -33,6 +33,8 @@ const (
 	FieldSubscriptionLessonPriceCents = "subscription_lesson_price_cents"
 	// FieldNote holds the string denoting the note field in the database.
 	FieldNote = "note"
+	// FieldIsActive holds the string denoting the is_active field in the database.
+	FieldIsActive = "is_active"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -80,6 +82,7 @@ var Columns = []string{
 	FieldLessonPriceOverrideCents,
 	FieldSubscriptionLessonPriceCents,
 	FieldNote,
+	FieldIsActive,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -107,6 +110,8 @@ var (
 	DefaultSubscriptionLessonPriceCents int64
 	// DefaultNote holds the default value on creation for the "note" field.
 	DefaultNote string
+	// DefaultIsActive holds the default value on creation for the "is_active" field.
+	DefaultIsActive bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -189,6 +194,11 @@ func BySubscriptionLessonPriceCents(opts ...sql.OrderTermOption) OrderOption {
 // ByNote orders the results by the note field.
 func ByNote(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldNote, opts...).ToFunc()
+}
+
+// ByIsActive orders the results by the is_active field.
+func ByIsActive(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldIsActive, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

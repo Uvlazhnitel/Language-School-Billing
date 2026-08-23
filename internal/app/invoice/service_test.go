@@ -2488,3 +2488,182 @@ func TestIssueOneRollsBackWhenSequenceUpdateFails(t *testing.T) {
 		t.Fatalf("NextSeq after rollback = %d, want 7", settingsItem.NextSeq)
 	}
 }
+
+func TestReopenDraftRestoresStudentCreditAndReappliesItOnIssue(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-reopen-credit?mode=memory&_fk=1")
+	defer client.Close()
+	svc := New(client)
+
+	st, err := client.Student.Create().SetFullName("Credit Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+	if _, err := client.Settings.Create().
+		SetSingletonID(app.SettingsSingletonID).
+		SetInvoicePrefix("LS").
+		SetNextSeq(10).
+		Save(ctx); err != nil {
+		t.Fatalf("Settings.Create: %v", err)
+	}
+	iv, err := client.Invoice.Create().
+		SetStudentID(st.ID).
+		SetPeriodYear(2026).
+		SetPeriodMonth(7).
+		SetTotalAmountCents(10000).
+		SetStatus(StatusIssued).
+		SetNumber("LS-202607-009").
+		SetPdfFilename("old.pdf").
+		SetPdfRevision(1).
+		SetPdfGeneratedAt(time.Now()).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create: %v", err)
+	}
+	for index, input := range []struct {
+		amount int64
+		note   string
+	}{
+		{amount: 2500, note: "first credit"},
+		{amount: 3500, note: ""},
+	} {
+		invoiceID := iv.ID
+		note := "Applied from student credit"
+		if input.note != "" {
+			note = input.note + " (applied from credit)"
+		}
+		if _, err := client.Payment.Create().
+			SetStudentID(st.ID).
+			SetInvoiceID(invoiceID).
+			SetAmountCents(input.amount).
+			SetMethod(payment.MethodCash).
+			SetPaidAt(time.Date(2026, 7, 20+index, 0, 0, 0, 0, time.UTC)).
+			SetNote(note).
+			SetAllocationSource(payment.AllocationSourceStudentCredit).
+			SetCreditOriginNote(input.note).
+			Save(ctx); err != nil {
+			t.Fatalf("Payment.Create: %v", err)
+		}
+	}
+
+	details, err := svc.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if !details.CanReopenDraft || details.ReopenCreditAmount != 60 || details.ReopenBlockedAmount != 0 {
+		t.Fatalf("reopen details = %+v", details)
+	}
+
+	result, err := svc.ReopenDraftWithVersionResult(ctx, iv.ID, iv.Version, t.TempDir())
+	if err != nil {
+		t.Fatalf("ReopenDraftWithVersionResult: %v", err)
+	}
+	if result.RestoredCredit != 60 {
+		t.Fatalf("restored credit = %v, want 60", result.RestoredCredit)
+	}
+	reopened, err := client.Invoice.Get(ctx, iv.ID)
+	if err != nil {
+		t.Fatalf("Invoice.Get reopened: %v", err)
+	}
+	if reopened.Status != StatusDraft || reopened.Number != nil || reopened.PdfFilename != nil || reopened.PdfRevision != nil || reopened.PdfGeneratedAt != nil {
+		t.Fatalf("reopened invoice = %+v", reopened)
+	}
+	credits, err := client.Payment.Query().Where(payment.StudentIDEQ(st.ID)).Order(payment.ByPaidAt()).All(ctx)
+	if err != nil {
+		t.Fatalf("Payment.Query credits: %v", err)
+	}
+	if len(credits) != 2 || credits[0].InvoiceID != nil || credits[1].InvoiceID != nil {
+		t.Fatalf("restored credits = %+v", credits)
+	}
+	if credits[0].AllocationSource != payment.AllocationSourceDirect || credits[0].Note != "first credit" || credits[0].CreditOriginNote != "" {
+		t.Fatalf("first restored credit = %+v", credits[0])
+	}
+	if credits[1].AllocationSource != payment.AllocationSourceDirect || credits[1].Note != "" || credits[1].CreditOriginNote != "" {
+		t.Fatalf("second restored credit = %+v", credits[1])
+	}
+
+	if _, _, err := svc.IssueAndApplyCreditWithVersion(ctx, iv.ID, reopened.Version); err != nil {
+		t.Fatalf("IssueAndApplyCreditWithVersion: %v", err)
+	}
+	reapplied, err := client.Payment.Query().Where(payment.InvoiceIDEQ(iv.ID)).All(ctx)
+	if err != nil {
+		t.Fatalf("Payment.Query reapplied: %v", err)
+	}
+	var reappliedCents int64
+	for _, item := range reapplied {
+		reappliedCents += item.AmountCents
+		if item.AllocationSource != payment.AllocationSourceStudentCredit {
+			t.Fatalf("reapplied payment source = %q", item.AllocationSource)
+		}
+	}
+	if reappliedCents != 6000 {
+		t.Fatalf("reapplied cents = %d, want 6000", reappliedCents)
+	}
+}
+
+func TestReopenDraftAllowsFullyPaidCreditButBlocksMixedPaymentsAtomically(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:invoice-reopen-credit-guards?mode=memory&_fk=1")
+	defer client.Close()
+	svc := New(client)
+
+	st, err := client.Student.Create().SetFullName("Guard Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+	paidInvoice, err := client.Invoice.Create().
+		SetStudentID(st.ID).SetPeriodYear(2026).SetPeriodMonth(6).
+		SetTotalAmountCents(5000).SetStatus(StatusPaid).SetNumber("LS-202606-001").Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create paid: %v", err)
+	}
+	if _, err := client.Payment.Create().
+		SetStudentID(st.ID).SetInvoiceID(paidInvoice.ID).SetAmountCents(5000).
+		SetMethod(payment.MethodCash).SetAllocationSource(payment.AllocationSourceStudentCredit).
+		SetNote("Applied from student credit").Save(ctx); err != nil {
+		t.Fatalf("Payment.Create paid credit: %v", err)
+	}
+	paidDetails, err := svc.Get(ctx, paidInvoice.ID)
+	if err != nil || !paidDetails.CanReopenDraft {
+		t.Fatalf("paid credit reopen details = %+v, err=%v", paidDetails, err)
+	}
+	if _, err := svc.ReopenDraftWithVersionResult(ctx, paidInvoice.ID, paidInvoice.Version, t.TempDir()); err != nil {
+		t.Fatalf("reopen fully paid credit: %v", err)
+	}
+
+	mixedInvoice, err := client.Invoice.Create().
+		SetStudentID(st.ID).SetPeriodYear(2026).SetPeriodMonth(7).
+		SetTotalAmountCents(8000).SetStatus(StatusIssued).SetNumber("LS-202607-002").Save(ctx)
+	if err != nil {
+		t.Fatalf("Invoice.Create mixed: %v", err)
+	}
+	for _, source := range []payment.AllocationSource{payment.AllocationSourceStudentCredit, payment.AllocationSourceDirect} {
+		builder := client.Payment.Create().
+			SetStudentID(st.ID).SetInvoiceID(mixedInvoice.ID).SetAmountCents(2000).
+			SetMethod(payment.MethodCash).SetAllocationSource(source)
+		if source == payment.AllocationSourceStudentCredit {
+			builder.SetNote("Applied from student credit")
+		}
+		if _, err := builder.Save(ctx); err != nil {
+			t.Fatalf("Payment.Create mixed: %v", err)
+		}
+	}
+	mixedDetails, err := svc.Get(ctx, mixedInvoice.ID)
+	if err != nil {
+		t.Fatalf("Get mixed: %v", err)
+	}
+	if mixedDetails.CanReopenDraft || mixedDetails.ReopenCreditAmount != 20 || mixedDetails.ReopenBlockedAmount != 20 {
+		t.Fatalf("mixed reopen details = %+v", mixedDetails)
+	}
+	if _, err := svc.ReopenDraftWithVersionResult(ctx, mixedInvoice.ID, mixedInvoice.Version, t.TempDir()); err == nil {
+		t.Fatal("expected mixed payments to block reopen")
+	}
+	unchanged, err := client.Payment.Query().Where(payment.InvoiceIDEQ(mixedInvoice.ID)).Count(ctx)
+	if err != nil || unchanged != 2 {
+		t.Fatalf("linked payments after blocked reopen = %d, err=%v", unchanged, err)
+	}
+	freshMixed, err := client.Invoice.Get(ctx, mixedInvoice.ID)
+	if err != nil || freshMixed.Status != StatusIssued || freshMixed.Number == nil {
+		t.Fatalf("mixed invoice changed = %+v, err=%v", freshMixed, err)
+	}
+}

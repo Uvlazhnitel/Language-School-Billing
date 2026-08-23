@@ -44,6 +44,7 @@ type StudentWorkspaceProps = {
   detailActivity: StudentActivityItem[];
   t: TranslateFn;
   deletingPaymentId: number | null;
+  endingEnrollmentId: number | null;
   onQueryChange: (value: string) => void;
   onStatusFilterChange: (value: StudentStatusFilter) => void;
   onDebtFilterChange: (value: StudentDebtFilter) => void;
@@ -61,6 +62,7 @@ type StudentWorkspaceProps = {
   onCopyDebtLv: () => void;
   onDeletePayment: (payment: PaymentDTO) => void;
   onUpdateEnrollmentPrice: (enrollment: EnrollmentDTO, price: number) => Promise<boolean>;
+  onEndEnrollment: (enrollment: EnrollmentDTO) => void;
   canDeleteStudent: boolean;
   canDeletePayment: boolean;
   onManageEnrollments: () => void;
@@ -94,6 +96,7 @@ export function StudentWorkspace({
   detailActivity,
   t,
   deletingPaymentId,
+  endingEnrollmentId,
   onQueryChange,
   onStatusFilterChange,
   onDebtFilterChange,
@@ -111,6 +114,7 @@ export function StudentWorkspace({
   onCopyDebtLv,
   onDeletePayment,
   onUpdateEnrollmentPrice,
+  onEndEnrollment,
   canDeleteStudent,
   canDeletePayment,
   onManageEnrollments,
@@ -352,6 +356,7 @@ export function StudentWorkspace({
           formatEUR={formatEUR}
           months={months}
           deletingPaymentId={deletingPaymentId}
+          endingEnrollmentId={endingEnrollmentId}
           canDeletePayment={canDeletePayment}
           onEditStudent={() => selectedStudent && onEditStudent(selectedStudent)}
           onToggleActive={selectedStudent ? () => onToggleActive(selectedStudent) : undefined}
@@ -362,6 +367,7 @@ export function StudentWorkspace({
           onCopyDebtLv={onCopyDebtLv}
           onDeletePayment={onDeletePayment}
           onUpdateEnrollmentPrice={onUpdateEnrollmentPrice}
+          onEndEnrollment={onEndEnrollment}
           onManageEnrollments={onManageEnrollments}
           onOpenInvoices={onOpenInvoices}
         />

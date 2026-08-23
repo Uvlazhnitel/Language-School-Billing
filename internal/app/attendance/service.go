@@ -49,6 +49,7 @@ type Row struct {
 	CourseID                int     `json:"courseId"`                // ID of the course
 	CourseName              string  `json:"courseName"`              // Course name
 	CourseType              string  `json:"courseType"`              // Course type: "group" or "individual"
+	TeacherName             string  `json:"teacherName"`             // Assigned teacher name
 	BillingMode             string  `json:"billingMode"`             // Enrollment billing mode
 	LessonPrice             float64 `json:"lessonPrice"`             // Hourly rate for this enrollment
 	SubscriptionLessonPrice float64 `json:"subscriptionLessonPrice"` // Explicit subscription lesson price for this enrollment
@@ -117,7 +118,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 	q := s.db.Enrollment.
 		Query().
 		WithStudent().
-		WithCourse()
+		WithCourse(func(cq *ent.CourseQuery) { cq.WithTeacher() })
 	if courseID != nil && *courseID > 0 {
 		q = q.Where(enrollment.CourseIDEQ(*courseID))
 	}
@@ -149,6 +150,14 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			hours = am.Hours
 			hasRecord = true
 		}
+		if !e.IsActive && !hasRecord {
+			continue
+		}
+
+		teacherName := c.TeacherName
+		if c.Edges.Teacher != nil {
+			teacherName = c.Edges.Teacher.FullName
+		}
 
 		canDelete, err := canDeleteEnrollmentWithInvoiceHistory(ctx, s.db, e.ID)
 		if err != nil {
@@ -173,6 +182,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			CourseID:                e.CourseID,
 			CourseName:              c.Name,
 			CourseType:              string(c.Type),
+			TeacherName:             teacherName,
 			BillingMode:             string(e.BillingMode),
 			LessonPrice:             money.CentsToEuros(lessonPriceCents),
 			SubscriptionLessonPrice: utils.Round2(money.CentsToEuros(e.SubscriptionLessonPriceCents)),
@@ -217,6 +227,15 @@ func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m int, hou
 	if !ent.IsNotFound(err) {
 		return err
 	}
+	en, err := s.db.Enrollment.Query().
+		Where(enrollment.StudentIDEQ(studentID), enrollment.CourseIDEQ(courseID)).
+		Only(ctx)
+	if err != nil {
+		return err
+	}
+	if !en.IsActive {
+		return errors.New("нельзя добавить посещаемость для завершённого зачисления")
+	}
 	if _, err = s.db.AttendanceMonth.
 		Create().
 		SetStudentID(studentID).
@@ -260,6 +279,22 @@ func (s *Service) ListCourseMonthSubscriptions(ctx context.Context, y, m int, co
 	for _, item := range subscriptionEnrollments {
 		if courseID != nil && *courseID > 0 && item.CourseID != *courseID {
 			continue
+		}
+		if !item.IsActive {
+			hasHistory, err := s.db.AttendanceMonth.Query().
+				Where(
+					attendancemonth.StudentIDEQ(item.StudentID),
+					attendancemonth.CourseIDEQ(item.CourseID),
+					attendancemonth.YearEQ(y),
+					attendancemonth.MonthEQ(m),
+				).
+				Exist(ctx)
+			if err != nil {
+				return nil, err
+			}
+			if !hasHistory {
+				continue
+			}
 		}
 		if _, ok := seenCourseIDs[item.CourseID]; ok {
 			continue
@@ -382,6 +417,9 @@ func (s *Service) UpsertCourseMonthSubscription(ctx context.Context, courseID, y
 				return nil, attendanceErr
 			}
 		} else if ent.IsNotFound(attendanceErr) {
+			if !en.IsActive {
+				continue
+			}
 			if _, attendanceErr = s.db.AttendanceMonth.Create().
 				SetStudentID(en.StudentID).
 				SetCourseID(en.CourseID).

@@ -27,6 +27,7 @@ func (Enrollment) Fields() []ent.Field {
 		field.Int64("lesson_price_override_cents").Default(-1),
 		field.Int64("subscription_lesson_price_cents").Default(-1),
 		field.String("note").Default(""),
+		field.Bool("is_active").Default(true),
 		field.Time("created_at").Optional().Nillable().Default(time.Now),
 		field.Time("updated_at").Optional().Nillable().Default(time.Now).UpdateDefault(time.Now),
 	}

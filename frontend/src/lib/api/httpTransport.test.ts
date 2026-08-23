@@ -253,6 +253,32 @@ describe("httpTransport", () => {
     });
   });
 
+  it("updates enrollment active state with optimistic locking", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toMatch(/\/api\/enrollments\/42\/active$/);
+      expect(init?.method).toBe("POST");
+      expect(JSON.parse(String(init?.body))).toEqual({ version: 3, active: false });
+      return jsonResponse({ ok: true });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(httpTransport.setEnrollmentActive(42, 3, false)).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns restored student credit when reopening an invoice", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      expect(String(input)).toMatch(/\/api\/invoices\/128\/reopen-draft$/);
+      expect(init?.method).toBe("POST");
+      expect(JSON.parse(String(init?.body))).toEqual({ version: 2 });
+      return jsonResponse({ restoredCredit: 100 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(httpTransport.reopenToDraft(128, 2)).resolves.toEqual({ restoredCredit: 100 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("maps invoice pdf endpoints", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

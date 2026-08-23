@@ -39,6 +39,7 @@ type StudentsScreenProps = {
   detailNextAction: StudentNextAction | null;
   detailActivity: StudentActivityItem[];
   deletingPaymentId: number | null;
+  endingEnrollmentId: number | null;
   canDeleteStudent: boolean;
   canDeletePayment: boolean;
   payerRoleLabel: (role: string) => string;
@@ -64,6 +65,7 @@ type StudentsScreenProps = {
   onCopyDebtLv: () => void | Promise<void>;
   onDeletePayment: (payment: PaymentDTO) => void | Promise<void>;
   onUpdateEnrollmentPrice: (enrollment: EnrollmentDTO, price: number) => Promise<boolean>;
+  onEndEnrollment: (enrollment: EnrollmentDTO) => void;
   onManageEnrollments: () => void;
   onOpenInvoices: () => void;
   studentModalOpen: boolean;

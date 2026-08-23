@@ -100,11 +100,12 @@ func (s *Server) handleInvoicesReopenDraft(w http.ResponseWriter, r *http.Reques
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	if err := s.svc.InvoiceReopenDraftWithVersion(r.Context(), id, req.Version); err != nil {
+	result, err := s.svc.InvoiceReopenDraftWithVersion(r.Context(), id, req.Version)
+	if err != nil {
 		writeError(w, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	writeJSON(w, http.StatusOK, result)
 }
 
 func (s *Server) handleInvoicesIssue(w http.ResponseWriter, r *http.Request) {

@@ -54,6 +54,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "button.openInvoices": "Open invoices",
     "button.manageEnrollments": "Enrollments",
     "button.addToCourse": "Add to course",
+    "button.endEnrollment": "Finish",
+    "button.endingEnrollment": "Finishing...",
     "button.saveAndOpenAttendance": "Save and go to attendance",
     "button.addStudent": "Add student",
     "button.addCourse": "Add course",
@@ -458,6 +460,9 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.enrollmentDeleteConfirm":
       "Delete this enrollment? Related attendance records will also be removed. This cannot be undone.",
     "msg.enrollmentDeleted": "Enrollment deleted",
+    "msg.enrollmentEndConfirm":
+      "Finish enrollment in {course}? Existing attendance, invoices, and payments will be preserved.",
+    "msg.enrollmentEnded": "Enrollment finished",
     "msg.noOpenDebtsStudent": "This student no longer has open debts",
     "msg.paymentStudentMissing": "No student selected for payment",
     "msg.paymentAmountInvalid": "Enter a valid payment amount",
@@ -468,8 +473,14 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.invoiceIssuedPdfReady": "Invoice issued and PDF created: #{number}",
     "msg.invoiceIssuedPdfPending": "Invoice issued, but PDF is not ready yet: #{number}",
     "msg.invoiceReopened": "Invoice returned to draft",
+    "msg.invoiceReopenedCredit":
+      "Invoice returned to draft; {amount} was returned to the student's credit",
     "msg.invoiceReopenConfirm":
-      "Return this issued invoice to draft? This is allowed only when there are no payments. The old invoice number will be cleared.",
+      "Return this issued invoice to draft? The old invoice number will be cleared.",
+    "msg.invoiceReopenCreditConfirm":
+      "Return this invoice to draft? {amount} applied from student credit will be returned to the balance. The old invoice number will be cleared.",
+    "msg.invoiceReopenBlockedPayment":
+      "This invoice cannot be returned to draft because it has ordinary payments totaling {amount}.",
     "msg.pdfReady": "PDF ready: {path}",
     "msg.ensureAllPdfsSummary":
       "Processed {processed}: generated {generated}, already ready {ready}, failed {failed}",
@@ -713,6 +724,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "button.openInvoices": "Открыть счета",
     "button.manageEnrollments": "Зачисления",
     "button.addToCourse": "Добавить в курс",
+    "button.endEnrollment": "Завершить",
+    "button.endingEnrollment": "Завершение...",
     "button.saveAndOpenAttendance": "Сохранить и перейти к посещению",
     "button.addStudent": "Добавить ученика",
     "button.addCourse": "Добавить курс",
@@ -1133,6 +1146,9 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.enrollmentDeleteConfirm":
       "Удалить зачисление? Вместе с ним будут удалены связанные записи посещаемости. Это действие нельзя отменить.",
     "msg.enrollmentDeleted": "Зачисление удалено",
+    "msg.enrollmentEndConfirm":
+      "Завершить зачисление на курс «{course}»? Посещаемость, счета и оплаты сохранятся.",
+    "msg.enrollmentEnded": "Зачисление завершено",
     "msg.noOpenDebtsStudent": "У этого ученика больше нет открытых долгов",
     "msg.paymentStudentMissing": "Для оплаты не выбран ученик",
     "msg.paymentAmountInvalid": "Введите корректную сумму",
@@ -1143,8 +1159,14 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.invoiceIssuedPdfReady": "Счёт выставлен, PDF создан: #{number}",
     "msg.invoiceIssuedPdfPending": "Счёт выставлен, но PDF пока не готов: #{number}",
     "msg.invoiceReopened": "Счёт возвращён в черновик",
+    "msg.invoiceReopenedCredit":
+      "Счёт возвращён в черновик; {amount} возвращено в кредит ученика",
     "msg.invoiceReopenConfirm":
-      "Вернуть этот выставленный счёт в черновик? Это разрешено только если по нему нет оплат. Старый номер счёта будет очищен.",
+      "Вернуть этот выставленный счёт в черновик? Старый номер счёта будет очищен.",
+    "msg.invoiceReopenCreditConfirm":
+      "Вернуть счёт в черновик? Зачтённые из кредита {amount} вернутся на баланс ученика. Старый номер счёта будет очищен.",
+    "msg.invoiceReopenBlockedPayment":
+      "Счёт нельзя вернуть в черновик: по нему есть обычные оплаты на сумму {amount}.",
     "msg.pdfReady": "PDF готов: {path}",
     "msg.ensureAllPdfsSummary":
       "Обработано {processed}: создано {generated}, уже готово {ready}, с ошибкой {failed}",

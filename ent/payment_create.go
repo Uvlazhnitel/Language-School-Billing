@@ -104,6 +104,34 @@ func (_c *PaymentCreate) SetNillableNote(v *string) *PaymentCreate {
 	return _c
 }
 
+// SetAllocationSource sets the "allocation_source" field.
+func (_c *PaymentCreate) SetAllocationSource(v payment.AllocationSource) *PaymentCreate {
+	_c.mutation.SetAllocationSource(v)
+	return _c
+}
+
+// SetNillableAllocationSource sets the "allocation_source" field if the given value is not nil.
+func (_c *PaymentCreate) SetNillableAllocationSource(v *payment.AllocationSource) *PaymentCreate {
+	if v != nil {
+		_c.SetAllocationSource(*v)
+	}
+	return _c
+}
+
+// SetCreditOriginNote sets the "credit_origin_note" field.
+func (_c *PaymentCreate) SetCreditOriginNote(v string) *PaymentCreate {
+	_c.mutation.SetCreditOriginNote(v)
+	return _c
+}
+
+// SetNillableCreditOriginNote sets the "credit_origin_note" field if the given value is not nil.
+func (_c *PaymentCreate) SetNillableCreditOriginNote(v *string) *PaymentCreate {
+	if v != nil {
+		_c.SetCreditOriginNote(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *PaymentCreate) SetCreatedAt(v time.Time) *PaymentCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -179,6 +207,14 @@ func (_c *PaymentCreate) defaults() {
 		v := payment.DefaultNote
 		_c.mutation.SetNote(v)
 	}
+	if _, ok := _c.mutation.AllocationSource(); !ok {
+		v := payment.DefaultAllocationSource
+		_c.mutation.SetAllocationSource(v)
+	}
+	if _, ok := _c.mutation.CreditOriginNote(); !ok {
+		v := payment.DefaultCreditOriginNote
+		_c.mutation.SetCreditOriginNote(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := payment.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -209,6 +245,17 @@ func (_c *PaymentCreate) check() error {
 	}
 	if _, ok := _c.mutation.Note(); !ok {
 		return &ValidationError{Name: "note", err: errors.New(`ent: missing required field "Payment.note"`)}
+	}
+	if _, ok := _c.mutation.AllocationSource(); !ok {
+		return &ValidationError{Name: "allocation_source", err: errors.New(`ent: missing required field "Payment.allocation_source"`)}
+	}
+	if v, ok := _c.mutation.AllocationSource(); ok {
+		if err := payment.AllocationSourceValidator(v); err != nil {
+			return &ValidationError{Name: "allocation_source", err: fmt.Errorf(`ent: validator failed for field "Payment.allocation_source": %w`, err)}
+		}
+	}
+	if _, ok := _c.mutation.CreditOriginNote(); !ok {
+		return &ValidationError{Name: "credit_origin_note", err: errors.New(`ent: missing required field "Payment.credit_origin_note"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Payment.created_at"`)}
@@ -261,6 +308,14 @@ func (_c *PaymentCreate) createSpec() (*Payment, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Note(); ok {
 		_spec.SetField(payment.FieldNote, field.TypeString, value)
 		_node.Note = value
+	}
+	if value, ok := _c.mutation.AllocationSource(); ok {
+		_spec.SetField(payment.FieldAllocationSource, field.TypeEnum, value)
+		_node.AllocationSource = value
+	}
+	if value, ok := _c.mutation.CreditOriginNote(); ok {
+		_spec.SetField(payment.FieldCreditOriginNote, field.TypeString, value)
+		_node.CreditOriginNote = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(payment.FieldCreatedAt, field.TypeTime, value)

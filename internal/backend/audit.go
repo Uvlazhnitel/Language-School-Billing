@@ -210,14 +210,16 @@ func toAuditPaymentDTO(item *ent.Payment) map[string]any {
 		invoiceID = intPtr(*item.InvoiceID)
 	}
 	return map[string]any{
-		"id":        item.ID,
-		"studentId": item.StudentID,
-		"invoiceId": invoiceID,
-		"amount":    money.CentsToEuros(item.AmountCents),
-		"method":    string(item.Method),
-		"note":      item.Note,
-		"paidAt":    item.PaidAt.Format(time.RFC3339),
-		"createdAt": item.CreatedAt.Format(time.RFC3339),
+		"id":               item.ID,
+		"studentId":        item.StudentID,
+		"invoiceId":        invoiceID,
+		"amount":           money.CentsToEuros(item.AmountCents),
+		"method":           string(item.Method),
+		"note":             item.Note,
+		"allocationSource": item.AllocationSource,
+		"creditOriginNote": item.CreditOriginNote,
+		"paidAt":           item.PaidAt.Format(time.RFC3339),
+		"createdAt":        item.CreatedAt.Format(time.RFC3339),
 	}
 }
 

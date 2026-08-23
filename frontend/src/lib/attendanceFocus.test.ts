@@ -12,6 +12,7 @@ const rows: Row[] = [
     courseId: 3,
     courseName: "Group",
     courseType: "group",
+    teacherName: "Teacher",
     billingMode: "per_lesson",
     lessonPrice: 15,
     subscriptionLessonPrice: 0,

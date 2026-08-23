@@ -606,6 +606,76 @@ func TestUpsertCourseMonthSubscriptionRejectsNonDraftInvoice(t *testing.T) {
 	}
 }
 
+func TestFinishedSubscriptionKeepsHistoryWithoutCreatingFutureAttendance(t *testing.T) {
+	ctx := context.Background()
+	client := enttest.Open(t, "sqlite3", "file:attendance-finished-subscription?mode=memory&_fk=1")
+	defer client.Close()
+
+	svc := New(client)
+	st, err := client.Student.Create().SetFullName("Finished Subscription Student").SetIsActive(true).Save(ctx)
+	if err != nil {
+		t.Fatalf("Student.Create: %v", err)
+	}
+	crs, err := client.Course.Create().
+		SetName("Finished Subscription Course").
+		SetType(course.TypeGroup).
+		SetIsActive(true).
+		Save(ctx)
+	if err != nil {
+		t.Fatalf("Course.Create: %v", err)
+	}
+	if _, err := client.Enrollment.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetBillingMode(enrollment.BillingModeSubscription).
+		SetIsActive(false).
+		Save(ctx); err != nil {
+		t.Fatalf("Enrollment.Create: %v", err)
+	}
+	if _, err := client.AttendanceMonth.Create().
+		SetStudentID(st.ID).
+		SetCourseID(crs.ID).
+		SetYear(2026).
+		SetMonth(6).
+		SetHours(4).
+		Save(ctx); err != nil {
+		t.Fatalf("AttendanceMonth.Create: %v", err)
+	}
+
+	history, err := svc.ListCourseMonthSubscriptions(ctx, 2026, 6, &crs.ID)
+	if err != nil {
+		t.Fatalf("ListCourseMonthSubscriptions history: %v", err)
+	}
+	if len(history) != 1 || history[0].LessonsHeld != 4 {
+		t.Fatalf("historical subscription attendance = %+v", history)
+	}
+	future, err := svc.ListCourseMonthSubscriptions(ctx, 2026, 7, &crs.ID)
+	if err != nil {
+		t.Fatalf("ListCourseMonthSubscriptions future: %v", err)
+	}
+	if len(future) != 0 {
+		t.Fatalf("future subscription attendance = %+v, want none", future)
+	}
+
+	if _, err := svc.UpsertCourseMonthSubscription(ctx, crs.ID, 2026, 7, 3); err != nil {
+		t.Fatalf("UpsertCourseMonthSubscription: %v", err)
+	}
+	created, err := client.AttendanceMonth.Query().
+		Where(
+			attendancemonth.StudentIDEQ(st.ID),
+			attendancemonth.CourseIDEQ(crs.ID),
+			attendancemonth.YearEQ(2026),
+			attendancemonth.MonthEQ(7),
+		).
+		Exist(ctx)
+	if err != nil {
+		t.Fatalf("AttendanceMonth.Exist: %v", err)
+	}
+	if created {
+		t.Fatal("future attendance was created for a finished subscription")
+	}
+}
+
 func TestListPerLessonAllowsDeleteAfterReopenToDraft(t *testing.T) {
 	ctx := context.Background()
 	client := enttest.Open(t, "sqlite3", "file:attendance-delete-reopened?mode=memory&_fk=1")

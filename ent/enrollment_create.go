@@ -125,6 +125,20 @@ func (_c *EnrollmentCreate) SetNillableNote(v *string) *EnrollmentCreate {
 	return _c
 }
 
+// SetIsActive sets the "is_active" field.
+func (_c *EnrollmentCreate) SetIsActive(v bool) *EnrollmentCreate {
+	_c.mutation.SetIsActive(v)
+	return _c
+}
+
+// SetNillableIsActive sets the "is_active" field if the given value is not nil.
+func (_c *EnrollmentCreate) SetNillableIsActive(v *bool) *EnrollmentCreate {
+	if v != nil {
+		_c.SetIsActive(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *EnrollmentCreate) SetCreatedAt(v time.Time) *EnrollmentCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -237,6 +251,10 @@ func (_c *EnrollmentCreate) defaults() {
 		v := enrollment.DefaultNote
 		_c.mutation.SetNote(v)
 	}
+	if _, ok := _c.mutation.IsActive(); !ok {
+		v := enrollment.DefaultIsActive
+		_c.mutation.SetIsActive(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := enrollment.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -280,6 +298,9 @@ func (_c *EnrollmentCreate) check() error {
 	}
 	if _, ok := _c.mutation.Note(); !ok {
 		return &ValidationError{Name: "note", err: errors.New(`ent: missing required field "Enrollment.note"`)}
+	}
+	if _, ok := _c.mutation.IsActive(); !ok {
+		return &ValidationError{Name: "is_active", err: errors.New(`ent: missing required field "Enrollment.is_active"`)}
 	}
 	if len(_c.mutation.StudentIDs()) == 0 {
 		return &ValidationError{Name: "student", err: errors.New(`ent: missing required edge "Enrollment.student"`)}
@@ -340,6 +361,10 @@ func (_c *EnrollmentCreate) createSpec() (*Enrollment, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.Note(); ok {
 		_spec.SetField(enrollment.FieldNote, field.TypeString, value)
 		_node.Note = value
+	}
+	if value, ok := _c.mutation.IsActive(); ok {
+		_spec.SetField(enrollment.FieldIsActive, field.TypeBool, value)
+		_node.IsActive = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(enrollment.FieldCreatedAt, field.TypeTime, value)

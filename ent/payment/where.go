@@ -85,6 +85,11 @@ func Note(v string) predicate.Payment {
 	return predicate.Payment(sql.FieldEQ(FieldNote, v))
 }
 
+// CreditOriginNote applies equality check predicate on the "credit_origin_note" field. It's identical to CreditOriginNoteEQ.
+func CreditOriginNote(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldEQ(FieldCreditOriginNote, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Payment {
 	return predicate.Payment(sql.FieldEQ(FieldCreatedAt, v))
@@ -343,6 +348,91 @@ func NoteEqualFold(v string) predicate.Payment {
 // NoteContainsFold applies the ContainsFold predicate on the "note" field.
 func NoteContainsFold(v string) predicate.Payment {
 	return predicate.Payment(sql.FieldContainsFold(FieldNote, v))
+}
+
+// AllocationSourceEQ applies the EQ predicate on the "allocation_source" field.
+func AllocationSourceEQ(v AllocationSource) predicate.Payment {
+	return predicate.Payment(sql.FieldEQ(FieldAllocationSource, v))
+}
+
+// AllocationSourceNEQ applies the NEQ predicate on the "allocation_source" field.
+func AllocationSourceNEQ(v AllocationSource) predicate.Payment {
+	return predicate.Payment(sql.FieldNEQ(FieldAllocationSource, v))
+}
+
+// AllocationSourceIn applies the In predicate on the "allocation_source" field.
+func AllocationSourceIn(vs ...AllocationSource) predicate.Payment {
+	return predicate.Payment(sql.FieldIn(FieldAllocationSource, vs...))
+}
+
+// AllocationSourceNotIn applies the NotIn predicate on the "allocation_source" field.
+func AllocationSourceNotIn(vs ...AllocationSource) predicate.Payment {
+	return predicate.Payment(sql.FieldNotIn(FieldAllocationSource, vs...))
+}
+
+// CreditOriginNoteEQ applies the EQ predicate on the "credit_origin_note" field.
+func CreditOriginNoteEQ(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldEQ(FieldCreditOriginNote, v))
+}
+
+// CreditOriginNoteNEQ applies the NEQ predicate on the "credit_origin_note" field.
+func CreditOriginNoteNEQ(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldNEQ(FieldCreditOriginNote, v))
+}
+
+// CreditOriginNoteIn applies the In predicate on the "credit_origin_note" field.
+func CreditOriginNoteIn(vs ...string) predicate.Payment {
+	return predicate.Payment(sql.FieldIn(FieldCreditOriginNote, vs...))
+}
+
+// CreditOriginNoteNotIn applies the NotIn predicate on the "credit_origin_note" field.
+func CreditOriginNoteNotIn(vs ...string) predicate.Payment {
+	return predicate.Payment(sql.FieldNotIn(FieldCreditOriginNote, vs...))
+}
+
+// CreditOriginNoteGT applies the GT predicate on the "credit_origin_note" field.
+func CreditOriginNoteGT(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldGT(FieldCreditOriginNote, v))
+}
+
+// CreditOriginNoteGTE applies the GTE predicate on the "credit_origin_note" field.
+func CreditOriginNoteGTE(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldGTE(FieldCreditOriginNote, v))
+}
+
+// CreditOriginNoteLT applies the LT predicate on the "credit_origin_note" field.
+func CreditOriginNoteLT(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldLT(FieldCreditOriginNote, v))
+}
+
+// CreditOriginNoteLTE applies the LTE predicate on the "credit_origin_note" field.
+func CreditOriginNoteLTE(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldLTE(FieldCreditOriginNote, v))
+}
+
+// CreditOriginNoteContains applies the Contains predicate on the "credit_origin_note" field.
+func CreditOriginNoteContains(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldContains(FieldCreditOriginNote, v))
+}
+
+// CreditOriginNoteHasPrefix applies the HasPrefix predicate on the "credit_origin_note" field.
+func CreditOriginNoteHasPrefix(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldHasPrefix(FieldCreditOriginNote, v))
+}
+
+// CreditOriginNoteHasSuffix applies the HasSuffix predicate on the "credit_origin_note" field.
+func CreditOriginNoteHasSuffix(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldHasSuffix(FieldCreditOriginNote, v))
+}
+
+// CreditOriginNoteEqualFold applies the EqualFold predicate on the "credit_origin_note" field.
+func CreditOriginNoteEqualFold(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldEqualFold(FieldCreditOriginNote, v))
+}
+
+// CreditOriginNoteContainsFold applies the ContainsFold predicate on the "credit_origin_note" field.
+func CreditOriginNoteContainsFold(v string) predicate.Payment {
+	return predicate.Payment(sql.FieldContainsFold(FieldCreditOriginNote, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

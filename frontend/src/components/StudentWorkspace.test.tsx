@@ -82,6 +82,7 @@ function buildProps() {
     detailActivity: [],
     t: createTranslator("en-US"),
     deletingPaymentId: null,
+    endingEnrollmentId: null,
     onQueryChange: vi.fn(),
     onStatusFilterChange: vi.fn(),
     onDebtFilterChange: vi.fn(),
@@ -99,6 +100,7 @@ function buildProps() {
     onCopyDebtLv: vi.fn(),
     onDeletePayment: vi.fn(),
     onUpdateEnrollmentPrice: vi.fn(async () => true),
+    onEndEnrollment: vi.fn(),
     canDeleteStudent: true,
     canDeletePayment: true,
     onManageEnrollments: vi.fn(),
@@ -144,7 +146,9 @@ describe("StudentWorkspace", () => {
     expect(markup).toContain("<td>Yes</td>");
     expect(markup).toContain("<td>No</td>");
     expect(markup.match(/aria-label="Edit lesson price"/g)).toHaveLength(2);
+    expect(markup.match(/>Finish<\/button>/g)).toHaveLength(2);
   });
+
 
   it("shows payment deletion only when the capability is enabled", () => {
     const payment = {

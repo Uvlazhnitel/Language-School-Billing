@@ -185,6 +185,20 @@ func (_u *EnrollmentUpdate) SetNillableNote(v *string) *EnrollmentUpdate {
 	return _u
 }
 
+// SetIsActive sets the "is_active" field.
+func (_u *EnrollmentUpdate) SetIsActive(v bool) *EnrollmentUpdate {
+	_u.mutation.SetIsActive(v)
+	return _u
+}
+
+// SetNillableIsActive sets the "is_active" field if the given value is not nil.
+func (_u *EnrollmentUpdate) SetNillableIsActive(v *bool) *EnrollmentUpdate {
+	if v != nil {
+		_u.SetIsActive(*v)
+	}
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *EnrollmentUpdate) SetCreatedAt(v time.Time) *EnrollmentUpdate {
 	_u.mutation.SetCreatedAt(v)
@@ -376,6 +390,9 @@ func (_u *EnrollmentUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(enrollment.FieldNote, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.IsActive(); ok {
+		_spec.SetField(enrollment.FieldIsActive, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(enrollment.FieldCreatedAt, field.TypeTime, value)
@@ -666,6 +683,20 @@ func (_u *EnrollmentUpdateOne) SetNillableNote(v *string) *EnrollmentUpdateOne {
 	return _u
 }
 
+// SetIsActive sets the "is_active" field.
+func (_u *EnrollmentUpdateOne) SetIsActive(v bool) *EnrollmentUpdateOne {
+	_u.mutation.SetIsActive(v)
+	return _u
+}
+
+// SetNillableIsActive sets the "is_active" field if the given value is not nil.
+func (_u *EnrollmentUpdateOne) SetNillableIsActive(v *bool) *EnrollmentUpdateOne {
+	if v != nil {
+		_u.SetIsActive(*v)
+	}
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *EnrollmentUpdateOne) SetCreatedAt(v time.Time) *EnrollmentUpdateOne {
 	_u.mutation.SetCreatedAt(v)
@@ -887,6 +918,9 @@ func (_u *EnrollmentUpdateOne) sqlSave(ctx context.Context) (_node *Enrollment, 
 	}
 	if value, ok := _u.mutation.Note(); ok {
 		_spec.SetField(enrollment.FieldNote, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.IsActive(); ok {
+		_spec.SetField(enrollment.FieldIsActive, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(enrollment.FieldCreatedAt, field.TypeTime, value)

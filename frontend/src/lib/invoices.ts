@@ -10,6 +10,7 @@ export type {
   InvoiceListItemView,
   IssueAllResult,
   IssueResult,
+  ReopenDraftResult,
 } from "./api";
 
 export async function genDrafts(year: number, month: number) {

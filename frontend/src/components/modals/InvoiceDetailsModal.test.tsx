@@ -28,6 +28,9 @@ describe("InvoiceDetailsModal", () => {
           lastEmailedAt: "2026-06-18T10:30:00Z",
           lastEmailedTo: "family@example.com",
           emailCommunicationStatus: "stale",
+          canReopenDraft: true,
+          reopenCreditAmount: 0,
+          reopenBlockedPaymentAmount: 0,
           lines: [],
         }}
         summary={{
@@ -120,5 +123,61 @@ describe("InvoiceDetailsModal", () => {
 
     expect(markup).toContain("Download PDF");
     expect(markup).not.toContain("Record payment");
+  });
+
+  it("allows reopening a paid invoice covered only by student credit", () => {
+    const markup = renderToStaticMarkup(
+      <InvoiceDetailsModal
+        invoice={{
+          id: 14,
+          version: 2,
+          studentId: 6,
+          studentName: "Credit Student",
+          recipientName: "Credit Student",
+          recipientPhone: "",
+          recipientEmail: "",
+          childName: "",
+          studentPersonalCode: "",
+          isMinor: false,
+          year: 2026,
+          month: 7,
+          total: 100,
+          status: "paid",
+          number: "LS-202607-014",
+          pdfReady: true,
+          emailCommunicationStatus: "not_sent",
+          canReopenDraft: true,
+          reopenCreditAmount: 100,
+          reopenBlockedPaymentAmount: 0,
+          lines: [],
+        }}
+        summary={{
+          invoiceId: 14,
+          total: 100,
+          paid: 100,
+          remaining: 0,
+          status: "paid",
+          number: "LS-202607-014",
+        }}
+        months={getMonthNames("en-US")}
+        invoiceStatusLabel={(value) => value}
+        formatEUR={(value) => `${value.toFixed(2)} EUR`}
+        formatHoursValue={(value) => String(value)}
+        formatDateTime={(value) => value}
+        pdfReady
+        onOpenStudent={vi.fn()}
+        onIssue={vi.fn()}
+        onGeneratePdf={vi.fn()}
+        onDownloadPdf={vi.fn()}
+        onSendEmail={vi.fn()}
+        onAddPayment={vi.fn()}
+        onReopenToDraft={vi.fn()}
+        onClose={vi.fn()}
+        canSendEmail
+        t={createTranslator("en-US")}
+      />
+    );
+
+    expect(markup).toContain("Return to draft");
   });
 });
