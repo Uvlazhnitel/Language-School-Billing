@@ -954,6 +954,7 @@ export default function App() {
 
   const [courseModalOpen, setCourseModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<CourseDTO | null>(null);
+  const [savedCourse, setSavedCourse] = useState<CourseDTO | null>(null);
   const [cfName, setCfName] = useState("");
   const [cfTeacherId, setCfTeacherId] = useState<number | undefined>(undefined);
   const [cfTeacherSearch, setCfTeacherSearch] = useState("");
@@ -1199,8 +1200,9 @@ export default function App() {
     }
 
     try {
+      let saved: CourseDTO;
       if (editingCourse) {
-        await updateCourse(
+        saved = await updateCourse(
           editingCourse.id,
           editingCourse.version,
           cfName,
@@ -1210,11 +1212,12 @@ export default function App() {
           subscriptionPrice
         );
       } else {
-        await createCourse(cfName, teacherId, cfType, lessonPrice, subscriptionPrice);
+        saved = await createCourse(cfName, teacherId, cfType, lessonPrice, subscriptionPrice);
       }
 
       setCourseModalOpen(false);
       await loadCourses();
+      setSavedCourse(saved);
       showMessage(editingCourse ? t("msg.courseUpdated") : t("msg.courseCreated"));
     } catch (e: any) {
       if (isStaleRevisionError(e)) {
@@ -2804,6 +2807,7 @@ export default function App() {
               <CoursesScreen
                 loading={courseLoading}
                 courses={courseList}
+                savedCourse={savedCourse}
                 query={courseQ}
                 typeFilter={courseTypeFilter}
                 teacherFilter={courseTeacherFilter}

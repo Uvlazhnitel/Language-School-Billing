@@ -3296,3 +3296,151 @@ tfoot td {
   gap: 16px;
   flex-wrap: wrap;
 }
+
+/* Compact subject catalog with responsive variant details. */
+.courseCatalog {
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+}
+.courseSubject {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(133, 102, 69, 0.14);
+  border-radius: 18px;
+  background: #fffdfb;
+}
+.panel .courseSubjectHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: linear-gradient(110deg, #fff9f2, #fffdfb);
+  color: var(--text);
+  text-align: left;
+  transform: none;
+}
+.courseSubjectHeader strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.courseSubjectHeader:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+.courseSubjectChevron {
+  display: grid;
+  flex: 0 0 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+.courseSubjectCounts {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+.courseVariants {
+  border: 0;
+  border-top: 1px solid rgba(133, 102, 69, 0.12);
+  border-radius: 0;
+  box-shadow: none;
+}
+.courseVariants th,
+.courseVariants td {
+  padding: 10px 14px;
+}
+.courseVariants th {
+  letter-spacing: 0.06em;
+}
+.courseVariants .coursePrice {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.courseVariantActions {
+  text-align: right;
+}
+.panel .courseVariantActions button {
+  padding: 6px 9px;
+  min-height: 32px;
+  margin: 2px;
+  border-radius: 10px;
+  font-size: 0.82rem;
+  box-shadow: none;
+}
+.courseVisuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 760px) {
+  .panel .courseSubjectHeader {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    gap: 4px 10px;
+    padding: 12px;
+  }
+  .courseSubjectChevron {
+    grid-row: span 2;
+  }
+  .courseSubjectCounts {
+    grid-column: 2;
+    margin-left: 0;
+    font-size: 0.76rem;
+  }
+  .courseVariants,
+  .courseVariants tbody,
+  .courseVariants tr,
+  .courseVariants td {
+    display: block;
+    width: auto;
+    min-width: 0;
+  }
+  .courseVariants {
+    white-space: normal;
+    overflow-x: visible;
+  }
+  .courseVariants thead {
+    display: none;
+  }
+  .courseVariants tr {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(133, 102, 69, 0.12);
+  }
+  .courseVariants tr:last-child {
+    border-bottom: 0;
+  }
+  .courseVariants td,
+  .courseVariants .coursePrice {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 0;
+    border: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+  .courseVariants td[data-label]::before {
+    content: attr(data-label);
+    color: var(--muted);
+    font-size: 0.82rem;
+    text-align: left;
+  }
+  .courseVariants .courseVariantActions {
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    padding-top: 8px;
+  }
+}

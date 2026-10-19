@@ -2,13 +2,20 @@ import { CourseFormModal } from "../components/modals/CourseFormModal";
 import type { CourseDTO } from "../lib/courses";
 import type { TeacherDTO } from "../lib/teachers";
 import type { TranslateFn } from "../lib/i18n";
-import type { Ref, RefObject } from "react";
+import { useState, type Ref, type RefObject } from "react";
+import {
+  groupCoursesBySubject,
+  resolveCourseDisclosure,
+  type CourseDisclosure,
+} from "../lib/courseGroups";
+import { CourseCatalog } from "../components/CourseCatalog";
 import { EmptyState } from "../components/EmptyState";
 import { FilterToolbar } from "../components/FilterToolbar";
 
 type CoursesScreenProps = {
   loading: boolean;
   courses: CourseDTO[];
+  savedCourse?: CourseDTO | null;
   query: string;
   typeFilter: "" | "group" | "individual";
   teacherFilter: string;
@@ -58,6 +65,7 @@ type CoursesScreenProps = {
 export function CoursesScreen({
   loading,
   courses,
+  savedCourse = null,
   query,
   typeFilter,
   teacherFilter,
@@ -101,6 +109,23 @@ export function CoursesScreen({
   onCloseCourseModal,
   t,
 }: CoursesScreenProps) {
+  const groups = groupCoursesBySubject(courses);
+  const filterKey = JSON.stringify([query, typeFilter, teacherFilter, pricingFilter]);
+  const [disclosure, setDisclosure] = useState<CourseDisclosure>({
+    filterKey,
+    savedCourse,
+    openKey: null,
+  });
+  const resolved = loading
+    ? disclosure
+    : resolveCourseDisclosure(disclosure, filterKey, savedCourse, groups);
+  if (
+    resolved.filterKey !== disclosure.filterKey ||
+    resolved.savedCourse !== disclosure.savedCourse ||
+    resolved.openKey !== disclosure.openKey
+  ) {
+    setDisclosure(resolved);
+  }
   return (
     <>
       <FilterToolbar
@@ -179,37 +204,19 @@ export function CoursesScreen({
           />
         )
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>{t("field.name")}</th>
-              <th>{t("field.teacher")}</th>
-              <th>{t("field.type")}</th>
-              <th style={{ textAlign: "right" }}>{t("field.lessonPrice")} (EUR)</th>
-              <th style={{ textAlign: "right" }}>{t("field.subscriptionPrice")} (EUR)</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {courses.map((course) => (
-              <tr key={course.id}>
-                <td>{course.name}</td>
-                <td>{course.teacherName || "—"}</td>
-                <td>{courseTypeLabel(course.type)}</td>
-                <td style={{ textAlign: "right" }}>{formatEUR(course.lessonPrice)}</td>
-                <td style={{ textAlign: "right" }}>{formatEUR(course.subscriptionPrice)}</td>
-                <td>
-                  <button onClick={() => onEditCourse(course)}>{t("button.edit")}</button>
-                  {canDeleteCourses && (
-                    <button onClick={() => void onDeleteCourse(course.id)}>
-                      {t("button.delete")}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <CourseCatalog
+          groups={groups}
+          openKey={resolved.openKey}
+          onToggle={(key) =>
+            setDisclosure({ ...resolved, openKey: resolved.openKey === key ? null : key })
+          }
+          canDeleteCourses={canDeleteCourses}
+          courseTypeLabel={courseTypeLabel}
+          formatEUR={formatEUR}
+          onEditCourse={onEditCourse}
+          onDeleteCourse={onDeleteCourse}
+          t={t}
+        />
       )}
 
       {courseModalOpen && (

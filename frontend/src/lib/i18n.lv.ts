@@ -611,6 +611,8 @@ export const lvTranslations: Record<string, string> = {
   "student.statusInactive": "Neaktīvs",
   "student.duplicateExactTitle": "Šāds skolēns jau pastāv",
   "student.duplicatePossibleTitle": "Atrasti iespējamie dublikāti",
+  "course.subjectCounts": "Pasniedzēji: {teachers} · Varianti: {variants}",
+  "course.actions": "Darbības",
   "course.group": "grupa",
   "course.individual": "individuāli",
   "billing.perLesson": "pa stundām",
