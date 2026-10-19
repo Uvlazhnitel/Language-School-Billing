@@ -1,15 +1,16 @@
 import type { DebtorDTO } from "../lib/payments";
-import type { DebtorActionQueueItem } from "../lib/studentActivity";
+import { buildDebtorActionQueue } from "../lib/studentActivity";
+import { filterDebtorsByActivity, type DebtorActivityFilter } from "../lib/debtorFilters";
+import { EmptyState } from "../components/EmptyState";
 import type { TranslateFn } from "../lib/i18n";
 
 type DebtorsScreenProps = {
   loading: boolean;
   debtors: DebtorDTO[];
-  actionQueue: DebtorActionQueueItem[];
+  recentPayments: Array<{ studentId: number }>;
   formatEUR: (value: number) => string;
   onRefresh: () => void;
   onOpenStudent: (studentId: number) => void | Promise<void>;
-  onOpenStudentWorkspace: (studentId: number) => void | Promise<void>;
   onOpenPaymentForStudent: (studentId: number) => void;
   onOpenPaymentForDebtor: (debtor: DebtorDTO) => void;
   onOpenDebtDetails: (debtor: DebtorDTO) => void;
@@ -18,16 +19,17 @@ type DebtorsScreenProps = {
   onCopyDebtForDebtorRu: (debtor: DebtorDTO) => void | Promise<void>;
   onCopyDebtForDebtorLv: (debtor: DebtorDTO) => void | Promise<void>;
   t: TranslateFn;
+  activityFilter: DebtorActivityFilter;
+  onActivityFilterChange: (filter: DebtorActivityFilter) => void;
 };
 
 export function DebtorsScreen({
   loading,
   debtors,
-  actionQueue,
+  recentPayments,
   formatEUR,
   onRefresh,
   onOpenStudent,
-  onOpenStudentWorkspace,
   onOpenPaymentForStudent,
   onOpenPaymentForDebtor,
   onOpenDebtDetails,
@@ -36,7 +38,11 @@ export function DebtorsScreen({
   onCopyDebtForDebtorRu,
   onCopyDebtForDebtorLv,
   t,
+  activityFilter,
+  onActivityFilterChange,
 }: DebtorsScreenProps) {
+  const visibleDebtors = filterDebtorsByActivity(debtors, activityFilter);
+  const actionQueue = buildDebtorActionQueue(visibleDebtors, recentPayments, t);
   return (
     <>
       <div className="sectionBanner">
@@ -45,23 +51,43 @@ export function DebtorsScreen({
           <strong>{t("label.needsAction")}</strong>
         </div>
         <div className="sectionBannerActions">
+          <label className="debtorActivityFilter">
+            <span>{t("filter.debtorActivity")}</span>
+            <select
+              value={activityFilter}
+              onChange={(event) =>
+                onActivityFilterChange(event.target.value as DebtorActivityFilter)
+              }
+            >
+              <option value="all">{t("filter.studentStatusAll")}</option>
+              <option value="active">{t("filter.studentStatusActive")}</option>
+              <option value="inactive">{t("filter.studentStatusInactive")}</option>
+            </select>
+          </label>
           <button className="workspaceActionButton" onClick={onRefresh}>
             {t("button.refresh")}
           </button>
         </div>
       </div>
 
-      {actionQueue.length > 0 && (
+      {!loading && actionQueue.length > 0 && (
         <div className="detailCard detailCard--wide actionQueuePanel">
           <div className="detailCardHeader">
             <h3>{t("label.needsAction")}</h3>
-            <span className="statusPill warning">{t("msg.queueCount", { count: actionQueue.length })}</span>
+            <span className="statusPill warning">
+              {t("msg.queueCount", { count: actionQueue.length })}
+            </span>
           </div>
           <div className="actionQueueList">
             {actionQueue.map((item) => (
               <div key={item.studentId} className="actionQueueItem">
                 <div>
-                  <strong>{item.studentName}</strong>
+                  <div className="debtorIdentity">
+                    <strong>{item.studentName}</strong>
+                    <span className={`statusPill ${item.isActive ? "success" : "warning"}`}>
+                      {t(item.isActive ? "status.active" : "status.inactive")}
+                    </span>
+                  </div>
                   <span>{item.subtitle}</span>
                 </div>
                 <div className="actionQueueMeta">
@@ -75,7 +101,7 @@ export function DebtorsScreen({
                     </button>
                     <button
                       className="secondaryActionButton"
-                      onClick={() => void onOpenStudentWorkspace(item.studentId)}
+                      onClick={() => void onOpenStudent(item.studentId)}
                     >
                       {t("button.card")}
                     </button>
@@ -105,6 +131,13 @@ export function DebtorsScreen({
         <div>{t("label.loading")}</div>
       ) : debtors.length === 0 ? (
         <div className="empty">{t("msg.noDebtors")}</div>
+      ) : visibleDebtors.length === 0 ? (
+        <EmptyState
+          title={t("msg.noDebtorsFiltered")}
+          description={t("msg.noDebtorsFilteredDescription")}
+          actionLabel={t("button.clearFilters")}
+          onAction={() => onActivityFilterChange("all")}
+        />
       ) : (
         <table>
           <thead>
@@ -117,12 +150,20 @@ export function DebtorsScreen({
             </tr>
           </thead>
           <tbody>
-            {debtors.map((debtor) => (
+            {visibleDebtors.map((debtor) => (
               <tr key={debtor.studentId}>
                 <td>
-                  <button className="linkButton" onClick={() => void onOpenStudent(debtor.studentId)}>
-                    {debtor.studentName}
-                  </button>
+                  <div className="debtorIdentity">
+                    <button
+                      className="linkButton"
+                      onClick={() => void onOpenStudent(debtor.studentId)}
+                    >
+                      {debtor.studentName}
+                    </button>
+                    <span className={`statusPill ${debtor.isActive ? "success" : "warning"}`}>
+                      {t(debtor.isActive ? "status.active" : "status.inactive")}
+                    </span>
+                  </div>
                 </td>
                 <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
                   {formatEUR(debtor.debt)}
@@ -164,7 +205,7 @@ export function DebtorsScreen({
             <tr>
               <td style={{ fontWeight: "bold" }}>{t("field.debtEur")}:</td>
               <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
-                {formatEUR(debtors.reduce((sum, debtor) => sum + debtor.debt, 0))}
+                {formatEUR(visibleDebtors.reduce((sum, debtor) => sum + debtor.debt, 0))}
               </td>
               <td colSpan={3}></td>
             </tr>

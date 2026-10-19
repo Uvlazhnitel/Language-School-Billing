@@ -75,6 +75,7 @@ type BalanceDTO struct {
 
 // DebtorDTO represents a student with outstanding debt.
 type DebtorDTO struct {
+	IsActive      bool    `json:"isActive"`
 	StudentID     int     `json:"studentId"`     // Student ID
 	StudentName   string  `json:"studentName"`   // Student's full name
 	Debt          float64 `json:"debt"`          // Amount owed
@@ -808,7 +809,6 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 		Where(
 			invoice.PeriodYearEQ(year),
 			invoice.PeriodMonthEQ(month),
-			invoice.HasStudentWith(student.IsActiveEQ(true)),
 		).
 		All(ctx)
 	if err != nil {
@@ -889,7 +889,6 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 
 	historicalInvoices, err := s.db.Invoice.Query().
 		Where(
-			invoice.HasStudentWith(student.IsActiveEQ(true)),
 			invoice.StatusIn(openInvoiceStatuses()...),
 		).
 		All(ctx)
@@ -918,7 +917,6 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 	rangeStart, rangeEnd := monthBounds(year, month)
 	monthPayments, err := s.db.Payment.Query().
 		Where(
-			payment.HasStudentWith(student.IsActiveEQ(true)),
 			payment.PaidAtGTE(rangeStart),
 			payment.PaidAtLT(rangeEnd),
 		).
@@ -943,7 +941,6 @@ func (s *Service) MonthOverview(ctx context.Context, year, month int) (*MonthOve
 	credits, err := s.db.Payment.Query().
 		Where(
 			payment.InvoiceIDIsNil(),
-			payment.HasStudentWith(student.IsActiveEQ(true)),
 		).
 		All(ctx)
 	if err != nil {
@@ -1071,13 +1068,10 @@ func (s *Service) StudentBalance(ctx context.Context, studentID int) (*BalanceDT
 	}, nil
 }
 
-// ListDebtors returns a list of all active students who have outstanding debt,
-// sorted by debt amount (highest first). Only students with debt greater than
-// the epsilon threshold (0.009) are included to account for floating-point
-// rounding errors.
+// ListDebtors returns all students with positive debt, regardless of learning
+// status, sorted by debt amount (highest first).
 func (s *Service) ListDebtors(ctx context.Context) ([]DebtorDTO, error) {
 	studs, err := s.db.Student.Query().
-		Where(student.IsActiveEQ(true)).
 		All(ctx)
 	if err != nil {
 		return nil, err
@@ -1091,7 +1085,7 @@ func (s *Service) ListDebtors(ctx context.Context) ([]DebtorDTO, error) {
 		}
 		if b.Debt > 0 {
 			out = append(out, DebtorDTO{
-				StudentID: st.ID, StudentName: st.FullName,
+				StudentID: st.ID, StudentName: st.FullName, IsActive: st.IsActive,
 				Debt: b.Debt, TotalInvoiced: b.TotalInvoiced, TotalPaid: b.TotalPaid,
 			})
 		}

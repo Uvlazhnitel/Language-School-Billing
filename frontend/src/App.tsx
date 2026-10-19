@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
+import type { DebtorActivityFilter } from "./lib/debtorFilters";
 import { newPaymentSubmission, submitPayment } from "./lib/paymentSubmission";
 
 import { fetchRows, saveHours, deleteEnrollment, Row } from "./lib/attendance";
@@ -90,10 +91,8 @@ import { StudentCardModal } from "./components/modals/StudentCardModal";
 import { useConfirmDialog } from "./hooks/useConfirmDialog";
 import { useNotifications } from "./hooks/useNotifications";
 import {
-  buildDebtorActionQueue,
   buildStudentActivity,
   buildStudentNextAction,
-  DebtorActionQueueItem,
   StudentActivityItem,
   StudentNextAction,
 } from "./lib/studentActivity";
@@ -351,7 +350,6 @@ export default function App() {
   const [endingEnrollmentId, setEndingEnrollmentId] = useState<number | null>(null);
   const [studentNextAction, setStudentNextAction] = useState<StudentNextAction | null>(null);
   const [studentActivity, setStudentActivity] = useState<StudentActivityItem[]>([]);
-  const [debtorActionQueue, setDebtorActionQueue] = useState<DebtorActionQueueItem[]>([]);
 
   const loadStudents = useCallback(async () => {
     setStudentLoading(true);
@@ -437,7 +435,6 @@ export default function App() {
       setOverview(snapshot);
       setRecentPayments(payments);
       setDebtors(debtorsSnapshot);
-      setDebtorActionQueue(buildDebtorActionQueue(debtorsSnapshot, payments, t));
     } catch (e: any) {
       showMessage(t("msg.dashboardLoadError", { message: String(e?.message ?? e) }), "error");
     } finally {
@@ -902,6 +899,7 @@ export default function App() {
     if (!selectedStudentCard || studentCardDebts.length === 0 || !studentCardBalance) return;
     try {
       const debtorLike: DebtorDTO = {
+        isActive: selectedStudentCard.isActive,
         studentId: selectedStudentCard.id,
         studentName: selectedStudentCard.fullName,
         debt: studentCardBalance.debt,
@@ -1932,6 +1930,7 @@ export default function App() {
   // ---------------- Debtors ----------------
   const [debtors, setDebtors] = useState<DebtorDTO[]>([]);
   const [debtorsLoading, setDebtorsLoading] = useState(false);
+  const [debtorActivityFilter, setDebtorActivityFilter] = useState<DebtorActivityFilter>("all");
   const [debtDetailsOpen, setDebtDetailsOpen] = useState(false);
   const [selectedDebtor, setSelectedDebtor] = useState<DebtorDTO | null>(null);
   const [debtDetails, setDebtDetails] = useState<DebtInvoiceDTO[]>([]);
@@ -1942,7 +1941,6 @@ export default function App() {
     try {
       const data = await listDebtors();
       setDebtors(data);
-      setDebtorActionQueue(buildDebtorActionQueue(data, recentPayments, t));
       return data;
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
@@ -1950,16 +1948,12 @@ export default function App() {
     } finally {
       setDebtorsLoading(false);
     }
-  }, [recentPayments, showMessage, t]);
+  }, [showMessage, t]);
 
   useEffect(() => {
     if (!appReady) return;
     if (tab === "debtors") loadDebtors();
   }, [appReady, tab, loadDebtors]);
-
-  useEffect(() => {
-    setDebtorActionQueue(buildDebtorActionQueue(debtors, recentPayments, t));
-  }, [debtors, recentPayments, t]);
 
   async function openDebtDetails(debtor: DebtorDTO) {
     setSelectedDebtor(debtor);
@@ -3018,11 +3012,12 @@ export default function App() {
               <DebtorsScreen
                 loading={debtorsLoading}
                 debtors={debtors}
-                actionQueue={debtorActionQueue}
+                recentPayments={recentPayments}
+                activityFilter={debtorActivityFilter}
+                onActivityFilterChange={setDebtorActivityFilter}
                 formatEUR={formatEUR}
                 onRefresh={() => void loadDebtors()}
                 onOpenStudent={(studentId) => void openStudentCardById(studentId)}
-                onOpenStudentWorkspace={(studentId) => void openStudentInWorkspaceById(studentId)}
                 onOpenPaymentForStudent={openDebtorPaymentModalByStudentId}
                 onOpenPaymentForDebtor={openDebtorPaymentModal}
                 onOpenDebtDetails={openDebtDetails}

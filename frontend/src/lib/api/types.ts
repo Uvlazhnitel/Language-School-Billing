@@ -329,6 +329,7 @@ export type PaymentDTO = {
 };
 
 export type DebtorDTO = {
+  isActive: boolean;
   studentId: number;
   studentName: string;
   debt: number;

@@ -23,6 +23,7 @@ export type StudentNextAction = {
 };
 
 export type DebtorActionQueueItem = {
+  isActive: boolean;
   studentId: number;
   studentName: string;
   debt: number;
@@ -177,6 +178,7 @@ export function buildDebtorActionQueue(
       const priority = Math.round(debtor.debt * 100) + (hasRecentPayment ? -250 : 250);
       return {
         studentId: debtor.studentId,
+        isActive: debtor.isActive,
         studentName: debtor.studentName,
         debt: debtor.debt,
         priority,

@@ -518,6 +518,9 @@ export const lvTranslations: Record<string, string> = {
   "msg.noEnrollmentsSearchTitle": "Šiem filtriem uzņemšanas netika atrastas",
   "msg.noEnrollmentsSearchDescription":
     "Notīriet skolēna vai kursa filtru, lai atgrieztos pilnajā uzņemšanas sarakstā.",
+  "filter.debtorActivity": "Skolēna statuss",
+  "msg.noDebtorsFiltered": "Nav parādnieku ar izvēlēto filtru",
+  "msg.noDebtorsFilteredDescription": "Mainiet vai notīriet aktivitātes filtru, lai skatītu citus parādniekus.",
   "msg.noDebtors": "Parādnieki netika atrasti. Visi skolēni ir samaksājuši laikā.",
   "msg.noInvoiceResults": "Izvēlētajam periodam, statusam vai meklēšanai rēķini netika atrasti.",
   "msg.noInvoicesTitle": "Šim mēnesim rēķinu vēl nav",

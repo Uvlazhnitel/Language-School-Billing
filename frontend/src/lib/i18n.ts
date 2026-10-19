@@ -523,6 +523,9 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noEnrollmentsSearchTitle": "No enrollments match these filters",
     "msg.noEnrollmentsSearchDescription":
       "Clear the student or course filter to return to the full enrollment list.",
+    "filter.debtorActivity": "Student status",
+    "msg.noDebtorsFiltered": "No debtors match this filter",
+    "msg.noDebtorsFilteredDescription": "Change or clear the activity filter to see other debtors.",
     "msg.noDebtors": "No debtors found. All students paid on time.",
     "msg.noInvoiceResults": "No invoices found for the selected period, status, or search.",
     "msg.noInvoicesTitle": "No invoices for this month yet",
@@ -1213,6 +1216,9 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noEnrollmentsSearchTitle": "По этим фильтрам зачислений нет",
     "msg.noEnrollmentsSearchDescription":
       "Сбросьте фильтр по ученику или курсу, чтобы снова увидеть общий список зачислений.",
+    "filter.debtorActivity": "Статус ученика",
+    "msg.noDebtorsFiltered": "По выбранному фильтру должников нет",
+    "msg.noDebtorsFilteredDescription": "Измените или сбросьте фильтр активности, чтобы увидеть остальных должников.",
     "msg.noDebtors": "Должников не найдено. Все ученики оплатили вовремя.",
     "msg.noInvoiceResults": "Счета за выбранный период, статус или поиск не найдены.",
     "msg.noInvoicesTitle": "Счетов за этот месяц пока нет",
