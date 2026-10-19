@@ -1891,6 +1891,7 @@ button {
 }
 
 .controls button,
+:where(.attendanceSheet) button,
 .panel button,
 .modalActions button,
 tbody button,
@@ -1922,8 +1923,7 @@ tbody button:hover,
   box-shadow: 0 14px 24px rgba(94, 72, 47, 0.12);
 }
 
-.controls button:first-child,
-.btnPrimary {
+button.btnPrimary {
   color: #fff8f3;
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   border-color: rgba(184, 86, 33, 0.18);
@@ -2718,44 +2718,6 @@ tfoot td {
   padding: 14px;
 }
 
-.attendanceStepper {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.attendanceStepperButton {
-  min-width: 36px;
-  padding: 8px 0;
-  border-radius: 14px;
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.attendanceStepperInput {
-  width: 6.25rem;
-  flex: 0 0 auto;
-  text-align: center;
-  font-weight: 800;
-}
-
-.attendanceReadOnly {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-}
-
-.attendanceFocusRow td {
-  background: rgba(42, 117, 99, 0.1);
-}
-
-.attendanceFocusRow .attendanceStepperInput {
-  box-shadow: 0 0 0 3px rgba(42, 117, 99, 0.2);
-}
-
 .modalActions {
   display: flex;
   flex-wrap: wrap;
@@ -3468,4 +3430,326 @@ tfoot td {
 .debtorIdentity .statusPill {
   display: inline-flex;
   margin-top: 0;
+}
+
+/* Attendance is scoped to the real AppShell, including its responsive layout. */
+.attendanceSheet {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.attendanceSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 32px;
+  padding: 20px 24px;
+  border: 1px solid var(--border, #eee5db);
+  border-radius: 20px;
+  background: #fffaf4;
+}
+.attendanceSummary > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.attendanceSummary strong {
+  font-size: 24px;
+}
+.attendanceSummary p {
+  margin: 0 0 0 auto;
+  color: #747b88;
+  font-size: 13px;
+}
+.attendanceToolbar {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid #eee5db;
+  border-radius: 20px;
+}
+.attendanceToolbarTop,
+.attendanceToolbarFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.attendanceToolbarTop input {
+  flex: 1 1 300px;
+  min-width: 0;
+}
+.attendanceToolbar button,
+.attendanceToolbar select,
+.attendanceToolbar input {
+  padding: 10px 14px;
+  font-size: 14px;
+}
+.attendanceToolbarFilters select {
+  flex: 1 1 150px;
+  min-width: 0;
+  max-width: 100%;
+}
+.attendanceStates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.attendanceStates button {
+  background: transparent;
+  box-shadow: none;
+  border: 1px solid transparent;
+}
+.attendanceStates button[aria-pressed="true"] {
+  background: #ffead9;
+  border-color: #e7b58e;
+  color: #a94716;
+}
+.attendanceResults {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  color: #747b88;
+  font-size: 14px;
+  padding: 0 4px;
+}
+.attendanceTeacher {
+  border: 1px solid #eee5db;
+  border-radius: 18px;
+  overflow: hidden;
+  min-width: 0;
+}
+.attendanceTeacher h2,
+.attendanceCourse h3 {
+  margin: 0;
+  font-size: inherit;
+}
+.attendanceTeacherToggle,
+.attendanceCourseToggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-align: left;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: #fffaf4;
+  padding: 16px 20px;
+  color: #252b38;
+}
+.attendanceTeacherToggle > small,
+.attendanceCourseToggle > small {
+  margin-left: auto;
+  white-space: nowrap;
+  color: #747b88;
+  font-family: inherit;
+  font-weight: 400;
+  font-size: 13px;
+}
+.attendanceCourses {
+  padding: 0 16px 12px;
+}
+.attendanceCourse {
+  border-top: 1px solid #eee5db;
+}
+.attendanceCourseToggle {
+  padding: 12px 8px;
+  font-size: 15px;
+  background: white;
+}
+.attendanceCourseToggle span small {
+  display: block;
+  margin-top: 3px;
+  color: #747b88;
+  font-weight: 400;
+  font-size: 12px;
+}
+.attendanceGridHead,
+.attendanceRow {
+  display: grid;
+  grid-template-columns: minmax(140px, 1fr) minmax(100px, 0.55fr) minmax(
+      200px,
+      0.9fr
+    ) 90px;
+  gap: 16px;
+  align-items: center;
+}
+.attendanceGridHead {
+  color: #747b88;
+  font-size: 12px;
+  padding: 10px 8px;
+}
+.attendanceRow {
+  border-top: 1px solid #f1ede7;
+  padding: 12px 8px;
+  font-size: 14px;
+}
+.attendanceStudent {
+  text-align: left;
+  padding: 0;
+  background: none;
+  color: #bb561e;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  font-size: 14px;
+}
+.attendanceAmount {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.attendanceStepper {
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  gap: 6px;
+}
+.attendanceStepper input {
+  width: 104px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 8px;
+  text-align: center;
+  font-size: 15px;
+}
+.attendanceStepper button {
+  padding: 5px;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  box-shadow: none;
+}
+.attendanceSaveState {
+  min-height: 16px;
+  font-size: 11px;
+  color: #747b88;
+  padding-top: 4px;
+}
+.attendanceSaveState button {
+  font: inherit;
+  background: none;
+  padding: 0;
+  border: 0;
+  box-shadow: none;
+  text-decoration: underline;
+  color: #a94716;
+}
+.attendanceError {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: #a32b22;
+  font-size: 12px;
+  max-width: 310px;
+}
+.attendanceError > span {
+  flex-basis: 100%;
+}
+.attendanceError button {
+  padding: 4px 6px;
+  font-size: 11px;
+  box-shadow: none;
+}
+.attendanceLocked {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: #747b88;
+}
+.attendanceLocked small {
+  font-size: 11px;
+}
+.attendanceMobileLabel {
+  display: none;
+}
+.attendanceEmpty {
+  text-align: center;
+  padding: 30px;
+  border: 1px dashed #eee5db;
+  border-radius: 18px;
+}
+.attendanceSheet button:focus-visible,
+.attendanceSheet input:focus-visible,
+.attendanceSheet select:focus-visible {
+  outline: 2px solid #bd571e;
+  outline-offset: 3px;
+}
+@media (max-width: 760px) {
+  .attendanceSummary {
+    gap: 12px 20px;
+    padding: 14px;
+  }
+  .attendanceSummary > div {
+    gap: 6px;
+    font-size: 12px;
+  }
+  .attendanceSummary strong {
+    font-size: 20px;
+  }
+  .attendanceSummary p {
+    margin: 0;
+    width: 100%;
+  }
+  .attendanceToolbar {
+    padding: 12px;
+  }
+  .attendanceToolbarTop input {
+    flex-basis: 100%;
+  }
+  .attendanceToolbarTop button {
+    flex: 1;
+  }
+  .attendanceStates {
+    width: 100%;
+  }
+  .attendanceStates button {
+    padding: 7px 9px;
+    font-size: 12px;
+  }
+  .attendanceTeacherToggle {
+    padding: 14px 12px;
+    gap: 8px;
+    font-size: 16px;
+  }
+  .attendanceTeacherToggle > small,
+  .attendanceCourseToggle > small {
+    font-size: 11px;
+  }
+  .attendanceCourses {
+    padding: 0 10px 10px;
+  }
+  .attendanceCourseToggle {
+    padding: 12px 0;
+    gap: 8px;
+  }
+  .attendanceGridHead {
+    display: none;
+  }
+  .attendanceRow {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 14px 0;
+  }
+  .attendanceRow > :first-child {
+    grid-column: 1 / -1;
+  }
+  .attendancePrice {
+    grid-column: 1;
+  }
+  .attendanceQuantity {
+    grid-column: 1;
+  }
+  .attendanceAmount {
+    grid-column: 2;
+    grid-row: 2 / 4;
+    align-self: center;
+  }
+  .attendanceMobileLabel {
+    display: block;
+    color: #747b88;
+    font-size: 11px;
+    margin-bottom: 4px;
+  }
 }

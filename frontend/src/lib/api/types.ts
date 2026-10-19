@@ -129,6 +129,7 @@ export type Row = {
   courseId: number;
   courseName: string;
   courseType: CourseType;
+  teacherId?: number;
   teacherName: string;
   billingMode: BillingMode;
   lessonPrice: number;

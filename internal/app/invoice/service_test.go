@@ -168,7 +168,10 @@ func TestResolvePricesUsesPerLessonOverrideWhenPresent(t *testing.T) {
 		t.Fatalf("Enrollment.Create: %v", err)
 	}
 
-	lessonPriceCents, subscriptionPriceCents := svc.resolvePrices(ctx, enr, 2026, 6)
+	lessonPriceCents, subscriptionPriceCents, priceErr := svc.resolvePrices(ctx, enr, 2026, 6)
+	if priceErr != nil {
+		t.Fatal(priceErr)
+	}
 	if lessonPriceCents != money.EurosToCents(12.5) {
 		t.Fatalf("lessonPriceCents = %d, want %d", lessonPriceCents, money.EurosToCents(12.5))
 	}

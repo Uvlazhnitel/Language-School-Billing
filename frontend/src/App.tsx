@@ -3,7 +3,7 @@ import "./App.css";
 import type { DebtorActivityFilter } from "./lib/debtorFilters";
 import { newPaymentSubmission, submitPayment } from "./lib/paymentSubmission";
 
-import { fetchRows, saveHours, deleteEnrollment, Row } from "./lib/attendance";
+import { useAttendanceController } from "./hooks/app/useAttendanceController";
 
 import {
   listInvoices,
@@ -106,14 +106,6 @@ import {
   type StudentStatusFilter,
 } from "./lib/studentListControls";
 import {
-  defaultAttendanceQuickFilters,
-  filterAndSortAttendanceRows,
-  hasActiveAttendanceQuickFilters,
-  toggleAttendanceQuickFilter,
-  type AttendanceQuickFilterKey,
-  type AttendanceQuickFilters,
-} from "./lib/attendanceList";
-import {
   AppTabId,
   billingModeLabel,
   buildDebtReminderMessage,
@@ -124,9 +116,7 @@ import {
   formatEUR,
   formatHoursValue,
   invoiceStatusLabel,
-  normalizeHoursDraftInput,
   normalizeMoneyInput,
-  normalizeQuarterHours,
   payerRoleLabel,
   payerRoleOptions,
   paymentMethodLabel,
@@ -1622,220 +1612,30 @@ export default function App() {
   }
 
   // ---------------- Attendance ----------------
-  const [rows, setRows] = useState<Row[]>([]);
-  const [loadingAtt, setLoadingAtt] = useState(false);
-  const [courseFilter, setCourseFilter] = useState<number | undefined>(undefined);
-  const [attQ, setAttQ] = useState("");
-  const [attFilter, setAttFilter] = useState<"all" | "missing" | "filled" | "zero">("all");
-  const [attendanceQuickFilters, setAttendanceQuickFilters] = useState<AttendanceQuickFilters>(
-    defaultAttendanceQuickFilters
-  );
-  const [attendanceSavingRows, setAttendanceSavingRows] = useState<Record<number, boolean>>({});
-  const attendanceSavingRowsRef = useRef<Record<number, boolean>>({});
-  const [attendanceInputDrafts, setAttendanceInputDrafts] = useState<Record<number, string>>({});
-  const attendancePendingSelectRef = useRef<number | null>(null);
-  const [attendanceFocusTarget, setAttendanceFocusTarget] =
-    useState<AttendanceFocusTarget | null>(null);
-
-  function openAttendanceForStudentCourse(studentId: number, targetCourseId: number) {
-    setCourseFilter(targetCourseId);
-    setAttQ("");
-    setAttFilter("all");
-    setAttendanceQuickFilters(defaultAttendanceQuickFilters);
-    setAttendanceFocusTarget({ studentId, courseId: targetCourseId });
-    setTab("attendance");
-  }
-
-  // For search by phone we need students list (shared with invoices and attendance)
-  const studentIndex = useMemo(() => {
-    const m = new Map<number, StudentDTO>();
-    for (const s of allStudents) m.set(s.id, s);
-    return m;
-  }, [allStudents]);
-
+  const attendance = useAttendanceController(year, month, appReady && tab === "attendance", t);
+  const loadAttendance = attendance.reload;
   const ensureStudentsLoaded = useCallback(async () => {
-    if (allStudents.length > 0) return;
-    await loadAllStudents();
+    if (allStudents.length === 0) await loadAllStudents();
   }, [allStudents.length, loadAllStudents]);
-
-  const ensureCoursesLoaded = useCallback(async () => {
-    if (allCourses.length > 0) return;
-    await loadAllCourses();
-  }, [allCourses.length, loadAllCourses]);
-
-  const loadAttendance = useCallback(async () => {
-    setLoadingAtt(true);
-    try {
-      await ensureStudentsLoaded();
-      await ensureCoursesLoaded();
-      const data = await fetchRows(year, month, courseFilter);
-      setRows(data);
-    } finally {
-      setLoadingAtt(false);
-    }
-  }, [year, month, courseFilter, ensureStudentsLoaded, ensureCoursesLoaded]);
-
-  useEffect(() => {
-    if (!appReady) return;
-    if (tab === "attendance") loadAttendance();
-  }, [appReady, tab, loadAttendance]);
-
-  useEffect(() => {
-    attendanceSavingRowsRef.current = attendanceSavingRows;
-  }, [attendanceSavingRows]);
-
-  const perLessonTotal = useMemo(
-    () =>
-      rows.reduce(
-        (s, r) =>
-          s +
-          (r.billingMode === BillingModePerLesson
-            ? r.hours * r.lessonPrice
-            : r.hours * r.subscriptionLessonPrice),
-        0
-      ),
-    [rows]
-  );
-
-  const filteredAttendanceRows = useMemo(
-    () => filterAndSortAttendanceRows(rows, attQ, attFilter, attendanceQuickFilters, studentIndex),
-    [rows, attQ, attFilter, attendanceQuickFilters, studentIndex]
-  );
-
-  const attendanceHasActiveQuickFilters = useMemo(
-    () => hasActiveAttendanceQuickFilters(attendanceQuickFilters),
-    [attendanceQuickFilters]
-  );
-
-  const toggleAttendanceQuickChip = useCallback((key: AttendanceQuickFilterKey) => {
-    setAttendanceQuickFilters((prev) => toggleAttendanceQuickFilter(key, prev));
-  }, []);
-
-  const resetAttendanceFilters = useCallback(() => {
-    setCourseFilter(undefined);
-    setAttQ("");
-    setAttFilter("all");
-    setAttendanceQuickFilters(defaultAttendanceQuickFilters);
-  }, []);
-
-  const attendanceSummary = useMemo(() => {
-    const editableRows = rows;
-    const filled = editableRows.filter((r) => r.hasRecord).length;
-    const missing = editableRows.filter((r) => !r.hasRecord).length;
-    const zero = editableRows.filter((r) => r.hasRecord && r.hours === 0).length;
-    return { filled, missing, zero, total: editableRows.length };
-  }, [rows]);
-
-  const onChangeHours = useCallback(
-    async (r: Row, v: number) => {
-      if (r.attendanceLocked) {
-        showMessage(
-          t("msg.attendanceLocked", {
-            status: localizedInvoiceStatusLabel(r.invoiceStatus ?? "issued"),
-          }),
-          "error"
-        );
-        return;
-      }
-      if (!Number.isFinite(v)) return;
-      const n = normalizeQuarterHours(v);
-      if (attendanceSavingRowsRef.current[r.enrollmentId]) return;
-
-      try {
-        setAttendanceSavingRows((prev) => ({ ...prev, [r.enrollmentId]: true }));
-        await saveHours(r.studentId, r.courseId, year, month, n);
-        setRows((prev) =>
-          prev.map((x) =>
-            x.enrollmentId === r.enrollmentId ? { ...x, hours: n, hasRecord: true } : x
-          )
-        );
-      } catch (e: any) {
-        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-      } finally {
-        setAttendanceSavingRows((prev) => {
-          const next = { ...prev };
-          delete next[r.enrollmentId];
-          return next;
-        });
-      }
-    },
-    [localizedInvoiceStatusLabel, month, showMessage, t, year]
-  );
-
-  const setAttendanceDraft = useCallback((enrollmentId: number, value: string) => {
-    setAttendanceInputDrafts((prev) => ({ ...prev, [enrollmentId]: value }));
-  }, []);
-
-  const clearAttendanceDraft = useCallback((enrollmentId: number) => {
-    setAttendanceInputDrafts((prev) => {
-      if (!(enrollmentId in prev)) return prev;
-      const next = { ...prev };
-      delete next[enrollmentId];
-      return next;
+  const [attendanceFocusTarget, setAttendanceFocusTarget] = useState<AttendanceFocusTarget | null>(null);
+  function openAttendanceForStudentCourse(studentId: number, courseId: number) {
+    void attendance.editor.guard(() => {
+      setAttendanceFocusTarget({ studentId, courseId });
+      setTab("attendance");
     });
-  }, []);
-
-  const commitAttendanceDraft = useCallback(
-    async (r: Row) => {
-      const draft = attendanceInputDrafts[r.enrollmentId];
-      if (draft === undefined) return;
-
-      const trimmed = draft.trim();
-      if (trimmed === "") {
-        clearAttendanceDraft(r.enrollmentId);
-        return;
-      }
-
-      const parsed = Number(trimmed.replace(",", "."));
-      if (!Number.isFinite(parsed)) {
-        clearAttendanceDraft(r.enrollmentId);
-        showMessage(t("msg.errorGeneric", { message: t("msg.invalidHoursValue") }), "error");
-        return;
-      }
-
-      if (normalizeQuarterHours(parsed) === r.hours) {
-        clearAttendanceDraft(r.enrollmentId);
-        return;
-      }
-
-      try {
-        await onChangeHours(r, parsed);
-      } finally {
-        clearAttendanceDraft(r.enrollmentId);
-      }
-    },
-    [attendanceInputDrafts, clearAttendanceDraft, onChangeHours, showMessage, t]
+  }
+  const studentIndex = useMemo(
+    () => new Map(allStudents.map(student => [student.id, student])), [allStudents]
   );
-
-  const getAttendanceInputValue = useCallback(
-    (r: Row) => attendanceInputDrafts[r.enrollmentId] ?? formatHoursValue(r.hours),
-    [attendanceInputDrafts]
+  const attendancePhones = useMemo(
+    () => new Map(allStudents.map(student => [student.id, student.phone ?? ""])), [allStudents]
   );
-
-  const getAttendanceStepBase = useCallback(
-    (r: Row) => {
-      const draft = attendanceInputDrafts[r.enrollmentId];
-      if (draft === undefined || draft.trim() === "") return r.hours;
-      const parsed = Number(draft.replace(",", "."));
-      return Number.isFinite(parsed) ? parsed : r.hours;
-    },
-    [attendanceInputDrafts]
-  );
-
-  const onDeleteEnrollmentFromSheet = async (id: number, version: number) => {
-    showConfirm(t("msg.enrollmentDeleteConfirm"), async () => {
-      try {
-        await deleteEnrollment(id, version);
-        await loadAttendance();
-        showMessage(t("msg.enrollmentDeleted"));
-      } catch (e: any) {
-        if (isStaleRevisionError(e)) {
-          showMessage(t("msg.recordConflict"), "error");
-          return;
-        }
-        showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
-      }
-    });
+  useEffect(() => {
+    if (appReady && tab === "attendance" && allStudents.length === 0) void loadAllStudents();
+  }, [appReady, tab, allStudents.length, loadAllStudents]);
+  const navigateFromAttendance = (action: () => unknown) => {
+    if (tab === "attendance") void attendance.editor.guard(action);
+    else void action();
   };
 
   // ---------------- Invoices ----------------
@@ -2677,14 +2477,16 @@ export default function App() {
           <AppShell
             tabs={tabs}
             activeTab={tab}
-            secondaryActions={secondaryActions}
-            onTabChange={(nextTab) => setTab(nextTab as Tab)}
+            secondaryActions={secondaryActions.map(action => ({
+              ...action, onClick: () => navigateFromAttendance(action.onClick)
+            }))}
+            onTabChange={(nextTab) => navigateFromAttendance(() => setTab(nextTab as Tab))}
             currentMeta={tabs.find((item) => item.id === tab) ?? tabs[0]}
             month={month}
             year={year}
             monthLabels={uiMonths}
-            onMonthChange={setMonth}
-            onYearChange={setYear}
+            onMonthChange={(value) => navigateFromAttendance(() => setMonth(value))}
+            onYearChange={(value) => navigateFromAttendance(() => setYear(value))}
             showMonthPicker={showMonthPicker}
           >
             {tab === "dashboard" && (
@@ -2935,42 +2737,16 @@ export default function App() {
 
             {tab === "attendance" && (
               <AttendanceScreen
-                attendanceSummary={attendanceSummary}
-                courseFilter={courseFilter}
-                allCourses={allCourses}
-                query={attQ}
-                filter={attFilter}
-                quickFilters={attendanceQuickFilters}
-                hasActiveQuickFilters={attendanceHasActiveQuickFilters}
-                rows={rows}
-                filteredRows={filteredAttendanceRows}
-                loading={loadingAtt}
-                attendanceSavingRows={attendanceSavingRows}
-                attendancePendingSelectRef={attendancePendingSelectRef}
-                year={year}
-                month={month}
-                perLessonTotal={perLessonTotal}
+                key={`${year}-${month}`}
+                editor={attendance.editor}
+                snapshot={attendance.snapshot}
+                phones={attendancePhones}
                 courseTypeLabel={localizedCourseTypeLabel}
                 formatEUR={formatEUR}
-                normalizeHoursDraftInput={normalizeHoursDraftInput}
-                getAttendanceStepBase={getAttendanceStepBase}
-                getAttendanceInputValue={getAttendanceInputValue}
-                setAttendanceDraft={setAttendanceDraft}
-                clearAttendanceDraft={clearAttendanceDraft}
-                commitAttendanceDraft={commitAttendanceDraft}
-                onChangeHours={onChangeHours}
                 onRefresh={() => void loadAttendance()}
                 onOpenInvoices={() => setTab("invoice")}
                 onOpenEnrollments={() => setTab("enrollments")}
-                onCourseFilterChange={setCourseFilter}
-                onQueryChange={setAttQ}
-                onFilterChange={setAttFilter}
-                onToggleQuickFilter={toggleAttendanceQuickChip}
-                onResetFilters={resetAttendanceFilters}
-                onOpenStudent={(studentId) => void openStudentCardById(studentId)}
-                onDeleteEnrollmentFromSheet={(enrollmentId, enrollmentVersion) =>
-                  void onDeleteEnrollmentFromSheet(enrollmentId, enrollmentVersion)
-                }
+                onOpenStudent={openStudentCardById}
                 focusTarget={attendanceFocusTarget}
                 onFocusTargetHandled={() => setAttendanceFocusTarget(null)}
                 t={t}

@@ -129,7 +129,7 @@ export function CoursesScreen({
   return (
     <>
       <FilterToolbar
-        primaryAction={<button onClick={onAddCourse}>{t("button.addCourse")}</button>}
+        primaryAction={<button className="btnPrimary" onClick={onAddCourse}>{t("button.addCourse")}</button>}
         search={
           <input
             className="searchField"

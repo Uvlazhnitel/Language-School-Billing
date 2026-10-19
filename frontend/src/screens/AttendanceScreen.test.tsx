@@ -1,99 +1,90 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
-
 import { AttendanceScreen } from "./AttendanceScreen";
+import { AppShell } from "../components/AppShell";
+import { AttendanceEditor } from "../lib/attendanceEditor";
+import { attendanceRow } from "../lib/attendanceFixture";
 import { createTranslator } from "../lib/i18n";
-import { defaultAttendanceQuickFilters } from "../lib/attendanceList";
 import type { Row } from "../lib/attendance";
-
-const rows: Row[] = [
-  {
-    enrollmentId: 1,
-    enrollmentVersion: 1,
-    studentId: 1,
-    studentName: "Anna Student",
-    courseId: 10,
-    courseName: "English",
-    courseType: "group",
-    teacherName: "Teacher One",
-    billingMode: "per_lesson",
-    lessonPrice: 25,
-    subscriptionLessonPrice: 0,
-    hours: 0,
-    hasRecord: false,
-    canDelete: true,
-    attendanceLocked: false,
-  },
-];
-
-function buildProps() {
-  return {
-    attendanceSummary: { missing: 1, total: 1, filled: 0, zero: 0 },
-    courseFilter: undefined,
-    allCourses: [],
-    query: "",
-    filter: "all" as const,
-    quickFilters: defaultAttendanceQuickFilters,
-    hasActiveQuickFilters: false,
-    rows,
-    filteredRows: rows,
-    loading: false,
-    attendanceSavingRows: {},
-    attendancePendingSelectRef: { current: null },
-    year: 2026,
-    month: 7,
-    perLessonTotal: 0,
-    courseTypeLabel: vi.fn((value: string) => value),
-    formatEUR: vi.fn((value: number) => `${value.toFixed(2)} EUR`),
-    normalizeHoursDraftInput: vi.fn((value: string) => value),
-    getAttendanceStepBase: vi.fn((row: Row) => row.hours),
-    getAttendanceInputValue: vi.fn((row: Row) => String(row.hours)),
-    setAttendanceDraft: vi.fn(),
-    clearAttendanceDraft: vi.fn(),
-    commitAttendanceDraft: vi.fn(),
-    onChangeHours: vi.fn(),
-    onRefresh: vi.fn(),
-    onOpenInvoices: vi.fn(),
-    onOpenEnrollments: vi.fn(),
-    onCourseFilterChange: vi.fn(),
-    onQueryChange: vi.fn(),
-    onFilterChange: vi.fn(),
-    onToggleQuickFilter: vi.fn(),
-    onResetFilters: vi.fn(),
-    onOpenStudent: vi.fn(),
-    onDeleteEnrollmentFromSheet: vi.fn(),
-    focusTarget: null,
-    onFocusTargetHandled: vi.fn(),
-    t: createTranslator("en-US"),
-  };
-}
-
-describe("AttendanceScreen", () => {
-  it("renders attendance quick filter chips", () => {
-    const markup = renderToStaticMarkup(<AttendanceScreen {...buildProps()} />);
-
-    expect(markup).toContain("Missing");
-    expect(markup).toContain("Zero hours");
-    expect(markup).toContain("Locked");
-    expect(markup).toContain("Subscriptions");
-  });
-
-  it("marks an active quick chip and shows clear filters", () => {
-    const markup = renderToStaticMarkup(
+function render(rows: Row[]) {
+  const editor = new AttendanceEditor(2026, 9, vi.fn(), () => "Invalid");
+  editor.snapshot = { rows, entries: {}, loading: false };
+  const meta = { id: "attendance", label: "Attendance", title: "Attendance", eyebrow: "Tracking" };
+  return renderToStaticMarkup(
+    <AppShell
+      tabs={[meta]}
+      activeTab="attendance"
+      currentMeta={meta}
+      year={2026}
+      month={9}
+      monthLabels={["September"]}
+      onTabChange={vi.fn()}
+      onMonthChange={vi.fn()}
+      onYearChange={vi.fn()}
+      showMonthPicker
+    >
       <AttendanceScreen
-        {...buildProps()}
-        quickFilters={{ ...defaultAttendanceQuickFilters, zero: true }}
-        hasActiveQuickFilters
+        editor={editor}
+        snapshot={editor.snapshot}
+        phones={new Map()}
+        onRefresh={vi.fn()}
+        onOpenInvoices={vi.fn()}
+        onOpenEnrollments={vi.fn()}
+        onOpenStudent={vi.fn()}
+        t={createTranslator("en-US")}
+        formatEUR={(n) => `€${n.toFixed(2)}`}
+        courseTypeLabel={(s) => s}
       />
-    );
-
-    expect(markup).toContain('quickFilterChip active');
-    expect(markup).toContain("Clear filters");
+    </AppShell>
+  );
+}
+describe("attendance in AppShell", () => {
+  it("opens an actionable teacher/course, shows blank missing quantity and removes enrollment deletion", () => {
+    const markup = render([attendanceRow()]);
+    expect(markup).toContain('aria-expanded="true"');
+    expect(markup).toContain('aria-pressed="true"');
+    expect(markup).toContain('value=""');
+    expect(markup).toContain("No lessons");
+    expect(markup).toContain('aria-label="Hours · Anna"');
+    expect(markup).toContain('button class="btnPrimary"');
+    expect(markup).not.toContain("Delete enrollment");
+    expect(markup).not.toContain("Cannot delete");
   });
-
-  it("shows the teacher next to the course", () => {
-    const markup = renderToStaticMarkup(<AttendanceScreen {...buildProps()} />);
-
-    expect(markup).toContain("English (group) — Teacher One");
+  it("shows subscription units, individual prices, confirmed totals and invoice lock reason", () => {
+    const markup = render([
+      attendanceRow({
+        billingMode: "subscription",
+        hours: 1.25,
+        hasRecord: true,
+        attendanceLocked: true,
+        invoiceStatus: "paid",
+        subscriptionLessonPrice: 12,
+      }),
+    ]);
+    expect(markup).toContain("Lessons");
+    expect(markup).toContain("Price / lesson");
+    expect(markup).toContain("€15.00");
+    expect(markup).toContain("Invoice paid");
+    expect(markup).toContain("1.25");
+    expect(markup).not.toContain('aria-label="Lessons · Anna"');
   });
+  it("renders an empty month", () => {
+    expect(render([])).toContain("No enrollments for this month");
+  });
+  it.each(["ru-RU", "en-US", "lv-LV"] as const)(
+    "provides attendance translations in %s",
+    (locale) => {
+      const t = createTranslator(locale);
+      for (const key of [
+        "missing",
+        "retry",
+        "discard",
+        "invalid",
+        "noLessons",
+        "lockPaid",
+        "lessonPrice",
+      ])
+        expect(t(`attendance.${key}`)).not.toBe(`attendance.${key}`);
+    }
+  );
 });

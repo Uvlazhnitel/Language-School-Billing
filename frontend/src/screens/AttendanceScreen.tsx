@@ -1,437 +1,424 @@
-import { useEffect, useRef, type MutableRefObject } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { AttendanceEditor, AttendanceSnapshot } from "../lib/attendanceEditor";
 import {
-  BillingModePerLesson,
-  BillingModeSubscription,
-  InvoiceStatusCanceled,
-  InvoiceStatusIssuedPendingPdf,
-  InvoiceStatusIssued,
-  InvoiceStatusPaidPendingPdf,
-  InvoiceStatusPaid,
-} from "../lib/constants";
-import type { Row } from "../lib/attendance";
-import type {
-  AttendanceQuickFilterKey,
-  AttendanceQuickFilters,
-  AttendanceFilter,
-} from "../lib/attendanceList";
-import type { CourseDTO } from "../lib/courses";
+  courseKey,
+  emptySheetFilters,
+  filterSheet,
+  groupSheet,
+  initialSheetGroup,
+  monthSummary,
+  rowPrice,
+  rowTotal,
+  teacherKey,
+  type SheetFilters,
+} from "../lib/attendanceGroups";
 import type { TranslateFn } from "../lib/i18n";
-import { EmptyState } from "../components/EmptyState";
-import { FilterToolbar } from "../components/FilterToolbar";
 import {
   findAttendanceFocusEnrollmentId,
   type AttendanceFocusTarget,
 } from "../lib/attendanceFocus";
-
 export type { AttendanceFocusTarget } from "../lib/attendanceFocus";
 
-type AttendanceScreenProps = {
-  attendanceSummary: { missing: number; total: number; filled: number; zero: number };
-  courseFilter?: number;
-  allCourses: CourseDTO[];
-  query: string;
-  filter: AttendanceFilter;
-  quickFilters: AttendanceQuickFilters;
-  hasActiveQuickFilters: boolean;
-  rows: Row[];
-  filteredRows: Row[];
-  loading: boolean;
-  attendanceSavingRows: Record<number, boolean>;
-  attendancePendingSelectRef: MutableRefObject<number | null>;
-  year: number;
-  month: number;
-  perLessonTotal: number;
-  courseTypeLabel: (type: string) => string;
-  formatEUR: (value: number) => string;
-  normalizeHoursDraftInput: (value: string) => string | null;
-  getAttendanceStepBase: (row: Row) => number;
-  getAttendanceInputValue: (row: Row) => string;
-  setAttendanceDraft: (enrollmentId: number, value: string) => void;
-  clearAttendanceDraft: (enrollmentId: number) => void;
-  commitAttendanceDraft: (row: Row) => void | Promise<void>;
-  onChangeHours: (row: Row, nextBase: number) => void;
+type Props = {
+  editor: AttendanceEditor;
+  snapshot: AttendanceSnapshot;
+  phones: Map<number, string>;
   onRefresh: () => void;
   onOpenInvoices: () => void;
   onOpenEnrollments: () => void;
-  onCourseFilterChange: (value: number | undefined) => void;
-  onQueryChange: (value: string) => void;
-  onFilterChange: (value: AttendanceFilter) => void;
-  onToggleQuickFilter: (key: AttendanceQuickFilterKey) => void;
-  onResetFilters: () => void;
-  onOpenStudent: (studentId: number) => void | Promise<void>;
-  onDeleteEnrollmentFromSheet: (
-    enrollmentId: number,
-    enrollmentVersion: number
-  ) => void | Promise<void>;
+  onOpenStudent: (id: number) => unknown;
   focusTarget?: AttendanceFocusTarget | null;
   onFocusTargetHandled?: () => void;
   t: TranslateFn;
+  formatEUR: (value: number) => string;
+  courseTypeLabel: (type: string) => string;
 };
 
 export function AttendanceScreen({
-  attendanceSummary,
-  courseFilter,
-  allCourses,
-  query,
-  filter,
-  quickFilters,
-  hasActiveQuickFilters,
-  rows,
-  filteredRows,
-  loading,
-  attendanceSavingRows,
-  attendancePendingSelectRef,
-  year: _year,
-  month: _month,
-  perLessonTotal,
-  courseTypeLabel,
-  formatEUR,
-  normalizeHoursDraftInput,
-  getAttendanceStepBase,
-  getAttendanceInputValue,
-  setAttendanceDraft,
-  clearAttendanceDraft,
-  commitAttendanceDraft,
-  onChangeHours,
+  editor,
+  snapshot,
+  phones,
   onRefresh,
   onOpenInvoices,
   onOpenEnrollments,
-  onCourseFilterChange,
-  onQueryChange,
-  onFilterChange,
-  onToggleQuickFilter,
-  onResetFilters,
   onOpenStudent,
-  onDeleteEnrollmentFromSheet,
   focusTarget,
   onFocusTargetHandled,
   t,
-}: AttendanceScreenProps) {
-  const hasActiveFilters = Boolean(query.trim() || filter !== "all" || courseFilter || hasActiveQuickFilters);
-  const quantityInputRefs = useRef(new Map<number, HTMLInputElement>());
+  formatEUR,
+  courseTypeLabel,
+}: Props) {
+  const { rows, entries, loading, error } = snapshot;
+  const [filters, setFilters] = useState<SheetFilters>(emptySheetFilters);
+  const [selection, setSelection] = useState<{ teacher: string; course: string } | null>(null);
+  const refs = useRef(new Map<number, HTMLInputElement>());
+  const filtered = useMemo(() => filterSheet(rows, filters, phones), [rows, filters, phones]);
+  const groups = useMemo(() => groupSheet(filtered), [filtered]);
+  const allTeachers = useMemo(() => groupSheet(rows), [rows]);
+  const courses = useMemo(
+    () =>
+      [...new Map(rows.map((row) => [row.courseId, row])).values()].sort((a, b) =>
+        a.courseName.localeCompare(b.courseName)
+      ),
+    [rows]
+  );
+  const summary = monthSummary(rows);
+  const selectedTeacher = groups.find((group) => group.key === selection?.teacher);
+  const open =
+    !selection || (selection.teacher && !selectedTeacher)
+      ? initialSheetGroup(groups)
+      : selectedTeacher &&
+          selection.course &&
+          !selectedTeacher.courses.some((course) => course.key === selection.course)
+        ? initialSheetGroup([selectedTeacher])
+        : selection;
+  useEffect(() => {
+    if (selection === null && groups.length > 0) setSelection(initialSheetGroup(groups));
+  }, [selection, groups]);
+  const change = (patch: Partial<SheetFilters>) =>
+    void editor.guard(() => {
+      setFilters((prev) => ({ ...prev, ...patch }));
+      setSelection(null);
+    });
 
   useEffect(() => {
+    if (!focusTarget) return;
     const enrollmentId = findAttendanceFocusEnrollmentId(rows, focusTarget);
-    if (enrollmentId === null) return;
-    const input = quantityInputRefs.current.get(enrollmentId);
-    if (!input) return;
-    input.scrollIntoView({ behavior: "smooth", block: "center" });
-    input.focus();
-    input.select();
+    const row = rows.find((item) => item.enrollmentId === enrollmentId);
+    if (!row) return;
+    const target = { teacher: teacherKey(row), course: courseKey(row) };
+    if (
+      open.teacher !== target.teacher ||
+      open.course !== target.course ||
+      !filtered.includes(row)
+    ) {
+      setFilters(emptySheetFilters);
+      setSelection(target);
+      return;
+    }
+    const input = refs.current.get(row.enrollmentId);
+    if (!input && !row.attendanceLocked) return;
+    input?.focus();
+    input?.select();
+    input?.scrollIntoView({ block: "center" });
     onFocusTargetHandled?.();
-  }, [focusTarget, onFocusTargetHandled, rows]);
+  }, [focusTarget, rows, open.teacher, open.course, filtered, onFocusTargetHandled]);
 
-  function courseOptionLabel(course: CourseDTO): string {
-    const typeLabel = courseTypeLabel(course.type);
-    return course.teacherName
-      ? `${course.name} — ${typeLabel} — ${course.teacherName}`
-      : `${course.name} — ${typeLabel}`;
-  }
-
-  const quickFilterChips: Array<[AttendanceQuickFilterKey, string]> = [
-    ["missing", t("chip.attendanceMissing")],
-    ["zero", t("chip.attendanceZero")],
-    ["locked", t("chip.attendanceLocked")],
-    ["subscription", t("chip.attendanceSubscription")],
-  ];
-
+  const states = ["all", "missing", "filled", "zero", "locked"] as const;
   return (
-    <>
-      <div className="sectionBanner">
-        <div>
-          <div className="dashboardCardEyebrow">{t("msg.monthStatus")}</div>
-          <strong>
-            {attendanceSummary.missing > 0
-              ? t("msg.monthStatusMissing", { count: attendanceSummary.missing })
-              : attendanceSummary.total > 0
-                ? t("msg.monthStatusDone")
-                : t("msg.monthStatusEmpty")}
-          </strong>
-        </div>
+    <div className="attendanceSheet" aria-busy={loading}>
+      <div className="attendanceSummary" aria-label={t("attendance.monthSummary")}>
+        {(["missing", "filled", "locked"] as const).map((key) => (
+          <div key={key}>
+            <span>{t(`attendance.${key}`)}</span>
+            <strong>{summary[key]}</strong>
+          </div>
+        ))}
+        <p>{t("attendance.autosave")}</p>
       </div>
-
-      <FilterToolbar
-        search={
+      <div className="attendanceToolbar">
+        <div className="attendanceToolbarTop">
           <input
-            className="searchField"
-            placeholder={t("msg.searchPlaceholderAttendance")}
-            value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
+            type="search"
+            aria-label={t("attendance.search")}
+            placeholder={t("attendance.search")}
+            value={filters.query}
+            onChange={(event) => change({ query: event.target.value })}
           />
-        }
-        quickFilters={
-          <div className="quickFilterChips">
-            {quickFilterChips.map(([key, label]) => (
+          <button className="btnPrimary" onClick={() => void editor.guard(onOpenInvoices)}>
+            {t("attendance.invoices")}
+          </button>
+          <button onClick={() => void editor.guard(onRefresh)}>{t("button.refresh")}</button>
+          <button onClick={() => void editor.guard(onOpenEnrollments)}>
+            {t("tabs.enrollments")}
+          </button>
+        </div>
+        <div className="attendanceToolbarFilters">
+          <div className="attendanceStates" aria-label={t("attendance.status")}>
+            {states.map((status) => (
               <button
-                key={key}
+                key={status}
                 type="button"
-                className={`quickFilterChip ${quickFilters[key] ? "active" : ""}`}
-                onClick={() => onToggleQuickFilter(key)}
+                aria-pressed={filters.status === status}
+                onClick={() => change({ status })}
               >
-                {label}
+                {t(`attendance.filter.${status}`)}
               </button>
             ))}
           </div>
-        }
-        filters={
-          <>
-            <select
-              value={courseFilter ?? ""}
-              onChange={(e) =>
-                onCourseFilterChange(e.target.value ? parseInt(e.target.value, 10) : undefined)
-              }
-            >
-              <option value="">{t("filter.allGroups")}</option>
-              {allCourses.map((course) => (
-                <option key={course.id} value={course.id}>
-                  {courseOptionLabel(course)}
-                </option>
-              ))}
-            </select>
-            <select
-              value={filter}
-              onChange={(e) => onFilterChange(e.target.value as AttendanceFilter)}
-            >
-              <option value="all">{t("status.showAll")}</option>
-              <option value="missing">{t("status.onlyMissing")}</option>
-              <option value="filled">{t("status.onlyFilled")}</option>
-              <option value="zero">{t("status.zeroLessons")}</option>
-            </select>
-          </>
-        }
-        hasActiveFilters={hasActiveFilters}
-        onClearFilters={onResetFilters}
-        clearLabel={t("button.clearFilters")}
-        secondaryActions={
-          <>
-            <button className="workspaceActionButton" onClick={onRefresh}>
-              {t("msg.refreshSheet")}
-            </button>
-            <button
-              className="workspaceActionButton workspaceActionButtonPrimary"
-              onClick={onOpenInvoices}
-              disabled={attendanceSummary.total === 0}
-            >
-              {t("msg.openMonthInvoices")}
-            </button>
-          </>
-        }
-      />
-
-      {rows.length > 0 && (
-        <div className="attSummary">
-          {t("msg.attFilled")}: {attendanceSummary.filled} / {attendanceSummary.total}
-          &nbsp;·&nbsp;{t("msg.attMissing")}: {attendanceSummary.missing}
-          &nbsp;·&nbsp;{t("msg.attZero")}: {attendanceSummary.zero}
+          <select
+            aria-label={t("attendance.teacher")}
+            value={filters.teacher}
+            onChange={(event) => change({ teacher: event.target.value })}
+          >
+            <option value="">{t("attendance.allTeachers")}</option>
+            {allTeachers.map((teacher) => (
+              <option key={teacher.key} value={teacher.key}>
+                {teacher.name || t("attendance.unassigned")}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label={t("attendance.course")}
+            value={filters.course}
+            onChange={(event) => change({ course: event.target.value })}
+          >
+            <option value="">{t("attendance.allCourses")}</option>
+            {courses.map((row) => (
+              <option key={row.courseId} value={row.courseId}>
+                {row.courseName} · {courseTypeLabel(row.courseType)}
+              </option>
+            ))}
+          </select>
+          <select
+            aria-label={t("attendance.billing")}
+            value={filters.billing}
+            onChange={(event) => change({ billing: event.target.value })}
+          >
+            <option value="">{t("attendance.allBilling")}</option>
+            <option value="per_lesson">{t("attendance.hourly")}</option>
+            <option value="subscription">{t("attendance.subscription")}</option>
+          </select>
+        </div>
+      </div>
+      {loading && <p role="status">{t("label.loading")}</p>}
+      {error && (
+        <p role="alert">
+          {error} <button onClick={onRefresh}>{t("attendance.retry")}</button>
+        </p>
+      )}
+      <div className="attendanceResults" role="status">
+        <span>{t("attendance.found", { count: filtered.length })}</span>
+        <span>
+          {t("attendance.total")}:{" "}
+          <strong>
+            {formatEUR(
+              filtered.reduce((sum, row) => sum + Math.round(rowTotal(row) * 100), 0) / 100
+            )}
+          </strong>
+        </span>
+      </div>
+      {!loading && !error && groups.length === 0 && (
+        <div className="attendanceEmpty">
+          <p>{t(rows.length ? "attendance.noResults" : "attendance.empty")}</p>
+          {rows.length > 0 && (
+            <button onClick={() => change(emptySheetFilters)}>{t("attendance.reset")}</button>
+          )}
         </div>
       )}
-
-      {loading ? (
-        <div>{t("label.loading")}</div>
-      ) : filteredRows.length === 0 ? (
-        hasActiveFilters ? (
-          <EmptyState
-            title={t("msg.noAttendanceSearchTitle")}
-            description={t("msg.noAttendanceSearchDescription")}
-            actionLabel={t("button.clearFilters")}
-            onAction={onResetFilters}
-          />
-        ) : (
-          <EmptyState
-            title={t("msg.noAttendanceTitle")}
-            description={t("msg.noAttendanceDescription")}
-            actionLabel={t("button.openEnrollments")}
-            onAction={onOpenEnrollments}
-          />
-        )
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>{t("field.student")}</th>
-              <th>{t("field.course")}</th>
-              <th style={{ textAlign: "right" }}>{t("field.lessonPrice")} (EUR)</th>
-              <th style={{ textAlign: "right" }}>{t("field.quantity")}</th>
-              <th style={{ textAlign: "right" }}>{t("field.totalEur")}</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredRows.map((row) => (
-              <tr
-                key={row.enrollmentId}
-                className={
-                  focusTarget?.studentId === row.studentId && focusTarget.courseId === row.courseId
-                    ? "attendanceFocusRow"
-                    : undefined
-                }
-              >
-                <td>
-                  <button className="linkButton" onClick={() => void onOpenStudent(row.studentId)}>
-                    {row.studentName}
-                  </button>
-                </td>
-                <td>
-                  {row.courseName} ({courseTypeLabel(row.courseType)})
-                  {row.teacherName ? ` — ${row.teacherName}` : ""}
-                  {row.billingMode === BillingModeSubscription && (
-                    <>
-                      {" "}
-                      <span className="attBadge attBadge--subscription">
-                        {t("billing.subscription")}
-                      </span>
-                    </>
-                  )}
-                </td>
-                <td style={{ textAlign: "right" }}>
-                  {formatEUR(
-                    row.billingMode === BillingModePerLesson
-                      ? row.lessonPrice
-                      : row.subscriptionLessonPrice
-                  )}
-                </td>
-                <td style={{ textAlign: "right" }}>
-                  {!row.hasRecord && (
-                    <span className="attBadge attBadge--missing">{t("msg.attMissing")}</span>
-                  )}
-                  {row.hasRecord && row.hours === 0 && (
-                    <span className="attBadge attBadge--zero">
-                      {row.billingMode === BillingModePerLesson ? "0h" : "0"}
-                    </span>
-                  )}
-                  {!row.attendanceLocked ? (
-                    <div className="attendanceStepper">
+      {groups.map((teacher) => (
+        <section className="attendanceTeacher" key={teacher.key}>
+          <h2>
+            <button
+              className="attendanceTeacherToggle"
+              aria-expanded={open.teacher === teacher.key}
+              aria-controls={`teacher-${teacher.key}`}
+              onClick={() =>
+                void editor.guard(() =>
+                  setSelection(
+                    open.teacher === teacher.key
+                      ? { teacher: "", course: "" }
+                      : { teacher: teacher.key, course: initialSheetGroup([teacher]).course }
+                  )
+                )
+              }
+            >
+              <span aria-hidden="true">{open.teacher === teacher.key ? "▾" : "▸"}</span>
+              <span>{teacher.name || t("attendance.unassigned")}</span>
+              <small>{t("attendance.toFill", { count: teacher.missing })}</small>
+            </button>
+          </h2>
+          {open.teacher === teacher.key && (
+            <div id={`teacher-${teacher.key}`} className="attendanceCourses">
+              {teacher.courses.map((course) => {
+                const first = course.rows[0];
+                const subscription = first.billingMode === "subscription";
+                const quantityLabel = t(subscription ? "attendance.lessons" : "attendance.hours");
+                return (
+                  <section className="attendanceCourse" key={course.key}>
+                    <h3>
                       <button
-                        type="button"
-                        className="attendanceStepperButton"
+                        className="attendanceCourseToggle"
+                        aria-expanded={open.course === course.key}
+                        aria-controls={`course-${course.key}`}
                         onClick={() =>
-                          onChangeHours(row, Math.max(0, getAttendanceStepBase(row) - 1))
+                          void editor.guard(() =>
+                            setSelection({
+                              teacher: teacher.key,
+                              course: open.course === course.key ? "" : course.key,
+                            })
+                          )
                         }
-                        disabled={
-                          attendanceSavingRows[row.enrollmentId] || getAttendanceStepBase(row) <= 0
-                        }
-                        aria-label={`Decrease hours for ${row.studentName}`}
                       >
-                        −
+                        <span aria-hidden="true">{open.course === course.key ? "▾" : "▸"}</span>
+                        <span>
+                          {first.courseName}{" "}
+                          <small>
+                            {courseTypeLabel(first.courseType)} ·{" "}
+                            {t(subscription ? "attendance.subscription" : "attendance.hourly")}
+                          </small>
+                        </span>
+                        <small>{t("attendance.toFill", { count: course.missing })}</small>
                       </button>
-                      <input
-                        ref={(node) => {
-                          if (node) quantityInputRefs.current.set(row.enrollmentId, node);
-                          else quantityInputRefs.current.delete(row.enrollmentId);
-                        }}
-                        type="text"
-                        inputMode="decimal"
-                        value={getAttendanceInputValue(row)}
-                        disabled={attendanceSavingRows[row.enrollmentId]}
-                        onChange={(e) => {
-                          const nextValue = normalizeHoursDraftInput(e.target.value);
-                          if (nextValue !== null) {
-                            setAttendanceDraft(row.enrollmentId, nextValue);
-                          }
-                        }}
-                        onPointerDown={() => {
-                          attendancePendingSelectRef.current = row.enrollmentId;
-                        }}
-                        onFocus={(e) => {
-                          if (attendancePendingSelectRef.current !== row.enrollmentId) {
-                            e.currentTarget.select();
-                          }
-                        }}
-                        onMouseUp={(e) => {
-                          if (attendancePendingSelectRef.current === row.enrollmentId) {
-                            e.preventDefault();
-                            e.currentTarget.select();
-                            attendancePendingSelectRef.current = null;
-                          }
-                        }}
-                        onBlur={() => {
-                          if (attendancePendingSelectRef.current === row.enrollmentId) {
-                            attendancePendingSelectRef.current = null;
-                          }
-                          void commitAttendanceDraft(row);
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            e.preventDefault();
-                            void commitAttendanceDraft(row);
-                          }
-                          if (e.key === "Escape") {
-                            e.preventDefault();
-                            clearAttendanceDraft(row.enrollmentId);
-                            e.currentTarget.blur();
-                          }
-                        }}
-                        className="attendanceStepperInput"
-                        aria-label={`Quantity for ${row.studentName}`}
-                      />
-                      <button
-                        type="button"
-                        className="attendanceStepperButton"
-                        onClick={() => onChangeHours(row, getAttendanceStepBase(row) + 1)}
-                        disabled={attendanceSavingRows[row.enrollmentId]}
-                        aria-label={`Increase hours for ${row.studentName}`}
+                    </h3>
+                    {open.course === course.key && (
+                      <div
+                        id={`course-${course.key}`}
+                        className="attendanceGrid"
+                        role="table"
+                        aria-label={first.courseName}
                       >
-                        +
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="attendanceReadOnly">
-                      <span className="attBadge attBadge--subscription">{t("msg.readOnly")}</span>
-                      <span className="mutedInline">
-                        {row.invoiceStatus === InvoiceStatusIssued ||
-                        row.invoiceStatus === InvoiceStatusIssuedPendingPdf
-                          ? t("msg.lockedIssuedInvoice")
-                          : row.invoiceStatus === InvoiceStatusPaid ||
-                              row.invoiceStatus === InvoiceStatusPaidPendingPdf
-                            ? t("msg.lockedPaidInvoice")
-                            : row.invoiceStatus === InvoiceStatusCanceled
-                              ? t("msg.lockedCanceledInvoice")
-                              : t("msg.lockedUntilDraft")}
-                      </span>
-                    </div>
-                  )}
-                </td>
-                <td style={{ textAlign: "right" }}>
-                  {row.billingMode === BillingModePerLesson
-                    ? formatEUR(row.hours * row.lessonPrice)
-                    : formatEUR(row.subscriptionLessonPrice * row.hours)}
-                </td>
-                <td>
-                  {!row.attendanceLocked && !row.hasRecord && (
-                      <button
-                        onClick={() => onChangeHours(row, 0)}
-                        disabled={attendanceSavingRows[row.enrollmentId]}
-                        style={{ marginRight: "0.5rem" }}
-                      >
-                        {t("msg.setZeroHours")}
-                      </button>
+                        <div className="attendanceGridHead" role="row">
+                          <span role="columnheader">{t("attendance.student")}</span>
+                          <span role="columnheader">
+                            {t(subscription ? "attendance.lessonPrice" : "attendance.hourPrice")}
+                          </span>
+                          <span role="columnheader">{quantityLabel}</span>
+                          <span role="columnheader">{t("attendance.total")}</span>
+                        </div>
+                        {course.rows.map((row) => {
+                          const entry = entries[row.enrollmentId];
+                          const errorId = `attendance-error-${row.enrollmentId}`;
+                          return (
+                            <div className="attendanceRow" key={row.enrollmentId} role="row">
+                              <div role="cell">
+                                <button
+                                  className="attendanceStudent"
+                                  onClick={() =>
+                                    void editor.guard(() => onOpenStudent(row.studentId))
+                                  }
+                                >
+                                  {row.studentName}
+                                </button>
+                              </div>
+                              <div className="attendancePrice" role="cell">
+                                <span className="attendanceMobileLabel">
+                                  {t(
+                                    subscription ? "attendance.lessonPrice" : "attendance.hourPrice"
+                                  )}
+                                </span>
+                                {formatEUR(rowPrice(row))}
+                              </div>
+                              <div role="cell" className="attendanceQuantity">
+                                <span className="attendanceMobileLabel">{quantityLabel}</span>
+                                {row.attendanceLocked ? (
+                                  <div className="attendanceLocked">
+                                    <strong>{row.hasRecord ? row.hours : "—"}</strong>
+                                    <small>
+                                      {t(
+                                        row.invoiceStatus === "canceled"
+                                          ? "attendance.lockCanceled"
+                                          : row.invoiceStatus?.startsWith("paid")
+                                            ? "attendance.lockPaid"
+                                            : "attendance.lockIssued"
+                                      )}
+                                    </small>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <div className="attendanceStepper">
+                                      <button
+                                        aria-label={`${t("attendance.decrease")} · ${row.studentName}`}
+                                        disabled={entry?.saving}
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        onClick={() => void editor.step(row, -0.25)}
+                                      >
+                                        −
+                                      </button>
+                                      <input
+                                        ref={(element) => {
+                                          if (element) refs.current.set(row.enrollmentId, element);
+                                          else refs.current.delete(row.enrollmentId);
+                                        }}
+                                        type="text"
+                                        inputMode="decimal"
+                                        aria-label={`${quantityLabel} · ${row.studentName}`}
+                                        aria-invalid={Boolean(entry?.error)}
+                                        aria-describedby={entry?.error ? errorId : undefined}
+                                        placeholder={t("attendance.placeholder")}
+                                        value={editor.value(row)}
+                                        disabled={entry?.saving}
+                                        onChange={(event) => editor.edit(row, event.target.value)}
+                                        onBlur={() => {
+                                          if (
+                                            !editor.getSnapshot().entries[row.enrollmentId]?.error
+                                          )
+                                            void editor.commit(row);
+                                        }}
+                                        onFocus={(event) => event.target.select()}
+                                        onKeyDown={(event) => {
+                                          if (event.key === "Enter") {
+                                            event.preventDefault();
+                                            void editor.commit(row);
+                                          }
+                                          if (event.key === "Escape") {
+                                            event.preventDefault();
+                                            editor.discard(row);
+                                            event.currentTarget.blur();
+                                          }
+                                        }}
+                                      />
+                                      <button
+                                        aria-label={`${t("attendance.increase")} · ${row.studentName}`}
+                                        disabled={entry?.saving}
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        onClick={() => void editor.step(row, 0.25)}
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                    <div className="attendanceSaveState" aria-live="polite">
+                                      {entry?.saving ? (
+                                        t("attendance.saving")
+                                      ) : entry?.error ? null : entry ? (
+                                        t("attendance.unsaved")
+                                      ) : row.hasRecord ? (
+                                        t("attendance.saved")
+                                      ) : (
+                                        <button
+                                          aria-label={`${t("attendance.noLessons")} · ${row.studentName}`}
+                                          onMouseDown={(event) => event.preventDefault()}
+                                          onClick={() => {
+                                            editor.edit(row, "0");
+                                            void editor.commit(row);
+                                          }}
+                                        >
+                                          {t("attendance.noLessons")}
+                                        </button>
+                                      )}
+                                    </div>
+                                  </>
+                                )}
+                                {entry?.error && (
+                                  <div className="attendanceError" id={errorId} role="alert">
+                                    <span>{entry.error}</span>
+                                    <button onClick={() => void editor.commit(row)}>
+                                      {t("attendance.retry")}
+                                    </button>
+                                    <button onClick={() => editor.discard(row)}>
+                                      {t("attendance.discard")}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="attendanceAmount" role="cell">
+                                <span className="attendanceMobileLabel">
+                                  {t("attendance.total")}
+                                </span>
+                                {formatEUR(rowTotal(row))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
-                  {row.canDelete ? (
-                    <button
-                      onClick={() =>
-                        void onDeleteEnrollmentFromSheet(row.enrollmentId, row.enrollmentVersion)
-                      }
-                    >
-                      {t("msg.deleteEnrollment")}
-                    </button>
-                  ) : (
-                    <span className="mutedInline">{t("msg.deleteEnrollmentBlocked")}</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot>
-            <tr>
-              <td colSpan={4} style={{ textAlign: "right" }}>
-                {t("msg.lessonsTotalEur")}:
-              </td>
-              <td style={{ textAlign: "right" }}>{formatEUR(perLessonTotal)}</td>
-              <td></td>
-            </tr>
-          </tfoot>
-        </table>
-      )}
-    </>
+                  </section>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      ))}
+    </div>
   );
 }

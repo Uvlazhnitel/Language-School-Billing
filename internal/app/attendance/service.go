@@ -4,6 +4,7 @@ package attendance
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 
@@ -42,13 +43,14 @@ func NewWithInvoicesDir(db *ent.Client, invoicesDir string) *Service {
 // It combines enrollment, student, and course information with the
 // tracked hours for a specific month.
 type Row struct {
-	EnrollmentID            int     `json:"enrollmentId"`            // ID of the enrollment
-	EnrollmentVersion       int     `json:"enrollmentVersion"`       // Optimistic-lock revision of the enrollment
-	StudentID               int     `json:"studentId"`               // ID of the student
-	StudentName             string  `json:"studentName"`             // Student's full name
-	CourseID                int     `json:"courseId"`                // ID of the course
-	CourseName              string  `json:"courseName"`              // Course name
-	CourseType              string  `json:"courseType"`              // Course type: "group" or "individual"
+	EnrollmentID            int     `json:"enrollmentId"`      // ID of the enrollment
+	EnrollmentVersion       int     `json:"enrollmentVersion"` // Optimistic-lock revision of the enrollment
+	StudentID               int     `json:"studentId"`         // ID of the student
+	StudentName             string  `json:"studentName"`       // Student's full name
+	CourseID                int     `json:"courseId"`          // ID of the course
+	CourseName              string  `json:"courseName"`        // Course name
+	CourseType              string  `json:"courseType"`        // Course type: "group" or "individual"
+	TeacherID               *int    `json:"teacherId,omitempty"`
 	TeacherName             string  `json:"teacherName"`             // Assigned teacher name
 	BillingMode             string  `json:"billingMode"`             // Enrollment billing mode
 	LessonPrice             float64 `json:"lessonPrice"`             // Hourly rate for this enrollment
@@ -135,7 +137,7 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 		c := e.Edges.Course
 		sname := e.Edges.Student.FullName
 
-		am, _ := s.db.AttendanceMonth.
+		am, err := s.db.AttendanceMonth.
 			Query().
 			Where(
 				attendancemonth.StudentIDEQ(e.StudentID),
@@ -144,6 +146,9 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 				attendancemonth.MonthEQ(m),
 			).Only(ctx)
 
+		if err != nil && !ent.IsNotFound(err) {
+			return nil, err
+		}
 		hours := 0.0
 		hasRecord := false
 		if am != nil {
@@ -174,6 +179,10 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			lessonPriceCents = e.LessonPriceOverrideCents
 		}
 
+		subscriptionPrice := e.SubscriptionLessonPriceCents
+		if subscriptionPrice < 0 {
+			subscriptionPrice = c.LessonPriceCents
+		}
 		rows = append(rows, Row{
 			EnrollmentID:            e.ID,
 			EnrollmentVersion:       e.Version,
@@ -182,10 +191,11 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 			CourseID:                e.CourseID,
 			CourseName:              c.Name,
 			CourseType:              string(c.Type),
+			TeacherID:               c.TeacherID,
 			TeacherName:             teacherName,
 			BillingMode:             string(e.BillingMode),
 			LessonPrice:             money.CentsToEuros(lessonPriceCents),
-			SubscriptionLessonPrice: utils.Round2(money.CentsToEuros(e.SubscriptionLessonPriceCents)),
+			SubscriptionLessonPrice: utils.Round2(money.CentsToEuros(subscriptionPrice)),
 			Hours:                   hours,
 			HasRecord:               hasRecord,
 			CanDelete:               canDelete,
@@ -199,11 +209,25 @@ func (s *Service) ListPerLesson(ctx context.Context, y, m int, courseID *int) ([
 // Upsert creates or updates an attendance record for a student-course pair
 // for a specific month. If no record exists, a new one is created. If a record exists, it is updated.
 func (s *Service) Upsert(ctx context.Context, studentID, courseID, y, m int, hours float64) error {
-	invoiceStatus, _, err := s.getMonthInvoiceStatus(ctx, studentID, y, m)
+	if err := validation.ValidateQuarterHours(hours); err != nil {
+		return err
+	}
+	// SQLite LevelSerializable reserves the writer before any financial reads.
+	tx, err := s.db.BeginTx(ctx, &sql.TxOptions{Isolation: sql.LevelSerializable})
 	if err != nil {
 		return err
 	}
-	if err := validation.ValidateQuarterHours(hours); err != nil {
+	defer tx.Rollback()
+	store := NewWithInvoicesDir(tx.Client(), s.invoicesDir)
+	if err := store.upsertInTransaction(ctx, studentID, courseID, y, m, hours); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (s *Service) upsertInTransaction(ctx context.Context, studentID, courseID, y, m int, hours float64) error {
+	invoiceStatus, _, err := s.getMonthInvoiceStatus(ctx, studentID, y, m)
+	if err != nil {
 		return err
 	}
 	if lockReason(y, m, invoiceStatus) {

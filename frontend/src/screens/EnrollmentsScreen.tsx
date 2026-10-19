@@ -245,7 +245,7 @@ export function EnrollmentsScreen({
   return (
     <>
       <FilterToolbar
-        primaryAction={<button onClick={onAddEnrollment}>{t("button.addEnrollment")}</button>}
+        primaryAction={<button className="btnPrimary" onClick={onAddEnrollment}>{t("button.addEnrollment")}</button>}
         search={
           <input
             className="searchField"

@@ -216,7 +216,7 @@ func buildCourseLineDescription(courseName string) string {
 }
 
 // buildPerLessonLine creates an invoice line for per-lesson billing.
-func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPriceCents int64) (*ent.InvoiceLineCreate, float64, int64) {
+func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPriceCents int64) (*ent.InvoiceLineCreate, float64, int64, error) {
 	// Query attendance for the month
 	am, err := s.db.AttendanceMonth.Query().Where(
 		attendancemonth.StudentIDEQ(en.StudentID),
@@ -226,21 +226,19 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 	).Only(ctx)
 
 	qty := 0.0
-	if err != nil {
-		if !ent.IsNotFound(err) {
-			fmt.Printf("AttendanceMonth query error (student %d, course %d, %04d-%02d): %v\n",
-				en.StudentID, en.CourseID, y, m, err)
-		}
-		// NotFound => qty remains 0
-	} else {
+	if err != nil && !ent.IsNotFound(err) {
+		return nil, 0, 0, err
+	}
+	if am != nil {
 		qty = am.Hours
 	}
-
 	amountCents := money.MulFloatToCents(qty, lessonPriceCents)
-	courseName := ""
-	if c, err := s.db.Course.Get(ctx, en.CourseID); err == nil {
-		courseName = c.Name
+	c, err := s.db.Course.Get(ctx, en.CourseID)
+	if err != nil {
+		return nil, 0, 0, err
 	}
+	courseName := c.Name
+
 	desc := buildCourseLineDescription(courseName)
 
 	line := s.db.InvoiceLine.Create().
@@ -250,20 +248,22 @@ func (s *Service) buildPerLessonLine(ctx context.Context, en *ent.Enrollment, y,
 		SetUnitPriceCents(lessonPriceCents).
 		SetAmountCents(amountCents)
 
-	return line, qty, amountCents
+	return line, qty, amountCents, nil
 }
 
 // buildSubscriptionLine creates an invoice line for subscription billing
-func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPriceCents int64, lessonsHeld float64) (*ent.InvoiceLineCreate, int64) {
+func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment, y, m int, lessonPriceCents int64, lessonsHeld float64) (*ent.InvoiceLineCreate, int64, error) {
 	unitPriceCents := en.SubscriptionLessonPriceCents
 	if unitPriceCents < 0 {
 		unitPriceCents = lessonPriceCents
 	}
 	amountCents := money.MulFloatToCents(lessonsHeld, unitPriceCents)
-	courseName := ""
-	if c, err := s.db.Course.Get(ctx, en.CourseID); err == nil {
-		courseName = c.Name
+	c, err := s.db.Course.Get(ctx, en.CourseID)
+	if err != nil {
+		return nil, 0, err
 	}
+	courseName := c.Name
+
 	desc := buildCourseLineDescription(courseName)
 
 	line := s.db.InvoiceLine.Create().
@@ -273,7 +273,7 @@ func (s *Service) buildSubscriptionLine(ctx context.Context, en *ent.Enrollment,
 		SetUnitPriceCents(unitPriceCents).
 		SetAmountCents(amountCents)
 
-	return line, amountCents
+	return line, amountCents, nil
 }
 
 // buildMaterialsLine creates a fixed invoice line for monthly learning materials.
@@ -323,76 +323,29 @@ func (s *Service) getSettingsOrDefaults(ctx context.Context) (string, int, bool,
 // resolvePrices determines the effective prices for an enrollment in a given period.
 // It uses the course prices and applies the enrollment discount, if any.
 // Returns both lesson price and subscription price.
-func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m int) (lessonPriceCents, subscriptionPriceCents int64) {
-	lessonPriceCents, subscriptionPriceCents = 0, 0
-
-	// Base prices
-	c, err := s.db.Enrollment.Query().Where(enrollment.IDEQ(en.ID)).QueryCourse().Only(ctx)
-	if err == nil && c != nil {
-		lp, sp := c.LessonPriceCents, c.SubscriptionPriceCents
-		if en.BillingMode == BillingPerLesson && en.LessonPriceOverrideCents >= 0 {
-			lp = en.LessonPriceOverrideCents
-		}
-		lessonPriceCents, subscriptionPriceCents = lp, sp
-	}
-
-	return lessonPriceCents, subscriptionPriceCents
-}
-
-func (s *Service) subscriptionLessonsHeld(ctx context.Context, studentID, courseID, y, m int) float64 {
-	item, err := s.db.AttendanceMonth.Query().
-		Where(
-			attendancemonth.StudentIDEQ(studentID),
-			attendancemonth.CourseIDEQ(courseID),
-			attendancemonth.YearEQ(y),
-			attendancemonth.MonthEQ(m),
-		).
-		Only(ctx)
+func (s *Service) resolvePrices(ctx context.Context, en *ent.Enrollment, y, m int) (int64, int64, error) {
+	c, err := s.db.Course.Get(ctx, en.CourseID)
 	if err != nil {
-		return 0
+		return 0, 0, err
 	}
-	return item.Hours
+	lp := c.LessonPriceCents
+	if en.BillingMode == BillingPerLesson && en.LessonPriceOverrideCents >= 0 {
+		lp = en.LessonPriceOverrideCents
+	}
+	return lp, c.SubscriptionPriceCents, nil
 }
 
-func (s *Service) hasAnyLessonsInMonth(ctx context.Context, ens []*ent.Enrollment, y, m int) bool {
-	for _, en := range ens {
-		if s.enrollmentHasLessonsInMonth(ctx, en, y, m) {
-			return true
-		}
+func (s *Service) subscriptionLessonsHeld(ctx context.Context, studentID, courseID, y, m int) (float64, error) {
+	item, err := s.db.AttendanceMonth.Query().Where(
+		attendancemonth.StudentIDEQ(studentID), attendancemonth.CourseIDEQ(courseID),
+		attendancemonth.YearEQ(y), attendancemonth.MonthEQ(m)).Only(ctx)
+	if ent.IsNotFound(err) {
+		return 0, nil
 	}
-	return false
-}
-
-func (s *Service) enrollmentHasLessonsInMonth(ctx context.Context, en *ent.Enrollment, y, m int) bool {
-	switch en.BillingMode {
-	case BillingSubscription:
-		return s.subscriptionLessonsHeld(ctx, en.StudentID, en.CourseID, y, m) > 0
-	default:
-		count, err := s.db.AttendanceMonth.Query().
-			Where(
-				attendancemonth.StudentIDEQ(en.StudentID),
-				attendancemonth.CourseIDEQ(en.CourseID),
-				attendancemonth.YearEQ(y),
-				attendancemonth.MonthEQ(m),
-				attendancemonth.HoursGT(0),
-			).
-			Count(ctx)
-		return err == nil && count > 0
+	if err != nil {
+		return 0, err
 	}
-}
-
-func (s *Service) firstMaterialsEnrollmentForMonth(ctx context.Context, ens []*ent.Enrollment, y, m int) *ent.Enrollment {
-	for _, en := range ens {
-		if en.ChargeMaterials && s.enrollmentHasLessonsInMonth(ctx, en, y, m) {
-			return en
-		}
-	}
-	for _, en := range ens {
-		if en.ChargeMaterials {
-			return en
-		}
-	}
-	return nil
+	return item.Hours, nil
 }
 
 func mergeGenerateResult(dst *GenerateResult, src GenerateResult) {
@@ -463,12 +416,35 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 	lines := make([]*ent.InvoiceLineCreate, 0, lineCapacity)
 	var totalCents int64
 
+	var materialsEnrollment, fallbackMaterialsEnrollment *ent.Enrollment
+	hasLessons := false
 	for _, en := range ens {
-		lp, _ := s.resolvePrices(ctx, en, y, m)
+		lp, _, err := s.resolvePrices(ctx, en, y, m)
+		if err != nil {
+			return res, err
+		}
+		held, err := s.subscriptionLessonsHeld(ctx, en.StudentID, en.CourseID, y, m)
+		if err != nil {
+			return res, err
+		}
+		if held > 0 {
+			hasLessons = true
+		}
+		if en.ChargeMaterials {
+			if fallbackMaterialsEnrollment == nil {
+				fallbackMaterialsEnrollment = en
+			}
+			if held > 0 && materialsEnrollment == nil {
+				materialsEnrollment = en
+			}
+		}
 
 		switch en.BillingMode {
 		case BillingPerLesson:
-			line, qty, amount := s.buildPerLessonLine(ctx, en, y, m, lp)
+			line, qty, amount, err := s.buildPerLessonLine(ctx, en, y, m, lp)
+			if err != nil {
+				return res, err
+			}
 			if qty <= 0 || amount <= 0 {
 				continue
 			}
@@ -476,11 +452,14 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 			totalCents += amount
 
 		case BillingSubscription:
-			lessonsHeld := s.subscriptionLessonsHeld(ctx, en.StudentID, en.CourseID, y, m)
+			lessonsHeld := held
 			if lessonsHeld <= 0 {
 				continue
 			}
-			line, amount := s.buildSubscriptionLine(ctx, en, y, m, lp, lessonsHeld)
+			line, amount, err := s.buildSubscriptionLine(ctx, en, y, m, lp, lessonsHeld)
+			if err != nil {
+				return res, err
+			}
 			lines = append(lines, line)
 			totalCents += amount
 
@@ -489,7 +468,10 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 		}
 	}
 
-	if materialsEnrollment := s.firstMaterialsEnrollmentForMonth(ctx, ens, y, m); materialsEnrollment != nil && s.hasAnyLessonsInMonth(ctx, ens, y, m) {
+	if materialsEnrollment == nil {
+		materialsEnrollment = fallbackMaterialsEnrollment
+	}
+	if materialsEnrollment != nil && hasLessons {
 		materialsLine, materialsAmount := s.buildMaterialsLine(materialsEnrollment.ID)
 		lines = append(lines, materialsLine)
 		totalCents += materialsAmount
