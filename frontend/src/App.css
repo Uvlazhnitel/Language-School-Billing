@@ -3310,7 +3310,10 @@ tfoot td {
   border-radius: 18px;
   background: #fffdfb;
 }
-.panel .courseSubjectHeader {
+.courseCatalog .courseSubjectHeader {
+  appearance: none;
+  cursor: pointer;
+  font-weight: 800;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -3323,6 +3326,11 @@ tfoot td {
   background: linear-gradient(110deg, #fff9f2, #fffdfb);
   color: var(--text);
   text-align: left;
+  transform: none;
+}
+.courseCatalog .courseSubjectHeader:hover {
+  background: linear-gradient(110deg, #fff1e3, #fffdfb);
+  box-shadow: none;
   transform: none;
 }
 .courseSubjectHeader strong {
@@ -3368,7 +3376,7 @@ tfoot td {
 .courseVariantActions {
   text-align: right;
 }
-.panel .courseVariantActions button {
+.courseCatalog .courseVariantActions button {
   padding: 6px 9px;
   min-height: 32px;
   margin: 2px;
@@ -3385,7 +3393,7 @@ tfoot td {
   white-space: nowrap;
 }
 @media (max-width: 760px) {
-  .panel .courseSubjectHeader {
+  .courseCatalog .courseSubjectHeader {
     display: grid;
     grid-template-columns: 28px minmax(0, 1fr);
     gap: 4px 10px;
