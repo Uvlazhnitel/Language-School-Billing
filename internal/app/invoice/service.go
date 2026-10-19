@@ -477,7 +477,7 @@ func (s *Service) rebuildDraftForStudentInStore(ctx context.Context, studentID, 
 
 		case BillingSubscription:
 			lessonsHeld := s.subscriptionLessonsHeld(ctx, en.StudentID, en.CourseID, y, m)
-			if lp <= 0 || lessonsHeld <= 0 {
+			if lessonsHeld <= 0 {
 				continue
 			}
 			line, amount := s.buildSubscriptionLine(ctx, en, y, m, lp, lessonsHeld)
