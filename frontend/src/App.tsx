@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
+import { newPaymentSubmission, submitPayment } from "./lib/paymentSubmission";
 
 import { fetchRows, saveHours, deleteEnrollment, Row } from "./lib/attendance";
 
@@ -1860,6 +1861,8 @@ export default function App() {
 
   // Payment modal state
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentSaving, setPaymentSaving] = useState(false);
+  const paymentSubmissionRef = useRef(newPaymentSubmission());
   const [paymentAmount, setPaymentAmount] = useState("");
   // Payment method stays fixed for new UI-created payments to keep the flow simple.
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "bank">("cash");
@@ -2064,6 +2067,8 @@ export default function App() {
   }, []);
 
   const openPaymentModal = (inv?: InvoiceDTO, summary?: InvoiceSummaryDTO | null) => {
+    if (paymentSubmissionRef.current.pending) return;
+    paymentSubmissionRef.current = newPaymentSubmission();
     const currentInv = inv ?? selectedInv;
     const currentSummary = summary !== undefined ? summary : invSummary;
     if (!currentInv) return;
@@ -2087,6 +2092,8 @@ export default function App() {
   };
 
   const openDebtorPaymentModal = (debtor: DebtorDTO, returnToDebtDetails = false) => {
+    if (paymentSubmissionRef.current.pending) return;
+    paymentSubmissionRef.current = newPaymentSubmission();
     setPaymentStudentId(debtor.studentId);
     setPaymentStudentName(debtor.studentName);
     setPaymentInvoiceId(undefined);
@@ -2098,12 +2105,16 @@ export default function App() {
   };
 
   const closePaymentModal = () => {
+    if (paymentSubmissionRef.current.pending) return;
+    paymentSubmissionRef.current = newPaymentSubmission();
     setPaymentModalOpen(false);
     setReturnToDebtDetailsAfterPayment(false);
     setReturnToStudentCardAfterPayment(false);
   };
 
   const openStudentCardPaymentModal = () => {
+    if (paymentSubmissionRef.current.pending) return;
+    paymentSubmissionRef.current = newPaymentSubmission();
     if (!selectedStudentCard) return;
     const debt = studentCardBalance?.debt ?? 0;
     setPaymentStudentId(selectedStudentCard.id);
@@ -2123,6 +2134,7 @@ export default function App() {
   };
 
   const handleCreatePayment = async () => {
+    if (paymentSubmissionRef.current.pending) return;
     const amount = parseFloat(paymentAmount);
     if (paymentStudentId <= 0) {
       showMessage(t("msg.paymentStudentMissing"), "error");
@@ -2133,56 +2145,71 @@ export default function App() {
       return;
     }
 
+    setPaymentSaving(true);
     try {
-      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-      await createPayment(
-        paymentStudentId,
-        paymentInvoiceId,
-        amount,
-        paymentMethod,
-        today,
-        paymentNote
+      const outcome = await submitPayment(
+        paymentSubmissionRef.current,
+        {
+          studentId: paymentStudentId,
+          invoiceId: paymentInvoiceId,
+          amount,
+          method: paymentMethod,
+          note: paymentNote,
+        },
+        (request) =>
+          createPayment(
+            request.studentId,
+            request.invoiceId,
+            request.amount,
+            request.method,
+            request.paidAt,
+            request.note,
+            request.operationId,
+          ),
+        {
+          afterSaved: async () => {
+            setPaymentModalOpen(false);
+            showMessage(t("msg.paymentRecorded"));
+            try {
+              if (paymentInvoiceId) {
+                await loadInvoices({ syncDrafts: false });
+                if (invoiceDetailsOpen && selectedInv?.id === paymentInvoiceId) {
+                  await loadInvoiceDetails(paymentInvoiceId);
+                }
+              }
+              const updatedDebtors = await loadDebtors();
+
+              if (returnToDebtDetailsAfterPayment && selectedDebtor?.studentId === paymentStudentId) {
+                const updatedDetails = await studentDebtDetails(paymentStudentId);
+                const matchedDebtor = updatedDebtors.find((d) => d.studentId === paymentStudentId);
+                const refreshedDebt = updatedDetails.reduce((sum, item) => sum + item.remaining, 0);
+
+                setSelectedDebtor(
+                  matchedDebtor ?? {
+                    ...selectedDebtor,
+                    debt: refreshedDebt,
+                  },
+                );
+                setDebtDetails(updatedDetails);
+                setDebtDetailsLoading(false);
+                setDebtDetailsOpen(true);
+              }
+
+              if (returnToStudentCardAfterPayment && selectedStudentCard?.id === paymentStudentId) {
+                await refreshStudentCardData(paymentStudentId);
+              }
+            } finally {
+              setReturnToDebtDetailsAfterPayment(false);
+              setReturnToStudentCardAfterPayment(false);
+            }
+          },
+        },
       );
-
-      setPaymentModalOpen(false);
-      showMessage(t("msg.paymentRecorded"));
-
-      if (paymentInvoiceId) {
-        await loadInvoices({ syncDrafts: false });
-        if (invoiceDetailsOpen && selectedInv?.id === paymentInvoiceId) {
-          await loadInvoiceDetails(paymentInvoiceId);
-        }
-      }
-      const updatedDebtors = await loadDebtors();
-
-      if (returnToDebtDetailsAfterPayment && selectedDebtor?.studentId === paymentStudentId) {
-        const updatedDetails = await studentDebtDetails(paymentStudentId);
-        const matchedDebtor = updatedDebtors.find((d) => d.studentId === paymentStudentId);
-        const refreshedDebt = updatedDetails.reduce((sum, item) => sum + item.remaining, 0);
-
-        setSelectedDebtor(
-          matchedDebtor ?? {
-            ...selectedDebtor,
-            debt: refreshedDebt,
-          }
-        );
-        setDebtDetails(updatedDetails);
-        setDebtDetailsLoading(false);
-        setDebtDetailsOpen(true);
-      }
-
-      if (returnToStudentCardAfterPayment && selectedStudentCard?.id === paymentStudentId) {
-        try {
-          await refreshStudentCardData(paymentStudentId);
-        } catch {
-          // refreshStudentCardData handles its own errors via showMessage
-        }
-      }
-
-      setReturnToDebtDetailsAfterPayment(false);
-      setReturnToStudentCardAfterPayment(false);
+      if (outcome?.refreshFailed) showMessage(t("msg.paymentSavedRefreshFailed"), "error");
     } catch (e: any) {
       showMessage(t("msg.errorGeneric", { message: String(e?.message ?? e) }), "error");
+    } finally {
+      setPaymentSaving(false);
     }
   };
 
@@ -3105,6 +3132,7 @@ export default function App() {
               studentName={paymentStudentName}
               invoiceId={paymentInvoiceId ?? null}
               amount={paymentAmount}
+              saving={paymentSaving}
               note={paymentNote}
               onAmountChange={setPaymentAmount}
               onNoteChange={setPaymentNote}

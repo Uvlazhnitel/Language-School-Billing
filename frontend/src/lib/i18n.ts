@@ -466,6 +466,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noOpenDebtsStudent": "This student no longer has open debts",
     "msg.paymentStudentMissing": "No student selected for payment",
     "msg.paymentAmountInvalid": "Enter a valid payment amount",
+    "button.savingPayment": "Saving…",
+    "msg.paymentSavedRefreshFailed": "Payment saved, but the lists could not be refreshed. Refresh the page; do not record the payment again.",
     "msg.paymentRecorded": "Payment recorded",
     "msg.recordConflict":
       "This record was changed by another user. Refresh the data and try again.",
@@ -1154,6 +1156,8 @@ const translations: Record<UiLocale, Record<string, string>> = {
     "msg.noOpenDebtsStudent": "У этого ученика больше нет открытых долгов",
     "msg.paymentStudentMissing": "Для оплаты не выбран ученик",
     "msg.paymentAmountInvalid": "Введите корректную сумму",
+    "button.savingPayment": "Сохранение…",
+    "msg.paymentSavedRefreshFailed": "Оплата записана, но списки не удалось обновить. Обновите страницу; повторно записывать оплату не нужно.",
     "msg.paymentRecorded": "Оплата записана",
     "msg.recordConflict":
       "Эту запись уже изменил другой сотрудник. Обновите данные и попробуйте ещё раз.",

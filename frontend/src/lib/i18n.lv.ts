@@ -460,6 +460,8 @@ export const lvTranslations: Record<string, string> = {
   "msg.noOpenDebtsStudent": "Šim skolēnam vairs nav atvērtu parādu",
   "msg.paymentStudentMissing": "Maksājumam nav izvēlēts skolēns",
   "msg.paymentAmountInvalid": "Ievadiet korektu maksājuma summu",
+  "button.savingPayment": "Saglabā…",
+  "msg.paymentSavedRefreshFailed": "Maksājums saglabāts, bet sarakstus neizdevās atjaunināt. Atsvaidziniet lapu; nereģistrējiet maksājumu vēlreiz.",
   "msg.paymentRecorded": "Maksājums reģistrēts",
   "msg.recordConflict":
     "Šo ierakstu jau ir mainījis cits darbinieks. Atjaunojiet datus un mēģiniet vēlreiz.",

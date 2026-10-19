@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	auditsvc "langschool/internal/app/audit"
+	"langschool/internal/auth"
 )
 
 func (s *Service) PaymentCreate(ctx context.Context, studentID int, invoiceID *int, amount float64, method string, paidAt string, note string) (*PaymentDTO, error) {
@@ -16,6 +17,28 @@ func (s *Service) PaymentCreate(ctx context.Context, studentID int, invoiceID *i
 	if err != nil {
 		return nil, err
 	}
+	s.auditCreatedPayment(ctx, studentID, invoiceID, item, before)
+	return item, nil
+}
+
+func (s *Service) PaymentCreateWithOperation(ctx context.Context, operationID string, studentID int, invoiceID *int, amount float64, method, paidAt, note string) (*PaymentDTO, error) {
+	actor := actorFromContext(ctx)
+	if actor == nil {
+		return nil, auth.ErrUnauthorized
+	}
+	// Snapshot errors must not prevent replaying an already committed operation.
+	before, _, _ := s.auditStudentFinanceSnapshot(ctx, studentID)
+	item, replayed, err := s.rt.Payment.CreateWithOperation(ctx, actor.ID, operationID, studentID, invoiceID, amount, method, paidAt, note)
+	if err != nil {
+		return nil, err
+	}
+	if !replayed {
+		s.auditCreatedPayment(ctx, studentID, invoiceID, item, before)
+	}
+	return item, nil
+}
+
+func (s *Service) auditCreatedPayment(ctx context.Context, studentID int, invoiceID *int, item *PaymentDTO, before any) {
 	after, studentMeta, err := s.auditStudentFinanceSnapshot(ctx, studentID)
 	if err == nil {
 		action := "payment.create"
@@ -39,7 +62,6 @@ func (s *Service) PaymentCreate(ctx context.Context, studentID int, invoiceID *i
 			InvoiceID:  item.InvoiceID,
 		})
 	}
-	return item, nil
 }
 
 func (s *Service) PaymentDelete(ctx context.Context, paymentID int) error {

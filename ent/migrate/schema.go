@@ -325,6 +325,28 @@ var (
 			},
 		},
 	}
+	// PaymentOperationsColumns holds the columns for the "payment_operations" table.
+	PaymentOperationsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "actor_id", Type: field.TypeInt},
+		{Name: "operation_id", Type: field.TypeString},
+		{Name: "request_hash", Type: field.TypeString},
+		{Name: "result_json", Type: field.TypeString, Default: ""},
+		{Name: "created_at", Type: field.TypeTime},
+	}
+	// PaymentOperationsTable holds the schema information for the "payment_operations" table.
+	PaymentOperationsTable = &schema.Table{
+		Name:       "payment_operations",
+		Columns:    PaymentOperationsColumns,
+		PrimaryKey: []*schema.Column{PaymentOperationsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "paymentoperation_actor_id_operation_id",
+				Unique:  true,
+				Columns: []*schema.Column{PaymentOperationsColumns[1], PaymentOperationsColumns[2]},
+			},
+		},
+	}
 	// SettingsColumns holds the columns for the "settings" table.
 	SettingsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -430,6 +452,7 @@ var (
 		InvoicesTable,
 		InvoiceLinesTable,
 		PaymentsTable,
+		PaymentOperationsTable,
 		SettingsTable,
 		StudentsTable,
 		TeachersTable,

@@ -1,21 +1,31 @@
 package web
 
-import "net/http"
+import (
+	"errors"
+	"net/http"
+
+	paysvc "langschool/internal/app/payment"
+)
 
 func (s *Server) handlePaymentsCreate(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		StudentID int     `json:"studentId"`
-		InvoiceID *int    `json:"invoiceId"`
-		Amount    float64 `json:"amount"`
-		Method    string  `json:"method"`
-		PaidAt    string  `json:"paidAt"`
-		Note      string  `json:"note"`
+		OperationID string  `json:"operationId"`
+		StudentID   int     `json:"studentId"`
+		InvoiceID   *int    `json:"invoiceId"`
+		Amount      float64 `json:"amount"`
+		Method      string  `json:"method"`
+		PaidAt      string  `json:"paidAt"`
+		Note        string  `json:"note"`
 	}
 	if !decodeJSON(w, r, &req) {
 		return
 	}
-	item, err := s.svc.PaymentCreate(r.Context(), req.StudentID, req.InvoiceID, req.Amount, req.Method, req.PaidAt, req.Note)
+	item, err := s.svc.PaymentCreateWithOperation(r.Context(), req.OperationID, req.StudentID, req.InvoiceID, req.Amount, req.Method, req.PaidAt, req.Note)
 	if err != nil {
+		if errors.Is(err, paysvc.ErrInvalidOperationID) {
+			writeBadRequest(w, err.Error())
+			return
+		}
 		writeError(w, err)
 		return
 	}

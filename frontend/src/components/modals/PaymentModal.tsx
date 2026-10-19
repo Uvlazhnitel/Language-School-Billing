@@ -5,6 +5,7 @@ type PaymentModalProps = {
   studentName: string;
   invoiceId: number | null;
   amount: string;
+  saving: boolean;
   note: string;
   onAmountChange: (value: string) => void;
   onNoteChange: (value: string) => void;
@@ -18,6 +19,7 @@ export function PaymentModal({
   studentName,
   invoiceId,
   amount,
+  saving,
   note,
   onAmountChange,
   onNoteChange,
@@ -28,8 +30,13 @@ export function PaymentModal({
   if (studentId <= 0) return null;
 
   return (
-    <div className="modal" onClick={onCancel}>
-      <div className="modalBody" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="modal"
+      onClick={() => {
+        if (!saving) onCancel();
+      }}
+    >
+      <div className="modalBody" aria-busy={saving} onClick={(e) => e.stopPropagation()}>
         <h3>{t("modal.paymentTitle")}</h3>
         <div className="formRow">
           <label>{t("tabs.students")}</label>
@@ -44,6 +51,7 @@ export function PaymentModal({
         <div className="formRow">
           <label>{t("field.amount")} (EUR):</label>
           <input
+            disabled={saving}
             type="number"
             step="0.01"
             value={amount}
@@ -54,6 +62,7 @@ export function PaymentModal({
         <div className="formRow">
           <label>{t("field.note")}:</label>
           <input
+            disabled={saving}
             type="text"
             value={note}
             onChange={(e) => onNoteChange(e.target.value)}
@@ -61,8 +70,12 @@ export function PaymentModal({
           />
         </div>
         <div className="modalActions">
-          <button onClick={onCancel}>{t("button.cancel")}</button>
-          <button onClick={onSubmit}>{t("button.recordPayment")}</button>
+          <button disabled={saving} onClick={onCancel}>
+            {t("button.cancel")}
+          </button>
+          <button disabled={saving} onClick={onSubmit}>
+            {t(saving ? "button.savingPayment" : "button.recordPayment")}
+          </button>
         </div>
       </div>
     </div>

@@ -436,10 +436,10 @@ export const httpTransport: AppTransport = {
     });
   },
 
-  async createPayment(studentId, invoiceId, amount, method, paidAt, note) {
+  async createPayment(studentId, invoiceId, amount, method, paidAt, note, operationId) {
     return request<PaymentDTO>("/payments", {
       method: "POST",
-      ...body({ studentId, invoiceId, amount, method, paidAt, note }),
+      ...body({ studentId, invoiceId, amount, method, paidAt, note, operationId }),
     });
   },
   async deletePayment(paymentId) {

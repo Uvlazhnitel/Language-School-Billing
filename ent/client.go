@@ -19,6 +19,7 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
+	"langschool/ent/paymentoperation"
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"langschool/ent/teacher"
@@ -52,6 +53,8 @@ type Client struct {
 	InvoiceLine *InvoiceLineClient
 	// Payment is the client for interacting with the Payment builders.
 	Payment *PaymentClient
+	// PaymentOperation is the client for interacting with the PaymentOperation builders.
+	PaymentOperation *PaymentOperationClient
 	// Settings is the client for interacting with the Settings builders.
 	Settings *SettingsClient
 	// Student is the client for interacting with the Student builders.
@@ -81,6 +84,7 @@ func (c *Client) init() {
 	c.Invoice = NewInvoiceClient(c.config)
 	c.InvoiceLine = NewInvoiceLineClient(c.config)
 	c.Payment = NewPaymentClient(c.config)
+	c.PaymentOperation = NewPaymentOperationClient(c.config)
 	c.Settings = NewSettingsClient(c.config)
 	c.Student = NewStudentClient(c.config)
 	c.Teacher = NewTeacherClient(c.config)
@@ -176,21 +180,22 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:             ctx,
-		config:          cfg,
-		AttendanceMonth: NewAttendanceMonthClient(cfg),
-		AuditLog:        NewAuditLogClient(cfg),
-		Course:          NewCourseClient(cfg),
-		CourseMonthStat: NewCourseMonthStatClient(cfg),
-		Enrollment:      NewEnrollmentClient(cfg),
-		Invoice:         NewInvoiceClient(cfg),
-		InvoiceLine:     NewInvoiceLineClient(cfg),
-		Payment:         NewPaymentClient(cfg),
-		Settings:        NewSettingsClient(cfg),
-		Student:         NewStudentClient(cfg),
-		Teacher:         NewTeacherClient(cfg),
-		User:            NewUserClient(cfg),
-		WebSession:      NewWebSessionClient(cfg),
+		ctx:              ctx,
+		config:           cfg,
+		AttendanceMonth:  NewAttendanceMonthClient(cfg),
+		AuditLog:         NewAuditLogClient(cfg),
+		Course:           NewCourseClient(cfg),
+		CourseMonthStat:  NewCourseMonthStatClient(cfg),
+		Enrollment:       NewEnrollmentClient(cfg),
+		Invoice:          NewInvoiceClient(cfg),
+		InvoiceLine:      NewInvoiceLineClient(cfg),
+		Payment:          NewPaymentClient(cfg),
+		PaymentOperation: NewPaymentOperationClient(cfg),
+		Settings:         NewSettingsClient(cfg),
+		Student:          NewStudentClient(cfg),
+		Teacher:          NewTeacherClient(cfg),
+		User:             NewUserClient(cfg),
+		WebSession:       NewWebSessionClient(cfg),
 	}, nil
 }
 
@@ -208,21 +213,22 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:             ctx,
-		config:          cfg,
-		AttendanceMonth: NewAttendanceMonthClient(cfg),
-		AuditLog:        NewAuditLogClient(cfg),
-		Course:          NewCourseClient(cfg),
-		CourseMonthStat: NewCourseMonthStatClient(cfg),
-		Enrollment:      NewEnrollmentClient(cfg),
-		Invoice:         NewInvoiceClient(cfg),
-		InvoiceLine:     NewInvoiceLineClient(cfg),
-		Payment:         NewPaymentClient(cfg),
-		Settings:        NewSettingsClient(cfg),
-		Student:         NewStudentClient(cfg),
-		Teacher:         NewTeacherClient(cfg),
-		User:            NewUserClient(cfg),
-		WebSession:      NewWebSessionClient(cfg),
+		ctx:              ctx,
+		config:           cfg,
+		AttendanceMonth:  NewAttendanceMonthClient(cfg),
+		AuditLog:         NewAuditLogClient(cfg),
+		Course:           NewCourseClient(cfg),
+		CourseMonthStat:  NewCourseMonthStatClient(cfg),
+		Enrollment:       NewEnrollmentClient(cfg),
+		Invoice:          NewInvoiceClient(cfg),
+		InvoiceLine:      NewInvoiceLineClient(cfg),
+		Payment:          NewPaymentClient(cfg),
+		PaymentOperation: NewPaymentOperationClient(cfg),
+		Settings:         NewSettingsClient(cfg),
+		Student:          NewStudentClient(cfg),
+		Teacher:          NewTeacherClient(cfg),
+		User:             NewUserClient(cfg),
+		WebSession:       NewWebSessionClient(cfg),
 	}, nil
 }
 
@@ -253,8 +259,8 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.AttendanceMonth, c.AuditLog, c.Course, c.CourseMonthStat, c.Enrollment,
-		c.Invoice, c.InvoiceLine, c.Payment, c.Settings, c.Student, c.Teacher, c.User,
-		c.WebSession,
+		c.Invoice, c.InvoiceLine, c.Payment, c.PaymentOperation, c.Settings, c.Student,
+		c.Teacher, c.User, c.WebSession,
 	} {
 		n.Use(hooks...)
 	}
@@ -265,8 +271,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.AttendanceMonth, c.AuditLog, c.Course, c.CourseMonthStat, c.Enrollment,
-		c.Invoice, c.InvoiceLine, c.Payment, c.Settings, c.Student, c.Teacher, c.User,
-		c.WebSession,
+		c.Invoice, c.InvoiceLine, c.Payment, c.PaymentOperation, c.Settings, c.Student,
+		c.Teacher, c.User, c.WebSession,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -291,6 +297,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.InvoiceLine.mutate(ctx, m)
 	case *PaymentMutation:
 		return c.Payment.mutate(ctx, m)
+	case *PaymentOperationMutation:
+		return c.PaymentOperation.mutate(ctx, m)
 	case *SettingsMutation:
 		return c.Settings.mutate(ctx, m)
 	case *StudentMutation:
@@ -1610,6 +1618,139 @@ func (c *PaymentClient) mutate(ctx context.Context, m *PaymentMutation) (Value, 
 	}
 }
 
+// PaymentOperationClient is a client for the PaymentOperation schema.
+type PaymentOperationClient struct {
+	config
+}
+
+// NewPaymentOperationClient returns a client for the PaymentOperation from the given config.
+func NewPaymentOperationClient(c config) *PaymentOperationClient {
+	return &PaymentOperationClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `paymentoperation.Hooks(f(g(h())))`.
+func (c *PaymentOperationClient) Use(hooks ...Hook) {
+	c.hooks.PaymentOperation = append(c.hooks.PaymentOperation, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `paymentoperation.Intercept(f(g(h())))`.
+func (c *PaymentOperationClient) Intercept(interceptors ...Interceptor) {
+	c.inters.PaymentOperation = append(c.inters.PaymentOperation, interceptors...)
+}
+
+// Create returns a builder for creating a PaymentOperation entity.
+func (c *PaymentOperationClient) Create() *PaymentOperationCreate {
+	mutation := newPaymentOperationMutation(c.config, OpCreate)
+	return &PaymentOperationCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of PaymentOperation entities.
+func (c *PaymentOperationClient) CreateBulk(builders ...*PaymentOperationCreate) *PaymentOperationCreateBulk {
+	return &PaymentOperationCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *PaymentOperationClient) MapCreateBulk(slice any, setFunc func(*PaymentOperationCreate, int)) *PaymentOperationCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &PaymentOperationCreateBulk{err: fmt.Errorf("calling to PaymentOperationClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*PaymentOperationCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &PaymentOperationCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for PaymentOperation.
+func (c *PaymentOperationClient) Update() *PaymentOperationUpdate {
+	mutation := newPaymentOperationMutation(c.config, OpUpdate)
+	return &PaymentOperationUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *PaymentOperationClient) UpdateOne(_m *PaymentOperation) *PaymentOperationUpdateOne {
+	mutation := newPaymentOperationMutation(c.config, OpUpdateOne, withPaymentOperation(_m))
+	return &PaymentOperationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *PaymentOperationClient) UpdateOneID(id int) *PaymentOperationUpdateOne {
+	mutation := newPaymentOperationMutation(c.config, OpUpdateOne, withPaymentOperationID(id))
+	return &PaymentOperationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for PaymentOperation.
+func (c *PaymentOperationClient) Delete() *PaymentOperationDelete {
+	mutation := newPaymentOperationMutation(c.config, OpDelete)
+	return &PaymentOperationDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *PaymentOperationClient) DeleteOne(_m *PaymentOperation) *PaymentOperationDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *PaymentOperationClient) DeleteOneID(id int) *PaymentOperationDeleteOne {
+	builder := c.Delete().Where(paymentoperation.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &PaymentOperationDeleteOne{builder}
+}
+
+// Query returns a query builder for PaymentOperation.
+func (c *PaymentOperationClient) Query() *PaymentOperationQuery {
+	return &PaymentOperationQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypePaymentOperation},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a PaymentOperation entity by its id.
+func (c *PaymentOperationClient) Get(ctx context.Context, id int) (*PaymentOperation, error) {
+	return c.Query().Where(paymentoperation.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *PaymentOperationClient) GetX(ctx context.Context, id int) *PaymentOperation {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *PaymentOperationClient) Hooks() []Hook {
+	return c.hooks.PaymentOperation
+}
+
+// Interceptors returns the client interceptors.
+func (c *PaymentOperationClient) Interceptors() []Interceptor {
+	return c.inters.PaymentOperation
+}
+
+func (c *PaymentOperationClient) mutate(ctx context.Context, m *PaymentOperationMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&PaymentOperationCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&PaymentOperationUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&PaymentOperationUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&PaymentOperationDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown PaymentOperation mutation op: %q", m.Op())
+	}
+}
+
 // SettingsClient is a client for the Settings schema.
 type SettingsClient struct {
 	config
@@ -2391,11 +2532,12 @@ func (c *WebSessionClient) mutate(ctx context.Context, m *WebSessionMutation) (V
 type (
 	hooks struct {
 		AttendanceMonth, AuditLog, Course, CourseMonthStat, Enrollment, Invoice,
-		InvoiceLine, Payment, Settings, Student, Teacher, User, WebSession []ent.Hook
+		InvoiceLine, Payment, PaymentOperation, Settings, Student, Teacher, User,
+		WebSession []ent.Hook
 	}
 	inters struct {
 		AttendanceMonth, AuditLog, Course, CourseMonthStat, Enrollment, Invoice,
-		InvoiceLine, Payment, Settings, Student, Teacher, User,
+		InvoiceLine, Payment, PaymentOperation, Settings, Student, Teacher, User,
 		WebSession []ent.Interceptor
 	}
 )

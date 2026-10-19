@@ -8,10 +8,11 @@ export async function createPayment(
   amount: number,
   method: PaymentMethod,
   paidAt: string, // "YYYY-MM-DD"
-  note: string
+  note: string,
+  operationId: string
 ) {
   const transport = await getTransport();
-  return transport.createPayment(studentId, invoiceId, amount, method, paidAt, note);
+  return transport.createPayment(studentId, invoiceId, amount, method, paidAt, note, operationId);
 }
 
 export async function deletePayment(paymentId: number) {

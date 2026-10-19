@@ -104,6 +104,18 @@ func (f PaymentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, err
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PaymentMutation", m)
 }
 
+// The PaymentOperationFunc type is an adapter to allow the use of ordinary
+// function as PaymentOperation mutator.
+type PaymentOperationFunc func(context.Context, *ent.PaymentOperationMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f PaymentOperationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.PaymentOperationMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PaymentOperationMutation", m)
+}
+
 // The SettingsFunc type is an adapter to allow the use of ordinary
 // function as Settings mutator.
 type SettingsFunc func(context.Context, *ent.SettingsMutation) (ent.Value, error)

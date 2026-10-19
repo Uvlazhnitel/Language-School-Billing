@@ -30,6 +30,9 @@ type InvoiceLine func(*sql.Selector)
 // Payment is the predicate function for payment builders.
 type Payment func(*sql.Selector)
 
+// PaymentOperation is the predicate function for paymentoperation builders.
+type PaymentOperation func(*sql.Selector)
+
 // Settings is the predicate function for settings builders.
 type Settings func(*sql.Selector)
 

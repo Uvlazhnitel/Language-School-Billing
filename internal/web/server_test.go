@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
 	"langschool/ent/user"
@@ -398,12 +400,13 @@ func TestInvoicePDFAndPaymentWorkflow(t *testing.T) {
 	}
 
 	payment := postJSON[backend.PaymentDTO](t, env.Client, env.Server.URL, "/api/payments", map[string]any{
-		"studentId": st.ID,
-		"invoiceId": invoiceID,
-		"amount":    25,
-		"method":    "cash",
-		"paidAt":    "2026-06-02",
-		"note":      "paid",
+		"operationId": uuid.NewString(),
+		"studentId":   st.ID,
+		"invoiceId":   invoiceID,
+		"amount":      25,
+		"method":      "cash",
+		"paidAt":      "2026-06-02",
+		"note":        "paid",
 	})
 	if payment.StudentID != st.ID {
 		t.Fatalf("payment studentID = %d, want %d", payment.StudentID, st.ID)
@@ -1223,12 +1226,13 @@ func TestCurrentMonthPaidInvoiceLocksAttendanceAndRebuildPreservesInvoice(t *tes
 	}
 
 	postJSON[backend.PaymentDTO](t, env.Client, env.Server.URL, "/api/payments", map[string]any{
-		"studentId": st.ID,
-		"invoiceId": invoices[0].ID,
-		"amount":    30,
-		"method":    "cash",
-		"paidAt":    now.Format("2006-01-02"),
-		"note":      "full payment before extra lesson",
+		"operationId": uuid.NewString(),
+		"studentId":   st.ID,
+		"invoiceId":   invoices[0].ID,
+		"amount":      30,
+		"method":      "cash",
+		"paidAt":      now.Format("2006-01-02"),
+		"note":        "full payment before extra lesson",
 	})
 
 	resp, body := rawRequest(t, env.Client, http.MethodPut, env.Server.URL+"/api/attendance", bytes.NewReader(mustJSON(t, map[string]any{
@@ -1806,12 +1810,13 @@ func TestAuditLogCapturesFinanceActions(t *testing.T) {
 		"version": invoices[0].Version,
 	})
 	payment := postJSON[backend.PaymentDTO](t, env.Client, env.Server.URL, "/api/payments", map[string]any{
-		"studentId": st.ID,
-		"invoiceId": invoiceID,
-		"amount":    30,
-		"method":    "cash",
-		"paidAt":    "2026-07-02",
-		"note":      "audit payment",
+		"operationId": uuid.NewString(),
+		"studentId":   st.ID,
+		"invoiceId":   invoiceID,
+		"amount":      30,
+		"method":      "cash",
+		"paidAt":      "2026-07-02",
+		"note":        "audit payment",
 	})
 
 	resp := getJSON[backend.AuditLogListResult](t, env.Client, env.Server.URL, "/api/audit-logs?page=1&pageSize=20")
@@ -2644,11 +2649,12 @@ func TestUserManagementAndStaffOperationalPermissions(t *testing.T) {
 	}
 
 	payment := postJSON[backend.PaymentDTO](t, staffClient, env.Server.URL, "/api/payments", map[string]any{
-		"studentId": financeStudent.ID,
-		"amount":    35,
-		"method":    "cash",
-		"paidAt":    "2026-07-14",
-		"note":      "staff payment",
+		"operationId": uuid.NewString(),
+		"studentId":   financeStudent.ID,
+		"amount":      35,
+		"method":      "cash",
+		"paidAt":      "2026-07-14",
+		"note":        "staff payment",
 	})
 	resp, _ = rawRequest(t, staffClient, http.MethodDelete, env.Server.URL+"/api/payments/"+strconv.Itoa(payment.ID), nil)
 	if resp.StatusCode != http.StatusNoContent {
@@ -2861,7 +2867,8 @@ func TestInvoiceCreditReopenRestoresBalanceAndAudit(t *testing.T) {
 	})
 	postJSON[map[string]any](t, env.Client, env.Server.URL, "/api/invoices/generate-drafts", map[string]any{"year": 2026, "month": 8})
 	credit := postJSON[backend.PaymentDTO](t, env.Client, env.Server.URL, "/api/payments", map[string]any{
-		"studentId": st.ID, "amount": 25, "method": "cash", "paidAt": "2026-08-05", "note": "advance",
+		"operationId": uuid.NewString(),
+		"studentId":   st.ID, "amount": 25, "method": "cash", "paidAt": "2026-08-05", "note": "advance",
 	})
 	if credit.InvoiceID != nil {
 		t.Fatalf("credit invoice ID = %v, want nil", credit.InvoiceID)
@@ -2952,11 +2959,12 @@ func TestInvoicePaymentDeleteThenReopenWorkflow(t *testing.T) {
 	})
 
 	payment := postJSON[backend.PaymentDTO](t, env.Client, env.Server.URL, "/api/payments", map[string]any{
-		"studentId": st.ID,
-		"invoiceId": invoiceItem.ID,
-		"amount":    40,
-		"method":    "cash",
-		"paidAt":    "2026-08-05",
+		"operationId": uuid.NewString(),
+		"studentId":   st.ID,
+		"invoiceId":   invoiceItem.ID,
+		"amount":      40,
+		"method":      "cash",
+		"paidAt":      "2026-08-05",
 	})
 
 	invoiceDetails := getJSON[backend.InvoiceDTO](t, env.Client, env.Server.URL, "/api/invoices/"+strconv.Itoa(invoiceItem.ID))

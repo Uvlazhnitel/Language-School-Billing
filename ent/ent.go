@@ -14,6 +14,7 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
+	"langschool/ent/paymentoperation"
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"langschool/ent/teacher"
@@ -85,19 +86,20 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			attendancemonth.Table: attendancemonth.ValidColumn,
-			auditlog.Table:        auditlog.ValidColumn,
-			course.Table:          course.ValidColumn,
-			coursemonthstat.Table: coursemonthstat.ValidColumn,
-			enrollment.Table:      enrollment.ValidColumn,
-			invoice.Table:         invoice.ValidColumn,
-			invoiceline.Table:     invoiceline.ValidColumn,
-			payment.Table:         payment.ValidColumn,
-			settings.Table:        settings.ValidColumn,
-			student.Table:         student.ValidColumn,
-			teacher.Table:         teacher.ValidColumn,
-			user.Table:            user.ValidColumn,
-			websession.Table:      websession.ValidColumn,
+			attendancemonth.Table:  attendancemonth.ValidColumn,
+			auditlog.Table:         auditlog.ValidColumn,
+			course.Table:           course.ValidColumn,
+			coursemonthstat.Table:  coursemonthstat.ValidColumn,
+			enrollment.Table:       enrollment.ValidColumn,
+			invoice.Table:          invoice.ValidColumn,
+			invoiceline.Table:      invoiceline.ValidColumn,
+			payment.Table:          payment.ValidColumn,
+			paymentoperation.Table: paymentoperation.ValidColumn,
+			settings.Table:         settings.ValidColumn,
+			student.Table:          student.ValidColumn,
+			teacher.Table:          teacher.ValidColumn,
+			user.Table:             user.ValidColumn,
+			websession.Table:       websession.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

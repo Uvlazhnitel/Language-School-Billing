@@ -610,7 +610,8 @@ export interface AppTransport {
     amount: number,
     method: PaymentMethod,
     paidAt: string,
-    note: string
+    note: string,
+    operationId: string
   ): Promise<PaymentDTO>;
   deletePayment(paymentId: number): Promise<void>;
   listDebtors(): Promise<DebtorDTO[]>;

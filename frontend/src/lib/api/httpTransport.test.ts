@@ -311,6 +311,7 @@ describe("httpTransport", () => {
         method: "bank",
         paidAt: "2026-06-02",
         note: "invoice payment",
+        operationId: "c67d73d2-5a60-4197-b8db-ac45d1c83532",
       });
       return jsonResponse({
         id: 21,
@@ -326,7 +327,7 @@ describe("httpTransport", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      httpTransport.createPayment(7, 12, 45.5, "bank", "2026-06-02", "invoice payment")
+      httpTransport.createPayment(7, 12, 45.5, "bank", "2026-06-02", "invoice payment", "c67d73d2-5a60-4197-b8db-ac45d1c83532")
     ).resolves.toEqual(expect.objectContaining({ id: 21, invoiceId: 12 }));
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

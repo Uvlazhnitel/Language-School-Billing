@@ -11,6 +11,7 @@ import (
 	"langschool/ent/invoice"
 	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
+	"langschool/ent/paymentoperation"
 	"langschool/ent/schema"
 	"langschool/ent/settings"
 	"langschool/ent/student"
@@ -201,6 +202,16 @@ func init() {
 	paymentDescCreatedAt := paymentFields[9].Descriptor()
 	// payment.DefaultCreatedAt holds the default value on creation for the created_at field.
 	payment.DefaultCreatedAt = paymentDescCreatedAt.Default.(func() time.Time)
+	paymentoperationFields := schema.PaymentOperation{}.Fields()
+	_ = paymentoperationFields
+	// paymentoperationDescResultJSON is the schema descriptor for result_json field.
+	paymentoperationDescResultJSON := paymentoperationFields[3].Descriptor()
+	// paymentoperation.DefaultResultJSON holds the default value on creation for the result_json field.
+	paymentoperation.DefaultResultJSON = paymentoperationDescResultJSON.Default.(string)
+	// paymentoperationDescCreatedAt is the schema descriptor for created_at field.
+	paymentoperationDescCreatedAt := paymentoperationFields[4].Descriptor()
+	// paymentoperation.DefaultCreatedAt holds the default value on creation for the created_at field.
+	paymentoperation.DefaultCreatedAt = paymentoperationDescCreatedAt.Default.(func() time.Time)
 	settingsFields := schema.Settings{}.Fields()
 	_ = settingsFields
 	// settingsDescOrgName is the schema descriptor for org_name field.
