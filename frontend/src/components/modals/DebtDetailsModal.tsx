@@ -88,7 +88,7 @@ export function DebtDetailsModal({
         <div className="modalActions">
           {!loading && details.length > 0 && (
             <>
-              <button onClick={onRecordPayment}>{t("button.recordPayment")}</button>
+              <button className="btnPrimary" onClick={onRecordPayment}>{t("button.recordPayment")}</button>
               <button onClick={() => void onCopyRu()}>{t("button.copyRu")}</button>
               <button onClick={() => void onCopyLv()}>{t("button.copyLv")}</button>
             </>

@@ -85,7 +85,7 @@ export function CourseCatalog({
                             {t("button.edit")}
                           </button>
                           {canDeleteCourses && (
-                            <button type="button" onClick={() => void onDeleteCourse(course.id)}>
+                            <button className="btnDanger" type="button" onClick={() => void onDeleteCourse(course.id)}>
                               {t("button.delete")}
                             </button>
                           )}

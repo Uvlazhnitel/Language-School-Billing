@@ -194,7 +194,7 @@ export function EnrollmentFormModal({
         </div>
 
         <div className="modalActions">
-          <button onClick={onSave}>{saveLabel ?? t("button.save")}</button>
+          <button className="btnPrimary" onClick={onSave}>{saveLabel ?? t("button.save")}</button>
           <button onClick={onCancel}>{t("button.cancel")}</button>
         </div>
       </div>

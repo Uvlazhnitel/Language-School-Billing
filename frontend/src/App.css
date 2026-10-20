@@ -24,6 +24,11 @@
   --radius-lg: 24px;
   --radius-md: 18px;
   --radius-sm: 14px;
+  --button-radius: 10px;
+  --button-font: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --button-primary: #b85621;
+  --button-primary-hover: #9f4619;
+  --button-border: #ddd6ce;
   --focus: 0 0 0 4px rgba(212, 109, 53, 0.18);
   --layer-modal: 10050;
   --layer-confirm: 10100;
@@ -229,49 +234,6 @@ a {
   flex: 1 1 100%;
 }
 
-.workspaceActionButton {
-  appearance: none;
-  border: 1px solid rgba(133, 102, 69, 0.16);
-  background: rgba(255, 255, 255, 0.88);
-  color: var(--text);
-  padding: 11px 16px;
-  border-radius: 999px;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 800;
-  transition:
-    background 0.18s ease,
-    color 0.18s ease,
-    border-color 0.18s ease,
-    box-shadow 0.18s ease,
-    transform 0.12s ease;
-}
-
-.workspaceActionButton:hover:not(:disabled) {
-  background: rgba(212, 109, 53, 0.08);
-  border-color: rgba(212, 109, 53, 0.22);
-}
-
-.workspaceActionButton:active:not(:disabled) {
-  transform: translateY(1px);
-}
-
-.workspaceActionButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.58;
-}
-
-.workspaceActionButtonPrimary {
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  color: #fff8f3;
-  border-color: transparent;
-  box-shadow: 0 14px 26px rgba(212, 109, 53, 0.2);
-}
-
-.workspaceActionButtonPrimary:hover:not(:disabled) {
-  background: linear-gradient(135deg, var(--accent-strong), #a94b1d);
-}
-
 .workspaceCard {
   padding: 22px;
   border-radius: var(--radius-xl);
@@ -284,7 +246,7 @@ a {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 4px;
   position: sticky;
   top: 14px;
   z-index: 20;
@@ -309,35 +271,31 @@ a {
 
 .tabs button {
   appearance: none;
+  min-height: 38px;
   border: 1px solid transparent;
+  border-radius: var(--button-radius);
   background: transparent;
-  color: var(--muted);
-  padding: 11px 16px;
-  border-radius: 999px;
+  color: var(--muted-strong);
+  padding: 9px 14px;
   cursor: pointer;
-  font: inherit;
-  font-weight: 900;
-  letter-spacing: 0.01em;
+  font-family: var(--button-font);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
   transition:
-    background 0.18s ease,
-    color 0.18s ease,
-    transform 0.12s ease,
-    box-shadow 0.18s ease;
+    background-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.tabs button:hover {
-  background: rgba(212, 109, 53, 0.08);
+.tabs button:hover:not(:disabled) {
+  background: #f4e9dd;
   color: var(--text);
 }
 
 .tabs button.active {
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  color: #fff8f3;
-  box-shadow: 0 14px 26px rgba(212, 109, 53, 0.24);
-}
-
-.tabs button:active {
-  transform: translateY(1px);
+  background: var(--accent-pale);
+  border-color: #edc7aa;
+  color: #9f4619;
 }
 
 .workspaceNav {
@@ -1728,27 +1686,10 @@ a {
   padding: 9px 14px;
 }
 
-.secondaryActionButton {
-  appearance: none;
-  border: 1px solid rgba(133, 102, 69, 0.14);
-  background: rgba(255, 255, 255, 0.84);
-  color: var(--muted-strong);
-  padding: 10px 14px;
-  border-radius: 999px;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 800;
-}
-
 .secondaryActionButton--mini {
-  min-width: 44px;
-  padding: 9px 11px;
-  font-size: 0.84rem;
-}
-
-.secondaryActionButton:hover {
-  border-color: rgba(212, 109, 53, 0.2);
-  color: var(--text);
+  min-width: 38px;
+  padding-inline: 10px;
+  font-size: 12px;
 }
 
 @media (max-width: 1100px) {
@@ -1890,56 +1831,101 @@ textarea:disabled {
   cursor: not-allowed;
 }
 
+/* Shared action styles; structural controls keep their own layout. */
 button {
-  font: inherit;
+  font-family: var(--button-font);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
 }
 
-.controls button,
-:where(.attendanceSheet) button,
-.panel button,
-.modalActions button,
-tbody button,
-.btn {
+:where(
+  .controls button,
+  .attendanceSheet button,
+  .panel button,
+  .modalActions button,
+  tbody button,
+  .btn,
+  .workspaceActionButton,
+  .secondaryActionButton,
+  .invoiceActionsMenuItem
+) {
   appearance: none;
-  border: 1px solid rgba(133, 102, 69, 0.12);
-  background: linear-gradient(180deg, #ffffff, #f8efe4);
-  color: var(--text);
-  padding: 10px 14px;
-  border-radius: 16px;
+  min-height: 38px;
+  border: 1px solid var(--button-border);
+  border-radius: var(--button-radius);
+  background: #fff;
+  color: var(--muted-strong);
+  padding: 9px 14px;
+  font-family: var(--button-font);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: 0;
   cursor: pointer;
-  font-weight: 900;
-  letter-spacing: 0.01em;
-  box-shadow: 0 8px 18px rgba(94, 72, 47, 0.08);
+  box-shadow: none;
   transition:
-    transform 0.12s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease,
-    background 0.18s ease;
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease;
 }
 
-.controls button:hover,
-.panel button:hover,
-.modalActions button:hover,
-tbody button:hover,
-.btn:hover {
-  transform: translateY(-1px);
-  border-color: rgba(212, 109, 53, 0.2);
-  box-shadow: 0 14px 24px rgba(94, 72, 47, 0.12);
+:where(
+    .controls button,
+    .attendanceSheet button,
+    .panel button,
+    .modalActions button,
+    tbody button,
+    .btn,
+    .workspaceActionButton,
+    .secondaryActionButton,
+    .invoiceActionsMenuItem
+  ):hover:not(:disabled) {
+  background: #f8f5f0;
+  border-color: #bdb3a7;
+  color: var(--text);
 }
 
-button.btnPrimary {
-  color: #fff8f3;
-  background: linear-gradient(135deg, var(--accent), var(--accent-strong));
-  border-color: rgba(184, 86, 33, 0.18);
-  box-shadow: 0 16px 24px rgba(212, 109, 53, 0.24);
+button.btnPrimary,
+button.workspaceActionButtonPrimary {
+  color: #fff;
+  background: var(--button-primary);
+  border-color: var(--button-primary);
 }
 
-.btnDanger,
+button.btnPrimary:hover:not(:disabled),
+button.workspaceActionButtonPrimary:hover:not(:disabled) {
+  background: var(--button-primary-hover);
+  border-color: var(--button-primary-hover);
+  color: #fff;
+}
+
 button.btnDanger {
-  color: #fff7f4;
-  background: linear-gradient(135deg, #e16d58, #c95143);
-  border-color: rgba(201, 81, 67, 0.18);
-  box-shadow: 0 14px 24px rgba(203, 77, 62, 0.18);
+  color: #ad3328;
+  background: #fff7f5;
+  border-color: #e9bcb5;
+}
+
+button.btnDanger:hover:not(:disabled) {
+  color: #90271f;
+  background: #fce7e3;
+  border-color: #d78d82;
+}
+
+button:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 3px;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
 }
 
 table {
@@ -2753,6 +2739,7 @@ tfoot td {
 }
 
 .linkButton {
+  min-height: 0;
   background: none;
   border: none;
   box-shadow: none;
@@ -2826,41 +2813,11 @@ tfoot td {
 }
 
 .invoiceActionsMenuItem {
-  appearance: none;
-  border: 1px solid rgba(133, 102, 69, 0.12);
-  background: linear-gradient(180deg, #ffffff, #f8efe4);
-  color: var(--text);
-  padding: 10px 14px;
-  border-radius: 16px;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 900;
-  letter-spacing: 0.01em;
-  box-shadow: 0 8px 18px rgba(94, 72, 47, 0.08);
-  transition:
-    transform 0.12s ease,
-    box-shadow 0.18s ease,
-    border-color 0.18s ease,
-    background 0.18s ease;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: flex-start;
   text-align: left;
-}
-
-.invoiceActionsMenuItem:hover,
-.invoiceActionsMenuItem:focus-visible {
-  transform: translateY(-1px);
-  border-color: rgba(212, 109, 53, 0.2);
-  box-shadow: 0 14px 24px rgba(94, 72, 47, 0.12);
-}
-
-.invoiceActionsMenuItem:focus-visible {
-  outline: none;
-  box-shadow:
-    0 14px 24px rgba(94, 72, 47, 0.12),
-    var(--focus);
 }
 
 .statusBadge {
@@ -3573,10 +3530,9 @@ tfoot td {
 .attendanceGridHead,
 .attendanceRow {
   display: grid;
-  grid-template-columns: minmax(140px, 1fr) minmax(100px, 0.55fr) minmax(
-      200px,
-      0.9fr
-    ) 90px;
+  grid-template-columns:
+    minmax(140px, 1fr) minmax(100px, 0.55fr) minmax(200px, 0.9fr)
+    90px;
   gap: 16px;
   align-items: center;
 }
@@ -3591,6 +3547,7 @@ tfoot td {
   font-size: 14px;
 }
 .attendanceStudent {
+  min-height: 0;
   text-align: left;
   padding: 0;
   background: none;
@@ -3619,6 +3576,7 @@ tfoot td {
   font-size: 15px;
 }
 .attendanceStepper button {
+  min-height: 30px;
   padding: 5px;
   width: 30px;
   height: 30px;
@@ -3632,6 +3590,7 @@ tfoot td {
   padding-top: 4px;
 }
 .attendanceSaveState button {
+  min-height: 0;
   font: inherit;
   background: none;
   padding: 0;
@@ -3767,7 +3726,7 @@ tfoot td {
   font-size: 13px;
   padding: 9px 12px;
   background: #fffaf4;
-  box-shadow: 0 4px 16px rgba(83, 53, 29, 0.08);
+  box-shadow: none;
 }
 @media (max-width: 1780px) {
   .container:has(.appShell--withReleaseNotice) {
@@ -3928,5 +3887,18 @@ tfoot td {
   }
   .releaseNoticeFooter button {
     width: 100%;
+  }
+}
+
+/* Larger targets on touch screens, including dense table actions. */
+@media (pointer: coarse) {
+  .controls button,
+  .modalActions button,
+  .workspaceActionButton,
+  .secondaryActionButton,
+  .tabs button,
+  .btn,
+  .courseCatalog .courseVariantActions button {
+    min-height: 44px;
   }
 }

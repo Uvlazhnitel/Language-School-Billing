@@ -208,7 +208,7 @@ export function StudentDetailPanel({
             </button>
           )}
           {!student.isActive && canDeleteStudent && onDeleteStudent && (
-            <button className="secondaryActionButton" onClick={onDeleteStudent}>
+            <button className="secondaryActionButton btnDanger" onClick={onDeleteStudent}>
               {t("button.delete")}
             </button>
           )}
@@ -537,6 +537,7 @@ export function StudentDetailPanel({
                       <td>
                         {canDeletePayment && (
                           <button
+                            className="btnDanger"
                             onClick={() => onDeletePayment(payment)}
                             disabled={deletingPaymentId === payment.id}
                           >

@@ -73,7 +73,7 @@ export function PaymentModal({
           <button disabled={saving} onClick={onCancel}>
             {t("button.cancel")}
           </button>
-          <button disabled={saving} onClick={onSubmit}>
+          <button className="btnPrimary" disabled={saving} onClick={onSubmit}>
             {t(saving ? "button.savingPayment" : "button.recordPayment")}
           </button>
         </div>

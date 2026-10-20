@@ -384,7 +384,7 @@ export function StudentFormModal({
         )}
 
         <div className="modalActions">
-          <button onClick={onSave}>
+          <button className="btnPrimary" onClick={onSave}>
             {!editing && hasSelectedCourses
               ? t("button.createAndOpenAttendance")
               : t("button.save")}

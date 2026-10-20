@@ -36,20 +36,10 @@ export function ConfirmDialog({ dialog, onConfirm, onCancel, t }: ConfirmDialogP
         <h3 style={{ marginTop: 0, marginBottom: "16px" }}>{t("modal.confirm")}</h3>
         <p style={{ marginBottom: "24px", lineHeight: "1.5" }}>{dialog.message}</p>
         <div style={{ display: "flex", gap: "12px", justifyContent: "flex-end" }}>
-          <button onClick={onCancel} style={{ padding: "8px 16px" }}>
+          <button className="btn" onClick={onCancel}>
             {t("button.cancel")}
           </button>
-          <button
-            onClick={() => void onConfirm()}
-            style={{
-              padding: "8px 16px",
-              backgroundColor: "#f44336",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              cursor: "pointer",
-            }}
-          >
+          <button onClick={() => void onConfirm()} className="btn btnDanger">
             {dialog.confirmButtonLabel ?? t("msg.confirmDelete")}
           </button>
         </div>

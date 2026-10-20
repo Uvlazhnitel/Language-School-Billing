@@ -556,6 +556,7 @@ export function SettingsScreen({
                             {t("settings.userResetPassword")}
                           </button>
                           <button
+                            className="btnDanger"
                             onClick={() => void onDeleteUser(user.id)}
                             disabled={currentSessionUser?.id === user.id}
                           >

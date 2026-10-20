@@ -155,7 +155,7 @@ export function CourseFormModal({
         </div>
 
         <div className="modalActions">
-          <button onClick={onSave}>{t("button.save")}</button>
+          <button className="btnPrimary" onClick={onSave}>{t("button.save")}</button>
           <button onClick={onCancel}>{t("button.cancel")}</button>
         </div>
       </div>
