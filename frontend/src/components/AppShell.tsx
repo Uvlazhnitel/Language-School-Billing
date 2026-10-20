@@ -46,14 +46,27 @@ export function AppShell({
   return (
     <div className="appShell">
       <section className="workspaceCard workspaceCard--shell">
-        <div className="workspaceTopbar workspaceTopbar--shell">
+        <div
+          className={`workspaceTopbar workspaceTopbar--shell${releaseNoticeAvailable ? " workspaceTopbar--withNotice" : ""}`}
+        >
           <div className="workspaceHeading">
             <div className="workspaceEyebrow">{currentMeta.eyebrow}</div>
             <h1>{currentMeta.title}</h1>
             {currentMeta.subtitle && <p className="workspaceSubtitle">{currentMeta.subtitle}</p>}
           </div>
 
-          {(showMonthPicker || secondaryActions.length > 0 || releaseNoticeAvailable) && (
+          {releaseNoticeAvailable && (
+            <button
+              type="button"
+              className="secondaryActionButton releaseNoticeTrigger"
+              aria-haspopup="dialog"
+              onClick={onOpenReleaseNotice}
+            >
+              <span aria-hidden="true">✦</span> {releaseNoticeLabel}
+            </button>
+          )}
+
+          {(showMonthPicker || secondaryActions.length > 0) && (
             <div className="workspaceTopbarAside">
               {showMonthPicker && (
                 <div className="monthpickers monthpickersTopbar">
@@ -77,18 +90,8 @@ export function AppShell({
                 </div>
               )}
 
-              {(secondaryActions.length > 0 || releaseNoticeAvailable) && (
+              {secondaryActions.length > 0 && (
                 <div className="secondaryActions secondaryActions--topbar">
-                  {releaseNoticeAvailable && (
-                    <button
-                      type="button"
-                      className="secondaryActionButton releaseNoticeTrigger"
-                      aria-haspopup="dialog"
-                      onClick={onOpenReleaseNotice}
-                    >
-                      <span aria-hidden="true">✦</span> {releaseNoticeLabel}
-                    </button>
-                  )}
                   {secondaryActions.map((action) => (
                     <button
                       key={action.id}
