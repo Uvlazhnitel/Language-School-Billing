@@ -44,27 +44,25 @@ export function AppShell({
   children,
 }: AppShellProps) {
   return (
-    <div className="appShell">
-      <section className="workspaceCard workspaceCard--shell">
-        <div
-          className={`workspaceTopbar workspaceTopbar--shell${releaseNoticeAvailable ? " workspaceTopbar--withNotice" : ""}`}
+    <div className={`appShell${releaseNoticeAvailable ? " appShell--withReleaseNotice" : ""}`}>
+      {releaseNoticeAvailable && (
+        <button
+          type="button"
+          className="secondaryActionButton releaseNoticeTrigger"
+          aria-haspopup="dialog"
+          onClick={onOpenReleaseNotice}
         >
+          <span aria-hidden="true">✦</span> {releaseNoticeLabel}
+        </button>
+      )}
+
+      <section className="workspaceCard workspaceCard--shell">
+        <div className="workspaceTopbar workspaceTopbar--shell">
           <div className="workspaceHeading">
             <div className="workspaceEyebrow">{currentMeta.eyebrow}</div>
             <h1>{currentMeta.title}</h1>
             {currentMeta.subtitle && <p className="workspaceSubtitle">{currentMeta.subtitle}</p>}
           </div>
-
-          {releaseNoticeAvailable && (
-            <button
-              type="button"
-              className="secondaryActionButton releaseNoticeTrigger"
-              aria-haspopup="dialog"
-              onClick={onOpenReleaseNotice}
-            >
-              <span aria-hidden="true">✦</span> {releaseNoticeLabel}
-            </button>
-          )}
 
           {(showMonthPicker || secondaryActions.length > 0) && (
             <div className="workspaceTopbarAside">
