@@ -1,3 +1,6 @@
+import { useTableSort } from "../hooks/useTableSort";
+import { SortableHeader, TableSortTools } from "./SortableHeader";
+import { courseSortColumns } from "../lib/tableSortColumns";
 import { useId } from "react";
 import type { CourseGroup } from "../lib/courseGroups";
 import type { CourseDTO } from "../lib/courses";
@@ -26,9 +29,11 @@ export function CourseCatalog({
   onDeleteCourse,
   t,
 }: CourseCatalogProps) {
+  const sorting = useTableSort<CourseDTO>("courses", courseSortColumns(t, courseTypeLabel));
   const catalogId = useId();
   return (
     <div className="courseCatalog">
+      <TableSortTools sorting={sorting} t={t} mobileSelector />
       {groups.map((group, index) => {
         const expanded = openKey === group.key;
         const panelId = `${catalogId}-subject-${index}`;
@@ -58,40 +63,58 @@ export function CourseCatalog({
                 <table className="courseVariants">
                   <thead>
                     <tr>
-                      <th>{t("field.teacher")}</th>
-                      <th>{t("field.type")}</th>
-                      <th className="coursePrice">{t("field.lessonPrice")} (EUR)</th>
-                      <th className="coursePrice">{t("field.subscriptionPrice")} (EUR)</th>
+                      <SortableHeader sorting={sorting} column="teacher" t={t} />
+                      <SortableHeader sorting={sorting} column="type" t={t} />
+                      <SortableHeader
+                        sorting={sorting}
+                        column="rate"
+                        t={t}
+                        align="right"
+                        className="coursePrice"
+                      />
+                      <SortableHeader
+                        sorting={sorting}
+                        column="subscription"
+                        t={t}
+                        align="right"
+                        className="coursePrice"
+                      />
                       <th>
                         <span className="courseVisuallyHidden">{t("course.actions")}</span>
                       </th>
                     </tr>
                   </thead>
                   <tbody>
-                    {group.courses.map((course) => (
-                      <tr key={course.id}>
-                        <td data-label={t("field.teacher")}>
-                          {course.teacherName || t("filter.withoutTeacher")}
-                        </td>
-                        <td data-label={t("field.type")}>{courseTypeLabel(course.type)}</td>
-                        <td className="coursePrice" data-label={t("field.lessonPrice")}>
-                          {formatEUR(course.lessonPrice)}
-                        </td>
-                        <td className="coursePrice" data-label={t("field.subscriptionPrice")}>
-                          {formatEUR(course.subscriptionPrice)}
-                        </td>
-                        <td className="courseVariantActions">
-                          <button type="button" onClick={() => onEditCourse(course)}>
-                            {t("button.edit")}
-                          </button>
-                          {canDeleteCourses && (
-                            <button className="btnDanger" type="button" onClick={() => void onDeleteCourse(course.id)}>
-                              {t("button.delete")}
+                    {sorting
+                      .rows(group.courses, (row) => row.id)
+                      .map((course) => (
+                        <tr key={course.id}>
+                          <td data-label={t("field.teacher")}>
+                            {course.teacherName || t("filter.withoutTeacher")}
+                          </td>
+                          <td data-label={t("field.type")}>{courseTypeLabel(course.type)}</td>
+                          <td className="coursePrice" data-label={t("field.lessonPrice")}>
+                            {formatEUR(course.lessonPrice)}
+                          </td>
+                          <td className="coursePrice" data-label={t("field.subscriptionPrice")}>
+                            {formatEUR(course.subscriptionPrice)}
+                          </td>
+                          <td className="courseVariantActions">
+                            <button type="button" onClick={() => onEditCourse(course)}>
+                              {t("button.edit")}
                             </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
+                            {canDeleteCourses && (
+                              <button
+                                className="btnDanger"
+                                type="button"
+                                onClick={() => void onDeleteCourse(course.id)}
+                              >
+                                {t("button.delete")}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
                   </tbody>
                 </table>
               )}

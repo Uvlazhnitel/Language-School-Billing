@@ -1,3 +1,5 @@
+import { SortContext } from "../lib/tableSortContext";
+import { TableSortPreferences } from "../lib/tableSort";
 import { Children, isValidElement, type ReactNode } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
@@ -98,9 +100,29 @@ describe("debtors screen", () => {
       expect(html).not.toContain(key);
     }
   });
+  it("sorts the filtered table without changing the priority queue or total", () => {
+    const preferences = new TableSortPreferences("review", () => undefined);
+    preferences.write("debtors", { key: "debt", direction: "asc" });
+    const html = renderToStaticMarkup(
+      <SortContext.Provider value={{locale: "en-US", preferences}}>
+        <DebtorsScreen {...props} />
+      </SortContext.Provider>
+    );
+    const queue = html.slice(html.indexOf('class="actionQueueList"'), html.indexOf("<table"));
+    const table = html.slice(html.indexOf("<tbody"), html.indexOf("</tbody>"));
+    expect(queue.indexOf("Active Student")).toBeLessThan(queue.indexOf("Inactive Student"));
+    expect(table.indexOf("Inactive Student")).toBeLessThan(table.indexOf("Active Student"));
+    expect(html.slice(html.indexOf("<tfoot"))).toContain("€170.00");
+    expect(html).toContain('aria-sort="ascending"');
+  });
   it("opens the selected inactive student's card directly from the queue", () => {
     const onOpenStudent = vi.fn();
-    const tree = DebtorsScreen({ ...props, activityFilter: "inactive", onOpenStudent });
+    let tree: ReactNode;
+    function CaptureScreen() {
+      tree = DebtorsScreen({ ...props, activityFilter: "inactive", onOpenStudent });
+      return tree;
+    }
+    renderToStaticMarkup(<CaptureScreen />);
     function clickCard(node: ReactNode): boolean {
       for (const child of Children.toArray(node)) {
         if (!isValidElement<{ children?: ReactNode; onClick?: () => void }>(child)) continue;

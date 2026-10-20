@@ -32,7 +32,7 @@ func TestAccountWindowDismissalAndNextRelease(t *testing.T) {
 	}
 	id := first.Notice.ReleaseID
 	for _, locale := range []string{"ru-RU", "en-US", "lv-LV"} {
-		if content := first.Notice.Content[locale]; content.Title == "" || len(content.Sections) != 6 {
+		if content := first.Notice.Content[locale]; content.Title == "" || len(content.Sections) != 7 {
 			t.Fatalf("bad content: %s", locale)
 		}
 	}

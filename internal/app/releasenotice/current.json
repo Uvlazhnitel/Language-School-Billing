@@ -28,6 +28,10 @@
         {
           "title": "Кнопки и действия со счетами",
           "text": "Кнопки во всём приложении стали компактнее: основные действия выделены цветом, обычные — светлые, удаление — с красным акцентом. В списке счетов у каждой строки теперь одно главное действие и меню «⋯». Через меню можно открыть счёт и выполнить остальные доступные действия, например скачать PDF или записать оплату. Кнопки выровнены и больше не переносятся на вторую строку."
+        },
+        {
+          "title": "Сортировка таблиц",
+          "text": "В должниках, счетах, курсах и зачислениях можно сортировать строки нажатием на заголовок колонки. Повторное нажатие меняет направление, а стрелка показывает выбранный порядок. Настройка запоминается для вашего аккаунта в этом браузере. Кнопка «Сбросить сортировку» возвращает исходный порядок; на телефоне в курсах доступен отдельный выбор сортировки."
         }
       ]
     },
@@ -58,6 +62,10 @@
         {
           "title": "Buttons and invoice actions",
           "text": "Buttons throughout the app are now more compact: main actions use an accent colour, standard actions have a light background and deletion uses a red accent. Each invoice row now has one main action and a “⋯” menu. Use the menu to open the invoice and access other available actions, such as downloading the PDF or recording a payment. The buttons stay aligned without wrapping onto a second line."
+        },
+        {
+          "title": "Table sorting",
+          "text": "In debtors, invoices, courses and enrolments, click a column heading to sort the rows. Click again to reverse the direction; an arrow shows the current order. Your choice is remembered for your account in this browser. Use “Reset sorting” to restore the original order. On phones, courses have separate sorting controls."
         }
       ]
     },
@@ -88,6 +96,10 @@
         {
           "title": "Pogas un darbības ar rēķiniem",
           "text": "Pogas visā lietotnē ir kļuvušas kompaktākas: galvenās darbības ir izceltas ar krāsu, parastajām darbībām ir gaišs fons, bet dzēšanai — sarkans akcents. Katrā rēķinu saraksta rindā tagad ir viena galvenā darbība un izvēlne «⋯». Izvēlnē var atvērt rēķinu un veikt citas pieejamās darbības, piemēram, lejupielādēt PDF vai reģistrēt maksājumu. Pogas ir vienādi izlīdzinātas un vairs nepārceļas uz otru rindu."
+        },
+        {
+          "title": "Tabulu kārtošana",
+          "text": "Parādnieku, rēķinu, kursu un uzņemšanas sarakstos rindas var kārtot, nospiežot kolonnas virsrakstu. Atkārtots nospiediens maina virzienu, un bultiņa norāda izvēlēto secību. Izvēle tiek saglabāta jūsu kontam šajā pārlūkā. Poga «Atiestatīt kārtošanu» atjauno sākotnējo secību; tālrunī kursiem ir atsevišķas kārtošanas vadīklas."
         }
       ]
     }

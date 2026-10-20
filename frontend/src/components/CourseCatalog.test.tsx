@@ -1,3 +1,5 @@
+import { SortContext } from "../lib/tableSortContext";
+import { TableSortPreferences } from "../lib/tableSort";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { CourseCatalog } from "./CourseCatalog";
@@ -74,6 +76,22 @@ describe("course catalog rendering", () => {
     expect(html).toContain("€30.00");
     expect(html).toContain("€12.50");
     expect(html).toContain("€0.00");
+  });
+  it("sorts variants without moving subjects or losing course actions", () => {
+    const preferences = new TableSortPreferences("review", () => undefined);
+    preferences.write("courses", {key:"rate",direction:"desc"});
+    const t = createTranslator("en-US");
+    const html = renderToStaticMarkup(
+      <SortContext.Provider value={{locale:"en-US", preferences}}>
+        <CourseCatalog groups={groupCoursesBySubject(courses)} openKey="english" onToggle={vi.fn()}
+          canDeleteCourses courseTypeLabel={type=>type} formatEUR={value=>`€${value.toFixed(2)}`}
+          onEditCourse={vi.fn()} onDeleteCourse={vi.fn()} t={t} />
+      </SortContext.Provider>
+    );
+    expect(html.indexOf("Biology")).toBeLessThan(html.indexOf("English"));
+    expect(html.indexOf("€30.00")).toBeLessThan(html.indexOf("€15.00"));
+    expect(html.match(/>Edit<\/button>/g)).toHaveLength(2);
+    expect(html.match(/>Delete<\/button>/g)).toHaveLength(2);
   });
   it("keeps editing available without deletion permission", () => {
     const html = render("english", false);

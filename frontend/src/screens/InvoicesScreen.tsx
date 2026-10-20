@@ -1,3 +1,6 @@
+import { useTableSort } from "../hooks/useTableSort";
+import { SortableHeader, TableSortTools } from "../components/SortableHeader";
+import { invoiceSortColumns } from "../lib/tableSortColumns";
 import { InvoiceRowActions } from "../components/InvoiceRowActions";
 import type { ReactNode } from "react";
 import { EmptyState } from "../components/EmptyState";
@@ -56,6 +59,10 @@ export function InvoicesScreen({
   onOpenPaymentModal,
   t,
 }: InvoicesScreenProps) {
+  const sorting = useTableSort<InvoiceListItemView>(
+    "invoices",
+    invoiceSortColumns(t, invoiceStatusLabel)
+  );
   const hasActiveFilters = Boolean(query.trim() || status !== "all");
   const isDraft = (invoiceStatus: InvoiceListItemView["status"]) => invoiceStatus === "draft";
   const renderEmailStatus = (item: InvoiceListItemView) => {
@@ -145,6 +152,7 @@ export function InvoicesScreen({
         }
       />
 
+      <TableSortTools sorting={sorting} t={t} />
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : items.length === 0 ? (
@@ -169,56 +177,61 @@ export function InvoicesScreen({
         <table>
           <thead>
             <tr>
-              <th>{t("field.student")}</th>
-              <th>{t("field.period")}</th>
-              <th style={{ textAlign: "right" }}>{t("field.amount")} (EUR)</th>
-              <th>{t("field.status")}</th>
-              <th>{t("field.number")}</th>
+              <SortableHeader sorting={sorting} column="student" t={t} />
+              <SortableHeader sorting={sorting} column="period" t={t} />
+              <SortableHeader sorting={sorting} column="total" t={t} align="right" />
+              <SortableHeader sorting={sorting} column="status" t={t} />
+              <SortableHeader sorting={sorting} column="number" t={t} />
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
-              <tr key={item.id}>
-                <td>
-                  <button className="linkButton" onClick={() => void onOpenStudent(item.studentId)}>
-                    {item.studentName}
-                  </button>
-                </td>
-                <td>
-                  {months[item.month - 1]} {item.year}
-                </td>
-                <td style={{ textAlign: "right" }}>{formatEUR(item.total)}</td>
-                <td>
-                  <span className={`statusPill statusPill--${item.status}`}>
-                    {invoiceStatusLabel(item.status)}
-                  </span>
-                </td>
-                <td>
-                  {item.number ?? ""}
-                  {item.pdfReady && (
-                    <div className="badgeRow">
-                      <span className="attBadge attBadge--pdfReady">PDF</span>
-                    </div>
-                  )}
-                  {renderEmailStatus(item)}
-                </td>
-                <td>
-                  <InvoiceRowActions
-                    invoice={item}
-                    menu={renderInvoiceActionsMenu(item)}
-                    onAction={(action, id) => {
-                      if (action === "open") void onOpenInvoice(id);
-                      if (action === "issue") void onIssueOne(id);
-                      if (action === "createPdf") void onGeneratePdf(id);
-                      if (action === "recordPayment") void onOpenPaymentModal(id);
-                      if (action === "downloadPdf") void onDownloadPdf(id);
-                    }}
-                    t={t}
-                  />
-                </td>
-              </tr>
-            ))}
+            {sorting
+              .rows(items, (row) => row.id)
+              .map((item) => (
+                <tr key={item.id}>
+                  <td>
+                    <button
+                      className="linkButton"
+                      onClick={() => void onOpenStudent(item.studentId)}
+                    >
+                      {item.studentName}
+                    </button>
+                  </td>
+                  <td>
+                    {months[item.month - 1]} {item.year}
+                  </td>
+                  <td style={{ textAlign: "right" }}>{formatEUR(item.total)}</td>
+                  <td>
+                    <span className={`statusPill statusPill--${item.status}`}>
+                      {invoiceStatusLabel(item.status)}
+                    </span>
+                  </td>
+                  <td>
+                    {item.number ?? ""}
+                    {item.pdfReady && (
+                      <div className="badgeRow">
+                        <span className="attBadge attBadge--pdfReady">PDF</span>
+                      </div>
+                    )}
+                    {renderEmailStatus(item)}
+                  </td>
+                  <td>
+                    <InvoiceRowActions
+                      invoice={item}
+                      menu={renderInvoiceActionsMenu(item)}
+                      onAction={(action, id) => {
+                        if (action === "open") void onOpenInvoice(id);
+                        if (action === "issue") void onIssueOne(id);
+                        if (action === "createPdf") void onGeneratePdf(id);
+                        if (action === "recordPayment") void onOpenPaymentModal(id);
+                        if (action === "downloadPdf") void onDownloadPdf(id);
+                      }}
+                      t={t}
+                    />
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       )}

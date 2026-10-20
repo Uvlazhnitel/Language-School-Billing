@@ -1,3 +1,4 @@
+import { TableSortProvider } from "./components/TableSortProvider";
 import { useEffect, useLayoutEffect, useMemo, useState, useCallback, useRef } from "react";
 import "./App.css";
 import type { DebtorActivityFilter } from "./lib/debtorFilters";
@@ -2471,7 +2472,7 @@ export default function App() {
           t={t}
         />
       ) : (
-        <>
+        <TableSortProvider key={currentSessionUser?.id ?? "anonymous"} accountId={currentSessionUser?.id} locale={uiLocale}>
           <AppShell
             releaseNoticeAvailable={releaseNotice.snapshot.available}
             releaseNoticeLabel={t("releaseNotice.label")}
@@ -3084,7 +3085,7 @@ export default function App() {
               ))}
             </div>
           )}
-        </>
+        </TableSortProvider>
       )}
     </div>
   );

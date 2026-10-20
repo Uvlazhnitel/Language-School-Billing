@@ -1,3 +1,6 @@
+import { useTableSort } from "../hooks/useTableSort";
+import { SortableHeader, TableSortTools } from "../components/SortableHeader";
+import { enrollmentSortColumns } from "../lib/tableSortColumns";
 import { useEffect, useState, type Ref, type RefObject } from "react";
 import { EnrollmentFormModal } from "../components/modals/EnrollmentFormModal";
 import { EmptyState } from "../components/EmptyState";
@@ -134,6 +137,11 @@ export function EnrollmentsScreen({
   onCloseEnrollmentModal,
   t,
 }: EnrollmentsScreenProps) {
+  const sorting = useTableSort<EnrollmentDTO>(
+    "enrollments",
+    enrollmentSortColumns(t, billingModeLabel),
+    { key: "student", direction: "asc" }
+  );
   const [query, setQuery] = useState("");
   const [selectionPreferences, setSelectionPreferences] =
     useState<EnrollmentSelectionPreferences>(readSelectionPreferences);
@@ -245,7 +253,11 @@ export function EnrollmentsScreen({
   return (
     <>
       <FilterToolbar
-        primaryAction={<button className="btnPrimary" onClick={onAddEnrollment}>{t("button.addEnrollment")}</button>}
+        primaryAction={
+          <button className="btnPrimary" onClick={onAddEnrollment}>
+            {t("button.addEnrollment")}
+          </button>
+        }
         search={
           <input
             className="searchField"
@@ -294,6 +306,7 @@ export function EnrollmentsScreen({
         clearLabel={t("button.clearFilters")}
       />
 
+      <TableSortTools sorting={sorting} t={t} />
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : visibleEnrollments.length === 0 ? (
@@ -394,62 +407,62 @@ export function EnrollmentsScreen({
                         <table className="enrollmentCompactTable">
                           <thead>
                             <tr>
-                              <th>{t("field.student")}</th>
-                              <th>{t("field.billing")}</th>
-                              <th style={{ textAlign: "right" }}>
-                                {t("field.lessonPriceOverride")}
-                              </th>
-                              <th>{t("field.materials")}</th>
-                              <th>{t("field.note")}</th>
+                              <SortableHeader sorting={sorting} column="student" t={t} />
+                              <SortableHeader sorting={sorting} column="billing" t={t} />
+                              <SortableHeader sorting={sorting} column="rate" t={t} align="right" />
+                              <SortableHeader sorting={sorting} column="materials" t={t} />
+                              <SortableHeader sorting={sorting} column="note" t={t} />
                               <th aria-label={t("field.actions")}></th>
                             </tr>
                           </thead>
                           <tbody>
-                            {selectedCourse.enrollments.map((enrollment) => (
-                              <tr key={enrollment.id}>
-                                <td>
-                                  <button
-                                    className="linkButton enrollmentStudentLink"
-                                    onClick={() => void onOpenStudent(enrollment.studentId)}
-                                  >
-                                    {enrollment.studentName}
-                                  </button>
-                                </td>
-                                <td>{billingModeLabel(enrollment.billingMode)}</td>
-                                <td className="enrollmentCompactPrice">
-                                  {enrollment.billingMode === "per_lesson"
-                                    ? `€${enrollment.lessonPriceOverride.toFixed(2)}`
-                                    : `€${enrollment.subscriptionLessonPrice.toFixed(2)}`}
-                                </td>
-                                <td>
-                                  <span
-                                    className={`enrollmentMaterialsFlag ${
-                                      enrollment.chargeMaterials
-                                        ? "enrollmentMaterialsFlag--charged"
-                                        : ""
-                                    }`}
-                                  >
-                                    {enrollment.chargeMaterials ? t("label.yes") : t("label.no")}
-                                  </span>
-                                </td>
-                                <td>
-                                  <span className="enrollmentCompactNote" title={enrollment.note}>
-                                    {enrollment.note || "—"}
-                                  </span>
-                                </td>
-                                <td className="enrollmentCompactActions">
-                                  <button
-                                    type="button"
-                                    className="enrollmentRowAction"
-                                    aria-label={`${t("button.edit")}: ${enrollment.studentName}`}
-                                    title={t("button.edit")}
-                                    onClick={() => onEditEnrollment(enrollment)}
-                                  >
-                                    ...
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
+                            {sorting
+                              .rows(selectedCourse.enrollments, (row) => row.id)
+                              .map((enrollment) => (
+                                <tr key={enrollment.id}>
+                                  <td>
+                                    <button
+                                      className="linkButton enrollmentStudentLink"
+                                      onClick={() => void onOpenStudent(enrollment.studentId)}
+                                    >
+                                      {enrollment.studentName}
+                                    </button>
+                                  </td>
+                                  <td>{billingModeLabel(enrollment.billingMode)}</td>
+                                  <td className="enrollmentCompactPrice">
+                                    {enrollment.billingMode === "per_lesson"
+                                      ? `€${enrollment.lessonPriceOverride.toFixed(2)}`
+                                      : `€${enrollment.subscriptionLessonPrice.toFixed(2)}`}
+                                  </td>
+                                  <td>
+                                    <span
+                                      className={`enrollmentMaterialsFlag ${
+                                        enrollment.chargeMaterials
+                                          ? "enrollmentMaterialsFlag--charged"
+                                          : ""
+                                      }`}
+                                    >
+                                      {enrollment.chargeMaterials ? t("label.yes") : t("label.no")}
+                                    </span>
+                                  </td>
+                                  <td>
+                                    <span className="enrollmentCompactNote" title={enrollment.note}>
+                                      {enrollment.note || "—"}
+                                    </span>
+                                  </td>
+                                  <td className="enrollmentCompactActions">
+                                    <button
+                                      type="button"
+                                      className="enrollmentRowAction"
+                                      aria-label={`${t("button.edit")}: ${enrollment.studentName}`}
+                                      title={t("button.edit")}
+                                      onClick={() => onEditEnrollment(enrollment)}
+                                    >
+                                      ...
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
                           </tbody>
                         </table>
                       </div>

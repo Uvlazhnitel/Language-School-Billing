@@ -1,3 +1,6 @@
+import { useTableSort } from "../hooks/useTableSort";
+import { SortableHeader, TableSortTools } from "../components/SortableHeader";
+import { debtorSortColumns } from "../lib/tableSortColumns";
 import type { DebtorDTO } from "../lib/payments";
 import { buildDebtorActionQueue } from "../lib/studentActivity";
 import { filterDebtorsByActivity, type DebtorActivityFilter } from "../lib/debtorFilters";
@@ -41,6 +44,10 @@ export function DebtorsScreen({
   activityFilter,
   onActivityFilterChange,
 }: DebtorsScreenProps) {
+  const sorting = useTableSort<DebtorDTO>("debtors", debtorSortColumns(t), {
+    key: "debt",
+    direction: "desc",
+  });
   const visibleDebtors = filterDebtorsByActivity(debtors, activityFilter);
   const actionQueue = buildDebtorActionQueue(visibleDebtors, recentPayments, t);
   return (
@@ -127,6 +134,7 @@ export function DebtorsScreen({
         </div>
       )}
 
+      <TableSortTools sorting={sorting} t={t} />
       {loading ? (
         <div>{t("label.loading")}</div>
       ) : debtors.length === 0 ? (
@@ -142,64 +150,66 @@ export function DebtorsScreen({
         <table>
           <thead>
             <tr>
-              <th>{t("field.student")}</th>
-              <th style={{ textAlign: "right" }}>{t("field.debtEur")}</th>
-              <th style={{ textAlign: "right" }}>{t("field.totalEur")}</th>
-              <th style={{ textAlign: "right" }}>{t("field.paidEur")}</th>
+              <SortableHeader sorting={sorting} column="student" t={t} align="left" />
+              <SortableHeader sorting={sorting} column="debt" t={t} align="right" />
+              <SortableHeader sorting={sorting} column="total" t={t} align="right" />
+              <SortableHeader sorting={sorting} column="paid" t={t} align="right" />
               <th></th>
             </tr>
           </thead>
           <tbody>
-            {visibleDebtors.map((debtor) => (
-              <tr key={debtor.studentId}>
-                <td>
-                  <div className="debtorIdentity">
-                    <button
-                      className="linkButton"
-                      onClick={() => void onOpenStudent(debtor.studentId)}
-                    >
-                      {debtor.studentName}
-                    </button>
-                    <span className={`statusPill ${debtor.isActive ? "success" : "warning"}`}>
-                      {t(debtor.isActive ? "status.active" : "status.inactive")}
-                    </span>
-                  </div>
-                </td>
-                <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
-                  {formatEUR(debtor.debt)}
-                </td>
-                <td style={{ textAlign: "right" }}>{formatEUR(debtor.totalInvoiced)}</td>
-                <td style={{ textAlign: "right" }}>{formatEUR(debtor.totalPaid)}</td>
-                <td>
-                  <div className="invoiceRowActions">
-                    <button
-                      className="workspaceActionButton workspaceActionButtonPrimary invoicePrimaryAction"
-                      onClick={() => onOpenPaymentForDebtor(debtor)}
-                    >
-                      {t("button.takePayment")}
-                    </button>
-                    <button
-                      className="workspaceActionButton"
-                      onClick={() => onOpenDebtDetails(debtor)}
-                    >
-                      {t("modal.debtBreakdown")}
-                    </button>
-                    <button
-                      className="secondaryActionButton"
-                      onClick={() => void onCopyDebtForDebtorRu(debtor)}
-                    >
-                      {t("button.copyRu")}
-                    </button>
-                    <button
-                      className="secondaryActionButton"
-                      onClick={() => void onCopyDebtForDebtorLv(debtor)}
-                    >
-                      {t("button.copyLv")}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {sorting
+              .rows(visibleDebtors, (row) => row.studentId)
+              .map((debtor) => (
+                <tr key={debtor.studentId}>
+                  <td>
+                    <div className="debtorIdentity">
+                      <button
+                        className="linkButton"
+                        onClick={() => void onOpenStudent(debtor.studentId)}
+                      >
+                        {debtor.studentName}
+                      </button>
+                      <span className={`statusPill ${debtor.isActive ? "success" : "warning"}`}>
+                        {t(debtor.isActive ? "status.active" : "status.inactive")}
+                      </span>
+                    </div>
+                  </td>
+                  <td style={{ textAlign: "right", fontWeight: "bold", color: "#d32f2f" }}>
+                    {formatEUR(debtor.debt)}
+                  </td>
+                  <td style={{ textAlign: "right" }}>{formatEUR(debtor.totalInvoiced)}</td>
+                  <td style={{ textAlign: "right" }}>{formatEUR(debtor.totalPaid)}</td>
+                  <td>
+                    <div className="invoiceRowActions">
+                      <button
+                        className="workspaceActionButton workspaceActionButtonPrimary invoicePrimaryAction"
+                        onClick={() => onOpenPaymentForDebtor(debtor)}
+                      >
+                        {t("button.takePayment")}
+                      </button>
+                      <button
+                        className="workspaceActionButton"
+                        onClick={() => onOpenDebtDetails(debtor)}
+                      >
+                        {t("modal.debtBreakdown")}
+                      </button>
+                      <button
+                        className="secondaryActionButton"
+                        onClick={() => void onCopyDebtForDebtorRu(debtor)}
+                      >
+                        {t("button.copyRu")}
+                      </button>
+                      <button
+                        className="secondaryActionButton"
+                        onClick={() => void onCopyDebtForDebtorLv(debtor)}
+                      >
+                        {t("button.copyLv")}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
           </tbody>
           <tfoot>
             <tr>
