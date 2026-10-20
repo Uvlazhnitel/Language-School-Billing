@@ -7,6 +7,7 @@ describe("i18n", () => {
     expect(normalizeLocale()).toBe("lv-LV");
     expect(normalizeLocale("unknown")).toBe("lv-LV");
     expect(normalizeLocale("lv-LV")).toBe("lv-LV");
+    expect(normalizeLocale("en-US")).toBe("en-US");
   });
 
   it("returns Latvian month names", () => {

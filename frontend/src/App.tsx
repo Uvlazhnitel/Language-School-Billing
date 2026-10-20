@@ -78,6 +78,8 @@ import {
 } from "./lib/dashboard";
 import { AuditLogItem, listAuditLogs } from "./lib/audit";
 import { isConflictError } from "./lib/api/shared";
+import { ReleaseNoticeModal } from "./components/modals/ReleaseNoticeModal";
+import { useReleaseNoticeController } from "./hooks/app/useReleaseNoticeController";
 import { AppShell, type AppTab } from "./components/AppShell";
 import { ConfirmDialog } from "./components/ConfirmDialog";
 import { LoginScreen } from "./components/LoginScreen";
@@ -186,6 +188,13 @@ export default function App() {
   } = useAuthController({ showMessage });
 
   const t = useMemo(() => createTranslator(uiLocale), [uiLocale]);
+  const releaseNotice = useReleaseNoticeController(
+    currentSessionUser?.id, appReady && isAuthenticated
+  );
+  const releaseContent =
+    releaseNotice.snapshot.notice?.content[uiLocale] ??
+    releaseNotice.snapshot.notice?.content["lv-LV"] ??
+    releaseNotice.snapshot.notice?.content["en-US"];
   const uiMonths = useMemo(() => getMonthNames(uiLocale), [uiLocale]);
   const tabMeta = useMemo(() => buildTabMeta(t), [t]);
   const canManageUsers = Boolean(sessionCapabilities.manageUsers);
@@ -2475,6 +2484,9 @@ export default function App() {
       ) : (
         <>
           <AppShell
+            releaseNoticeAvailable={releaseNotice.snapshot.available}
+            releaseNoticeLabel={t("releaseNotice.label")}
+            onOpenReleaseNotice={() => releaseNotice.controller?.open()}
             tabs={tabs}
             activeTab={tab}
             secondaryActions={secondaryActions.map(action => ({
@@ -2896,6 +2908,13 @@ export default function App() {
               />
             )}
           </AppShell>
+          {releaseNotice.snapshot.open && releaseContent && (
+            <ReleaseNoticeModal
+              content={releaseContent}
+              onClose={() => releaseNotice.controller?.close()}
+              t={t}
+            />
+          )}
 
           {paymentModalOpen && (
             <PaymentModal

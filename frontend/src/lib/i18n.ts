@@ -6,6 +6,9 @@ export type TranslateFn = (key: string, params?: TranslateParams) => string;
 
 const translations: Record<UiLocale, Record<string, string>> = {
   "en-US": {
+    "releaseNotice.label": "What's new",
+    "releaseNotice.understood": "Got it",
+    "releaseNotice.hint": "You can reopen this update using “What's new” in the header for 24 hours after your first visit.",
     "attendance.lockedChange": "The invoice now locks attendance. Discard this change and refresh.",
     "attendance.monthSummary": "Month summary",
     "attendance.missing": "To complete",
@@ -730,6 +733,9 @@ const translations: Record<UiLocale, Record<string, string>> = {
   },
   "lv-LV": lvTranslations,
   "ru-RU": {
+    "releaseNotice.label": "Что нового",
+    "releaseNotice.understood": "Понятно",
+    "releaseNotice.hint": "Это обновление можно пересмотреть по кнопке «Что нового» в шапке в течение 24 часов с первого посещения.",
     "attendance.lockedChange": "Счёт уже блокирует посещаемость. Отмените правку и обновите ведомость.",
     "attendance.monthSummary": "Сводка месяца",
     "attendance.missing": "К заполнению",
@@ -1491,6 +1497,7 @@ const monthNames: Record<UiLocale, string[]> = {
 };
 
 export function normalizeLocale(locale?: string | null): UiLocale {
+  if (locale === "en-US") return "en-US";
   if (locale === "lv-LV") return "lv-LV";
   if (locale === "ru-RU") return "ru-RU";
   return "lv-LV";

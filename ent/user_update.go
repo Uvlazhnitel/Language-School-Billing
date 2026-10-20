@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"langschool/ent/auditlog"
 	"langschool/ent/predicate"
+	"langschool/ent/releasenoticeview"
 	"langschool/ent/user"
 	"langschool/ent/websession"
 	"time"
@@ -135,6 +136,21 @@ func (_u *UserUpdate) AddSessions(v ...*WebSession) *UserUpdate {
 	return _u.AddSessionIDs(ids...)
 }
 
+// AddReleaseNoticeViewIDs adds the "release_notice_views" edge to the ReleaseNoticeView entity by IDs.
+func (_u *UserUpdate) AddReleaseNoticeViewIDs(ids ...int) *UserUpdate {
+	_u.mutation.AddReleaseNoticeViewIDs(ids...)
+	return _u
+}
+
+// AddReleaseNoticeViews adds the "release_notice_views" edges to the ReleaseNoticeView entity.
+func (_u *UserUpdate) AddReleaseNoticeViews(v ...*ReleaseNoticeView) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddReleaseNoticeViewIDs(ids...)
+}
+
 // AddAuditLogIDs adds the "audit_logs" edge to the AuditLog entity by IDs.
 func (_u *UserUpdate) AddAuditLogIDs(ids ...int) *UserUpdate {
 	_u.mutation.AddAuditLogIDs(ids...)
@@ -174,6 +190,27 @@ func (_u *UserUpdate) RemoveSessions(v ...*WebSession) *UserUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveSessionIDs(ids...)
+}
+
+// ClearReleaseNoticeViews clears all "release_notice_views" edges to the ReleaseNoticeView entity.
+func (_u *UserUpdate) ClearReleaseNoticeViews() *UserUpdate {
+	_u.mutation.ClearReleaseNoticeViews()
+	return _u
+}
+
+// RemoveReleaseNoticeViewIDs removes the "release_notice_views" edge to ReleaseNoticeView entities by IDs.
+func (_u *UserUpdate) RemoveReleaseNoticeViewIDs(ids ...int) *UserUpdate {
+	_u.mutation.RemoveReleaseNoticeViewIDs(ids...)
+	return _u
+}
+
+// RemoveReleaseNoticeViews removes "release_notice_views" edges to ReleaseNoticeView entities.
+func (_u *UserUpdate) RemoveReleaseNoticeViews(v ...*ReleaseNoticeView) *UserUpdate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveReleaseNoticeViewIDs(ids...)
 }
 
 // ClearAuditLogs clears all "audit_logs" edges to the AuditLog entity.
@@ -301,6 +338,51 @@ func (_u *UserUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(websession.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ReleaseNoticeViewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReleaseNoticeViewsTable,
+			Columns: []string{user.ReleaseNoticeViewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(releasenoticeview.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedReleaseNoticeViewsIDs(); len(nodes) > 0 && !_u.mutation.ReleaseNoticeViewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReleaseNoticeViewsTable,
+			Columns: []string{user.ReleaseNoticeViewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(releasenoticeview.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ReleaseNoticeViewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReleaseNoticeViewsTable,
+			Columns: []string{user.ReleaseNoticeViewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(releasenoticeview.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {
@@ -478,6 +560,21 @@ func (_u *UserUpdateOne) AddSessions(v ...*WebSession) *UserUpdateOne {
 	return _u.AddSessionIDs(ids...)
 }
 
+// AddReleaseNoticeViewIDs adds the "release_notice_views" edge to the ReleaseNoticeView entity by IDs.
+func (_u *UserUpdateOne) AddReleaseNoticeViewIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.AddReleaseNoticeViewIDs(ids...)
+	return _u
+}
+
+// AddReleaseNoticeViews adds the "release_notice_views" edges to the ReleaseNoticeView entity.
+func (_u *UserUpdateOne) AddReleaseNoticeViews(v ...*ReleaseNoticeView) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddReleaseNoticeViewIDs(ids...)
+}
+
 // AddAuditLogIDs adds the "audit_logs" edge to the AuditLog entity by IDs.
 func (_u *UserUpdateOne) AddAuditLogIDs(ids ...int) *UserUpdateOne {
 	_u.mutation.AddAuditLogIDs(ids...)
@@ -517,6 +614,27 @@ func (_u *UserUpdateOne) RemoveSessions(v ...*WebSession) *UserUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveSessionIDs(ids...)
+}
+
+// ClearReleaseNoticeViews clears all "release_notice_views" edges to the ReleaseNoticeView entity.
+func (_u *UserUpdateOne) ClearReleaseNoticeViews() *UserUpdateOne {
+	_u.mutation.ClearReleaseNoticeViews()
+	return _u
+}
+
+// RemoveReleaseNoticeViewIDs removes the "release_notice_views" edge to ReleaseNoticeView entities by IDs.
+func (_u *UserUpdateOne) RemoveReleaseNoticeViewIDs(ids ...int) *UserUpdateOne {
+	_u.mutation.RemoveReleaseNoticeViewIDs(ids...)
+	return _u
+}
+
+// RemoveReleaseNoticeViews removes "release_notice_views" edges to ReleaseNoticeView entities.
+func (_u *UserUpdateOne) RemoveReleaseNoticeViews(v ...*ReleaseNoticeView) *UserUpdateOne {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveReleaseNoticeViewIDs(ids...)
 }
 
 // ClearAuditLogs clears all "audit_logs" edges to the AuditLog entity.
@@ -674,6 +792,51 @@ func (_u *UserUpdateOne) sqlSave(ctx context.Context) (_node *User, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(websession.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ReleaseNoticeViewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReleaseNoticeViewsTable,
+			Columns: []string{user.ReleaseNoticeViewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(releasenoticeview.FieldID, field.TypeInt),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedReleaseNoticeViewsIDs(); len(nodes) > 0 && !_u.mutation.ReleaseNoticeViewsCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReleaseNoticeViewsTable,
+			Columns: []string{user.ReleaseNoticeViewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(releasenoticeview.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ReleaseNoticeViewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReleaseNoticeViewsTable,
+			Columns: []string{user.ReleaseNoticeViewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(releasenoticeview.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

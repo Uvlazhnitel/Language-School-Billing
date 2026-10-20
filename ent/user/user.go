@@ -30,6 +30,8 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeSessions holds the string denoting the sessions edge name in mutations.
 	EdgeSessions = "sessions"
+	// EdgeReleaseNoticeViews holds the string denoting the release_notice_views edge name in mutations.
+	EdgeReleaseNoticeViews = "release_notice_views"
 	// EdgeAuditLogs holds the string denoting the audit_logs edge name in mutations.
 	EdgeAuditLogs = "audit_logs"
 	// Table holds the table name of the user in the database.
@@ -41,6 +43,13 @@ const (
 	SessionsInverseTable = "web_sessions"
 	// SessionsColumn is the table column denoting the sessions relation/edge.
 	SessionsColumn = "user_sessions"
+	// ReleaseNoticeViewsTable is the table that holds the release_notice_views relation/edge.
+	ReleaseNoticeViewsTable = "release_notice_views"
+	// ReleaseNoticeViewsInverseTable is the table name for the ReleaseNoticeView entity.
+	// It exists in this package in order to avoid circular dependency with the "releasenoticeview" package.
+	ReleaseNoticeViewsInverseTable = "release_notice_views"
+	// ReleaseNoticeViewsColumn is the table column denoting the release_notice_views relation/edge.
+	ReleaseNoticeViewsColumn = "user_id"
 	// AuditLogsTable is the table that holds the audit_logs relation/edge.
 	AuditLogsTable = "audit_logs"
 	// AuditLogsInverseTable is the table name for the AuditLog entity.
@@ -144,6 +153,20 @@ func BySessions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	}
 }
 
+// ByReleaseNoticeViewsCount orders the results by release_notice_views count.
+func ByReleaseNoticeViewsCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newReleaseNoticeViewsStep(), opts...)
+	}
+}
+
+// ByReleaseNoticeViews orders the results by release_notice_views terms.
+func ByReleaseNoticeViews(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newReleaseNoticeViewsStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
 // ByAuditLogsCount orders the results by audit_logs count.
 func ByAuditLogsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -162,6 +185,13 @@ func newSessionsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(SessionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, SessionsTable, SessionsColumn),
+	)
+}
+func newReleaseNoticeViewsStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ReleaseNoticeViewsInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ReleaseNoticeViewsTable, ReleaseNoticeViewsColumn),
 	)
 }
 func newAuditLogsStep() *sqlgraph.Step {

@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"langschool/ent/auditlog"
+	"langschool/ent/releasenoticeview"
 	"langschool/ent/user"
 	"langschool/ent/websession"
 	"time"
@@ -117,6 +118,21 @@ func (_c *UserCreate) AddSessions(v ...*WebSession) *UserCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddSessionIDs(ids...)
+}
+
+// AddReleaseNoticeViewIDs adds the "release_notice_views" edge to the ReleaseNoticeView entity by IDs.
+func (_c *UserCreate) AddReleaseNoticeViewIDs(ids ...int) *UserCreate {
+	_c.mutation.AddReleaseNoticeViewIDs(ids...)
+	return _c
+}
+
+// AddReleaseNoticeViews adds the "release_notice_views" edges to the ReleaseNoticeView entity.
+func (_c *UserCreate) AddReleaseNoticeViews(v ...*ReleaseNoticeView) *UserCreate {
+	ids := make([]int, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddReleaseNoticeViewIDs(ids...)
 }
 
 // AddAuditLogIDs adds the "audit_logs" edge to the AuditLog entity by IDs.
@@ -277,6 +293,22 @@ func (_c *UserCreate) createSpec() (*User, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(websession.FieldID, field.TypeInt),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.ReleaseNoticeViewsIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   user.ReleaseNoticeViewsTable,
+			Columns: []string{user.ReleaseNoticeViewsColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(releasenoticeview.FieldID, field.TypeInt),
 			},
 		}
 		for _, k := range nodes {

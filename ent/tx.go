@@ -30,6 +30,8 @@ type Tx struct {
 	Payment *PaymentClient
 	// PaymentOperation is the client for interacting with the PaymentOperation builders.
 	PaymentOperation *PaymentOperationClient
+	// ReleaseNoticeView is the client for interacting with the ReleaseNoticeView builders.
+	ReleaseNoticeView *ReleaseNoticeViewClient
 	// Settings is the client for interacting with the Settings builders.
 	Settings *SettingsClient
 	// Student is the client for interacting with the Student builders.
@@ -180,6 +182,7 @@ func (tx *Tx) init() {
 	tx.InvoiceLine = NewInvoiceLineClient(tx.config)
 	tx.Payment = NewPaymentClient(tx.config)
 	tx.PaymentOperation = NewPaymentOperationClient(tx.config)
+	tx.ReleaseNoticeView = NewReleaseNoticeViewClient(tx.config)
 	tx.Settings = NewSettingsClient(tx.config)
 	tx.Student = NewStudentClient(tx.config)
 	tx.Teacher = NewTeacherClient(tx.config)

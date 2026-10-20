@@ -1,5 +1,6 @@
 import type {
   AppTransport,
+  ReleaseNoticeResult,
   AuditLogListResult,
   BackupResult,
   BalanceDTO,
@@ -125,6 +126,20 @@ function body(value: unknown): RequestInit {
 }
 
 export const httpTransport: AppTransport = {
+  async visitReleaseNotice(signal) {
+    return request<ReleaseNoticeResult>("/me/release-notices/current/visit", {
+      method: "POST",
+      signal: signal ?? AbortSignal.timeout(10000),
+      suppressAuthEvent: true,
+    });
+  },
+  async dismissReleaseNotice(releaseId, signal) {
+    await request(`/me/release-notices/${encodeURIComponent(releaseId)}/dismiss`, {
+      method: "POST",
+      signal: signal ?? AbortSignal.timeout(10000),
+      suppressAuthEvent: true,
+    });
+  },
   async bootstrap(): Promise<BootstrapResult> {
     const [health, session] = await Promise.all([
       requestAbsolute<{ ready: boolean }>(`${healthBase()}/healthz`, { suppressAuthEvent: true }),

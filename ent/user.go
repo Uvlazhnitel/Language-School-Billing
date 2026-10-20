@@ -41,11 +41,13 @@ type User struct {
 type UserEdges struct {
 	// Sessions holds the value of the sessions edge.
 	Sessions []*WebSession `json:"sessions,omitempty"`
+	// ReleaseNoticeViews holds the value of the release_notice_views edge.
+	ReleaseNoticeViews []*ReleaseNoticeView `json:"release_notice_views,omitempty"`
 	// AuditLogs holds the value of the audit_logs edge.
 	AuditLogs []*AuditLog `json:"audit_logs,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [3]bool
 }
 
 // SessionsOrErr returns the Sessions value or an error if the edge
@@ -57,10 +59,19 @@ func (e UserEdges) SessionsOrErr() ([]*WebSession, error) {
 	return nil, &NotLoadedError{edge: "sessions"}
 }
 
+// ReleaseNoticeViewsOrErr returns the ReleaseNoticeViews value or an error if the edge
+// was not loaded in eager-loading.
+func (e UserEdges) ReleaseNoticeViewsOrErr() ([]*ReleaseNoticeView, error) {
+	if e.loadedTypes[1] {
+		return e.ReleaseNoticeViews, nil
+	}
+	return nil, &NotLoadedError{edge: "release_notice_views"}
+}
+
 // AuditLogsOrErr returns the AuditLogs value or an error if the edge
 // was not loaded in eager-loading.
 func (e UserEdges) AuditLogsOrErr() ([]*AuditLog, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.AuditLogs, nil
 	}
 	return nil, &NotLoadedError{edge: "audit_logs"}
@@ -158,6 +169,11 @@ func (_m *User) Value(name string) (ent.Value, error) {
 // QuerySessions queries the "sessions" edge of the User entity.
 func (_m *User) QuerySessions() *WebSessionQuery {
 	return NewUserClient(_m.config).QuerySessions(_m)
+}
+
+// QueryReleaseNoticeViews queries the "release_notice_views" edge of the User entity.
+func (_m *User) QueryReleaseNoticeViews() *ReleaseNoticeViewQuery {
+	return NewUserClient(_m.config).QueryReleaseNoticeViews(_m)
 }
 
 // QueryAuditLogs queries the "audit_logs" edge of the User entity.

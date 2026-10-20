@@ -458,7 +458,23 @@ export type InvoiceStatus =
   | "canceled";
 export type PaymentMethod = "cash" | "bank";
 
+export type ReleaseNoticeContent = {
+  title: string;
+  intro: string;
+  sections: Array<{ title: string; text: string }>;
+};
+export type ReleaseNotice = {
+  releaseId: string;
+  firstSeenAt: string;
+  expiresAt: string;
+  dismissedAt: string | null;
+  content: Record<string, ReleaseNoticeContent>;
+};
+export type ReleaseNoticeResult = { serverNow: string; notice: ReleaseNotice | null };
+
 export interface AppTransport {
+  visitReleaseNotice(signal?: AbortSignal): Promise<ReleaseNoticeResult>;
+  dismissReleaseNotice(releaseId: string, signal?: AbortSignal): Promise<void>;
   bootstrap(): Promise<BootstrapResult>;
   getSession(): Promise<SessionInfo>;
   login(username: string, password: string, rememberMe: boolean): Promise<SessionInfo>;

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"entgo.io/ent"
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
@@ -25,6 +26,7 @@ func (User) Fields() []ent.Field {
 func (User) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.To("sessions", WebSession.Type),
+		edge.To("release_notice_views", ReleaseNoticeView.Type).Annotations(entsql.OnDelete(entsql.Cascade)),
 		edge.To("audit_logs", AuditLog.Type),
 	}
 }

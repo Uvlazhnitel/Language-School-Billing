@@ -20,6 +20,9 @@ type AppShellProps = {
   onMonthChange: (month: number) => void;
   onYearChange: (year: number) => void;
   showMonthPicker: boolean;
+  releaseNoticeAvailable?: boolean;
+  releaseNoticeLabel?: string;
+  onOpenReleaseNotice?: () => void;
   children: ReactNode;
 };
 
@@ -35,6 +38,9 @@ export function AppShell({
   onMonthChange,
   onYearChange,
   showMonthPicker,
+  releaseNoticeAvailable = false,
+  releaseNoticeLabel = "",
+  onOpenReleaseNotice,
   children,
 }: AppShellProps) {
   return (
@@ -47,11 +53,14 @@ export function AppShell({
             {currentMeta.subtitle && <p className="workspaceSubtitle">{currentMeta.subtitle}</p>}
           </div>
 
-          {(showMonthPicker || secondaryActions.length > 0) && (
+          {(showMonthPicker || secondaryActions.length > 0 || releaseNoticeAvailable) && (
             <div className="workspaceTopbarAside">
               {showMonthPicker && (
                 <div className="monthpickers monthpickersTopbar">
-                  <select value={month} onChange={(e) => onMonthChange(parseInt(e.target.value, 10))}>
+                  <select
+                    value={month}
+                    onChange={(e) => onMonthChange(parseInt(e.target.value, 10))}
+                  >
                     {monthLabels.map((label, index) => (
                       <option key={label} value={index + 1}>
                         {label}
@@ -68,10 +77,24 @@ export function AppShell({
                 </div>
               )}
 
-              {secondaryActions.length > 0 && (
+              {(secondaryActions.length > 0 || releaseNoticeAvailable) && (
                 <div className="secondaryActions secondaryActions--topbar">
+                  {releaseNoticeAvailable && (
+                    <button
+                      type="button"
+                      className="secondaryActionButton releaseNoticeTrigger"
+                      aria-haspopup="dialog"
+                      onClick={onOpenReleaseNotice}
+                    >
+                      <span aria-hidden="true">✦</span> {releaseNoticeLabel}
+                    </button>
+                  )}
                   {secondaryActions.map((action) => (
-                    <button key={action.id} className="secondaryActionButton" onClick={action.onClick}>
+                    <button
+                      key={action.id}
+                      className="secondaryActionButton"
+                      onClick={action.onClick}
+                    >
                       {action.label}
                     </button>
                   ))}

@@ -136,7 +136,12 @@ describe("httpTransport", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      httpTransport.checkStudentDuplicates("Anna Student", "020202-23456", "123", "anna@example.com")
+      httpTransport.checkStudentDuplicates(
+        "Anna Student",
+        "020202-23456",
+        "123",
+        "anna@example.com"
+      )
     ).resolves.toEqual({
       exactMatch: expect.objectContaining({
         id: 7,
@@ -157,11 +162,14 @@ describe("httpTransport", () => {
         student: expect.objectContaining({ fullName: "Anna Student" }),
         enrollment: expect.objectContaining({ courseId: 4, billingMode: "per_lesson" }),
       });
-      return jsonResponse({
-        student: { id: 7, fullName: "Anna Student" },
-        enrollments: [{ id: 9, studentId: 7, courseId: 4 }],
-        enrollment: { id: 9, studentId: 7, courseId: 4 },
-      }, 201);
+      return jsonResponse(
+        {
+          student: { id: 7, fullName: "Anna Student" },
+          enrollments: [{ id: 9, studentId: 7, courseId: 4 }],
+          enrollment: { id: 9, studentId: 7, courseId: 4 },
+        },
+        201
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
 
@@ -217,18 +225,24 @@ describe("httpTransport", () => {
       const payload = JSON.parse(String(init?.body));
       if (url.endsWith("/api/students/onboard")) {
         expect(payload.enrollments).toEqual(enrollments);
-        return jsonResponse({
-          student: { id: 7, fullName: "Anna Student" },
-          enrollments: enrollments.map((item, index) => ({ id: index + 10, ...item })),
-          enrollment: { id: 10, ...enrollments[0] },
-        }, 201);
+        return jsonResponse(
+          {
+            student: { id: 7, fullName: "Anna Student" },
+            enrollments: enrollments.map((item, index) => ({ id: index + 10, ...item })),
+            enrollment: { id: 10, ...enrollments[0] },
+          },
+          201
+        );
       }
       if (url.endsWith("/api/enrollments/bulk")) {
         expect(payload).toEqual({ studentId: 7, enrollments });
-        return jsonResponse({
-          enrollments: [{ id: 11, ...enrollments[1] }],
-          skippedCourseIds: [4],
-        }, 201);
+        return jsonResponse(
+          {
+            enrollments: [{ id: 11, ...enrollments[1] }],
+            skippedCourseIds: [4],
+          },
+          201
+        );
       }
       throw new Error(`unexpected url ${url}`);
     });
@@ -245,7 +259,9 @@ describe("httpTransport", () => {
       payerRole: "",
     };
     await expect(httpTransport.createStudentWithEnrollments(student, enrollments)).resolves.toEqual(
-      expect.objectContaining({ enrollments: expect.arrayContaining([expect.objectContaining({ id: 10 })]) })
+      expect.objectContaining({
+        enrollments: expect.arrayContaining([expect.objectContaining({ id: 10 })]),
+      })
     );
     await expect(httpTransport.createEnrollmentsBulk(7, enrollments)).resolves.toEqual({
       enrollments: [expect.objectContaining({ id: 11 })],
@@ -313,21 +329,32 @@ describe("httpTransport", () => {
         note: "invoice payment",
         operationId: "c67d73d2-5a60-4197-b8db-ac45d1c83532",
       });
-      return jsonResponse({
-        id: 21,
-        studentId: 7,
-        invoiceId: 12,
-        amount: 45.5,
-        method: "bank",
-        paidAt: "2026-06-02T00:00:00Z",
-        note: "invoice payment",
-        createdAt: "2026-06-02T12:00:00Z",
-      }, 201);
+      return jsonResponse(
+        {
+          id: 21,
+          studentId: 7,
+          invoiceId: 12,
+          amount: 45.5,
+          method: "bank",
+          paidAt: "2026-06-02T00:00:00Z",
+          note: "invoice payment",
+          createdAt: "2026-06-02T12:00:00Z",
+        },
+        201
+      );
     });
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(
-      httpTransport.createPayment(7, 12, 45.5, "bank", "2026-06-02", "invoice payment", "c67d73d2-5a60-4197-b8db-ac45d1c83532")
+      httpTransport.createPayment(
+        7,
+        12,
+        45.5,
+        "bank",
+        "2026-06-02",
+        "invoice payment",
+        "c67d73d2-5a60-4197-b8db-ac45d1c83532"
+      )
     ).resolves.toEqual(expect.objectContaining({ id: 21, invoiceId: 12 }));
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -644,7 +671,10 @@ describe("httpTransport", () => {
   });
 
   it("creates backups and returns safe metadata", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ filename: "app-20260602.sqlite" })));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ filename: "app-20260602.sqlite" }))
+    );
 
     await expect(httpTransport.createBackup()).resolves.toEqual({
       filename: "app-20260602.sqlite",
@@ -666,21 +696,62 @@ describe("httpTransport", () => {
   });
 
   it("throws readable error messages", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "boom" }, 400)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ error: "boom" }, 400))
+    );
 
     await expect(httpTransport.getStudent(1)).rejects.toThrow("boom");
   });
 
   it("surfaces 401 as auth errors", async () => {
     vi.stubGlobal("window", { dispatchEvent: vi.fn() } as unknown as Window);
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "auth" }, 401)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ error: "auth" }, 401))
+    );
 
     await expect(httpTransport.getStudent(1)).rejects.toBeInstanceOf(AuthRequiredError);
   });
 
   it("surfaces 403 as authorization errors", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ error: "forbidden" }, 403)));
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ error: "forbidden" }, 403))
+    );
 
     await expect(httpTransport.createBackup()).rejects.toBeInstanceOf(AuthorizationError);
+  });
+  it("uses account notice routes and forwards the account's cancellation signal", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) =>
+      String(input).endsWith("/dismiss")
+        ? new Response(null, { status: 204 })
+        : jsonResponse({ serverNow: "2026-10-20T10:00:00Z", notice: null })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const controller = new AbortController();
+    await httpTransport.visitReleaseNotice(controller.signal);
+    await httpTransport.dismissReleaseNotice("release-1", controller.signal);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/me/release-notices/current/visit",
+      expect.objectContaining({ method: "POST", signal: controller.signal })
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/me/release-notices/release-1/dismiss",
+      expect.objectContaining({ method: "POST", signal: controller.signal })
+    );
+  });
+  it("does not expire a new login because an older announcement request returned 401", async () => {
+    const dispatch = vi.fn();
+    vi.stubGlobal("window", { dispatchEvent: dispatch });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => jsonResponse({ error: "old session" }, 401))
+    );
+    await expect(httpTransport.visitReleaseNotice()).rejects.toBeInstanceOf(AuthRequiredError);
+    await expect(httpTransport.dismissReleaseNotice("release-1")).rejects.toBeInstanceOf(
+      AuthRequiredError
+    );
+    expect(dispatch).not.toHaveBeenCalled();
   });
 });

@@ -20,6 +20,7 @@ import (
 	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
 	"langschool/ent/paymentoperation"
+	"langschool/ent/releasenoticeview"
 	"langschool/ent/settings"
 	"langschool/ent/student"
 	"langschool/ent/teacher"
@@ -55,6 +56,8 @@ type Client struct {
 	Payment *PaymentClient
 	// PaymentOperation is the client for interacting with the PaymentOperation builders.
 	PaymentOperation *PaymentOperationClient
+	// ReleaseNoticeView is the client for interacting with the ReleaseNoticeView builders.
+	ReleaseNoticeView *ReleaseNoticeViewClient
 	// Settings is the client for interacting with the Settings builders.
 	Settings *SettingsClient
 	// Student is the client for interacting with the Student builders.
@@ -85,6 +88,7 @@ func (c *Client) init() {
 	c.InvoiceLine = NewInvoiceLineClient(c.config)
 	c.Payment = NewPaymentClient(c.config)
 	c.PaymentOperation = NewPaymentOperationClient(c.config)
+	c.ReleaseNoticeView = NewReleaseNoticeViewClient(c.config)
 	c.Settings = NewSettingsClient(c.config)
 	c.Student = NewStudentClient(c.config)
 	c.Teacher = NewTeacherClient(c.config)
@@ -180,22 +184,23 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:              ctx,
-		config:           cfg,
-		AttendanceMonth:  NewAttendanceMonthClient(cfg),
-		AuditLog:         NewAuditLogClient(cfg),
-		Course:           NewCourseClient(cfg),
-		CourseMonthStat:  NewCourseMonthStatClient(cfg),
-		Enrollment:       NewEnrollmentClient(cfg),
-		Invoice:          NewInvoiceClient(cfg),
-		InvoiceLine:      NewInvoiceLineClient(cfg),
-		Payment:          NewPaymentClient(cfg),
-		PaymentOperation: NewPaymentOperationClient(cfg),
-		Settings:         NewSettingsClient(cfg),
-		Student:          NewStudentClient(cfg),
-		Teacher:          NewTeacherClient(cfg),
-		User:             NewUserClient(cfg),
-		WebSession:       NewWebSessionClient(cfg),
+		ctx:               ctx,
+		config:            cfg,
+		AttendanceMonth:   NewAttendanceMonthClient(cfg),
+		AuditLog:          NewAuditLogClient(cfg),
+		Course:            NewCourseClient(cfg),
+		CourseMonthStat:   NewCourseMonthStatClient(cfg),
+		Enrollment:        NewEnrollmentClient(cfg),
+		Invoice:           NewInvoiceClient(cfg),
+		InvoiceLine:       NewInvoiceLineClient(cfg),
+		Payment:           NewPaymentClient(cfg),
+		PaymentOperation:  NewPaymentOperationClient(cfg),
+		ReleaseNoticeView: NewReleaseNoticeViewClient(cfg),
+		Settings:          NewSettingsClient(cfg),
+		Student:           NewStudentClient(cfg),
+		Teacher:           NewTeacherClient(cfg),
+		User:              NewUserClient(cfg),
+		WebSession:        NewWebSessionClient(cfg),
 	}, nil
 }
 
@@ -213,22 +218,23 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:              ctx,
-		config:           cfg,
-		AttendanceMonth:  NewAttendanceMonthClient(cfg),
-		AuditLog:         NewAuditLogClient(cfg),
-		Course:           NewCourseClient(cfg),
-		CourseMonthStat:  NewCourseMonthStatClient(cfg),
-		Enrollment:       NewEnrollmentClient(cfg),
-		Invoice:          NewInvoiceClient(cfg),
-		InvoiceLine:      NewInvoiceLineClient(cfg),
-		Payment:          NewPaymentClient(cfg),
-		PaymentOperation: NewPaymentOperationClient(cfg),
-		Settings:         NewSettingsClient(cfg),
-		Student:          NewStudentClient(cfg),
-		Teacher:          NewTeacherClient(cfg),
-		User:             NewUserClient(cfg),
-		WebSession:       NewWebSessionClient(cfg),
+		ctx:               ctx,
+		config:            cfg,
+		AttendanceMonth:   NewAttendanceMonthClient(cfg),
+		AuditLog:          NewAuditLogClient(cfg),
+		Course:            NewCourseClient(cfg),
+		CourseMonthStat:   NewCourseMonthStatClient(cfg),
+		Enrollment:        NewEnrollmentClient(cfg),
+		Invoice:           NewInvoiceClient(cfg),
+		InvoiceLine:       NewInvoiceLineClient(cfg),
+		Payment:           NewPaymentClient(cfg),
+		PaymentOperation:  NewPaymentOperationClient(cfg),
+		ReleaseNoticeView: NewReleaseNoticeViewClient(cfg),
+		Settings:          NewSettingsClient(cfg),
+		Student:           NewStudentClient(cfg),
+		Teacher:           NewTeacherClient(cfg),
+		User:              NewUserClient(cfg),
+		WebSession:        NewWebSessionClient(cfg),
 	}, nil
 }
 
@@ -259,8 +265,8 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
 		c.AttendanceMonth, c.AuditLog, c.Course, c.CourseMonthStat, c.Enrollment,
-		c.Invoice, c.InvoiceLine, c.Payment, c.PaymentOperation, c.Settings, c.Student,
-		c.Teacher, c.User, c.WebSession,
+		c.Invoice, c.InvoiceLine, c.Payment, c.PaymentOperation, c.ReleaseNoticeView,
+		c.Settings, c.Student, c.Teacher, c.User, c.WebSession,
 	} {
 		n.Use(hooks...)
 	}
@@ -271,8 +277,8 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
 		c.AttendanceMonth, c.AuditLog, c.Course, c.CourseMonthStat, c.Enrollment,
-		c.Invoice, c.InvoiceLine, c.Payment, c.PaymentOperation, c.Settings, c.Student,
-		c.Teacher, c.User, c.WebSession,
+		c.Invoice, c.InvoiceLine, c.Payment, c.PaymentOperation, c.ReleaseNoticeView,
+		c.Settings, c.Student, c.Teacher, c.User, c.WebSession,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -299,6 +305,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.Payment.mutate(ctx, m)
 	case *PaymentOperationMutation:
 		return c.PaymentOperation.mutate(ctx, m)
+	case *ReleaseNoticeViewMutation:
+		return c.ReleaseNoticeView.mutate(ctx, m)
 	case *SettingsMutation:
 		return c.Settings.mutate(ctx, m)
 	case *StudentMutation:
@@ -1751,6 +1759,155 @@ func (c *PaymentOperationClient) mutate(ctx context.Context, m *PaymentOperation
 	}
 }
 
+// ReleaseNoticeViewClient is a client for the ReleaseNoticeView schema.
+type ReleaseNoticeViewClient struct {
+	config
+}
+
+// NewReleaseNoticeViewClient returns a client for the ReleaseNoticeView from the given config.
+func NewReleaseNoticeViewClient(c config) *ReleaseNoticeViewClient {
+	return &ReleaseNoticeViewClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `releasenoticeview.Hooks(f(g(h())))`.
+func (c *ReleaseNoticeViewClient) Use(hooks ...Hook) {
+	c.hooks.ReleaseNoticeView = append(c.hooks.ReleaseNoticeView, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `releasenoticeview.Intercept(f(g(h())))`.
+func (c *ReleaseNoticeViewClient) Intercept(interceptors ...Interceptor) {
+	c.inters.ReleaseNoticeView = append(c.inters.ReleaseNoticeView, interceptors...)
+}
+
+// Create returns a builder for creating a ReleaseNoticeView entity.
+func (c *ReleaseNoticeViewClient) Create() *ReleaseNoticeViewCreate {
+	mutation := newReleaseNoticeViewMutation(c.config, OpCreate)
+	return &ReleaseNoticeViewCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of ReleaseNoticeView entities.
+func (c *ReleaseNoticeViewClient) CreateBulk(builders ...*ReleaseNoticeViewCreate) *ReleaseNoticeViewCreateBulk {
+	return &ReleaseNoticeViewCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *ReleaseNoticeViewClient) MapCreateBulk(slice any, setFunc func(*ReleaseNoticeViewCreate, int)) *ReleaseNoticeViewCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &ReleaseNoticeViewCreateBulk{err: fmt.Errorf("calling to ReleaseNoticeViewClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*ReleaseNoticeViewCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &ReleaseNoticeViewCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for ReleaseNoticeView.
+func (c *ReleaseNoticeViewClient) Update() *ReleaseNoticeViewUpdate {
+	mutation := newReleaseNoticeViewMutation(c.config, OpUpdate)
+	return &ReleaseNoticeViewUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *ReleaseNoticeViewClient) UpdateOne(_m *ReleaseNoticeView) *ReleaseNoticeViewUpdateOne {
+	mutation := newReleaseNoticeViewMutation(c.config, OpUpdateOne, withReleaseNoticeView(_m))
+	return &ReleaseNoticeViewUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *ReleaseNoticeViewClient) UpdateOneID(id int) *ReleaseNoticeViewUpdateOne {
+	mutation := newReleaseNoticeViewMutation(c.config, OpUpdateOne, withReleaseNoticeViewID(id))
+	return &ReleaseNoticeViewUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for ReleaseNoticeView.
+func (c *ReleaseNoticeViewClient) Delete() *ReleaseNoticeViewDelete {
+	mutation := newReleaseNoticeViewMutation(c.config, OpDelete)
+	return &ReleaseNoticeViewDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *ReleaseNoticeViewClient) DeleteOne(_m *ReleaseNoticeView) *ReleaseNoticeViewDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *ReleaseNoticeViewClient) DeleteOneID(id int) *ReleaseNoticeViewDeleteOne {
+	builder := c.Delete().Where(releasenoticeview.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &ReleaseNoticeViewDeleteOne{builder}
+}
+
+// Query returns a query builder for ReleaseNoticeView.
+func (c *ReleaseNoticeViewClient) Query() *ReleaseNoticeViewQuery {
+	return &ReleaseNoticeViewQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeReleaseNoticeView},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a ReleaseNoticeView entity by its id.
+func (c *ReleaseNoticeViewClient) Get(ctx context.Context, id int) (*ReleaseNoticeView, error) {
+	return c.Query().Where(releasenoticeview.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *ReleaseNoticeViewClient) GetX(ctx context.Context, id int) *ReleaseNoticeView {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryUser queries the user edge of a ReleaseNoticeView.
+func (c *ReleaseNoticeViewClient) QueryUser(_m *ReleaseNoticeView) *UserQuery {
+	query := (&UserClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(releasenoticeview.Table, releasenoticeview.FieldID, id),
+			sqlgraph.To(user.Table, user.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, releasenoticeview.UserTable, releasenoticeview.UserColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *ReleaseNoticeViewClient) Hooks() []Hook {
+	return c.hooks.ReleaseNoticeView
+}
+
+// Interceptors returns the client interceptors.
+func (c *ReleaseNoticeViewClient) Interceptors() []Interceptor {
+	return c.inters.ReleaseNoticeView
+}
+
+func (c *ReleaseNoticeViewClient) mutate(ctx context.Context, m *ReleaseNoticeViewMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&ReleaseNoticeViewCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&ReleaseNoticeViewUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&ReleaseNoticeViewUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&ReleaseNoticeViewDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown ReleaseNoticeView mutation op: %q", m.Op())
+	}
+}
+
 // SettingsClient is a client for the Settings schema.
 type SettingsClient struct {
 	config
@@ -2338,6 +2495,22 @@ func (c *UserClient) QuerySessions(_m *User) *WebSessionQuery {
 	return query
 }
 
+// QueryReleaseNoticeViews queries the release_notice_views edge of a User.
+func (c *UserClient) QueryReleaseNoticeViews(_m *User) *ReleaseNoticeViewQuery {
+	query := (&ReleaseNoticeViewClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, id),
+			sqlgraph.To(releasenoticeview.Table, releasenoticeview.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ReleaseNoticeViewsTable, user.ReleaseNoticeViewsColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // QueryAuditLogs queries the audit_logs edge of a User.
 func (c *UserClient) QueryAuditLogs(_m *User) *AuditLogQuery {
 	query := (&AuditLogClient{config: c.config}).Query()
@@ -2532,12 +2705,12 @@ func (c *WebSessionClient) mutate(ctx context.Context, m *WebSessionMutation) (V
 type (
 	hooks struct {
 		AttendanceMonth, AuditLog, Course, CourseMonthStat, Enrollment, Invoice,
-		InvoiceLine, Payment, PaymentOperation, Settings, Student, Teacher, User,
-		WebSession []ent.Hook
+		InvoiceLine, Payment, PaymentOperation, ReleaseNoticeView, Settings, Student,
+		Teacher, User, WebSession []ent.Hook
 	}
 	inters struct {
 		AttendanceMonth, AuditLog, Course, CourseMonthStat, Enrollment, Invoice,
-		InvoiceLine, Payment, PaymentOperation, Settings, Student, Teacher, User,
-		WebSession []ent.Interceptor
+		InvoiceLine, Payment, PaymentOperation, ReleaseNoticeView, Settings, Student,
+		Teacher, User, WebSession []ent.Interceptor
 	}
 )

@@ -463,6 +463,29 @@ func HasSessionsWith(preds ...predicate.WebSession) predicate.User {
 	})
 }
 
+// HasReleaseNoticeViews applies the HasEdge predicate on the "release_notice_views" edge.
+func HasReleaseNoticeViews() predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ReleaseNoticeViewsTable, ReleaseNoticeViewsColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasReleaseNoticeViewsWith applies the HasEdge predicate on the "release_notice_views" edge with a given conditions (other predicates).
+func HasReleaseNoticeViewsWith(preds ...predicate.ReleaseNoticeView) predicate.User {
+	return predicate.User(func(s *sql.Selector) {
+		step := newReleaseNoticeViewsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
 // HasAuditLogs applies the HasEdge predicate on the "audit_logs" edge.
 func HasAuditLogs() predicate.User {
 	return predicate.User(func(s *sql.Selector) {

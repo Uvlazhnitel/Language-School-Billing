@@ -1,0 +1,83 @@
+{
+  "id": "2026-10-courses-attendance",
+  "content": {
+    "ru-RU": {
+      "title": "Обновление: удобнее вести занятия и расчёты",
+      "intro": "Мы обновили привычные разделы, чтобы вести занятия, проверять начисления и принимать оплаты было проще. Вот что изменилось.",
+      "sections": [
+        {
+          "title": "Курсы",
+          "text": "Варианты занятий объединены по предметам. Преподаватели, форматы и цены доступны внутри группы — длинный список стал компактнее."
+        },
+        {
+          "title": "Посещаемость",
+          "text": "Новая ведомость организована по преподавателям, курсам и ученикам. Добавлены автосохранение по Enter или выходу из поля, фильтры и удобный мобильный вид. Для почасовой оплаты показываются часы, для абонементов — занятия."
+        },
+        {
+          "title": "Надёжное сохранение",
+          "text": "Если сохранить посещаемость не удалось, введённое значение остаётся в поле. Можно повторить сохранение или отменить изменение. Незавершённая правка не потеряется при переходе в другой раздел."
+        },
+        {
+          "title": "Счета и оплаты",
+          "text": "Исправлен расчёт абонементов по цене зачисления, включая курсы с нулевой обычной ставкой. Добавлена защита от повторного сохранения одной оплаты."
+        },
+        {
+          "title": "Должники",
+          "text": "Задолженность неактивных учеников остаётся видимой. Новый фильтр позволяет смотреть всех должников, только активных или только неактивных."
+        }
+      ]
+    },
+    "en-US": {
+      "title": "Update: simpler attendance and billing",
+      "intro": "We have updated familiar sections to make tracking lessons, reviewing charges and recording payments easier. Here is what changed.",
+      "sections": [
+        {
+          "title": "Courses",
+          "text": "Lesson options are grouped by subject. Teachers, formats and prices are available within each group, making the long list more compact."
+        },
+        {
+          "title": "Attendance",
+          "text": "The new sheet is organised by teacher, course and student. It includes automatic saving on Enter or leaving a field, filters and a mobile layout. Hourly enrolments show hours; subscriptions show lessons."
+        },
+        {
+          "title": "Reliable saving",
+          "text": "If attendance cannot be saved, your entered value stays in the field. Retry saving or discard the change. An unfinished edit will not be lost when navigating to another section."
+        },
+        {
+          "title": "Invoices and payments",
+          "text": "Subscription billing now uses the enrolment lesson price, including courses with a zero standard rate. Protection against saving the same payment twice has been added."
+        },
+        {
+          "title": "Debtors",
+          "text": "Debts remain visible when a student becomes inactive. A new filter shows all debtors, active students only or inactive students only."
+        }
+      ]
+    },
+    "lv-LV": {
+      "title": "Jaunumi: ērtāka nodarbību un maksājumu uzskaite",
+      "intro": "Esam atjauninājuši ierastās sadaļas, lai būtu vieglāk uzskaitīt nodarbības, pārbaudīt aprēķinus un reģistrēt maksājumus. Lūk, kas mainījies.",
+      "sections": [
+        {
+          "title": "Kursi",
+          "text": "Nodarbību varianti ir apvienoti pēc mācību priekšmeta. Skolotāji, formāti un cenas ir pieejami katras grupas iekšpusē — garais saraksts kļuvis kompaktāks."
+        },
+        {
+          "title": "Apmeklējums",
+          "text": "Jaunais saraksts ir sakārtots pēc skolotāja, kursa un skolēna. Pievienota automātiska saglabāšana ar Enter vai izejot no lauka, filtri un ērts mobilais skats. Stundu apmaksai tiek rādītas stundas, abonementiem — nodarbības."
+        },
+        {
+          "title": "Droša saglabāšana",
+          "text": "Ja apmeklējumu neizdodas saglabāt, ievadītā vērtība paliek laukā. Varat mēģināt vēlreiz vai atcelt izmaiņu. Nepabeigts labojums nepazudīs, pārejot uz citu sadaļu."
+        },
+        {
+          "title": "Rēķini un maksājumi",
+          "text": "Abonementu aprēķins tagad izmanto uzņemšanā norādīto nodarbības cenu, arī kursiem ar nulles standarta likmi. Pievienota aizsardzība pret viena maksājuma atkārtotu saglabāšanu."
+        },
+        {
+          "title": "Parādnieki",
+          "text": "Parādi paliek redzami arī pēc skolēna deaktivizēšanas. Jaunais filtrs ļauj skatīt visus parādniekus, tikai aktīvos vai tikai neaktīvos skolēnus."
+        }
+      ]
+    }
+  }
+}

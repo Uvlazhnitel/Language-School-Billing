@@ -12,6 +12,7 @@ import (
 	"langschool/ent/invoiceline"
 	"langschool/ent/payment"
 	"langschool/ent/paymentoperation"
+	"langschool/ent/releasenoticeview"
 	"langschool/ent/schema"
 	"langschool/ent/settings"
 	"langschool/ent/student"
@@ -212,6 +213,12 @@ func init() {
 	paymentoperationDescCreatedAt := paymentoperationFields[4].Descriptor()
 	// paymentoperation.DefaultCreatedAt holds the default value on creation for the created_at field.
 	paymentoperation.DefaultCreatedAt = paymentoperationDescCreatedAt.Default.(func() time.Time)
+	releasenoticeviewFields := schema.ReleaseNoticeView{}.Fields()
+	_ = releasenoticeviewFields
+	// releasenoticeviewDescFirstSeenAt is the schema descriptor for first_seen_at field.
+	releasenoticeviewDescFirstSeenAt := releasenoticeviewFields[2].Descriptor()
+	// releasenoticeview.DefaultFirstSeenAt holds the default value on creation for the first_seen_at field.
+	releasenoticeview.DefaultFirstSeenAt = releasenoticeviewDescFirstSeenAt.Default.(func() time.Time)
 	settingsFields := schema.Settings{}.Fields()
 	_ = settingsFields
 	// settingsDescOrgName is the schema descriptor for org_name field.

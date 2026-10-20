@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"langschool/ent/auditlog"
 	"langschool/ent/predicate"
+	"langschool/ent/releasenoticeview"
 	"langschool/ent/user"
 	"langschool/ent/websession"
 	"math"
@@ -21,12 +22,13 @@ import (
 // UserQuery is the builder for querying User entities.
 type UserQuery struct {
 	config
-	ctx           *QueryContext
-	order         []user.OrderOption
-	inters        []Interceptor
-	predicates    []predicate.User
-	withSessions  *WebSessionQuery
-	withAuditLogs *AuditLogQuery
+	ctx                    *QueryContext
+	order                  []user.OrderOption
+	inters                 []Interceptor
+	predicates             []predicate.User
+	withSessions           *WebSessionQuery
+	withReleaseNoticeViews *ReleaseNoticeViewQuery
+	withAuditLogs          *AuditLogQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -78,6 +80,28 @@ func (_q *UserQuery) QuerySessions() *WebSessionQuery {
 			sqlgraph.From(user.Table, user.FieldID, selector),
 			sqlgraph.To(websession.Table, websession.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, user.SessionsTable, user.SessionsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryReleaseNoticeViews chains the current query on the "release_notice_views" edge.
+func (_q *UserQuery) QueryReleaseNoticeViews() *ReleaseNoticeViewQuery {
+	query := (&ReleaseNoticeViewClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(user.Table, user.FieldID, selector),
+			sqlgraph.To(releasenoticeview.Table, releasenoticeview.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, user.ReleaseNoticeViewsTable, user.ReleaseNoticeViewsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -294,13 +318,14 @@ func (_q *UserQuery) Clone() *UserQuery {
 		return nil
 	}
 	return &UserQuery{
-		config:        _q.config,
-		ctx:           _q.ctx.Clone(),
-		order:         append([]user.OrderOption{}, _q.order...),
-		inters:        append([]Interceptor{}, _q.inters...),
-		predicates:    append([]predicate.User{}, _q.predicates...),
-		withSessions:  _q.withSessions.Clone(),
-		withAuditLogs: _q.withAuditLogs.Clone(),
+		config:                 _q.config,
+		ctx:                    _q.ctx.Clone(),
+		order:                  append([]user.OrderOption{}, _q.order...),
+		inters:                 append([]Interceptor{}, _q.inters...),
+		predicates:             append([]predicate.User{}, _q.predicates...),
+		withSessions:           _q.withSessions.Clone(),
+		withReleaseNoticeViews: _q.withReleaseNoticeViews.Clone(),
+		withAuditLogs:          _q.withAuditLogs.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -315,6 +340,17 @@ func (_q *UserQuery) WithSessions(opts ...func(*WebSessionQuery)) *UserQuery {
 		opt(query)
 	}
 	_q.withSessions = query
+	return _q
+}
+
+// WithReleaseNoticeViews tells the query-builder to eager-load the nodes that are connected to
+// the "release_notice_views" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *UserQuery) WithReleaseNoticeViews(opts ...func(*ReleaseNoticeViewQuery)) *UserQuery {
+	query := (&ReleaseNoticeViewClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withReleaseNoticeViews = query
 	return _q
 }
 
@@ -407,8 +443,9 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 	var (
 		nodes       = []*User{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [3]bool{
 			_q.withSessions != nil,
+			_q.withReleaseNoticeViews != nil,
 			_q.withAuditLogs != nil,
 		}
 	)
@@ -434,6 +471,15 @@ func (_q *UserQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*User, e
 		if err := _q.loadSessions(ctx, query, nodes,
 			func(n *User) { n.Edges.Sessions = []*WebSession{} },
 			func(n *User, e *WebSession) { n.Edges.Sessions = append(n.Edges.Sessions, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withReleaseNoticeViews; query != nil {
+		if err := _q.loadReleaseNoticeViews(ctx, query, nodes,
+			func(n *User) { n.Edges.ReleaseNoticeViews = []*ReleaseNoticeView{} },
+			func(n *User, e *ReleaseNoticeView) {
+				n.Edges.ReleaseNoticeViews = append(n.Edges.ReleaseNoticeViews, e)
+			}); err != nil {
 			return nil, err
 		}
 	}
@@ -473,6 +519,36 @@ func (_q *UserQuery) loadSessions(ctx context.Context, query *WebSessionQuery, n
 		node, ok := nodeids[*fk]
 		if !ok {
 			return fmt.Errorf(`unexpected referenced foreign-key "user_sessions" returned %v for node %v`, *fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *UserQuery) loadReleaseNoticeViews(ctx context.Context, query *ReleaseNoticeViewQuery, nodes []*User, init func(*User), assign func(*User, *ReleaseNoticeView)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int]*User)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(releasenoticeview.FieldUserID)
+	}
+	query.Where(predicate.ReleaseNoticeView(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(user.ReleaseNoticeViewsColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.UserID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "user_id" returned %v for node %v`, fk, n.ID)
 		}
 		assign(node, n)
 	}

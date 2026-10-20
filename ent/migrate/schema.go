@@ -347,6 +347,35 @@ var (
 			},
 		},
 	}
+	// ReleaseNoticeViewsColumns holds the columns for the "release_notice_views" table.
+	ReleaseNoticeViewsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true},
+		{Name: "release_id", Type: field.TypeString},
+		{Name: "first_seen_at", Type: field.TypeTime},
+		{Name: "dismissed_at", Type: field.TypeTime, Nullable: true},
+		{Name: "user_id", Type: field.TypeInt},
+	}
+	// ReleaseNoticeViewsTable holds the schema information for the "release_notice_views" table.
+	ReleaseNoticeViewsTable = &schema.Table{
+		Name:       "release_notice_views",
+		Columns:    ReleaseNoticeViewsColumns,
+		PrimaryKey: []*schema.Column{ReleaseNoticeViewsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "release_notice_views_users_release_notice_views",
+				Columns:    []*schema.Column{ReleaseNoticeViewsColumns[4]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "releasenoticeview_user_id_release_id",
+				Unique:  true,
+				Columns: []*schema.Column{ReleaseNoticeViewsColumns[4], ReleaseNoticeViewsColumns[1]},
+			},
+		},
+	}
 	// SettingsColumns holds the columns for the "settings" table.
 	SettingsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true},
@@ -453,6 +482,7 @@ var (
 		InvoiceLinesTable,
 		PaymentsTable,
 		PaymentOperationsTable,
+		ReleaseNoticeViewsTable,
 		SettingsTable,
 		StudentsTable,
 		TeachersTable,
@@ -472,5 +502,6 @@ func init() {
 	InvoiceLinesTable.ForeignKeys[1].RefTable = InvoicesTable
 	PaymentsTable.ForeignKeys[0].RefTable = InvoicesTable
 	PaymentsTable.ForeignKeys[1].RefTable = StudentsTable
+	ReleaseNoticeViewsTable.ForeignKeys[0].RefTable = UsersTable
 	WebSessionsTable.ForeignKeys[0].RefTable = UsersTable
 }

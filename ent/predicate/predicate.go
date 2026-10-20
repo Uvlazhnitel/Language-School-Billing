@@ -33,6 +33,9 @@ type Payment func(*sql.Selector)
 // PaymentOperation is the predicate function for paymentoperation builders.
 type PaymentOperation func(*sql.Selector)
 
+// ReleaseNoticeView is the predicate function for releasenoticeview builders.
+type ReleaseNoticeView func(*sql.Selector)
+
 // Settings is the predicate function for settings builders.
 type Settings func(*sql.Selector)
 

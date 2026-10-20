@@ -128,6 +128,8 @@ func (s *Server) registerInvoiceRoutes() {
 }
 
 func (s *Server) registerSettingsRoutes() {
+	s.mux.HandleFunc("POST /api/me/release-notices/current/visit", s.handleReleaseNoticeVisit)
+	s.mux.HandleFunc("POST /api/me/release-notices/{releaseId}/dismiss", s.handleReleaseNoticeDismiss)
 	s.mux.HandleFunc("GET /api/me/locale", s.handleCurrentUserGetLocale)
 	s.mux.HandleFunc("POST /api/me/locale", s.handleCurrentUserSetLocale)
 	s.mux.HandleFunc("GET /api/settings/locale", s.handleSettingsGetLocale)

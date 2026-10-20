@@ -116,6 +116,18 @@ func (f PaymentOperationFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.V
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.PaymentOperationMutation", m)
 }
 
+// The ReleaseNoticeViewFunc type is an adapter to allow the use of ordinary
+// function as ReleaseNoticeView mutator.
+type ReleaseNoticeViewFunc func(context.Context, *ent.ReleaseNoticeViewMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f ReleaseNoticeViewFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.ReleaseNoticeViewMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.ReleaseNoticeViewMutation", m)
+}
+
 // The SettingsFunc type is an adapter to allow the use of ordinary
 // function as Settings mutator.
 type SettingsFunc func(context.Context, *ent.SettingsMutation) (ent.Value, error)

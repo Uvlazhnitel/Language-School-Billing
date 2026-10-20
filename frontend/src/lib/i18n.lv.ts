@@ -1,4 +1,7 @@
 export const lvTranslations: Record<string, string> = {
+  "releaseNotice.label": "Kas jauns",
+  "releaseNotice.understood": "Sapratu",
+  "releaseNotice.hint": "Šo paziņojumu varat vēlreiz atvērt ar pogu “Kas jauns” augšējā joslā 24 stundas pēc pirmā apmeklējuma.",
   "attendance.lockedChange": "Rēķins tagad bloķē apmeklējumu. Atceliet izmaiņu un atjaunojiet sarakstu.",
   "attendance.monthSummary": "Mēneša kopsavilkums",
   "attendance.missing": "Jāaizpilda",
