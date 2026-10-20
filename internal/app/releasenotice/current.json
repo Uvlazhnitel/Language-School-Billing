@@ -3,7 +3,7 @@
   "content": {
     "ru-RU": {
       "title": "Обновление: удобнее вести занятия и расчёты",
-      "intro": "Мы обновили привычные разделы, чтобы вести занятия, проверять начисления и принимать оплаты было проще. Вот что изменилось.",
+      "intro": "Дорогие Арина и Светлана! Хочу рассказать вам о последних изменениях в приложении. Я постарался сделать привычные задачи удобнее: упростил списки курсов, обновил страницу посещаемости и улучшил работу со счетами, оплатами и задолженностями. Ниже — коротко о том, что изменилось и как этим пользоваться.",
       "sections": [
         {
           "title": "Курсы",
@@ -29,7 +29,7 @@
     },
     "en-US": {
       "title": "Update: simpler attendance and billing",
-      "intro": "We have updated familiar sections to make tracking lessons, reviewing charges and recording payments easier. Here is what changed.",
+      "intro": "Dear Arina and Svetlana! I'd like to tell you about the latest changes to the app. I've worked to make everyday tasks easier: simplified the course lists, updated the attendance page and improved invoices, payments and debt tracking. Below is a quick guide to what has changed and how to use it.",
       "sections": [
         {
           "title": "Courses",
@@ -55,7 +55,7 @@
     },
     "lv-LV": {
       "title": "Jaunumi: ērtāka nodarbību un maksājumu uzskaite",
-      "intro": "Esam atjauninājuši ierastās sadaļas, lai būtu vieglāk uzskaitīt nodarbības, pārbaudīt aprēķinus un reģistrēt maksājumus. Lūk, kas mainījies.",
+      "intro": "Mīļās Arina un Svetlana! Vēlos jums pastāstīt par jaunākajām izmaiņām lietotnē. Esmu centies padarīt ikdienas darbus ērtākus: vienkāršojis kursu sarakstus, atjauninājis apmeklējuma lapu un uzlabojis darbu ar rēķiniem, maksājumiem un parādu uzskaiti. Tālāk — īsi par to, kas mainījies un kā to izmantot.",
       "sections": [
         {
           "title": "Kursi",
