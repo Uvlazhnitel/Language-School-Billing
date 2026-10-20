@@ -24,6 +24,10 @@
         {
           "title": "Должники",
           "text": "Задолженность неактивных учеников остаётся видимой. Новый фильтр позволяет смотреть всех должников, только активных или только неактивных."
+        },
+        {
+          "title": "Кнопки и действия со счетами",
+          "text": "Кнопки во всём приложении стали компактнее: основные действия выделены цветом, обычные — светлые, удаление — с красным акцентом. В списке счетов у каждой строки теперь одно главное действие и меню «⋯». Через меню можно открыть счёт и выполнить остальные доступные действия, например скачать PDF или записать оплату. Кнопки выровнены и больше не переносятся на вторую строку."
         }
       ]
     },
@@ -50,6 +54,10 @@
         {
           "title": "Debtors",
           "text": "Debts remain visible when a student becomes inactive. A new filter shows all debtors, active students only or inactive students only."
+        },
+        {
+          "title": "Buttons and invoice actions",
+          "text": "Buttons throughout the app are now more compact: main actions use an accent colour, standard actions have a light background and deletion uses a red accent. Each invoice row now has one main action and a “⋯” menu. Use the menu to open the invoice and access other available actions, such as downloading the PDF or recording a payment. The buttons stay aligned without wrapping onto a second line."
         }
       ]
     },
@@ -76,6 +84,10 @@
         {
           "title": "Parādnieki",
           "text": "Parādi paliek redzami arī pēc skolēna deaktivizēšanas. Jaunais filtrs ļauj skatīt visus parādniekus, tikai aktīvos vai tikai neaktīvos skolēnus."
+        },
+        {
+          "title": "Pogas un darbības ar rēķiniem",
+          "text": "Pogas visā lietotnē ir kļuvušas kompaktākas: galvenās darbības ir izceltas ar krāsu, parastajām darbībām ir gaišs fons, bet dzēšanai — sarkans akcents. Katrā rēķinu saraksta rindā tagad ir viena galvenā darbība un izvēlne «⋯». Izvēlnē var atvērt rēķinu un veikt citas pieejamās darbības, piemēram, lejupielādēt PDF vai reģistrēt maksājumu. Pogas ir vienādi izlīdzinātas un vairs nepārceļas uz otru rindu."
         }
       ]
     }
