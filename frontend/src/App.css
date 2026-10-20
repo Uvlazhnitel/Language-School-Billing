@@ -3902,3 +3902,35 @@ tfoot td {
     min-height: 44px;
   }
 }
+
+/* Fixed positions for invoice-list actions; other action groups stay independent. */
+.invoiceListActions {
+  display: grid;
+  grid-template-columns: 176px 40px;
+  gap: 8px;
+  width: 224px;
+  margin-left: auto;
+  align-items: center;
+}
+.invoiceListActions button {
+  margin: 0;
+}
+.invoiceListPrimary {
+  width: 100%;
+  white-space: nowrap;
+}
+.invoiceListMenuSlot {
+  width: 40px;
+}
+.invoiceListMenuSlot .invoiceActionsMenuTrigger {
+  min-width: 0;
+  width: 40px;
+  padding: 8px;
+  font-size: 22px;
+  line-height: 1;
+}
+@media (pointer: coarse) {
+  .invoiceListActions button {
+    min-height: 44px;
+  }
+}

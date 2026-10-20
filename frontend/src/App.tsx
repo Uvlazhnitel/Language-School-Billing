@@ -21,7 +21,7 @@ import {
   InvoiceDTO,
 } from "./lib/invoices";
 import { buildIssueFeedback } from "./lib/invoiceIssueFeedback";
-import { getInvoiceMenuActions } from "./lib/invoiceUi";
+import { getInvoiceMenuActions, getInvoiceRowActions } from "./lib/invoiceUi";
 
 import {
   listStudents,
@@ -1658,6 +1658,7 @@ export default function App() {
   const pendingInvoiceScrollRestoreRef = useRef<number | null>(null);
   const [openInvoiceMenu, setOpenInvoiceMenu] = useState<InvoiceMenuTarget | null>(null);
   const invoiceMenuRef = useRef<HTMLDivElement | null>(null);
+  const invoiceMenuFocusLastRef = useRef(false);
   const activeInvoiceMenuTriggerRef = useRef<HTMLButtonElement | null>(null);
   const [invoiceMenuPosition, setInvoiceMenuPosition] = useState<InvoiceMenuPosition | null>(null);
   const [invoiceEmailDraft, setInvoiceEmailDraft] = useState<InvoiceEmailPreviewResult | null>(
@@ -1863,7 +1864,8 @@ export default function App() {
     }
   };
 
-  const closeInvoiceMenu = useCallback(() => {
+  const closeInvoiceMenu = useCallback((restoreFocus = true) => {
+    if (restoreFocus) activeInvoiceMenuTriggerRef.current?.focus({ preventScroll: true });
     activeInvoiceMenuTriggerRef.current = null;
     setOpenInvoiceMenu(null);
     setInvoiceMenuPosition(null);
@@ -2235,83 +2237,65 @@ export default function App() {
     t,
   ]);
 
-  const buildInvoiceMenuItems = useCallback(
-    (
-      invoice: Pick<InvoiceDTO, "id" | "status" | "canReopenDraft"> & {
-        pdfReady?: boolean;
-      }
-    ) => {
-      const menuItems: Array<{ label: string; onClick: () => void }> = [];
-
-      for (const action of getInvoiceMenuActions(invoice)) {
-        if (action === "reopenDraft") {
-          menuItems.push({
-            label: t("button.reopenDraft"),
-            onClick: () => void onReopenToDraft(invoice.id),
-          });
-          continue;
-        }
-        if (action === "createPdf") {
-          menuItems.push({
-            label: t("button.createPdf"),
-            onClick: () => void onGeneratePdf(invoice.id),
-          });
-        }
-      }
-
-      return menuItems;
-    },
-    [onGeneratePdf, onReopenToDraft, t]
-  );
-
-  const openInvoiceMenuAtTrigger = useCallback(
-    (
-      kind: InvoiceMenuTarget["kind"],
-      invoice: Pick<InvoiceDTO, "id" | "status" | "canReopenDraft"> & {
-        pdfReady?: boolean;
+  const buildInvoiceMenuItems = (
+    invoice: Pick<InvoiceDTO, "id" | "status" | "canReopenDraft"> & { pdfReady?: boolean },
+    kind: InvoiceMenuTarget["kind"] = "modal"
+  ) => {
+    const actions = kind === "row" ? getInvoiceRowActions(invoice).menu : getInvoiceMenuActions(invoice);
+    return actions.map((action) => ({
+      label: t(action === "recordPayment" ? "button.recordPayment" : `button.${action}`),
+      onClick: () => {
+        if (action === "open") void onOpenInvoice(invoice.id);
+        if (action === "downloadPdf") void onDownloadPdf(invoice.id);
+        if (action === "recordPayment") void openPaymentModalForInvoice(invoice.id);
+        if (action === "reopenDraft") void onReopenToDraft(invoice.id);
       },
-      trigger: HTMLButtonElement
-    ) => {
-      const menuItems = buildInvoiceMenuItems(invoice);
-      if (menuItems.length === 0) {
-        closeInvoiceMenu();
-        return;
-      }
+    }));
+  };
 
-      const triggerRect = trigger.getBoundingClientRect();
-      const menuWidth = 190;
-      const menuGap = 8;
-      const menuHeight = menuItems.length * 48 + 16;
-      const openUpward =
-        window.innerHeight - triggerRect.bottom < menuHeight + menuGap &&
-        triggerRect.top > menuHeight + menuGap;
-      const top = openUpward ? triggerRect.top - menuGap : triggerRect.bottom + menuGap;
-      const left = Math.min(
-        window.innerWidth - menuWidth - 12,
-        Math.max(12, triggerRect.right - menuWidth)
-      );
+  const openInvoiceMenuAtTrigger = (
+    kind: InvoiceMenuTarget["kind"],
+    invoice: Pick<InvoiceDTO, "id" | "status" | "canReopenDraft"> & { pdfReady?: boolean },
+    trigger: HTMLButtonElement,
+    focusLast = false
+  ) => {
+    const menuItems = buildInvoiceMenuItems(invoice, kind);
+    if (menuItems.length === 0) {
+      closeInvoiceMenu();
+      return;
+    }
+    const triggerRect = trigger.getBoundingClientRect();
+    const menuWidth = 190;
+    const menuGap = 8;
+    const menuHeight = menuItems.length * 48 + 16;
+    const openUpward = window.innerHeight - triggerRect.bottom < menuHeight + menuGap &&
+      triggerRect.top > menuHeight + menuGap;
+    const top = openUpward ? triggerRect.top - menuGap : triggerRect.bottom + menuGap;
+    const left = Math.min(window.innerWidth - menuWidth - 12, Math.max(12, triggerRect.right - menuWidth));
+    activeInvoiceMenuTriggerRef.current = trigger;
+    invoiceMenuFocusLastRef.current = focusLast;
+    setInvoiceMenuPosition({ top, left, openUpward });
+    setOpenInvoiceMenu({ kind, invoiceId: invoice.id });
+  };
 
-      activeInvoiceMenuTriggerRef.current = trigger;
-      setInvoiceMenuPosition({ top, left, openUpward });
-      setOpenInvoiceMenu({ kind, invoiceId: invoice.id });
-    },
-    [buildInvoiceMenuItems, closeInvoiceMenu]
-  );
+  const toggleInvoiceMenu = (
+    kind: InvoiceMenuTarget["kind"],
+    invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
+    trigger: HTMLButtonElement
+  ) => {
+    if (openInvoiceMenu?.kind === kind && openInvoiceMenu.invoiceId === invoice.id) {
+      closeInvoiceMenu();
+      return;
+    }
+    openInvoiceMenuAtTrigger(kind, invoice, trigger);
+  };
 
-  const toggleInvoiceMenu = useCallback(
-    (
-      kind: InvoiceMenuTarget["kind"],
-      invoice: Pick<InvoiceDTO, "id" | "status"> & { pdfReady?: boolean },
-      trigger: HTMLButtonElement
-    ) => {
-      if (openInvoiceMenu?.kind === kind && openInvoiceMenu.invoiceId === invoice.id) {
-        closeInvoiceMenu();
-        return;
-      }
-      openInvoiceMenuAtTrigger(kind, invoice, trigger);
-    },
-    [closeInvoiceMenu, openInvoiceMenu, openInvoiceMenuAtTrigger]
-  );
+  useLayoutEffect(() => {
+    if (!openInvoiceMenu) return;
+    const items = invoiceMenuRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitem"]');
+    const item = invoiceMenuFocusLastRef.current ? items?.[items.length - 1] : items?.[0];
+    item?.focus({ preventScroll: true });
+  }, [openInvoiceMenu]);
 
   useEffect(() => {
     if (!openInvoiceMenu) return;
@@ -2320,11 +2304,11 @@ export default function App() {
       const target = event.target as Node;
       if (invoiceMenuRef.current?.contains(target)) return;
       if (activeInvoiceMenuTriggerRef.current?.contains(target)) return;
-      closeInvoiceMenu();
+      closeInvoiceMenu(false);
     };
 
     const handleViewportChange = () => {
-      closeInvoiceMenu();
+      closeInvoiceMenu(false);
     };
 
     document.addEventListener("mousedown", handlePointerDown);
@@ -2358,7 +2342,7 @@ export default function App() {
   ) => {
     const kind = options?.kind ?? "row";
     const isOpen = openInvoiceMenu?.kind === kind && openInvoiceMenu.invoiceId === invoice.id;
-    const menuItems = buildInvoiceMenuItems(invoice);
+    const menuItems = buildInvoiceMenuItems(invoice, kind);
 
     if (menuItems.length === 0) return null;
 
@@ -2366,7 +2350,16 @@ export default function App() {
       <div className="invoiceActionsMenu">
         <button
           type="button"
-          className="invoiceActionsMenuTrigger"
+          className="workspaceActionButton invoiceActionsMenuTrigger"
+          id={`invoice-menu-trigger-${kind}-${invoice.id}`}
+          aria-label={kind === "row" ? t("button.invoiceActions", { invoice: invoice.id }) : t("msg.more")}
+          aria-controls={isOpen ? "invoice-actions-menu" : undefined}
+          onKeyDown={(event) => {
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault();
+              openInvoiceMenuAtTrigger(kind, invoice, event.currentTarget, event.key === "ArrowUp");
+            }
+          }}
           aria-haspopup="menu"
           aria-expanded={isOpen}
           onMouseDown={(event) => {
@@ -2377,7 +2370,7 @@ export default function App() {
             toggleInvoiceMenu(kind, invoice, event.currentTarget);
           }}
         >
-          {t("msg.more")}
+          {kind === "row" ? <span aria-hidden="true">⋯</span> : t("msg.more")}
         </button>
       </div>
     );
@@ -2399,16 +2392,12 @@ export default function App() {
   // ---------------- Render ----------------
   const showMonthPicker = tab === "dashboard" || tab === "attendance" || tab === "invoice";
   const selectedInvPdfReady = selectedInv?.pdfReady ?? false;
-  const openInvoiceMenuItems = useMemo(() => {
-    if (!openInvoiceMenu) return [];
-
-    if (openInvoiceMenu.kind === "modal" && selectedInv) {
-      return buildInvoiceMenuItems({ ...selectedInv, pdfReady: selectedInvPdfReady });
-    }
-
-    const rowInvoice = invItems.find((item) => item.id === openInvoiceMenu.invoiceId);
-    return rowInvoice ? buildInvoiceMenuItems(rowInvoice) : [];
-  }, [buildInvoiceMenuItems, invItems, openInvoiceMenu, selectedInv, selectedInvPdfReady]);
+  const openInvoiceMenuInvoice = openInvoiceMenu?.kind === "modal"
+    ? selectedInv && { ...selectedInv, pdfReady: selectedInvPdfReady }
+    : invItems.find((item) => item.id === openInvoiceMenu?.invoiceId);
+  const openInvoiceMenuItems = openInvoiceMenu && openInvoiceMenuInvoice
+    ? buildInvoiceMenuItems(openInvoiceMenuInvoice, openInvoiceMenu.kind)
+    : [];
 
   const tabs = useMemo<AppTab[]>(
     () => [
@@ -3052,6 +3041,24 @@ export default function App() {
               ref={invoiceMenuRef}
               className={`invoiceActionsMenuPanel ${invoiceMenuPosition.openUpward ? "invoiceActionsMenuPanelUpward" : ""}`}
               role="menu"
+              id="invoice-actions-menu"
+              aria-labelledby={`invoice-menu-trigger-${openInvoiceMenu.kind}-${openInvoiceMenu.invoiceId}`}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" || event.key === "Tab") {
+                  if (event.key === "Escape") event.preventDefault();
+                  event.stopPropagation();
+                  closeInvoiceMenu();
+                  return;
+                }
+                const keys = ["ArrowDown", "ArrowUp", "Home", "End"];
+                if (!keys.includes(event.key)) return;
+                event.preventDefault();
+                const items = [...event.currentTarget.querySelectorAll<HTMLButtonElement>('[role="menuitem"]')];
+                const current = items.indexOf(document.activeElement as HTMLButtonElement);
+                const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1
+                  : (current + (event.key === "ArrowDown" ? 1 : -1) + items.length) % items.length;
+                items[next]?.focus({ preventScroll: true });
+              }}
               onMouseDown={(event) => {
                 event.stopPropagation();
               }}

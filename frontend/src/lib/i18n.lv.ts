@@ -92,6 +92,7 @@ export const lvTranslations: Record<string, string> = {
   "button.edit": "Rediģēt",
   "button.open": "Atvērt",
   "button.openInvoice": "Atvērt rēķinu",
+  "button.invoiceActions": "Rēķina {invoice} darbības",
   "button.openFolder": "Atvērt mapi",
   "button.recordPayment": "Reģistrēt maksājumu",
   "button.openInvoices": "Atvērt rēķinus",

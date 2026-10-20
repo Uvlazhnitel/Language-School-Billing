@@ -1,3 +1,4 @@
+import { InvoiceRowActions } from "../components/InvoiceRowActions";
 import type { ReactNode } from "react";
 import { EmptyState } from "../components/EmptyState";
 import type { InvoiceListItemView } from "../lib/invoices";
@@ -57,10 +58,6 @@ export function InvoicesScreen({
 }: InvoicesScreenProps) {
   const hasActiveFilters = Boolean(query.trim() || status !== "all");
   const isDraft = (invoiceStatus: InvoiceListItemView["status"]) => invoiceStatus === "draft";
-  const isIssuedFamily = (invoiceStatus: InvoiceListItemView["status"]) =>
-    invoiceStatus === "issued" || invoiceStatus === "issued_pending_pdf";
-  const isPaidFamily = (invoiceStatus: InvoiceListItemView["status"]) =>
-    invoiceStatus === "paid" || invoiceStatus === "paid_pending_pdf";
   const renderEmailStatus = (item: InvoiceListItemView) => {
     if (isDraft(item.status)) {
       return null;
@@ -86,7 +83,7 @@ export function InvoicesScreen({
           {t(
             item.emailCommunicationStatus === "stale"
               ? "msg.invoiceEmailStatusStale"
-              : "msg.invoiceEmailStatusSent",
+              : "msg.invoiceEmailStatusSent"
           )}{" "}
           · {t("msg.invoiceEmailLastSentTo", { email: item.lastEmailedTo })} ·{" "}
           {formatDateTime(item.lastEmailedAt)}
@@ -98,7 +95,7 @@ export function InvoicesScreen({
         {t(
           item.emailCommunicationStatus === "stale"
             ? "msg.invoiceEmailStatusStale"
-            : "msg.invoiceEmailStatusSent",
+            : "msg.invoiceEmailStatusSent"
         )}
       </div>
     );
@@ -207,74 +204,18 @@ export function InvoicesScreen({
                   {renderEmailStatus(item)}
                 </td>
                 <td>
-                  <div className="invoiceRowActions">
-                    <button
-                      className="workspaceActionButton"
-                      onClick={() => void onOpenInvoice(item.id)}
-                    >
-                      {t("button.open")}
-                    </button>
-                    {isDraft(item.status) && (
-                      <button
-                        className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
-                        onClick={() => void onIssueOne(item.id)}
-                      >
-                        {t("button.issue")}
-                      </button>
-                    )}
-                    {isIssuedFamily(item.status) && (
-                      !item.pdfReady ? (
-                        <button
-                          className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
-                          onClick={() => void onGeneratePdf(item.id)}
-                        >
-                          {t("button.createPdf")}
-                        </button>
-                      ) : (
-                      <button
-                        className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
-                        onClick={() => void onOpenPaymentModal(item.id)}
-                      >
-                        {t("button.recordPayment")}
-                      </button>
-                      )
-                    )}
-                    {isPaidFamily(item.status) && (
-                      !item.pdfReady ? (
-                        <button
-                          className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
-                          onClick={() => void onGeneratePdf(item.id)}
-                        >
-                          {t("button.createPdf")}
-                        </button>
-                      ) : (
-                        <button
-                          className="workspaceActionButtonPrimary workspaceActionButton invoicePrimaryAction"
-                          onClick={() => void onDownloadPdf(item.id)}
-                        >
-                          {t("button.downloadPdf")}
-                        </button>
-                      )
-                    )}
-                    {isIssuedFamily(item.status) && (
-                      item.pdfReady ? (
-                        <button
-                          className="secondaryActionButton"
-                          onClick={() => void onDownloadPdf(item.id)}
-                        >
-                          {t("button.downloadPdf")}
-                        </button>
-                      ) : (
-                        <button
-                          className="secondaryActionButton"
-                          onClick={() => void onOpenPaymentModal(item.id)}
-                        >
-                          {t("button.recordPayment")}
-                        </button>
-                      )
-                    )}
-                    {renderInvoiceActionsMenu(item)}
-                  </div>
+                  <InvoiceRowActions
+                    invoice={item}
+                    menu={renderInvoiceActionsMenu(item)}
+                    onAction={(action, id) => {
+                      if (action === "open") void onOpenInvoice(id);
+                      if (action === "issue") void onIssueOne(id);
+                      if (action === "createPdf") void onGeneratePdf(id);
+                      if (action === "recordPayment") void onOpenPaymentModal(id);
+                      if (action === "downloadPdf") void onDownloadPdf(id);
+                    }}
+                    t={t}
+                  />
                 </td>
               </tr>
             ))}
